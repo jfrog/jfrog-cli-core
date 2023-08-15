@@ -5,7 +5,7 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -39,25 +39,25 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 
 func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 	// Arrange
-	var noDirectDependenciesResults = []services.ScanResponse{
+	var noDirectDependenciesResults = []scan.ScanResponse{
 		{
 			ScanId: "scanId_1",
-			Vulnerabilities: []services.Vulnerability{
+			Vulnerabilities: []scan.Vulnerability{
 				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-					Cves: []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-					Components: map[string]services.Component{
+					Cves: []scan.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+					Components: map[string]scan.Component{
 						"issueId_1_non_direct_dependency": {}}},
 			},
-			Violations: []services.Violation{
+			Violations: []scan.Violation{
 				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-					Cves: []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-					Components: map[string]services.Component{
+					Cves: []scan.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]scan.Component{
 						"issueId_2_non_direct_dependency": {}}},
 			},
 		},
 	}
-	fakeBasicXrayResults[0].Vulnerabilities[0].Components["issueId_1_non_direct_dependency"] = services.Component{}
-	fakeBasicXrayResults[0].Violations[0].Components["issueId_2_non_direct_dependency"] = services.Component{}
+	fakeBasicXrayResults[0].Vulnerabilities[0].Components["issueId_1_non_direct_dependency"] = scan.Component{}
+	fakeBasicXrayResults[0].Violations[0].Components["issueId_2_non_direct_dependency"] = scan.Component{}
 
 	// Act
 	applicabilityManager, _, err := newApplicabilityScanManager(noDirectDependenciesResults, fakeBasicDependencyGraph, &fakeServerDetails, &analyzerManagerMock{})
@@ -88,13 +88,13 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 
 func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) {
 	// Arrange
-	noViolationScanResponse := []services.ScanResponse{
+	noViolationScanResponse := []scan.ScanResponse{
 		{
 			ScanId: "scanId_1",
-			Vulnerabilities: []services.Vulnerability{
+			Vulnerabilities: []scan.Vulnerability{
 				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-					Cves:       []services.Cve{{Id: "test_cve_1"}, {Id: "test_cve_2"}, {Id: "test_cve_3"}},
-					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
+					Cves:       []scan.Cve{{Id: "test_cve_1"}, {Id: "test_cve_2"}, {Id: "test_cve_3"}},
+					Components: map[string]scan.Component{"issueId_1_direct_dependency": {}}},
 			},
 		},
 	}
@@ -112,13 +112,13 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 
 func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	// Arrange
-	noVulnerabilitiesScanResponse := []services.ScanResponse{
+	noVulnerabilitiesScanResponse := []scan.ScanResponse{
 		{
 			ScanId: "scanId_1",
-			Violations: []services.Violation{
+			Violations: []scan.Violation{
 				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-					Cves:       []services.Cve{{Id: "test_cve_3"}, {Id: "test_cve_4"}},
-					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
+					Cves:       []scan.Cve{{Id: "test_cve_3"}, {Id: "test_cve_4"}},
+					Components: map[string]scan.Component{"issueId_2_direct_dependency": {}}},
 			},
 		},
 	}
@@ -156,12 +156,12 @@ func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 }
 
 func TestExtractXrayDirectViolations(t *testing.T) {
-	var xrayResponseForDirectViolationsTest = []services.ScanResponse{
+	var xrayResponseForDirectViolationsTest = []scan.ScanResponse{
 		{
-			Violations: []services.Violation{
+			Violations: []scan.Violation{
 				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
+					Cves:       []scan.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]scan.Component{"issueId_2_direct_dependency": {}}},
 			},
 		},
 	}
@@ -192,19 +192,19 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 }
 
 func TestExtractXrayDirectVulnerabilities(t *testing.T) {
-	var xrayResponseForDirectVulnerabilitiesTest = []services.ScanResponse{
+	var xrayResponseForDirectVulnerabilitiesTest = []scan.ScanResponse{
 		{
 			ScanId: "scanId_1",
-			Vulnerabilities: []services.Vulnerability{
+			Vulnerabilities: []scan.Vulnerability{
 				{
 					IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-					Components: map[string]services.Component{"issueId_1_direct_dependency": {}},
+					Cves:       []scan.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+					Components: map[string]scan.Component{"issueId_1_direct_dependency": {}},
 				},
 				{
 					IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-					Components: map[string]services.Component{"issueId_2_direct_dependency": {}},
+					Cves:       []scan.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+					Components: map[string]scan.Component{"issueId_2_direct_dependency": {}},
 				},
 			},
 		},

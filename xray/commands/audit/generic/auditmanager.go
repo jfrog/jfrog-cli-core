@@ -20,7 +20,7 @@ import (
 	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"golang.org/x/sync/errgroup"
 	"os"
@@ -28,7 +28,7 @@ import (
 )
 
 type Params struct {
-	xrayGraphScanParams *services.XrayGraphScanParams
+	xrayGraphScanParams *scan.XrayGraphScanParams
 	workingDirs         []string
 	installFunc         func(tech string) error
 	fixableOnly         bool
@@ -39,7 +39,7 @@ type Params struct {
 
 func NewAuditParams() *Params {
 	return &Params{
-		xrayGraphScanParams: &services.XrayGraphScanParams{},
+		xrayGraphScanParams: &scan.XrayGraphScanParams{},
 		GraphBasicParams:    &clientUtils.GraphBasicParams{},
 	}
 }
@@ -48,7 +48,7 @@ func (params *Params) InstallFunc() func(tech string) error {
 	return params.installFunc
 }
 
-func (params *Params) XrayGraphScanParams() *services.XrayGraphScanParams {
+func (params *Params) XrayGraphScanParams() *scan.XrayGraphScanParams {
 	return params.xrayGraphScanParams
 }
 
@@ -60,7 +60,7 @@ func (params *Params) XrayVersion() string {
 	return params.xrayVersion
 }
 
-func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayGraphScanParams) *Params {
+func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *scan.XrayGraphScanParams) *Params {
 	params.xrayGraphScanParams = xrayGraphScanParams
 	return params
 }
@@ -307,7 +307,7 @@ func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 	params.SetFullDependenciesTree(dependencyTrees)
 
 	// Flatten the graph to speed up the ScanGraph request
-	return services.FlattenGraph(dependencyTrees)
+	return scan.FlattenGraph(dependencyTrees)
 }
 
 func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {

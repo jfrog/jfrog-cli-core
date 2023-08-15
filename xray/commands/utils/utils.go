@@ -8,7 +8,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/manager"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"os"
@@ -28,7 +28,7 @@ func getLevelOfSeverity(s string) int {
 
 type ScanGraphParams struct {
 	serverDetails       *config.ServerDetails
-	xrayGraphScanParams *services.XrayGraphScanParams
+	xrayGraphScanParams *scan.XrayGraphScanParams
 	fixableOnly         bool
 	xrayVersion         string
 	severityLevel       int
@@ -43,7 +43,7 @@ func (sgp *ScanGraphParams) SetServerDetails(serverDetails *config.ServerDetails
 	return sgp
 }
 
-func (sgp *ScanGraphParams) SetXrayGraphScanParams(params *services.XrayGraphScanParams) *ScanGraphParams {
+func (sgp *ScanGraphParams) SetXrayGraphScanParams(params *scan.XrayGraphScanParams) *ScanGraphParams {
 	sgp.xrayGraphScanParams = params
 	return sgp
 }
@@ -58,7 +58,7 @@ func (sgp *ScanGraphParams) SetSeverityLevel(severity string) *ScanGraphParams {
 	return sgp
 }
 
-func (sgp *ScanGraphParams) XrayGraphScanParams() *services.XrayGraphScanParams {
+func (sgp *ScanGraphParams) XrayGraphScanParams() *scan.XrayGraphScanParams {
 	return sgp.xrayGraphScanParams
 }
 
@@ -93,7 +93,7 @@ func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (manager.Sec
 	return manager.New(serviceConfig)
 }
 
-func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse, error) {
+func RunScanGraphAndGetResults(params *ScanGraphParams) (*scan.ScanResponse, error) {
 	xrayManager, err := CreateXrayServiceManager(params.serverDetails)
 	if err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 	return filterResultIfNeeded(scanResult, params), nil
 }
 
-func filterResultIfNeeded(scanResult *services.ScanResponse, params *ScanGraphParams) *services.ScanResponse {
+func filterResultIfNeeded(scanResult *scan.ScanResponse, params *ScanGraphParams) *scan.ScanResponse {
 	if !shouldFilterResults(params) {
 		return scanResult
 	}
@@ -129,8 +129,8 @@ func shouldFilterResults(params *ScanGraphParams) bool {
 	return params.severityLevel > 0 || params.fixableOnly
 }
 
-func filterViolations(violations []services.Violation, params *ScanGraphParams) []services.Violation {
-	var filteredViolations []services.Violation
+func filterViolations(violations []scan.Violation, params *ScanGraphParams) []scan.Violation {
+	var filteredViolations []scan.Violation
 	for _, violation := range violations {
 		if params.fixableOnly {
 			violation.Components = getFixableComponents(violation.Components)
@@ -146,8 +146,8 @@ func filterViolations(violations []services.Violation, params *ScanGraphParams) 
 	return filteredViolations
 }
 
-func filterVulnerabilities(vulnerabilities []services.Vulnerability, params *ScanGraphParams) []services.Vulnerability {
-	var filteredVulnerabilities []services.Vulnerability
+func filterVulnerabilities(vulnerabilities []scan.Vulnerability, params *ScanGraphParams) []scan.Vulnerability {
+	var filteredVulnerabilities []scan.Vulnerability
 	for _, vulnerability := range vulnerabilities {
 		if params.fixableOnly {
 			vulnerability.Components = getFixableComponents(vulnerability.Components)
@@ -163,8 +163,8 @@ func filterVulnerabilities(vulnerabilities []services.Vulnerability, params *Sca
 	return filteredVulnerabilities
 }
 
-func getFixableComponents(components map[string]services.Component) map[string]services.Component {
-	fixableComponents := make(map[string]services.Component)
+func getFixableComponents(components map[string]scan.Component) map[string]scan.Component {
+	fixableComponents := make(map[string]scan.Component)
 	for vulnKey, vulnDetails := range components {
 		if len(vulnDetails.FixedVersions) > 0 {
 			fixableComponents[vulnKey] = vulnDetails

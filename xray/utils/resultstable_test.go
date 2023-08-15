@@ -4,28 +4,28 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"testing"
 
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 )
 
 // The test only checks cases of returning an error in case of a violation with FailBuild == true
 func TestPrintViolationsTable(t *testing.T) {
-	components := map[string]services.Component{"gav://antparent:ant:1.6.5": {}}
+	components := map[string]scan.Component{"gav://antparent:ant:1.6.5": {}}
 	tests := []struct {
-		violations    []services.Violation
+		violations    []scan.Violation
 		expectedError bool
 	}{
-		{[]services.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: false}, {Components: components, FailBuild: false}}, false},
-		{[]services.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: true}, {Components: components, FailBuild: false}}, true},
-		{[]services.Violation{{Components: components, FailBuild: true}, {Components: components, FailBuild: true}, {Components: components, FailBuild: true}}, true},
+		{[]scan.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: false}, {Components: components, FailBuild: false}}, false},
+		{[]scan.Violation{{Components: components, FailBuild: false}, {Components: components, FailBuild: true}, {Components: components, FailBuild: false}}, true},
+		{[]scan.Violation{{Components: components, FailBuild: true}, {Components: components, FailBuild: true}, {Components: components, FailBuild: true}}, true},
 	}
 
 	for _, test := range tests {
 		err := PrintViolationsTable(test.violations, &ExtendedScanResults{}, false, true, true)
 		assert.NoError(t, err)
-		if CheckIfFailBuild([]services.ScanResponse{{Violations: test.violations}}) {
+		if CheckIfFailBuild([]scan.ScanResponse{{Violations: test.violations}}) {
 			err = NewFailBuildError()
 		}
 		assert.Equal(t, test.expectedError, err != nil)
@@ -64,13 +64,13 @@ func TestSplitComponentId(t *testing.T) {
 
 func TestGetDirectComponents(t *testing.T) {
 	tests := []struct {
-		impactPaths             [][]services.ImpactPathNode
+		impactPaths             [][]scan.ImpactPathNode
 		expectedComponentRows   []formats.ComponentRow
 		expectedConvImpactPaths [][]formats.ComponentRow
 	}{
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack", Version: "1.2.3"}}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack2", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack2", Version: "1.2.3"}}}},
-		{[][]services.ImpactPathNode{{services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {services.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, services.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}, {{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}}},
+		{[][]scan.ImpactPathNode{{scan.ImpactPathNode{ComponentId: "gav://jfrog:pack:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack", Version: "1.2.3"}}}},
+		{[][]scan.ImpactPathNode{{scan.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, scan.ImpactPathNode{ComponentId: "gav://jfrog:pack2:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack2", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack2", Version: "1.2.3"}}}},
+		{[][]scan.ImpactPathNode{{scan.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, scan.ImpactPathNode{ComponentId: "gav://jfrog:pack21:1.2.3"}, scan.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}, {scan.ImpactPathNode{ComponentId: "gav://jfrog:pack1:1.2.3"}, scan.ImpactPathNode{ComponentId: "gav://jfrog:pack22:1.2.3"}, scan.ImpactPathNode{ComponentId: "gav://jfrog:pack3:1.2.3"}}}, []formats.ComponentRow{{Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}}, [][]formats.ComponentRow{{{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack21", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}, {{Name: "jfrog:pack1", Version: "1.2.3"}, {Name: "jfrog:pack22", Version: "1.2.3"}, {Name: "jfrog:pack3", Version: "1.2.3"}}}},
 	}
 
 	for _, test := range tests {
@@ -82,16 +82,16 @@ func TestGetDirectComponents(t *testing.T) {
 
 func TestGetOperationalRiskReadableData(t *testing.T) {
 	tests := []struct {
-		violation       services.Violation
+		violation       scan.Violation
 		expectedResults *operationalRiskViolationReadableData
 	}{
 		{
-			services.Violation{IsEol: nil, LatestVersion: "", NewerVersions: nil,
+			scan.Violation{IsEol: nil, LatestVersion: "", NewerVersions: nil,
 				Cadence: nil, Commits: nil, Committers: nil, RiskReason: "", EolMessage: ""},
 			&operationalRiskViolationReadableData{"N/A", "N/A", "N/A", "N/A", "", "", "N/A", "N/A"},
 		},
 		{
-			services.Violation{IsEol: newBoolPtr(true), LatestVersion: "1.2.3", NewerVersions: newIntPtr(5),
+			scan.Violation{IsEol: newBoolPtr(true), LatestVersion: "1.2.3", NewerVersions: newIntPtr(5),
 				Cadence: newFloat64Ptr(3.5), Commits: newInt64Ptr(55), Committers: newIntPtr(10), EolMessage: "no maintainers", RiskReason: "EOL"},
 			&operationalRiskViolationReadableData{"true", "3.5", "55", "10", "no maintainers", "EOL", "1.2.3", "5"},
 		},
@@ -106,22 +106,22 @@ func TestGetOperationalRiskReadableData(t *testing.T) {
 func TestIsImpactPathIsSubset(t *testing.T) {
 	testCases := []struct {
 		name                           string
-		target, source, expectedResult []services.ImpactPathNode
+		target, source, expectedResult []scan.ImpactPathNode
 	}{
 		{"subset found in both target and source",
-			[]services.ImpactPathNode{{ComponentId: "B"}, {ComponentId: "C"}},
-			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
-			[]services.ImpactPathNode{{ComponentId: "B"}, {ComponentId: "C"}},
+			[]scan.ImpactPathNode{{ComponentId: "B"}, {ComponentId: "C"}},
+			[]scan.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
+			[]scan.ImpactPathNode{{ComponentId: "B"}, {ComponentId: "C"}},
 		},
 		{"subset not found in both target and source",
-			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "D"}},
-			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
-			[]services.ImpactPathNode{},
+			[]scan.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "D"}},
+			[]scan.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
+			[]scan.ImpactPathNode{},
 		},
 		{"target and source are identical",
-			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
-			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
-			[]services.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
+			[]scan.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
+			[]scan.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
+			[]scan.ImpactPathNode{{ComponentId: "A"}, {ComponentId: "B"}},
 		},
 	}
 
@@ -184,21 +184,21 @@ func TestGetUniqueKey(t *testing.T) {
 func TestAppendUniqueImpactPathsForMultipleRoots(t *testing.T) {
 	testCases := []struct {
 		name           string
-		target         [][]services.ImpactPathNode
-		source         [][]services.ImpactPathNode
-		expectedResult [][]services.ImpactPathNode
+		target         [][]scan.ImpactPathNode
+		source         [][]scan.ImpactPathNode
+		expectedResult [][]scan.ImpactPathNode
 	}{
 		{
 			name: "subset is found in both target and source",
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
 				{{ComponentId: "D"}, {ComponentId: "E"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "B"}, {ComponentId: "C"}},
 				{{ComponentId: "F"}, {ComponentId: "G"}},
 			},
-			expectedResult: [][]services.ImpactPathNode{
+			expectedResult: [][]scan.ImpactPathNode{
 				{{ComponentId: "B"}, {ComponentId: "C"}},
 				{{ComponentId: "D"}, {ComponentId: "E"}},
 				{{ComponentId: "F"}, {ComponentId: "G"}},
@@ -206,15 +206,15 @@ func TestAppendUniqueImpactPathsForMultipleRoots(t *testing.T) {
 		},
 		{
 			name: "subset is not found in both target and source",
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "C"}},
 				{{ComponentId: "D"}, {ComponentId: "E"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "B"}, {ComponentId: "C"}},
 				{{ComponentId: "F"}, {ComponentId: "G"}},
 			},
-			expectedResult: [][]services.ImpactPathNode{
+			expectedResult: [][]scan.ImpactPathNode{
 				{{ComponentId: "B"}, {ComponentId: "C"}},
 				{{ComponentId: "D"}, {ComponentId: "E"}},
 				{{ComponentId: "F"}, {ComponentId: "G"}},
@@ -222,55 +222,55 @@ func TestAppendUniqueImpactPathsForMultipleRoots(t *testing.T) {
 		},
 		{
 			name:   "target slice is empty",
-			target: [][]services.ImpactPathNode{},
-			source: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{},
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "E"}},
 				{{ComponentId: "F"}, {ComponentId: "G"}},
 			},
-			expectedResult: [][]services.ImpactPathNode{
+			expectedResult: [][]scan.ImpactPathNode{
 				{{ComponentId: "E"}},
 				{{ComponentId: "F"}, {ComponentId: "G"}},
 			},
 		},
 		{
 			name: "source slice is empty",
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
-			source: [][]services.ImpactPathNode{},
-			expectedResult: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{},
+			expectedResult: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
 		},
 		{
 			name: "target and source slices are identical",
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
-			expectedResult: [][]services.ImpactPathNode{
+			expectedResult: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
 		},
 		{
 			name: "target and source slices contain multiple subsets",
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}, {ComponentId: "E"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}, {ComponentId: "F"}},
 				{{ComponentId: "G"}, {ComponentId: "H"}},
 			},
-			expectedResult: [][]services.ImpactPathNode{
+			expectedResult: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 				{{ComponentId: "G"}, {ComponentId: "H"}},
@@ -287,18 +287,18 @@ func TestAppendUniqueImpactPathsForMultipleRoots(t *testing.T) {
 
 func TestGetImpactPathKey(t *testing.T) {
 	testCases := []struct {
-		path        []services.ImpactPathNode
+		path        []scan.ImpactPathNode
 		expectedKey string
 	}{
 		{
-			path: []services.ImpactPathNode{
+			path: []scan.ImpactPathNode{
 				{ComponentId: "A"},
 				{ComponentId: "B"},
 			},
 			expectedKey: "B",
 		},
 		{
-			path: []services.ImpactPathNode{
+			path: []scan.ImpactPathNode{
 				{ComponentId: "A"},
 			},
 			expectedKey: "A",
@@ -315,22 +315,22 @@ func TestAppendUniqueImpactPaths(t *testing.T) {
 	testCases := []struct {
 		name          string
 		multipleRoots bool
-		target        [][]services.ImpactPathNode
-		source        [][]services.ImpactPathNode
-		expected      [][]services.ImpactPathNode
+		target        [][]scan.ImpactPathNode
+		source        [][]scan.ImpactPathNode
+		expected      [][]scan.ImpactPathNode
 	}{
 		{
 			name:          "Test case 1: Unique impact paths found",
 			multipleRoots: false,
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}},
 				{{ComponentId: "B"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "C"}},
 				{{ComponentId: "D"}},
 			},
-			expected: [][]services.ImpactPathNode{
+			expected: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}},
 				{{ComponentId: "B"}},
 				{{ComponentId: "C"}},
@@ -340,15 +340,15 @@ func TestAppendUniqueImpactPaths(t *testing.T) {
 		{
 			name:          "Test case 2: No unique impact paths found",
 			multipleRoots: false,
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}},
 				{{ComponentId: "B"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}},
 				{{ComponentId: "B"}},
 			},
-			expected: [][]services.ImpactPathNode{
+			expected: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}},
 				{{ComponentId: "B"}},
 			},
@@ -356,15 +356,15 @@ func TestAppendUniqueImpactPaths(t *testing.T) {
 		{
 			name:          "Test case 3: paths in source are not in target",
 			multipleRoots: false,
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "E"}},
 				{{ComponentId: "F"}, {ComponentId: "G"}},
 			},
-			expected: [][]services.ImpactPathNode{
+			expected: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 				{{ComponentId: "E"}},
@@ -374,15 +374,15 @@ func TestAppendUniqueImpactPaths(t *testing.T) {
 		{
 			name:          "Test case 4: paths in source are already in target",
 			multipleRoots: false,
-			target: [][]services.ImpactPathNode{
+			target: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
-			source: [][]services.ImpactPathNode{
+			source: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},
-			expected: [][]services.ImpactPathNode{
+			expected: [][]scan.ImpactPathNode{
 				{{ComponentId: "A"}, {ComponentId: "B"}},
 				{{ComponentId: "C"}, {ComponentId: "D"}},
 			},

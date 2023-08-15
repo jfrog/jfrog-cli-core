@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"golang.org/x/exp/maps"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -17,7 +18,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 const (
@@ -32,7 +32,7 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintViolationsTable(violations []scan.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
@@ -67,11 +67,11 @@ func PrintViolationsTable(violations []services.Violation, extendedResults *Exte
 }
 
 // Prepare violations for all non-table formats (without style or emoji)
-func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func PrepareViolations(violations []scan.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
 	return prepareViolations(violations, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func prepareViolations(violations []scan.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
 	if simplifiedOutput {
 		violations = simplifyViolations(violations, multipleRoots)
 	}
@@ -169,7 +169,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintVulnerabilitiesTable(vulnerabilities []scan.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
@@ -183,11 +183,11 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extende
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
-func PrepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+func PrepareVulnerabilities(vulnerabilities []scan.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
 	return prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
+func prepareVulnerabilities(vulnerabilities []scan.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, error) {
 	if simplifiedOutput {
 		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots)
 	}
@@ -242,7 +242,7 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintLicensesTable(licenses []services.License, printExtended, scan bool) error {
+func PrintLicensesTable(licenses []scan.License, printExtended, scan bool) error {
 	licensesRows, err := PrepareLicenses(licenses)
 	if err != nil {
 		return err
@@ -253,7 +253,7 @@ func PrintLicensesTable(licenses []services.License, printExtended, scan bool) e
 	return coreutils.PrintTable(formats.ConvertToLicenseTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
 }
 
-func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) {
+func PrepareLicenses(licenses []scan.License) ([]formats.LicenseRow, error) {
 	var licensesRows []formats.LicenseRow
 	for _, license := range licenses {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, _, components, impactPaths, err := splitComponents(license.Components)
@@ -351,7 +351,7 @@ func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
 	return nil
 }
 
-func convertCves(cves []services.Cve) []formats.CveRow {
+func convertCves(cves []scan.Cve) []formats.CveRow {
 	var cveRows []formats.CveRow
 	for _, cveObj := range cves {
 		cveRows = append(cveRows, formats.CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
@@ -359,7 +359,7 @@ func convertCves(cves []services.Cve) []formats.CveRow {
 	return cveRows
 }
 
-func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation) *formats.JfrogResearchInformation {
+func convertJfrogResearchInformation(extendedInfo *scan.ExtendedInformation) *formats.JfrogResearchInformation {
 	if extendedInfo == nil {
 		return nil
 	}
@@ -380,7 +380,7 @@ func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation)
 	}
 }
 
-func splitComponents(impactedPackages map[string]services.Component) (impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes []string, fixedVersions [][]string, directComponents [][]formats.ComponentRow, impactPaths [][][]formats.ComponentRow, err error) {
+func splitComponents(impactedPackages map[string]scan.Component) (impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes []string, fixedVersions [][]string, directComponents [][]formats.ComponentRow, impactPaths [][][]formats.ComponentRow, err error) {
 	if len(impactedPackages) == 0 {
 		err = errorutils.CheckErrorf("failed while parsing the response from Xray: violation doesn't have any components")
 		return
@@ -479,7 +479,7 @@ func SplitComponentId(componentId string) (string, string, string) {
 }
 
 // Gets a slice of the direct dependencies or packages of the scanned component, that depends on the vulnerable package, and converts the impact paths.
-func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode) (components []formats.ComponentRow, impactPathsRows [][]formats.ComponentRow) {
+func getDirectComponentsAndImpactPaths(impactPaths [][]scan.ImpactPathNode) (components []formats.ComponentRow, impactPathsRows [][]formats.ComponentRow) {
 	componentsMap := make(map[string]formats.ComponentRow)
 
 	// The first node in the impact path is the scanned component itself. The second one is the direct dependency.
@@ -593,7 +593,7 @@ type operationalRiskViolationReadableData struct {
 	newerVersions string
 }
 
-func getOperationalRiskViolationReadableData(violation services.Violation) *operationalRiskViolationReadableData {
+func getOperationalRiskViolationReadableData(violation scan.Violation) *operationalRiskViolationReadableData {
 	isEol, cadence, commits, committers, newerVersions, latestVersion := "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
 	if violation.IsEol != nil {
 		isEol = strconv.FormatBool(*violation.IsEol)
@@ -627,8 +627,8 @@ func getOperationalRiskViolationReadableData(violation services.Violation) *oper
 
 // simplifyVulnerabilities returns a new slice of services.Vulnerability that contains only the unique vulnerabilities from the input slice
 // The uniqueness of the vulnerabilities is determined by the GetUniqueKey function
-func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multipleRoots bool) []services.Vulnerability {
-	var uniqueVulnerabilities = make(map[string]*services.Vulnerability)
+func simplifyVulnerabilities(scanVulnerabilities []scan.Vulnerability, multipleRoots bool) []scan.Vulnerability {
+	var uniqueVulnerabilities = make(map[string]*scan.Vulnerability)
 	for _, vulnerability := range scanVulnerabilities {
 		for vulnerableComponentId := range vulnerability.Components {
 			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
@@ -636,16 +636,16 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 			if uniqueVulnerability, exist := uniqueVulnerabilities[packageKey]; exist {
 				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, vulnerability.Components[vulnerableComponentId].FixedVersions...)
 				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, vulnerability.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
-				uniqueVulnerabilities[packageKey].Components[vulnerableComponentId] = services.Component{
+				uniqueVulnerabilities[packageKey].Components[vulnerableComponentId] = scan.Component{
 					FixedVersions: fixedVersions,
 					ImpactPaths:   impactPaths,
 				}
 				continue
 			}
-			uniqueVulnerabilities[packageKey] = &services.Vulnerability{
+			uniqueVulnerabilities[packageKey] = &scan.Vulnerability{
 				Cves:                vulnerability.Cves,
 				Severity:            vulnerability.Severity,
-				Components:          map[string]services.Component{vulnerableComponentId: vulnerability.Components[vulnerableComponentId]},
+				Components:          map[string]scan.Component{vulnerableComponentId: vulnerability.Components[vulnerableComponentId]},
 				IssueId:             vulnerability.IssueId,
 				Technology:          vulnerability.Technology,
 				ExtendedInformation: vulnerability.ExtendedInformation,
@@ -654,7 +654,7 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 		}
 	}
 	// convert map to slice
-	result := make([]services.Vulnerability, 0, len(uniqueVulnerabilities))
+	result := make([]scan.Vulnerability, 0, len(uniqueVulnerabilities))
 	for _, v := range uniqueVulnerabilities {
 		result = append(result, *v)
 	}
@@ -663,8 +663,8 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 
 // simplifyViolations returns a new slice of services.Violations that contains only the unique violations from the input slice
 // The uniqueness of the violations is determined by the GetUniqueKey function
-func simplifyViolations(scanViolations []services.Violation, multipleRoots bool) []services.Violation {
-	var uniqueViolations = make(map[string]*services.Violation)
+func simplifyViolations(scanViolations []scan.Violation, multipleRoots bool) []scan.Violation {
+	var uniqueViolations = make(map[string]*scan.Violation)
 	for _, violation := range scanViolations {
 		for vulnerableComponentId := range violation.Components {
 			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
@@ -672,16 +672,16 @@ func simplifyViolations(scanViolations []services.Violation, multipleRoots bool)
 			if uniqueVulnerability, exist := uniqueViolations[packageKey]; exist {
 				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, violation.Components[vulnerableComponentId].FixedVersions...)
 				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, violation.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
-				uniqueViolations[packageKey].Components[vulnerableComponentId] = services.Component{
+				uniqueViolations[packageKey].Components[vulnerableComponentId] = scan.Component{
 					FixedVersions: fixedVersions,
 					ImpactPaths:   impactPaths,
 				}
 				continue
 			}
-			uniqueViolations[packageKey] = &services.Violation{
+			uniqueViolations[packageKey] = &scan.Violation{
 				Severity:      violation.Severity,
 				ViolationType: violation.ViolationType,
-				Components:    map[string]services.Component{vulnerableComponentId: violation.Components[vulnerableComponentId]},
+				Components:    map[string]scan.Component{vulnerableComponentId: violation.Components[vulnerableComponentId]},
 				WatchName:     violation.WatchName,
 				IssueId:       violation.IssueId,
 				Cves:          violation.Cves,
@@ -692,7 +692,7 @@ func simplifyViolations(scanViolations []services.Violation, multipleRoots bool)
 		}
 	}
 	// convert map to slice
-	result := make([]services.Violation, 0, len(uniqueViolations))
+	result := make([]scan.Violation, 0, len(uniqueViolations))
 	for _, v := range uniqueViolations {
 		result = append(result, *v)
 	}
@@ -701,11 +701,11 @@ func simplifyViolations(scanViolations []services.Violation, multipleRoots bool)
 
 // appendImpactPathsWithoutDuplicates appends the elements of a source [][]ImpactPathNode struct to a target [][]ImpactPathNode, without adding any duplicate elements.
 // This implementation uses the ComponentId field of the ImpactPathNode struct to check for duplicates, as it is guaranteed to be unique.
-func appendUniqueImpactPaths(target [][]services.ImpactPathNode, source [][]services.ImpactPathNode, multipleRoots bool) [][]services.ImpactPathNode {
+func appendUniqueImpactPaths(target [][]scan.ImpactPathNode, source [][]scan.ImpactPathNode, multipleRoots bool) [][]scan.ImpactPathNode {
 	if multipleRoots {
 		return appendUniqueImpactPathsForMultipleRoots(target, source)
 	}
-	impactPathMap := make(map[string][]services.ImpactPathNode)
+	impactPathMap := make(map[string][]scan.ImpactPathNode)
 	for _, path := range target {
 		// The first node component id is the key and the value is the whole path
 		key := getImpactPathKey(path)
@@ -724,7 +724,7 @@ func appendUniqueImpactPaths(target [][]services.ImpactPathNode, source [][]serv
 
 // getImpactPathKey return a key that is used as a key to identify and deduplicate impact paths.
 // If an impact path length is equal to directDependencyPathLength, then the direct dependency is the key, and it's in the directDependencyIndex place.
-func getImpactPathKey(path []services.ImpactPathNode) string {
+func getImpactPathKey(path []scan.ImpactPathNode) string {
 	key := path[rootIndex].ComponentId
 	if len(path) == directDependencyPathLength {
 		key = path[directDependencyIndex].ComponentId
@@ -734,10 +734,10 @@ func getImpactPathKey(path []services.ImpactPathNode) string {
 
 // appendUniqueImpactPathsForMultipleRoots appends the source impact path to the target impact path while avoiding duplicates.
 // Specifically, it is designed for handling multiple root projects, such as Maven or Gradle, by comparing each pair of paths and identifying the path that is closest to the direct dependency.
-func appendUniqueImpactPathsForMultipleRoots(target [][]services.ImpactPathNode, source [][]services.ImpactPathNode) [][]services.ImpactPathNode {
+func appendUniqueImpactPathsForMultipleRoots(target [][]scan.ImpactPathNode, source [][]scan.ImpactPathNode) [][]scan.ImpactPathNode {
 	for targetPathIndex, targetPath := range target {
 		for sourcePathIndex, sourcePath := range source {
-			var subset []services.ImpactPathNode
+			var subset []scan.ImpactPathNode
 			if len(sourcePath) <= len(targetPath) {
 				subset = isImpactPathIsSubset(targetPath, sourcePath)
 				if len(subset) != 0 {
@@ -756,8 +756,8 @@ func appendUniqueImpactPathsForMultipleRoots(target [][]services.ImpactPathNode,
 }
 
 // isImpactPathIsSubset checks if targetPath is a subset of sourcePath, and returns the subset if exists
-func isImpactPathIsSubset(target []services.ImpactPathNode, source []services.ImpactPathNode) []services.ImpactPathNode {
-	var subsetImpactPath []services.ImpactPathNode
+func isImpactPathIsSubset(target []scan.ImpactPathNode, source []scan.ImpactPathNode) []scan.ImpactPathNode {
+	var subsetImpactPath []scan.ImpactPathNode
 	impactPathNodesMap := make(map[string]bool)
 	for _, node := range target {
 		impactPathNodesMap[node.ComponentId] = true
@@ -772,7 +772,7 @@ func isImpactPathIsSubset(target []services.ImpactPathNode, source []services.Im
 	if len(subsetImpactPath) == len(target) || len(subsetImpactPath) == len(source) {
 		return subsetImpactPath
 	}
-	return []services.ImpactPathNode{}
+	return []scan.ImpactPathNode{}
 }
 
 // appendUniqueFixVersions returns a new slice of strings that contains elements from both input slices without duplicates

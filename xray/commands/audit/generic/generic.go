@@ -1,11 +1,11 @@
 package audit
 
 import (
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type GenericAuditCommand struct {
@@ -58,11 +58,11 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 	return auditCmd
 }
 
-func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
-	params := &services.XrayGraphScanParams{
+func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *scan.XrayGraphScanParams {
+	params := &scan.XrayGraphScanParams{
 		RepoPath: auditCmd.targetRepoPath,
 		Watches:  auditCmd.watches,
-		ScanType: services.Dependency,
+		ScanType: scan.Dependency,
 	}
 	if auditCmd.projectKey == "" {
 		params.ProjectKey = os.Getenv(coreutils.Project)

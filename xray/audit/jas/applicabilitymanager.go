@@ -9,7 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
@@ -34,7 +34,7 @@ const (
 // map[string]string: A map containing the applicability result of each XRAY CVE.
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
-func getApplicabilityScanResults(results []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
+func getApplicabilityScanResults(results []scan.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, analyzerManager utils.AnalyzerManagerInterface) (map[string]string, bool, error) {
 	applicabilityScanManager, cleanupFunc, err := newApplicabilityScanManager(results, dependencyTrees, serverDetails, analyzerManager)
 	if err != nil {
@@ -58,14 +58,14 @@ func getApplicabilityScanResults(results []services.ScanResponse, dependencyTree
 type ApplicabilityScanManager struct {
 	applicabilityScanResults map[string]string
 	directDependenciesCves   *datastructures.Set[string]
-	xrayResults              []services.ScanResponse
+	xrayResults              []scan.ScanResponse
 	configFileName           string
 	resultsFileName          string
 	analyzerManager          utils.AnalyzerManagerInterface
 	serverDetails            *config.ServerDetails
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
+func newApplicabilityScanManager(xrayScanResults []scan.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *ApplicabilityScanManager, cleanup func() error, err error) {
 	directDependencies := getDirectDependenciesSet(dependencyTrees)
 	tempDir, err := fileutils.CreateTempDir()
@@ -89,7 +89,7 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, depend
 
 // This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
 // vulnerabilities of the scanned project, ignoring indirect vulnerabilities
-func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies *datastructures.Set[string]) *datastructures.Set[string] {
+func extractDirectDependenciesCvesFromScan(xrayScanResults []scan.ScanResponse, directDependencies *datastructures.Set[string]) *datastructures.Set[string] {
 	directsCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {

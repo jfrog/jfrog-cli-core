@@ -9,6 +9,7 @@ import (
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/manager"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -120,7 +121,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager manager.Sec
 	log.Info("The scan data is available at: " + buildScanResults.MoreDetailsUrl)
 	isFailBuildResponse = buildScanResults.FailBuild
 
-	scanResponse := []services.ScanResponse{{
+	scanResponse := []scan.ScanResponse{{
 		Violations:      buildScanResults.Violations,
 		Vulnerabilities: buildScanResults.Vulnerabilities,
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,

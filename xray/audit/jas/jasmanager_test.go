@@ -3,7 +3,7 @@ package jas
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -25,18 +25,18 @@ func (am *analyzerManagerMock) ExistLocally() (bool, error) {
 	return analyzerManagerExists, nil
 }
 
-var fakeBasicXrayResults = []services.ScanResponse{
+var fakeBasicXrayResults = []scan.ScanResponse{
 	{
 		ScanId: "scanId_1",
-		Vulnerabilities: []services.Vulnerability{
+		Vulnerabilities: []scan.Vulnerability{
 			{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-				Components: map[string]services.Component{"issueId_1_direct_dependency": {}, "issueId_3_direct_dependency": {}}},
+				Cves:       []scan.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+				Components: map[string]scan.Component{"issueId_1_direct_dependency": {}, "issueId_3_direct_dependency": {}}},
 		},
-		Violations: []services.Violation{
+		Violations: []scan.Violation{
 			{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-				Components: map[string]services.Component{"issueId_2_direct_dependency": {}, "issueId_4_direct_dependency": {}}},
+				Cves:       []scan.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+				Components: map[string]scan.Component{"issueId_2_direct_dependency": {}, "issueId_4_direct_dependency": {}}},
 		},
 	},
 }

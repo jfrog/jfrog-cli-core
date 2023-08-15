@@ -8,7 +8,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"os"
 	"os/exec"
@@ -79,7 +79,7 @@ type IacOrSecretResult struct {
 }
 
 type ExtendedScanResults struct {
-	XrayResults                  []services.ScanResponse
+	XrayResults                  []scan.ScanResponse
 	ScannedTechnologies          []coreutils.Technology
 	ApplicabilityScanResults     map[string]string
 	SecretsScanResults           []IacOrSecretResult
@@ -90,7 +90,7 @@ type ExtendedScanResults struct {
 	EligibleForIacScan           bool
 }
 
-func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
+func (e *ExtendedScanResults) getXrayScanResults() []scan.ScanResponse {
 	return e.XrayResults
 }
 

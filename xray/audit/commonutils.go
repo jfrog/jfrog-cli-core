@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
@@ -18,7 +19,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slices"
 )
@@ -53,7 +53,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
+func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []scan.ScanResponse, err error) {
 	if len(modulesDependencyTrees) == 0 {
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
@@ -70,7 +70,7 @@ func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.Progr
 			progress.SetHeadlineMsg(scanMessage)
 		}
 		log.Info(scanMessage, "...")
-		var scanResults *services.ScanResponse
+		var scanResults *scan.ScanResponse
 		scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
 		if err != nil {
 			err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
@@ -134,7 +134,7 @@ func GetExecutableVersion(executable string) (version string, err error) {
 
 // BuildImpactPathsForScanResponse builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.
 // Returns the updated services.ScanResponse slice.
-func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, dependencyTree []*xrayUtils.GraphNode) []services.ScanResponse {
+func BuildImpactPathsForScanResponse(scanResult []scan.ScanResponse, dependencyTree []*xrayUtils.GraphNode) []scan.ScanResponse {
 	for _, result := range scanResult {
 		if len(result.Vulnerabilities) > 0 {
 			buildVulnerabilitiesImpactPaths(result.Vulnerabilities, dependencyTree)
@@ -150,10 +150,10 @@ func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, depende
 }
 
 // Initialize a map of issues to their components with empty impact paths
-func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Component, components map[string]services.Component) {
+func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*scan.Component, components map[string]scan.Component) {
 	for dependencyName := range components {
-		emptyPathsComponent := &services.Component{
-			ImpactPaths:   [][]services.ImpactPathNode{},
+		emptyPathsComponent := &scan.Component{
+			ImpactPaths:   [][]scan.ImpactPathNode{},
 			FixedVersions: components[dependencyName].FixedVersions,
 			Cpes:          components[dependencyName].Cpes,
 		}
@@ -162,14 +162,14 @@ func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Comp
 }
 
 // Set the impact paths for each issue in the map
-func buildImpactPaths(issuesImpactPathsMap map[string]*services.Component, dependencyTrees []*xrayUtils.GraphNode) {
+func buildImpactPaths(issuesImpactPathsMap map[string]*scan.Component, dependencyTrees []*xrayUtils.GraphNode) {
 	for _, dependency := range dependencyTrees {
-		setPathsForIssues(dependency, issuesImpactPathsMap, []services.ImpactPathNode{})
+		setPathsForIssues(dependency, issuesImpactPathsMap, []scan.ImpactPathNode{})
 	}
 }
 
-func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, dependencyTrees []*xrayUtils.GraphNode) {
-	issuesMap := make(map[string]*services.Component)
+func buildVulnerabilitiesImpactPaths(vulnerabilities []scan.Vulnerability, dependencyTrees []*xrayUtils.GraphNode) {
+	issuesMap := make(map[string]*scan.Component)
 	for _, vulnerability := range vulnerabilities {
 		fillImpactPathsMapWithIssues(issuesMap, vulnerability.Components)
 	}
@@ -179,8 +179,8 @@ func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, d
 	}
 }
 
-func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees []*xrayUtils.GraphNode) {
-	issuesMap := make(map[string]*services.Component)
+func buildViolationsImpactPaths(violations []scan.Violation, dependencyTrees []*xrayUtils.GraphNode) {
+	issuesMap := make(map[string]*scan.Component)
 	for _, violation := range violations {
 		fillImpactPathsMapWithIssues(issuesMap, violation.Components)
 	}
@@ -190,8 +190,8 @@ func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees
 	}
 }
 
-func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*xrayUtils.GraphNode) {
-	issuesMap := make(map[string]*services.Component)
+func buildLicensesImpactPaths(licenses []scan.License, dependencyTrees []*xrayUtils.GraphNode) {
+	issuesMap := make(map[string]*scan.Component)
 	for _, license := range licenses {
 		fillImpactPathsMapWithIssues(issuesMap, license.Components)
 	}
@@ -201,14 +201,14 @@ func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*xr
 	}
 }
 
-func updateComponentsWithImpactPaths(components map[string]services.Component, issuesMap map[string]*services.Component) {
+func updateComponentsWithImpactPaths(components map[string]scan.Component, issuesMap map[string]*scan.Component) {
 	for dependencyName := range components {
 		components[dependencyName] = *issuesMap[dependencyName]
 	}
 }
 
-func setPathsForIssues(dependency *xrayUtils.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode) {
-	pathFromRoot = append(pathFromRoot, services.ImpactPathNode{ComponentId: dependency.Id})
+func setPathsForIssues(dependency *xrayUtils.GraphNode, issuesImpactPathsMap map[string]*scan.Component, pathFromRoot []scan.ImpactPathNode) {
+	pathFromRoot = append(pathFromRoot, scan.ImpactPathNode{ComponentId: dependency.Id})
 	if _, exists := issuesImpactPathsMap[dependency.Id]; exists {
 		issuesImpactPathsMap[dependency.Id].ImpactPaths = append(issuesImpactPathsMap[dependency.Id].ImpactPaths, pathFromRoot)
 	}

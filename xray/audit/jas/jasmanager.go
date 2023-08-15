@@ -7,7 +7,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 )
@@ -17,7 +17,7 @@ var (
 	skippedDirs                                            = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 )
 
-func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
+func GetExtendedScanResults(xrayResults []scan.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology) (*utils.ExtendedScanResults, error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")

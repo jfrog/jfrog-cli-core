@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"github.com/stretchr/testify/assert"
 	"path"
 	"testing"
@@ -12,14 +12,14 @@ import (
 
 func TestGenerateSarifFileFromScan(t *testing.T) {
 	extendedResults := &ExtendedScanResults{
-		XrayResults: []services.ScanResponse{
+		XrayResults: []scan.ScanResponse{
 			{
-				Vulnerabilities: []services.Vulnerability{
+				Vulnerabilities: []scan.Vulnerability{
 					{
-						Cves:     []services.Cve{{Id: "CVE-2022-1234", CvssV3Score: "8.0"}, {Id: "CVE-2023-1234", CvssV3Score: "7.1"}},
+						Cves:     []scan.Cve{{Id: "CVE-2022-1234", CvssV3Score: "8.0"}, {Id: "CVE-2023-1234", CvssV3Score: "7.1"}},
 						Summary:  "A test vulnerability the harms nothing",
 						Severity: "High",
-						Components: map[string]services.Component{
+						Components: map[string]scan.Component{
 							"vulnerability1": {FixedVersions: []string{"1.2.3"}},
 						},
 						Technology: coreutils.Go.ToString(),

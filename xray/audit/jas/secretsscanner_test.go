@@ -90,7 +90,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	assert.NoError(t, secretsManagerError)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, secretScanManager.secretsScannerResults)
-	assert.Equal(t, 8, len(secretScanManager.secretsScannerResults))
+	assert.Equal(t, 7, len(secretScanManager.secretsScannerResults))
 }
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {

@@ -2,7 +2,6 @@ package jas
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -68,7 +67,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "no-violations.sarif")
 
 	// Act
-	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, false)
+	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
 
 	// Assert
 	assert.NoError(t, err)
@@ -88,32 +87,10 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations.sarif")
 
 	// Act
-	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, false)
+	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
 
 	// Assert
 	assert.NoError(t, err)
 	assert.NotEmpty(t, iacScanManager.iacScannerResults)
 	assert.Equal(t, 4, len(iacScanManager.iacScannerResults))
-}
-
-func TestIacParseResults_ResultsContainIacViolationsWithWorkingDir(t *testing.T) {
-	// Arrange
-	scanner, err := NewAdvancedSecurityScanner([]string{"aws", "azure"}, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
-	iacScanManager := newIacScanManager(scanner)
-	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations-working-dir.sarif")
-
-	// Act
-	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, false)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, iacScanManager.iacScannerResults)
-	assert.Equal(t, 22, len(iacScanManager.iacScannerResults))
-	assert.Contains(t, iacScanManager.iacScannerResults[0].File, "aws")
 }

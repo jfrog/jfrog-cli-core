@@ -52,7 +52,7 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 		return
 	}
 	var workingDirResults []utils.IacOrSecretResult
-	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, true)
+	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, wd, true)
 	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
 	return
 }

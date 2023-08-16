@@ -53,7 +53,7 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 		return
 	}
 	var workingDirResults []utils.IacOrSecretResult
-	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, false)
+	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, wd, false)
 	iac.iacScannerResults = append(iac.iacScannerResults, workingDirResults...)
 	return
 }

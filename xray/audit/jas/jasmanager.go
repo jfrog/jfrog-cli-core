@@ -9,6 +9,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/owenrumney/go-sarif/v2/sarif"
+	"gopkg.in/yaml.v3"
 	"os"
 )
 
@@ -18,7 +20,7 @@ var (
 )
 
 func GetExtendedScanResults(xrayResults []scan.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology) (*utils.ExtendedScanResults, error) {
+	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, workingDirs []string) (*utils.ExtendedScanResults, error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
 		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
@@ -32,15 +34,15 @@ func GetExtendedScanResults(xrayResults []scan.ScanResponse, dependencyTrees []*
 		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
 	}
 	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(xrayResults,
-		dependencyTrees, serverDetails, scannedTechnologies, analyzerManagerExecuter)
+		dependencyTrees, serverDetails, scannedTechnologies, workingDirs, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}
-	secretsScanResults, eligibleForSecretsScan, err := getSecretsScanResults(serverDetails, analyzerManagerExecuter)
+	secretsScanResults, eligibleForSecretsScan, err := getSecretsScanResults(serverDetails, workingDirs, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}
-	iacScanResults, eligibleForIacScan, err := getIacScanResults(serverDetails, analyzerManagerExecuter)
+	iacScanResults, eligibleForIacScan, err := getIacScanResults(serverDetails, workingDirs, analyzerManagerExecuter)
 	if err != nil {
 		return nil, err
 	}
@@ -74,5 +76,46 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	if exist {
 		err = os.Remove(resultFile)
 	}
+	return errorutils.CheckError(err)
+}
+
+func getIacOrSecretsScanResults(resultsFileName, workingDir string, isSecret bool) ([]utils.IacOrSecretResult, error) {
+	report, err := sarif.Open(resultsFileName)
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+	var results []*sarif.Result
+	if len(report.Runs) > 0 {
+		results = report.Runs[0].Results
+	}
+
+	var iacOrSecretResults []utils.IacOrSecretResult
+	for _, result := range results {
+		// Describes a request to “suppress” a result (to exclude it from result lists)
+		if len(result.Suppressions) > 0 {
+			continue
+		}
+		text := *result.Message.Text
+		if isSecret {
+			text = hideSecret(*result.Locations[0].PhysicalLocation.Region.Snippet.Text)
+		}
+		newResult := utils.IacOrSecretResult{
+			Severity:   utils.GetResultSeverity(result),
+			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), workingDir),
+			LineColumn: utils.GetResultLocationInFile(result),
+			Text:       text,
+			Type:       *result.RuleID,
+		}
+		iacOrSecretResults = append(iacOrSecretResults, newResult)
+	}
+	return iacOrSecretResults, nil
+}
+
+func createScannersConfigFile(fileName string, fileContent interface{}) error {
+	yamlData, err := yaml.Marshal(&fileContent)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	err = os.WriteFile(fileName, yamlData, 0644)
 	return errorutils.CheckError(err)
 }

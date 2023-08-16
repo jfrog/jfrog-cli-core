@@ -17,7 +17,7 @@ var (
 type analyzerManagerMock struct {
 }
 
-func (am *analyzerManagerMock) Exec(string, string) error {
+func (am *analyzerManagerMock) Exec(string, string, *config.ServerDetails) error {
 	return analyzerManagerExecutionError
 }
 
@@ -80,7 +80,7 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	analyzerManagerExecuter = &analyzerManagerMock{}
 
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn})
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn}, nil)
 
 	// Assert
 	assert.NoError(t, err)
@@ -91,7 +91,7 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip})
+	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip}, nil)
 
 	// Assert
 	assert.NotNil(t, extendedResults)

@@ -1,9 +1,11 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
@@ -58,6 +60,13 @@ var fakeServerDetails = config.ServerDetails{
 	Url:      "platformUrl",
 	Password: "password",
 	User:     "user",
+}
+
+func init() {
+	if err := utils.DownloadAnalyzerManagerIfNeeded(); err != nil {
+		log.Error("could not download analyzer manager before testing the `jas` package")
+		return
+	}
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {

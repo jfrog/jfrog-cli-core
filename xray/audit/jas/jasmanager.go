@@ -36,7 +36,6 @@ type AdvancedSecurityScanner struct {
 func NewAdvancedSecurityScanner(workingDirs []string, serverDetails *config.ServerDetails) (scanner *AdvancedSecurityScanner, err error) {
 	scanner = &AdvancedSecurityScanner{}
 	if scanner.analyzerManager.AnalyzerManagerFullPath, err = utils.GetAnalyzerManagerExecutable(); err != nil {
-		err = errors.New("unable to locate the analyzer manager package. Advanced security scans cannot be performed without this package")
 		return
 	}
 	var tempDir string

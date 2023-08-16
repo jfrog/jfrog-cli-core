@@ -2,6 +2,7 @@ package jas
 
 import (
 	"github.com/jfrog/gofrog/datastructures"
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -14,6 +15,7 @@ import (
 
 func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	// Act
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -32,6 +34,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 
 func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	// Act
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	assert.NoError(t, err)
@@ -53,6 +56,7 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 
 func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	var noDirectDependenciesResults = []services.ScanResponse{
 		{
 			ScanId: "scanId_1",
@@ -93,6 +97,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 
 func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	multipleDependencyTrees := []*xrayUtils.GraphNode{multipleFakeBasicDependencyGraph[0], multipleFakeBasicDependencyGraph[1]}
 
 	// Act
@@ -114,6 +119,7 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 
 func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	noViolationScanResponse := []services.ScanResponse{
 		{
 			ScanId: "scanId_1",
@@ -145,6 +151,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 
 func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	noVulnerabilitiesScanResponse := []services.ScanResponse{
 		{
 			ScanId: "scanId_1",
@@ -174,6 +181,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 }
 
 func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *testing.T) {
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -191,6 +199,7 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 
 func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -324,6 +333,7 @@ func TestGetDirectDependenciesList(t *testing.T) {
 
 func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -352,6 +362,7 @@ func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -375,6 +386,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 
 func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -397,6 +409,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -420,6 +433,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	// Act
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Npm}, nil)
 
 	// Assert

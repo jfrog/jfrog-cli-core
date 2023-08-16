@@ -1,6 +1,7 @@
 package jas
 
 import (
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 func TestNewIacScanManager(t *testing.T) {
 	// Act
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -29,6 +31,7 @@ func TestNewIacScanManager(t *testing.T) {
 }
 
 func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -56,6 +59,7 @@ func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 func TestIacParseResults_EmptyResults(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {

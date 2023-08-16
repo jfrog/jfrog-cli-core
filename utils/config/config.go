@@ -583,6 +583,7 @@ type ServerDetails struct {
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
 	WebLogin                        bool   `json:"webLogin,omitempty"`
+	XscVersion                      string
 }
 
 // Deprecated

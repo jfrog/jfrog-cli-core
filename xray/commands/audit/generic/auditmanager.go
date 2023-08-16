@@ -20,6 +20,7 @@ import (
 	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray/manager"
 	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"golang.org/x/sync/errgroup"
@@ -35,6 +36,11 @@ type Params struct {
 	minSeverityFilter   string
 	*clientUtils.GraphBasicParams
 	xrayVersion string
+}
+
+type XrayEntitlements struct {
+	Jas bool
+	Xsc bool
 }
 
 func NewAuditParams() *Params {
@@ -123,18 +129,17 @@ func (r *Results) SetAuditError(err error) *Results {
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
 func RunAudit(auditParams *Params) (results *Results, err error) {
+	var entitlements *XrayEntitlements
 	serverDetails, err := auditParams.ServerDetails()
 	if err != nil {
 		return
 	}
-	isEntitled, xrayVersion, err := isEntitledForJas(serverDetails)
-	if err != nil {
+
+	if entitlements, err = checkEntitlements(serverDetails, auditParams); err != nil {
 		return
 	}
-	auditParams.SetXrayVersion(xrayVersion)
-
 	errGroup := new(errgroup.Group)
-	if isEntitled {
+	if entitlements.Jas {
 		// Download (if needed) the analyzer manager in a background routine.
 		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
 	}
@@ -148,7 +153,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 
 	// Run scanners only if the user is entitled for Advanced Security
-	if isEntitled {
+	if entitlements.Jas {
 		xrayScanResults := results.ExtendedScanResults.XrayResults
 		scannedTechnologies := results.ScannedTechnologies
 		results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies, auditParams.WorkingDirs())
@@ -156,17 +161,46 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	return
 }
 
-func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayVersion string, err error) {
+// TODO Eyal add comment here
+func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (entitlements *XrayEntitlements, err error) {
 	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return
 	}
+	params.SetXrayVersion(xrayVersion)
+
+	var jasEntitle, xscEntitled bool
+	if jasEntitle, err = isEntitledForJas(xrayVersion, xrayManager); err != nil {
+		return
+	}
+	if xscEntitled, err = isEntitledForXsc(xrayManager, serverDetails); err != nil {
+		return
+	}
+	return &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled}, err
+}
+
+// Checks for the availability of XSC service, if true adjust XSC url
+func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails *config.ServerDetails) (xsc bool, err error) {
+	xscEnabled, xscVersion := xrayManager.IsXscEnabled()
+	if !xscEnabled {
+		return
+	}
+	serverDetails.XscUrl = serverDetails.Url + "xsc" + "/"
+	serverDetails.XscVersion = xscVersion
+	return
+}
+
+// Check JAS entitlement if true adjust needed params.
+func isEntitledForJas(xrayVersion string, xrayManager manager.SecurityServiceManager) (entitled bool, err error) {
 	if !version.NewVersion(xrayVersion).AtLeast(clientUtils.EntitlementsMinVersion) {
 		log.Debug("Entitlements check for ‘Advanced Security’ package failed:")
 		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
 		return
 	}
 	entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
+	if err != nil {
+		return
+	}
 	return
 }
 

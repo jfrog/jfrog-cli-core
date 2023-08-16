@@ -126,7 +126,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func getIacOrSecretsScanResults(resultsFileName string, isSecret bool) ([]utils.IacOrSecretResult, error) {
+func getIacOrSecretsScanResults(resultsFileName, workingDir string, isSecret bool) ([]utils.IacOrSecretResult, error) {
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -134,22 +134,21 @@ func getIacOrSecretsScanResults(resultsFileName string, isSecret bool) ([]utils.
 	var results []*sarif.Result
 	if len(report.Runs) > 0 {
 		results = report.Runs[0].Results
-
-	}
-	currWd, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return nil, err
 	}
 
 	var iacOrSecretResults []utils.IacOrSecretResult
 	for _, result := range results {
+		// Describes a request to “suppress” a result (to exclude it from result lists)
+		if len(result.Suppressions) > 0 {
+			continue
+		}
 		text := *result.Message.Text
 		if isSecret {
 			text = hideSecret(*result.Locations[0].PhysicalLocation.Region.Snippet.Text)
 		}
 		newResult := utils.IacOrSecretResult{
 			Severity:   utils.GetResultSeverity(result),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), currWd),
+			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), workingDir),
 			LineColumn: utils.GetResultLocationInFile(result),
 			Text:       text,
 			Type:       *result.RuleID,

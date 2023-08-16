@@ -2,6 +2,7 @@ package jas
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"

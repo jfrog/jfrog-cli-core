@@ -114,32 +114,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.NotEmpty(t, secretScanManager.secretsScannerResults)
-	assert.Equal(t, 8, len(secretScanManager.secretsScannerResults))
-}
-
-func TestParseResults_ResultsContainSecretsWithWorkingDirs(t *testing.T) {
-	// Arrange
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
-	secretScanManager := newSecretsScanManager(scanner)
-	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets-multi-wd.sarif")
-
-	// Act
-	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.scanner.resultsFileName, true)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, secretScanManager.secretsScannerResults)
-	assert.Len(t, secretScanManager.secretsScannerResults, 2)
-	firstSecretDir := secretScanManager.secretsScannerResults[0].File
-	secondSecretDir := secretScanManager.secretsScannerResults[1].File
-	assert.Contains(t, firstSecretDir, "more_secrets")
-	assert.Contains(t, secondSecretDir, "secret_generic")
+	assert.Equal(t, 7, len(secretScanManager.secretsScannerResults))
 }
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {

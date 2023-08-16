@@ -79,9 +79,7 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 	}
 	defer func() {
 		cleanup := scanner.scannerDirCleanupFunc
-		if cleanup != nil {
-			err = errors.Join(err, cleanup())
-		}
+		err = errors.Join(err, cleanup())
 	}()
 	applicabilityScanResults, err := getApplicabilityScanResults(
 		xrayResults, dependencyTrees, scannedTechnologies, scanner)

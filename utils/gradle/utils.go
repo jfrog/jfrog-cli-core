@@ -2,6 +2,7 @@ package gradleutils
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -18,7 +19,7 @@ const (
 	useWrapper = "usewrapper"
 )
 
-func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
+func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := configuration.GetBuildName()
 	if err != nil {
@@ -40,11 +41,25 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	if err != nil {
 		return err
 	}
+	var gradleOpts []string
+	if v := os.Getenv("GRADLE_OPTS"); v!=""{
+		gradleOpts = strings.Fields(v)
+	}
+	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
+		gradleOpts = append(gradleOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
+	}
 	dependencyLocalPath, err := getGradleDependencyLocalPath()
 	if err != nil {
 		return err
 	}
-	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractor, props)
+	gradleModule.SetExtractorDetails(dependencyLocalPath,
+		filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath),
+		tasks,
+		wrapper,
+		plugin,
+		utils.DownloadExtractor,
+		props)
+	gradleModule.SetGradleOpts(gradleOpts...)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 
@@ -69,6 +84,11 @@ func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string,
 	if err != nil {
 		return
 	}
+
+	for key, value := range props {
+		props[key] = `"` + value + `"`
+	}
+
 	if deployableArtifactsFile != "" {
 		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
 		props[utils.DeployableArtifacts] = fmt.Sprint(vConfig.Get(utils.DeployableArtifacts))
@@ -86,3 +106,4 @@ func setDeployFalse(vConfig *viper.Viper) {
 		vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
 	}
 }
+

@@ -30,7 +30,11 @@ func init() {
 }
 
 // This is the default server id. It is used when adding a server config without providing a server ID
-const DefaultServerId = "Default-Server"
+const (
+	DefaultServerId = "Default-Server"
+
+	XscServiceAPI = "xsc/"
+)
 
 func IsServerConfExists() (bool, error) {
 	conf, err := readConf()
@@ -698,8 +702,8 @@ func (serverDetails *ServerDetails) CreateDistAuthConfig() (auth.ServiceDetails,
 
 func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails, error) {
 	artAuth := xrayAuth.NewXrayDetails()
+	artAuth.SetXscUrl(serverDetails.Url + XscServiceAPI)
 	artAuth.SetUrl(serverDetails.XrayUrl)
-	artAuth.SetXscUrl(serverDetails.XscUrl)
 	return serverDetails.createAuthConfig(artAuth)
 }
 

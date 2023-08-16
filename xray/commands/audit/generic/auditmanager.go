@@ -39,8 +39,9 @@ type Params struct {
 }
 
 type XrayEntitlements struct {
-	Jas bool
-	Xsc bool
+	errGroup *errgroup.Group
+	Jas      bool
+	Xsc      bool
 }
 
 func NewAuditParams() *Params {
@@ -129,46 +130,47 @@ func (r *Results) SetAuditError(err error) *Results {
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
 func RunAudit(auditParams *Params) (results *Results, err error) {
+	var serverDetails *config.ServerDetails
 	var entitlements *XrayEntitlements
-	serverDetails, err := auditParams.ServerDetails()
-	if err != nil {
+	if serverDetails, err = auditParams.ServerDetails(); err != nil {
 		return
 	}
 
+	// Check preconditions for JAS and XSC.
 	if entitlements, err = checkEntitlements(serverDetails, auditParams); err != nil {
 		return
-	}
-	errGroup := new(errgroup.Group)
-	if entitlements.Jas {
-		// Download (if needed) the analyzer manager in a background routine.
-		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
 	}
 
 	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
 	results = genericAudit(auditParams)
 
 	// Wait for the Download of the AnalyzerManager to complete.
-	if err = errGroup.Wait(); err != nil {
+	if err = entitlements.errGroup.Wait(); err != nil {
 		return
 	}
 
 	// Run scanners only if the user is entitled for Advanced Security
 	if entitlements.Jas {
-		xrayScanResults := results.ExtendedScanResults.XrayResults
-		scannedTechnologies := results.ScannedTechnologies
-		results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies, auditParams.WorkingDirs())
+		err = runJasScanners(auditParams, results, serverDetails)
 	}
 	return
 }
 
-// TODO Eyal add comment here
+func runJasScanners(auditParams *Params, results *Results, serverDetails *config.ServerDetails) (err error) {
+	xrayScanResults := results.ExtendedScanResults.XrayResults
+	scannedTechnologies := results.ScannedTechnologies
+	results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies, auditParams.WorkingDirs())
+	return
+}
+
+// checkEntitlements validates the entitlements for JAS and XSC.
 func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (entitlements *XrayEntitlements, err error) {
 	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return
 	}
 	params.SetXrayVersion(xrayVersion)
-
+	// Check entitlements
 	var jasEntitle, xscEntitled bool
 	if jasEntitle, err = isEntitledForJas(xrayVersion, xrayManager); err != nil {
 		return
@@ -176,16 +178,27 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 	if xscEntitled, err = isEntitledForXsc(xrayManager, serverDetails); err != nil {
 		return
 	}
-	return &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled}, err
+	entitlements = &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
+
+	// Handle actions needed in case of specific entitlement
+	if entitlements.Jas {
+		// Download the analyzer manager in a background routine.
+		entitlements.errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
+	}
+	if entitlements.Xsc {
+		// Update XSC url and version
+		params.SetServerDetails(serverDetails)
+	}
+	return entitlements, err
 }
 
 // Checks for the availability of XSC service, if true adjust XSC url
-func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails *config.ServerDetails) (xsc bool, err error) {
+func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails *config.ServerDetails) (xscEnabled bool, err error) {
 	xscEnabled, xscVersion := xrayManager.IsXscEnabled()
 	if !xscEnabled {
 		return
 	}
-	serverDetails.XscUrl = serverDetails.Url + "xsc" + "/"
+	serverDetails.XscUrl = serverDetails.Url + config.XscServiceAPI
 	serverDetails.XscVersion = xscVersion
 	return
 }

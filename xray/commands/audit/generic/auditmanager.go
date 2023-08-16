@@ -136,22 +136,6 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 		return
 	}
 
-	auditParams.xrayGraphScanParams.XscGitInfoContext = &scan.XscGitInfoContext{
-		GitRepoUrl:        "https://github.com/EyalDelarea/npmexample",
-		GitRepoName:       "npmexmaple",
-		GitTargetRepoName: "npmexmaple",
-		GitProject:        "eyaldelarea",
-		GitProvider:       "github",
-		Technologies:      []string{"npm"},
-		BranchName:        "main",
-		TargetBranchName:  "main",
-		LastCommit:        "https://github.com/EyalDelarea/npmexample/commit/02c4eb4065e293d96fdfc70e64a58244eabed399",
-		CommitHash:        "02c4eb4065e293d96fdfc70e64a58244eabed399",
-		CommitMessage:     "test dev deps",
-		CommitAuthor:      "eyaldelarea",
-		Date:              1676981112000,
-	}
-
 	// Check preconditions for JAS and XSC.
 	if entitlements, err = checkEntitlements(serverDetails, auditParams); err != nil {
 		return

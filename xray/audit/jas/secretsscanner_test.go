@@ -1,6 +1,7 @@
 package jas
 
 import (
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -9,7 +10,7 @@ import (
 )
 
 func TestNewSecretsScanManager(t *testing.T) {
-	// Act
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -19,7 +20,6 @@ func TestNewSecretsScanManager(t *testing.T) {
 	}()
 	secretScanManager := newSecretsScanManager(scanner)
 
-	// Assert
 	assert.NoError(t, err)
 	assert.NotEmpty(t, secretScanManager)
 	assert.NotEmpty(t, secretScanManager.scanner.configFileName)
@@ -28,6 +28,7 @@ func TestNewSecretsScanManager(t *testing.T) {
 }
 
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -60,6 +61,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 	}()
 
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -78,6 +80,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 
 func TestParseResults_EmptyResults(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -98,6 +101,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {
@@ -119,6 +123,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	// Act
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
 	defer func() {

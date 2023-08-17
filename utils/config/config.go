@@ -702,7 +702,7 @@ func (serverDetails *ServerDetails) CreateDistAuthConfig() (auth.ServiceDetails,
 
 func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails, error) {
 	artAuth := xrayAuth.NewXrayDetails()
-	artAuth.SetXscUrl(serverDetails.Url + XscServiceAPI)
+	artAuth.SetXscUrl(serverDetails.XrayUrl + XscServiceAPI)
 	artAuth.SetUrl(serverDetails.XrayUrl)
 	return serverDetails.createAuthConfig(artAuth)
 }

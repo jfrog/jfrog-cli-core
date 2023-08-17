@@ -36,6 +36,7 @@ type Params struct {
 	minSeverityFilter   string
 	*clientUtils.GraphBasicParams
 	xrayVersion string
+	xscVersion  string
 }
 
 type XrayEntitlements struct {
@@ -188,6 +189,7 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 	if entitlements.Xsc {
 		// Update XSC url and version
 		params.SetServerDetails(serverDetails)
+		params.xscVersion = serverDetails.XscVersion
 	}
 	return entitlements, err
 }
@@ -226,6 +228,14 @@ func genericAudit(params *Params) *Results {
 		return NewAuditResults().SetAuditError(err)
 	}
 	log.Info("JFrog Xray version is:", params.xrayVersion)
+
+	if params.xscVersion != "" {
+		if err := coreutils.ValidateMinimumVersion(coreutils.Xsc, params.xscVersion, commandsutils.XscMinVersion); err != nil {
+			return NewAuditResults().SetAuditError(err)
+		}
+		log.Info("JFrog XSC version is:", params.xscVersion)
+	}
+
 	log.Info("Scanning for vulnerable dependencies...")
 	if len(params.workingDirs) == 0 {
 		return doAudit(params)

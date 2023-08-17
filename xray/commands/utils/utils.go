@@ -16,6 +16,7 @@ import (
 
 const (
 	GraphScanMinXrayVersion           = "3.29.0"
+	XscMinVersion                     = "0.1.0"
 	ScanTypeMinXrayVersion            = "3.37.2"
 	BypassArchiveLimitsMinXrayVersion = "3.59.0"
 	TotalConcurrentRequests           = 10

@@ -181,14 +181,12 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 	}
 	entitlements = &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
 
-	// Handle actions needed in case of specific entitlement
+	// Handle actions needed in case of specific entitlement.
 	if entitlements.Jas {
 		// Download the analyzer manager in a background routine.
 		entitlements.errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
 	}
 	if entitlements.Xsc {
-		// Update XSC url and version
-		params.SetServerDetails(serverDetails)
 		params.xscVersion = serverDetails.XscVersion
 	}
 	return entitlements, err
@@ -197,10 +195,7 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 // Checks for the availability of XSC service, if true adjust XSC url
 func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails *config.ServerDetails) (xscEnabled bool, err error) {
 	xscEnabled, xscVersion, err := xrayManager.IsXscEnabled()
-	if err != nil {
-		return
-	}
-	if !xscEnabled {
+	if err != nil || !xscEnabled {
 		return
 	}
 	serverDetails.XscVersion = xscVersion
@@ -214,8 +209,7 @@ func isEntitledForJas(xrayVersion string, xrayManager manager.SecurityServiceMan
 		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
 		return
 	}
-	entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
-	if err != nil {
+	if entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId); err != nil {
 		return
 	}
 	return

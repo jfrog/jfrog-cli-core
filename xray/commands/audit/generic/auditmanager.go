@@ -194,7 +194,10 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 
 // Checks for the availability of XSC service, if true adjust XSC url
 func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails *config.ServerDetails) (xscEnabled bool, err error) {
-	xscEnabled, xscVersion := xrayManager.IsXscEnabled()
+	xscEnabled, xscVersion, err := xrayManager.IsXscEnabled()
+	if err != nil {
+		return
+	}
 	if !xscEnabled {
 		return
 	}

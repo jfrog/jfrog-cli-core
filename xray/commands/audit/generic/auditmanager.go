@@ -203,7 +203,6 @@ func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails 
 	if !xscEnabled {
 		return
 	}
-	serverDetails.XscUrl = serverDetails.Url + config.XscServiceAPI
 	serverDetails.XscVersion = xscVersion
 	return
 }

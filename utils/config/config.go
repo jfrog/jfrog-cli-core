@@ -33,7 +33,7 @@ func init() {
 const (
 	DefaultServerId = "Default-Server"
 
-	XscServiceAPI = "xsc/"
+	XscServiceAPI = "xsc"
 )
 
 func IsServerConfExists() (bool, error) {
@@ -702,7 +702,7 @@ func (serverDetails *ServerDetails) CreateDistAuthConfig() (auth.ServiceDetails,
 
 func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails, error) {
 	artAuth := xrayAuth.NewXrayDetails()
-	artAuth.SetXscUrl(serverDetails.Url + XscServiceAPI)
+	artAuth.SetXscUrl(serverDetails.XscUrl)
 	artAuth.SetXscVersion(serverDetails.XscVersion)
 	artAuth.SetUrl(serverDetails.XrayUrl)
 	return serverDetails.createAuthConfig(artAuth)

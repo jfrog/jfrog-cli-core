@@ -3,7 +3,6 @@ package gradleutils
 import (
 	"fmt"
 	"path/filepath"
-
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -50,7 +49,6 @@ func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile str
 		plugin,
 		utils.DownloadExtractor,
 		props)
-	//gradleModule.SetGradleOpts(gradleOpts...)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 

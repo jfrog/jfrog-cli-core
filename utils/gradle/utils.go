@@ -41,13 +41,13 @@ func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile str
 	if err != nil {
 		return err
 	}
-	var gradleOpts []string
-	if v := os.Getenv("GRADLE_OPTS"); v!=""{
-		gradleOpts = strings.Fields(v)
-	}
-	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
-		gradleOpts = append(gradleOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
-	}
+	//var gradleOpts []string
+	//if v := os.Getenv("GRADLE_OPTS"); v!=""{
+	//	gradleOpts = strings.Fields(v)
+	//}
+	//if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
+	//	gradleOpts = append(gradleOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
+	//}
 	dependencyLocalPath, err := getGradleDependencyLocalPath()
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile str
 		plugin,
 		utils.DownloadExtractor,
 		props)
-	gradleModule.SetGradleOpts(gradleOpts...)
+	//gradleModule.SetGradleOpts(gradleOpts...)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 

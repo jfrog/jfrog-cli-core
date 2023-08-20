@@ -129,16 +129,20 @@ func GetAnalyzerManagerDirAbsolutePath() (string, error) {
 	return filepath.Join(jfrogDir, analyzerManagerDirName), nil
 }
 
-func GetAnalyzerManagerExecutable() (string, error) {
+func GetAnalyzerManagerExecutable() (analyzerManagerPath string, err error) {
 	analyzerManagerDir, err := GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {
 		return "", err
 	}
-	analyzerManagerPath := filepath.Join(analyzerManagerDir, GetAnalyzerManagerExecutableName())
-	if exists, err := fileutils.IsFileExists(analyzerManagerPath, false); err != nil || !exists {
-		return "", errors.New("unable to locate the analyzer manager package. Advanced security scans cannot be performed without this package. Received:\n"+err.Error())
+	analyzerManagerPath = filepath.Join(analyzerManagerDir, GetAnalyzerManagerExecutableName())
+	var exists bool
+	if exists, err = fileutils.IsFileExists(analyzerManagerPath, false); err != nil {
+		return
 	}
-	return analyzerManagerPath, nil
+	if !exists {
+		err = errors.New("unable to locate the analyzer manager package. Advanced security scans cannot be performed without this package")
+	}
+	return analyzerManagerPath, err
 }
 
 func GetAnalyzerManagerExecutableName() string {

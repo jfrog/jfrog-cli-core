@@ -122,7 +122,6 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 }
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-	// Act
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
@@ -133,9 +132,8 @@ func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	}()
 	secretsResults, err := getSecretsScanResults(scanner)
 
-	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to run Secrets scan")
+	assert.ErrorContains(t, err, "failed to run Secrets scan")
 	assert.Nil(t, secretsResults)
 }
 

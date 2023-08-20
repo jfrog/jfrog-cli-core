@@ -37,7 +37,6 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
-	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
@@ -438,6 +437,6 @@ func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 
 	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to run Applicability scan")
+	assert.ErrorContains(t, err, "failed to run Applicability scan")
 	assert.Nil(t, extendedResults)
 }

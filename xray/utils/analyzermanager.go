@@ -3,6 +3,13 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -10,12 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 var (
@@ -135,7 +136,7 @@ func GetAnalyzerManagerExecutable() (string, error) {
 	}
 	analyzerManagerPath := filepath.Join(analyzerManagerDir, GetAnalyzerManagerExecutableName())
 	if exists, err := fileutils.IsFileExists(analyzerManagerPath, false); err != nil || !exists {
-		return "", errors.New("unable to locate the analyzer manager package. Advanced security scans cannot be performed without this package")
+		return "", errors.New("unable to locate the analyzer manager package. Advanced security scans cannot be performed without this package. Received:\n"+err.Error())
 	}
 	return analyzerManagerPath, nil
 }

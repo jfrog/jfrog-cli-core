@@ -62,6 +62,9 @@ var fakeServerDetails = config.ServerDetails{
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	tmpDir, err := fileutils.CreateTempDir()
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}
 	assert.NoError(t, err)
 	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
 	defer func() {

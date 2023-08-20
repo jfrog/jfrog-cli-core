@@ -1,14 +1,15 @@
 package jas
 
 import (
+	"os"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 var fakeBasicXrayResults = []services.ScanResponse{
@@ -64,7 +65,7 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	tmpDir, err := fileutils.CreateTempDir()
 	defer func() {
 		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
-	}
+	}()
 	assert.NoError(t, err)
 	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
 	defer func() {

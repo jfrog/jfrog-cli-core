@@ -92,5 +92,5 @@ func hideSecret(secret string) string {
 	if len(secret) <= 3 {
 		return "***"
 	}
-	return secret[:3] + strings.Repeat("*", len(secret)-3)
+	return secret[:3] + strings.Repeat("*", 12)
 }

@@ -121,8 +121,9 @@ func PanicOnError(err error) error {
 }
 
 func ExitOnErr(err error) {
-	if err, ok := err.(CliError); ok {
-		traceExit(err.ExitCode, err)
+	var cliError CliError
+	if errors.As(err, &cliError) {
+		traceExit(cliError.ExitCode, err)
 	}
 	if exitCode := GetExitCode(err, 0, 0, false); exitCode != ExitCodeNoError {
 		traceExit(exitCode, err)
@@ -153,7 +154,8 @@ func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 // We would like to return a regular error instead of ExitError,
 // because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
 func ConvertExitCodeError(err error) error {
-	if _, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		err = errors.New(err.Error())
 	}
 	return err
@@ -573,9 +575,9 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 		return
 	}
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
-	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")
+	serverID, repoName, separatorExists := strings.Cut(serverAndRepo, "/")
 	// Check that the format is valid
-	if !seperatorExists || repoName == "" || serverID == "" {
+	if !separatorExists || repoName == "" || serverID == "" {
 		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
 	}
 	return

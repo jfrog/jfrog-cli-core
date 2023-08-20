@@ -211,14 +211,17 @@ func varsAsMap(vars []string) map[string]string {
 }
 
 func IsWindows() bool {
+	// noinspection
 	return runtime.GOOS == "windows"
 }
 
 func IsLinux() bool {
+	// noinspection
 	return runtime.GOOS == "linux"
 }
 
 func IsMac() bool {
+	// noinspection
 	return runtime.GOOS == "darwin"
 }
 
@@ -230,6 +233,7 @@ func GetOSAndArc() (string, error) {
 	}
 	// Mac
 	if IsMac() {
+		// noinspection
 		if arch == "arm64" {
 			return "mac-arm64", nil
 		} else {
@@ -573,9 +577,9 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 		return
 	}
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
-	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")
+	serverID, repoName, separatorExists := strings.Cut(serverAndRepo, "/")
 	// Check that the format is valid
-	if !seperatorExists || repoName == "" || serverID == "" {
+	if !separatorExists || repoName == "" || serverID == "" {
 		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
 	}
 	return

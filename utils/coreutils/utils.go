@@ -121,8 +121,9 @@ func PanicOnError(err error) error {
 }
 
 func ExitOnErr(err error) {
-	if err, ok := err.(CliError); ok {
-		traceExit(err.ExitCode, err)
+	var cliError CliError
+	if errors.As(err, &cliError) {
+		traceExit(cliError.ExitCode, err)
 	}
 	if exitCode := GetExitCode(err, 0, 0, false); exitCode != ExitCodeNoError {
 		traceExit(exitCode, err)
@@ -153,7 +154,8 @@ func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 // We would like to return a regular error instead of ExitError,
 // because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
 func ConvertExitCodeError(err error) error {
-	if _, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		err = errors.New(err.Error())
 	}
 	return err
@@ -211,17 +213,14 @@ func varsAsMap(vars []string) map[string]string {
 }
 
 func IsWindows() bool {
-	// noinspection
 	return runtime.GOOS == "windows"
 }
 
 func IsLinux() bool {
-	// noinspection
 	return runtime.GOOS == "linux"
 }
 
 func IsMac() bool {
-	// noinspection
 	return runtime.GOOS == "darwin"
 }
 
@@ -233,7 +232,6 @@ func GetOSAndArc() (string, error) {
 	}
 	// Mac
 	if IsMac() {
-		// noinspection
 		if arch == "arm64" {
 			return "mac-arm64", nil
 		} else {

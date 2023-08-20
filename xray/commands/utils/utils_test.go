@@ -88,12 +88,12 @@ func TestFilterResultIfNeeded(t *testing.T) {
 	}
 
 	// Run test cases
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for i := range tests {
+		t.Run(tests[i].name, func(t *testing.T) {
 			// Call the function with the input parameters
-			actual := filterResultIfNeeded(&tt.scanResult, &tt.params)
+			actual := filterResultIfNeeded(&tests[i].scanResult, &tests[i].params)
 			// Check that the function returned the expected result
-			assert.True(t, reflect.DeepEqual(*actual, tt.expected))
+			assert.True(t, reflect.DeepEqual(*actual, tests[i].expected))
 		})
 	}
 }

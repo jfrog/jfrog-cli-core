@@ -33,9 +33,8 @@ const (
 	BlockingReasonPolicy   = "Policy violations"
 	BlockingReasonNotFound = "Package pending update"
 
-	totalConcurrentRequests = 10
-	directRelation          = "direct"
-	indirectRelation        = "indirect"
+	directRelation   = "direct"
+	indirectRelation = "indirect"
 
 	BlockMessageKey  = "jfrog packages curation"
 	NotBeingFoundKey = "not being found"
@@ -321,8 +320,8 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 			return err
 		}
 		if !exists {
-			return errorutils.CheckError(errors.New("no config file was found! Before running the npm command on a " +
-				"project for the first time, the project should be configured using the 'jf npmc' command"))
+			return errorutils.CheckErrorf("no config file was found! Before running the npm command on a " +
+				"project for the first time, the project should be configured using the 'jf npmc' command")
 		}
 		vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
 		if err != nil {

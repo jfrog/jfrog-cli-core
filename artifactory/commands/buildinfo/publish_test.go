@@ -41,16 +41,16 @@ func TestPrintBuildInfoLink(t *testing.T) {
 			config.ServerDetails{ArtifactoryUrl: "http://localhost:8082/artifactory/"}, "http://localhost:8082/ui/builds/test/1/" + buildTime + "/published?buildRepo=cli-build-info&projectKey=cli"},
 	}
 
-	for _, linkType := range linkTypes {
+	for i := range linkTypes {
 		buildPubConf := &BuildPublishCommand{
-			linkType.buildInfoConf,
-			&linkType.serverDetails,
+			linkTypes[i].buildInfoConf,
+			&linkTypes[i].serverDetails,
 			nil,
 			true,
 			nil,
 		}
-		buildPubComService, err := buildPubConf.getBuildInfoUiUrl(linkType.majorVersion, linkType.buildTime)
+		buildPubComService, err := buildPubConf.getBuildInfoUiUrl(linkTypes[i].majorVersion, linkTypes[i].buildTime)
 		assert.NoError(t, err)
-		assert.Equal(t, buildPubComService, linkType.expected)
+		assert.Equal(t, buildPubComService, linkTypes[i].expected)
 	}
 }

@@ -161,7 +161,7 @@ func (a *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 // Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for
 // advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
-	return a.scanner.analyzerManager.Exec(a.scanner.configFileName, applicabilityScanCommand, a.scanner.serverDetails)
+	return a.scanner.analyzerManager.Exec(a.scanner.configFileName, applicabilityScanCommand, a.scanner.analyzerManager.GetAnalyzerManagerDir(), a.scanner.serverDetails)
 }
 
 func (a *ApplicabilityScanManager) getScanResults() (map[string]string, error) {

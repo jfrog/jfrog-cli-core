@@ -2,14 +2,15 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/datastructures"
-	"golang.org/x/exp/maps"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/maps"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 
@@ -278,11 +279,11 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
-func PrepareSecrets(secrets []IacOrSecretResult) []formats.IacSecretsRow {
+func PrepareSecrets(secrets []SourceCodeScanResult) []formats.IacSecretsRow {
 	return prepareSecrets(secrets, false)
 }
 
-func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
+func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.IacSecretsRow {
 	var secretsRows []formats.IacSecretsRow
 	for _, secret := range secrets {
 		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
@@ -305,7 +306,7 @@ func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecr
 	return secretsRows
 }
 
-func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
+func PrintSecretsTable(secrets []SourceCodeScanResult, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
 		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secrets",
@@ -315,11 +316,11 @@ func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool)
 }
 
 // Prepare iacs for all non-table formats (without style or emoji)
-func PrepareIacs(iacs []IacOrSecretResult) []formats.IacSecretsRow {
+func PrepareIacs(iacs []SourceCodeScanResult) []formats.IacSecretsRow {
 	return prepareIacs(iacs, false)
 }
 
-func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
+func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.IacSecretsRow {
 	var iacRows []formats.IacSecretsRow
 	for _, iac := range iacs {
 		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
@@ -342,7 +343,7 @@ func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow
 	return iacRows
 }
 
-func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
+func PrintIacTable(iacs []SourceCodeScanResult, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
 		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",

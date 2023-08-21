@@ -2,6 +2,9 @@ package jas
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -12,8 +15,6 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 var (
@@ -93,6 +94,10 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 	if err != nil {
 		return nil, err
 	}
+	zeroDayScanResult, err := getZeroDayScanResults(scanner)
+	if err != nil {
+		return nil, err
+	}
 	return &utils.ExtendedScanResults{
 		EntitledForJas:           true,
 		XrayResults:              xrayResults,
@@ -100,6 +105,7 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 		ApplicabilityScanResults: applicabilityScanResults,
 		SecretsScanResults:       secretsScanResults,
 		IacScanResults:           iacScanResults,
+		ZeroDayResults:           zeroDayScanResult,
 	}, nil
 }
 
@@ -123,7 +129,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func getIacOrSecretsScanResults(resultsFileName, workingDir string, isSecret bool) ([]utils.IacOrSecretResult, error) {
+func getSourceCodeScanResults(resultsFileName, workingDir string, isSecret bool) ([]utils.SourceCodeScanResult, error) {
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -133,7 +139,7 @@ func getIacOrSecretsScanResults(resultsFileName, workingDir string, isSecret boo
 		results = report.Runs[0].Results
 	}
 
-	var iacOrSecretResults []utils.IacOrSecretResult
+	var sourceCodeScanResults []utils.SourceCodeScanResult
 	for _, result := range results {
 		// Describes a request to “suppress” a result (to exclude it from result lists)
 		if len(result.Suppressions) > 0 {
@@ -143,16 +149,16 @@ func getIacOrSecretsScanResults(resultsFileName, workingDir string, isSecret boo
 		if isSecret {
 			text = hideSecret(*result.Locations[0].PhysicalLocation.Region.Snippet.Text)
 		}
-		newResult := utils.IacOrSecretResult{
+		newResult := utils.SourceCodeScanResult{
 			Severity:   utils.GetResultSeverity(result),
 			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), workingDir),
 			LineColumn: utils.GetResultLocationInFile(result),
 			Text:       text,
 			Type:       *result.RuleID,
 		}
-		iacOrSecretResults = append(iacOrSecretResults, newResult)
+		sourceCodeScanResults = append(sourceCodeScanResults, newResult)
 	}
-	return iacOrSecretResults, nil
+	return sourceCodeScanResults, nil
 }
 
 func createScannersConfigFile(fileName string, fileContent interface{}) error {

@@ -3,6 +3,13 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -10,12 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 var (
@@ -55,6 +56,7 @@ const (
 	Applicability ScanType = "Applicability"
 	Secrets       ScanType = "Secrets"
 	IaC           ScanType = "IaC"
+	ZeroDay       ScanType = "ZeroDay"
 )
 
 func (st ScanType) FormattedError(err error) error {
@@ -70,7 +72,7 @@ var exitCodeErrorsMap = map[int]string{
 	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
 }
 
-type IacOrSecretResult struct {
+type SourceCodeScanResult struct {
 	Severity   string
 	File       string
 	LineColumn string
@@ -82,8 +84,9 @@ type ExtendedScanResults struct {
 	XrayResults              []services.ScanResponse
 	ScannedTechnologies      []coreutils.Technology
 	ApplicabilityScanResults map[string]string
-	SecretsScanResults       []IacOrSecretResult
-	IacScanResults           []IacOrSecretResult
+	SecretsScanResults       []SourceCodeScanResult
+	IacScanResults           []SourceCodeScanResult
+	ZeroDayResults           []SourceCodeScanResult
 	EntitledForJas           bool
 }
 
@@ -95,7 +98,11 @@ type AnalyzerManager struct {
 	AnalyzerManagerFullPath string
 }
 
-func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *config.ServerDetails) (err error) {
+func (am *AnalyzerManager) GetAnalyzerManagerDir() string {
+	return filepath.Dir(am.AnalyzerManagerFullPath)
+}
+
+func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return err
 	}
@@ -107,7 +114,7 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *c
 			}
 		}
 	}()
-	cmd.Dir = filepath.Dir(am.AnalyzerManagerFullPath)
+	cmd.Dir = workingDir
 	err = cmd.Run()
 	return errorutils.CheckError(err)
 }

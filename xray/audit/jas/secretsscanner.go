@@ -11,7 +11,7 @@ const (
 )
 
 type SecretScanManager struct {
-	secretsScannerResults []utils.IacOrSecretResult
+	secretsScannerResults []utils.SourceCodeScanResult
 	scanner               *AdvancedSecurityScanner
 }
 
@@ -22,7 +22,7 @@ type SecretScanManager struct {
 // Return values:
 // []utils.IacOrSecretResult: a list of the secrets that were found.
 // error: An error object (if any).
-func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.IacOrSecretResult, err error) {
+func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.SourceCodeScanResult, err error) {
 	secretScanManager := newSecretsScanManager(scanner)
 	log.Info("Running secrets scanning...")
 	if err = secretScanManager.scanner.Run(secretScanManager); err != nil {
@@ -38,7 +38,7 @@ func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.Ia
 
 func newSecretsScanManager(scanner *AdvancedSecurityScanner) (manager *SecretScanManager) {
 	return &SecretScanManager{
-		secretsScannerResults: []utils.IacOrSecretResult{},
+		secretsScannerResults: []utils.SourceCodeScanResult{},
 		scanner:               scanner,
 	}
 }
@@ -51,8 +51,8 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.IacOrSecretResult
-	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, wd, true)
+	var workingDirResults []utils.SourceCodeScanResult
+	workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, true)
 	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
 	return
 }
@@ -83,7 +83,7 @@ func (s *SecretScanManager) createConfigFile(currentWd string) error {
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
-	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, s.scanner.serverDetails)
+	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, s.scanner.analyzerManager.GetAnalyzerManagerDir(), s.scanner.serverDetails)
 }
 
 func hideSecret(secret string) string {

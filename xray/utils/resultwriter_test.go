@@ -2,12 +2,13 @@ package utils
 
 import (
 	"fmt"
+	"path"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
-	"path"
-	"testing"
 )
 
 func TestGenerateSarifFileFromScan(t *testing.T) {
@@ -27,7 +28,7 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 				},
 			},
 		},
-		SecretsScanResults: []IacOrSecretResult{
+		SecretsScanResults: []SourceCodeScanResult{
 			{
 				Severity:   "Medium",
 				File:       "found_secrets.js",
@@ -36,7 +37,7 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 				Text:       "AAA************",
 			},
 		},
-		IacScanResults: []IacOrSecretResult{
+		IacScanResults: []SourceCodeScanResult{
 			{
 				Severity:   "Medium",
 				File:       "plan/nonapplicable/req_sw_terraform_azure_compute_no_pass_auth.json",

@@ -1,12 +1,13 @@
 package jas
 
 import (
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
+
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewSecretsScanManager(t *testing.T) {
@@ -92,7 +93,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
-	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
 
 	// Assert
 	assert.NoError(t, err)
@@ -113,7 +114,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
-	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
 
 	// Assert
 	assert.NoError(t, err)

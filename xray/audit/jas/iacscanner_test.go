@@ -1,12 +1,13 @@
 package jas
 
 import (
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
+
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewIacScanManager(t *testing.T) {
@@ -71,7 +72,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "no-violations.sarif")
 
 	// Act
-	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	iacScanManager.iacScannerResults, err = getSourceCodeScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
 
 	// Assert
 	assert.NoError(t, err)
@@ -91,7 +92,7 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations.sarif")
 
 	// Act
-	iacScanManager.iacScannerResults, err = getIacOrSecretsScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	iacScanManager.iacScannerResults, err = getSourceCodeScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
 
 	// Assert
 	assert.NoError(t, err)

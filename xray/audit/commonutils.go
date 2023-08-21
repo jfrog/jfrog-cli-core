@@ -58,16 +58,14 @@ func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.Progr
 		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
 		return
 	}
-
 	if progress != nil {
 		progress.SetHeadlineMsg("Scanning for vulnerabilities")
 	}
-	// Optional set tech type for XSC context
+	// Optional, set technology for XSC context
 	xscScanContextDetails := scanGraphParams.XrayGraphScanParams().XscGitInfoContext
 	if xscScanContextDetails != nil {
 		xscScanContextDetails.Technologies = []string{technology.ToString()}
 	}
-
 	for _, moduleDependencyTree := range modulesDependencyTrees {
 		scanGraphParams.XrayGraphScanParams().Graph = moduleDependencyTree
 		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(scanGraphParams.XrayGraphScanParams().Graph.Nodes), technology)

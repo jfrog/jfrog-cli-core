@@ -1,6 +1,7 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"os"
 	"testing"
 
@@ -71,18 +72,14 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
 	}()
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn}, nil)
-
-	// Assert
+	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
+	err = RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, &fakeServerDetails, nil, nil)
+	// Expect error:
 	assert.Error(t, err)
-	assert.Nil(t, extendedResults)
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
-	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip}, nil)
-
-	// Assert
-	assert.NotNil(t, extendedResults)
+	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Pip}}
+	err := RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, nil, nil, nil)
 	assert.NoError(t, err)
 }

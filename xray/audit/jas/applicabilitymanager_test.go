@@ -431,12 +431,10 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-	// Act
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Npm}, nil)
+	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
+	err := RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, &fakeServerDetails, nil, nil)
 
-	// Assert
-	assert.Error(t, err)
+	// Expect error:
 	assert.ErrorContains(t, err, "failed to run Applicability scan")
-	assert.Nil(t, extendedResults)
 }

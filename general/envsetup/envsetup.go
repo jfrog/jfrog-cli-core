@@ -3,7 +3,6 @@ package envsetup
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
@@ -245,7 +244,7 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 		}
 		log.Output(err.Error())
 	}
-	err = errorutils.CheckError(errors.New("bad credentials: Wrong password. "))
+	err = errorutils.CheckErrorf("bad credentials: Wrong password. ")
 	return
 }
 

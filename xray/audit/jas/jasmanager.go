@@ -1,6 +1,7 @@
 package jas
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -12,12 +13,58 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v3"
 	"os"
+	"path/filepath"
 )
 
 var (
-	analyzerManagerExecuter utils.AnalyzerManagerInterface = &utils.AnalyzerManager{}
-	skippedDirs                                            = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	skippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 )
+
+type ScannerCmd interface {
+	Run(wd string) (err error)
+}
+
+type AdvancedSecurityScanner struct {
+	configFileName        string
+	resultsFileName       string
+	analyzerManager       utils.AnalyzerManager
+	serverDetails         *config.ServerDetails
+	workingDirs           []string
+	scannerDirCleanupFunc func() error
+}
+
+func NewAdvancedSecurityScanner(workingDirs []string, serverDetails *config.ServerDetails) (scanner *AdvancedSecurityScanner, err error) {
+	scanner = &AdvancedSecurityScanner{}
+	if scanner.analyzerManager.AnalyzerManagerFullPath, err = utils.GetAnalyzerManagerExecutable(); err != nil {
+		return
+	}
+	var tempDir string
+	if tempDir, err = fileutils.CreateTempDir(); err != nil {
+		return
+	}
+	scanner.scannerDirCleanupFunc = func() error {
+		return fileutils.RemoveTempDir(tempDir)
+	}
+	scanner.serverDetails = serverDetails
+	scanner.configFileName = filepath.Join(tempDir, "config.yaml")
+	scanner.resultsFileName = filepath.Join(tempDir, "results.sarif")
+	scanner.workingDirs, err = utils.GetFullPathsWorkingDirs(workingDirs)
+	return
+}
+
+func (a *AdvancedSecurityScanner) Run(scannerCmd ScannerCmd) (err error) {
+	for _, workingDir := range a.workingDirs {
+		func() {
+			defer func() {
+				err = errors.Join(err, deleteJasProcessFiles(a.configFileName, a.resultsFileName))
+			}()
+			if err = scannerCmd.Run(workingDir); err != nil {
+				return
+			}
+		}()
+	}
+	return
+}
 
 func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
 	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, workingDirs []string) (*utils.ExtendedScanResults, error) {
@@ -25,37 +72,34 @@ func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
 		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
 	}
-	analyzerManagerExist, err := analyzerManagerExecuter.ExistLocally()
-	if err != nil {
-		return &utils.ExtendedScanResults{XrayResults: xrayResults}, err
-	}
-	if !analyzerManagerExist {
-		log.Debug("Since the 'Analyzer Manager' doesn't exist locally, its execution is skipped.")
-		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
-	}
-	applicabilityScanResults, eligibleForApplicabilityScan, err := getApplicabilityScanResults(xrayResults,
-		dependencyTrees, serverDetails, scannedTechnologies, workingDirs, analyzerManagerExecuter)
+	scanner, err := NewAdvancedSecurityScanner(workingDirs, serverDetails)
 	if err != nil {
 		return nil, err
 	}
-	secretsScanResults, eligibleForSecretsScan, err := getSecretsScanResults(serverDetails, workingDirs, analyzerManagerExecuter)
+	defer func() {
+		cleanup := scanner.scannerDirCleanupFunc
+		err = errors.Join(err, cleanup())
+	}()
+	applicabilityScanResults, err := getApplicabilityScanResults(
+		xrayResults, dependencyTrees, scannedTechnologies, scanner)
 	if err != nil {
 		return nil, err
 	}
-	iacScanResults, eligibleForIacScan, err := getIacScanResults(serverDetails, workingDirs, analyzerManagerExecuter)
+	secretsScanResults, err := getSecretsScanResults(scanner)
+	if err != nil {
+		return nil, err
+	}
+	iacScanResults, err := getIacScanResults(scanner)
 	if err != nil {
 		return nil, err
 	}
 	return &utils.ExtendedScanResults{
-		EntitledForJas:               true,
-		XrayResults:                  xrayResults,
-		ScannedTechnologies:          scannedTechnologies,
-		ApplicabilityScanResults:     applicabilityScanResults,
-		EligibleForApplicabilityScan: eligibleForApplicabilityScan,
-		SecretsScanResults:           secretsScanResults,
-		EligibleForSecretScan:        eligibleForSecretsScan,
-		IacScanResults:               iacScanResults,
-		EligibleForIacScan:           eligibleForIacScan,
+		EntitledForJas:           true,
+		XrayResults:              xrayResults,
+		ScannedTechnologies:      scannedTechnologies,
+		ApplicabilityScanResults: applicabilityScanResults,
+		SecretsScanResults:       secretsScanResults,
+		IacScanResults:           iacScanResults,
 	}, nil
 }
 

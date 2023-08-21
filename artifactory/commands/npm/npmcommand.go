@@ -296,7 +296,6 @@ func (ca *NpmCommand) Run() (err error) {
 	if err = ca.collectDependencies(); err != nil {
 		return
 	}
-	log.Info(fmt.Sprintf("npm %s finished successfully.", ca.cmdName))
 	return
 }
 

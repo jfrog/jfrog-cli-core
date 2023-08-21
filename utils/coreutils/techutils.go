@@ -110,12 +110,17 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Nuget: {
-		indicators: []string{".sln", ".csproj"},
-		formal:     "NuGet",
+		indicators:                 []string{".sln", ".csproj"},
+		formal:                     "NuGet",
+		execCommand:                "dotnet", // .NET CLI is used for NuGet projects
+		packageInstallationCommand: "add",
+		packageVersionOperator:     "-v",
 	},
 	Dotnet: {
-		indicators: []string{".sln", ".csproj"},
-		formal:     ".NET",
+		indicators:                 []string{".sln", ".csproj"},
+		formal:                     ".NET",
+		packageInstallationCommand: "add",
+		packageVersionOperator:     "-v",
 	},
 }
 

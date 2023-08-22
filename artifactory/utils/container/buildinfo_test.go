@@ -60,7 +60,6 @@ func TestManifestConfig(t *testing.T) {
 	assert.Len(t, dependencies, 2)
 }
 
-// #nosec G602
 func createManifestConfig() (map[string]*utils.ResultItem, string) {
 	config := make(map[string]*utils.ResultItem)
 	config["manifest.json"] = dummySearchResults
@@ -96,7 +95,6 @@ func TestGetDependenciesFromManifestLayer(t *testing.T) {
 	assert.Len(t, dependencies, 1)
 }
 
-// #nosec G602
 func createManifestConfigWithLayer() (map[string]*utils.ResultItem, *manifest) {
 	manifest := &manifest{
 		Layers: []layer{{
@@ -117,7 +115,6 @@ func TestMissingDependenciesInManifestLayer(t *testing.T) {
 	assert.ErrorContains(t, err, "Could not find layer: sha__2 in Artifactory")
 }
 
-// #nosec G602
 func createManifestConfigWithMissingLayer() (map[string]*utils.ResultItem, *manifest) {
 	manifest := &manifest{
 		Layers: []layer{
@@ -145,7 +142,6 @@ func TestForeignDependenciesInManifestLayer(t *testing.T) {
 	assert.Len(t, dependencies, 1)
 }
 
-// #nosec G602
 func createManifestConfigWithForeignLayer() (map[string]*utils.ResultItem, *manifest) {
 	manifest := &manifest{
 		Layers: []layer{

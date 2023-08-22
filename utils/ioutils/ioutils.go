@@ -9,6 +9,7 @@ import (
 	"golang.org/x/term"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 )
@@ -106,4 +107,22 @@ func UnixToWinPathSeparator(filePath string) string {
 
 func WinToUnixPathSeparator(filePath string) string {
 	return strings.ReplaceAll(filePath, "\\", "/")
+}
+
+func ChdirWithCallback(chdirWd, callbackWd string) (callback func() error, err error) {
+	callback = func() error {
+		return nil
+	}
+	absoluteWd, err := filepath.Abs(chdirWd)
+	if err != nil {
+		return
+	}
+	err = os.Chdir(absoluteWd)
+	if err != nil {
+		return
+	}
+	callback = func() error {
+		return os.Chdir(callbackWd)
+	}
+	return
 }

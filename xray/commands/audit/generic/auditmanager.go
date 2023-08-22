@@ -4,9 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
-	"github.com/jfrog/gofrog/version"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/audit/go"
@@ -20,11 +18,11 @@ import (
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"golang.org/x/sync/errgroup"
 	"os"
-	"path/filepath"
 )
 
 type Params struct {
@@ -126,10 +124,18 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	if err != nil {
 		return
 	}
-	isEntitled, xrayVersion, err := isEntitledForJas(serverDetails)
+	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return
 	}
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+		return
+	}
+	isEntitled, err := isEntitledForJas(xrayManager, xrayVersion)
+	if err != nil {
+		return
+	}
+
 	auditParams.SetXrayVersion(xrayVersion)
 
 	errGroup := new(errgroup.Group)
@@ -137,9 +143,8 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 		// Download (if needed) the analyzer manager in a background routine.
 		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
 	}
-
 	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
-	results = genericAudit(auditParams)
+	results = runScaScan(auditParams)
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {
@@ -154,88 +159,69 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	return
 }
 
-func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayVersion string, err error) {
-	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
-	if err != nil {
-		return
-	}
-	if !version.NewVersion(xrayVersion).AtLeast(xrayutils.EntitlementsMinVersion) {
-		log.Debug("Entitlements check for ‘Advanced Security’ package failed:")
-		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion)
+func isEntitledForJas(xrayManager *xray.XrayServicesManager, xrayVersion string) (entitled bool, err error) {
+	if e := coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
+		log.Debug(e)
 		return
 	}
 	entitled, err = xrayManager.IsEntitled(xrayutils.ApplicabilityFeatureId)
 	return
 }
 
-// genericAudit audits all the projects found in the given workingDirs
-func genericAudit(params *Params) *Results {
-	if err := coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
-		return NewAuditResults().SetAuditError(err)
+func runScaScan(params *Params) (results *Results) {
+	results = NewAuditResults()
+	rootDir, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return results.SetAuditError(err)
 	}
-	log.Info("JFrog Xray version is:", params.xrayVersion)
-	log.Info("Scanning for vulnerable dependencies...")
-	if len(params.workingDirs) == 0 {
-		return doAudit(params)
-	}
-
-	return auditMultipleWorkingDirs(params)
-}
-
-func auditMultipleWorkingDirs(params *Params) *Results {
-	projectDir, err := os.Getwd()
-	if err != nil {
-		return NewAuditResults().SetAuditError(errorutils.CheckError(err))
-	}
-	defer func() {
-		err = errors.Join(err, os.Chdir(projectDir))
-	}()
-	results := NewAuditResults()
 	for _, wd := range params.workingDirs {
-		absWd, e := filepath.Abs(wd)
-		if e != nil {
-			err = errors.Join(err, fmt.Errorf("the audit command couldn't find the following path: %s\n%s\n", wd, e.Error()))
+		if len(params.workingDirs) > 1 {
+			log.Info("Running SCA scan for vulnerable dependencies scan in", wd, "directory...")
+		} else {
+			log.Info("Running SCA scan vulnerable dependencies...")
+		}
+		scaResults := runScaScanOnWorkingDir(params, wd, rootDir)
+		if scaResults.AuditError != nil {
+			err = errors.Join(err, fmt.Errorf("audit command in '%s' failed:\n%s\n", wd, scaResults.AuditError.Error()))
 			continue
 		}
-		log.Info("Scanning directory:", absWd, "...")
-		e = os.Chdir(absWd)
-		if e != nil {
-			err = errors.Join(err, fmt.Errorf("the audit command couldn't change the current working directory to the following path: %s\n%s\n", absWd, e.Error()))
-			continue
-		}
-
-		auditResults := doAudit(params)
-		if auditResults.AuditError != nil {
-			err = errors.Join(err, fmt.Errorf("audit command in %s failed:\n%s\n", absWd, auditResults.AuditError.Error()))
-			continue
-		}
-
 		results.ExtendedScanResults.XrayResults =
-			append(results.ExtendedScanResults.XrayResults, auditResults.ExtendedScanResults.XrayResults...)
+			append(results.ExtendedScanResults.XrayResults, scaResults.ExtendedScanResults.XrayResults...)
 		if !results.IsMultipleRootProject {
-			results.IsMultipleRootProject = auditResults.IsMultipleRootProject
+			results.IsMultipleRootProject = scaResults.IsMultipleRootProject
 		}
-		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, auditResults.ExtendedScanResults.ScannedTechnologies...)
+		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, scaResults.ExtendedScanResults.ScannedTechnologies...)
 	}
-	return results
+	results.SetAuditError(err)
+	return
 }
 
 // Audits the project found in the current directory using Xray.
-func doAudit(params *Params) *Results {
+func runScaScanOnWorkingDir(params *Params, workingDir, rootDir string) (results *Results) {
+	results = NewAuditResults()
+	err := os.Chdir(workingDir)
+	if err != nil {
+		results.SetAuditError(err)
+		return
+	}
+	defer func() {
+		results.SetAuditError(errors.Join(results.AuditError, os.Chdir(rootDir)))
+	}()
+
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
-	results := NewAuditResults()
 	technologies := params.Technologies()
 	if len(technologies) == 0 {
 		technologies = commandsutils.DetectedTechnologies()
 		if len(technologies) == 0 {
 			log.Info("Skipping vulnerable dependencies scanning...")
-			return results
+			return
 		}
 	}
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
-		return results.SetAuditError(err)
+		results.SetAuditError(err)
+		return
 	}
 
 	for _, tech := range coreutils.ToTechnologies(technologies) {
@@ -266,7 +252,8 @@ func doAudit(params *Params) *Results {
 		}
 		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
 	}
-	return results.SetAuditError(err)
+	results.SetAuditError(err)
+	return
 }
 
 func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {

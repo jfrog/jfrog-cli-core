@@ -30,9 +30,7 @@ func init() {
 }
 
 // This is the default server id. It is used when adding a server config without providing a server ID
-const (
-	DefaultServerId = "Default-Server"
-)
+const DefaultServerId = "Default-Server"
 
 func IsServerConfExists() (bool, error) {
 	conf, err := readConf()

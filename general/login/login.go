@@ -75,9 +75,10 @@ func existingServerLogin(serverId string) error {
 	}
 	if serverDetails.Url == "" {
 		serverDetails = &config.ServerDetails{ServerId: serverDetails.ServerId}
-	} else if fileutils.IsSshUrl(serverDetails.Url) {
-		return errorutils.CheckErrorf("web login cannot be performed via SSH. Please try again with different server configuration or configure a new one")
 	} else {
+		if fileutils.IsSshUrl(serverDetails.Url) {
+			return errorutils.CheckErrorf("web login cannot be performed via SSH. Please try again with different server configuration or configure a new one")
+		}
 		serverDetails.User = ""
 		serverDetails.Password = ""
 		serverDetails.AccessToken = ""

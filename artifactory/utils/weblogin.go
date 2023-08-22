@@ -26,7 +26,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 		return
 	}
 	if err = accessManager.SendLoginAuthenticationRequest(uuidStr); err != nil {
-		log.Info("web login is only supported for Artifactory version 7.63.1 and above. " +
+		log.Info("web login is only supported for Artifactory version 7.64.0 and above. " +
 			"Make sure the details you entered are correct and that Artifactory stands in the version requirement.")
 		return
 	}

@@ -6,10 +6,11 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 const (
-	newSeverPlaceholder = "New Server"
+	newSeverPlaceholder = "[New Server]"
 )
 
 type LoginCommand struct {
@@ -62,8 +63,7 @@ func existingConfLogin(configurations []*config.ServerDetails) error {
 // When configurations exist and the user chose to log in with a new server we direct him to a clean config process,
 // where he will be prompted for server ID and URL.
 func selectedNewServer() error {
-	newServer := config.ServerDetails{}
-	return general.ConfigServerAsDefault(&newServer, "", true, true)
+	return general.ConfigServerAsDefault(nil, "", true, true)
 }
 
 // When a user chose to log in to an existing server,
@@ -73,10 +73,16 @@ func existingServerLogin(serverId string) error {
 	if err != nil {
 		return err
 	}
-	serverDetails.User = ""
-	serverDetails.Password = ""
-	serverDetails.AccessToken = ""
-	serverDetails.RefreshToken = ""
+	if serverDetails.Url == "" {
+		serverDetails = &config.ServerDetails{ServerId: serverDetails.ServerId}
+	} else if fileutils.IsSshUrl(serverDetails.Url) {
+		return errorutils.CheckErrorf("web login cannot be performed via SSH. Please try again with different server configuration or configure a new one")
+	} else {
+		serverDetails.User = ""
+		serverDetails.Password = ""
+		serverDetails.AccessToken = ""
+		serverDetails.RefreshToken = ""
+	}
 	return general.ConfigServerAsDefault(serverDetails, serverId, true, true)
 }
 

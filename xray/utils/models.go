@@ -30,8 +30,8 @@ func (gbp *GraphBasicParams) SetFullDependenciesTree(fullDependenciesTree []*xra
 	return gbp
 }
 
-func (gbp *GraphBasicParams) ServerDetails() (*config.ServerDetails, error) {
-	return gbp.serverDetails, nil
+func (gbp *GraphBasicParams) ServerDetails() *config.ServerDetails {
+	return gbp.serverDetails
 }
 
 func (gbp *GraphBasicParams) SetServerDetails(serverDetails *config.ServerDetails) *GraphBasicParams {

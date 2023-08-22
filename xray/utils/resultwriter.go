@@ -108,10 +108,10 @@ func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabi
 			return
 		}
 	}
-	if err = PrintSecretsTable(results.SecretsScanResults, results.EligibleForSecretScan); err != nil {
+	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	return PrintIacTable(results.IacScanResults, results.EligibleForIacScan)
+	return PrintIacTable(results.IacScanResults, results.EntitledForJas)
 }
 
 func printMessages(messages []string) {

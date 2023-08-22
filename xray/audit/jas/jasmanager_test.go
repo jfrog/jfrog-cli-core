@@ -1,29 +1,17 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"os"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
-
-var (
-	analyzerManagerExecutionError error = nil
-	analyzerManagerExists               = true
-)
-
-type analyzerManagerMock struct {
-}
-
-func (am *analyzerManagerMock) Exec(string, string, *config.ServerDetails) error {
-	return analyzerManagerExecutionError
-}
-
-func (am *analyzerManagerMock) ExistLocally() (bool, error) {
-	return analyzerManagerExists, nil
-}
 
 var fakeBasicXrayResults = []scan.ScanResponse{
 	{
@@ -75,25 +63,23 @@ var fakeServerDetails = config.ServerDetails{
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
-	// Arrange
-	analyzerManagerExists = false
-	analyzerManagerExecuter = &analyzerManagerMock{}
-
-	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn}, nil)
-
-	// Assert
+	tmpDir, err := fileutils.CreateTempDir()
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
 	assert.NoError(t, err)
-	assert.False(t, extendedResults.EntitledForJas)
-	assert.Equal(t, 1, len(extendedResults.XrayResults))
-	assert.Nil(t, extendedResults.ApplicabilityScanResults)
+	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
+	}()
+	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
+	err = RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, &fakeServerDetails, nil, nil)
+	// Expect error:
+	assert.Error(t, err)
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
-	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip}, nil)
-
-	// Assert
-	assert.NotNil(t, extendedResults)
+	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Pip}}
+	err := RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, nil, nil, nil)
 	assert.NoError(t, err)
 }

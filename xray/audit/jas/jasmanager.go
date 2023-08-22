@@ -80,21 +80,21 @@ func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, dependency
 		err = errors.Join(err, cleanup())
 	}()
 	if progress != nil {
-		progress.SetHeadlineMsg("Running applicability scanning...")
+		progress.SetHeadlineMsg("Running applicability scanning")
 	}
 	scanResults.ApplicabilityScanResults, err = getApplicabilityScanResults(scanResults.XrayResults, dependencyTrees, scanResults.ScannedTechnologies, scanner)
 	if err != nil {
 		return
 	}
 	if progress != nil {
-		progress.SetHeadlineMsg("Running secrets scanning...")
+		progress.SetHeadlineMsg("Running secrets scanning")
 	}
 	scanResults.SecretsScanResults, err = getSecretsScanResults(scanner)
 	if err != nil {
 		return
 	}
 	if progress != nil {
-		progress.SetHeadlineMsg("Running IaC scanning...")
+		progress.SetHeadlineMsg("Running IaC scanning")
 	}
 	scanResults.IacScanResults, err = getIacScanResults(scanner)
 	return

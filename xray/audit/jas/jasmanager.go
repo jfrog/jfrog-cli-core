@@ -69,7 +69,7 @@ func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, dependency
 	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr) (err error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
-		return nil
+		return
 	}
 	scanner, err := NewAdvancedSecurityScanner(workingDirs, serverDetails)
 	if err != nil {

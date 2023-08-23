@@ -108,7 +108,6 @@ type Results struct {
 	IsMultipleRootProject bool
 	AuditError            error
 	ExtendedScanResults   *xrayutils.ExtendedScanResults
-	ScannedTechnologies   []coreutils.Technology
 }
 
 func NewAuditResults() *Results {

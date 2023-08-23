@@ -3,6 +3,13 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -10,12 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 var (
@@ -26,7 +27,7 @@ const (
 	EntitlementsMinVersion        = "3.66.5"
 	ApplicabilityFeatureId        = "contextual_analysis"
 	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerVersion        = "1.2.4.1858388"
+	analyzerManagerVersion        = "1.2.4.1921744"
 	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName        = "analyzerManager"
 	analyzerManagerExecutableName = "analyzerManager"
@@ -79,49 +80,27 @@ type IacOrSecretResult struct {
 }
 
 type ExtendedScanResults struct {
-	XrayResults                  []services.ScanResponse
-	ScannedTechnologies          []coreutils.Technology
-	ApplicabilityScanResults     map[string]string
-	SecretsScanResults           []IacOrSecretResult
-	IacScanResults               []IacOrSecretResult
-	EntitledForJas               bool
-	EligibleForApplicabilityScan bool
-	EligibleForSecretScan        bool
-	EligibleForIacScan           bool
+	XrayResults              []services.ScanResponse
+	ScannedTechnologies      []coreutils.Technology
+	ApplicabilityScanResults map[string]string
+	SecretsScanResults       []IacOrSecretResult
+	IacScanResults           []IacOrSecretResult
+	EntitledForJas           bool
 }
 
 func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 	return e.XrayResults
 }
 
-// AnalyzerManagerInterface represents the analyzer manager executable file that exists locally as a Jfrog dependency.
-// It triggers JAS capabilities by verifying user's entitlements and running the JAS scanners.
-// Analyzer manager input:
-//   - scan command: ca (contextual analysis) / sec (secrets) / iac
-//   - path to configuration file
-//
-// Analyzer manager output:
-//   - sarif file containing the scan results
-type AnalyzerManagerInterface interface {
-	ExistLocally() (bool, error)
-	Exec(string, string) error
-}
-
 type AnalyzerManager struct {
-	analyzerManagerFullPath string
+	AnalyzerManagerFullPath string
 }
 
-func (am *AnalyzerManager) ExistLocally() (bool, error) {
-	analyzerManagerPath, err := getAnalyzerManagerExecutable()
-	if err != nil {
-		return false, err
+func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *config.ServerDetails) (err error) {
+	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
+		return err
 	}
-	am.analyzerManagerFullPath = analyzerManagerPath
-	return fileutils.IsFileExists(analyzerManagerPath, false)
-}
-
-func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err error) {
-	cmd := exec.Command(am.analyzerManagerFullPath, scanCommand, configFile)
+	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile)
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {
@@ -129,7 +108,7 @@ func (am *AnalyzerManager) Exec(configFile string, scanCommand string) (err erro
 			}
 		}
 	}()
-	cmd.Dir = filepath.Dir(am.analyzerManagerFullPath)
+	cmd.Dir = filepath.Dir(am.AnalyzerManagerFullPath)
 	err = cmd.Run()
 	return errorutils.CheckError(err)
 }
@@ -150,12 +129,20 @@ func GetAnalyzerManagerDirAbsolutePath() (string, error) {
 	return filepath.Join(jfrogDir, analyzerManagerDirName), nil
 }
 
-func getAnalyzerManagerExecutable() (string, error) {
+func GetAnalyzerManagerExecutable() (analyzerManagerPath string, err error) {
 	analyzerManagerDir, err := GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(analyzerManagerDir, GetAnalyzerManagerExecutableName()), nil
+	analyzerManagerPath = filepath.Join(analyzerManagerDir, GetAnalyzerManagerExecutableName())
+	var exists bool
+	if exists, err = fileutils.IsFileExists(analyzerManagerPath, false); err != nil {
+		return
+	}
+	if !exists {
+		err = errors.New("unable to locate the analyzer manager package. Advanced security scans cannot be performed without this package")
+	}
+	return analyzerManagerPath, err
 }
 
 func GetAnalyzerManagerExecutableName() string {
@@ -193,7 +180,8 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 }
 
 func ParseAnalyzerManagerError(scanner ScanType, err error) error {
-	if exitError, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		exitCode := exitError.ExitCode()
 		if exitCodeDescription, exitCodeExists := exitCodeErrorsMap[exitCode]; exitCodeExists {
 			log.Warn(exitCodeDescription)
@@ -249,4 +237,25 @@ func GetResultSeverity(result *sarif.Result) string {
 		}
 	}
 	return SeverityDefaultValue
+}
+
+// Receives a list of relative path working dirs, returns a list of full paths working dirs
+func GetFullPathsWorkingDirs(workingDirs []string) ([]string, error) {
+	if len(workingDirs) == 0 {
+		currentDir, err := coreutils.GetWorkingDirectory()
+		if err != nil {
+			return nil, err
+		}
+		return []string{currentDir}, nil
+	}
+
+	var fullPathsWorkingDirs []string
+	for _, wd := range workingDirs {
+		fullPathWd, err := filepath.Abs(wd)
+		if err != nil {
+			return nil, err
+		}
+		fullPathsWorkingDirs = append(fullPathsWorkingDirs, fullPathWd)
+	}
+	return fullPathsWorkingDirs, nil
 }

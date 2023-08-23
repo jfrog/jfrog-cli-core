@@ -307,7 +307,7 @@ func PrintYellow(str string) string {
 	return colorStr(str, color.Yellow)
 }
 
-// Print the test to the console with the specified color.
+// Add the requested style to the string if possible.
 func colorStr(str string, c color.Color) string {
 	// Add styles only on supported terminals
 	if log.IsStdOutTerminal() && log.IsColorsSupported() {

@@ -75,15 +75,19 @@ func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *services.XrayG
 }
 
 func (auditCmd *GenericAuditCommand) Run() (err error) {
+	workingDirs, err := xrutils.GetFullPathsWorkingDirs(auditCmd.workingDirs)
+	if err != nil {
+		return
+	}
 	auditParams := NewAuditParams().
 		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
-		SetWorkingDirs(auditCmd.workingDirs).
+		SetWorkingDirs(workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
 		SetFixableOnly(auditCmd.fixableOnly).
 		SetGraphBasicParams(auditCmd.GraphBasicParams)
 	auditResults, err := RunAudit(auditParams)
 	if err != nil {
-		return err
+		return
 	}
 	if auditCmd.Progress() != nil {
 		if err = auditCmd.Progress().Quit(); err != nil {

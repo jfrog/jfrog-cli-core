@@ -132,9 +132,12 @@ func (r *Results) SetAuditError(err error) *Results {
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
 func RunAudit(auditParams *Params) (results *Results, err error) {
 	var entitlements *XrayEntitlements
-
+	serverDetails, err := auditParams.ServerDetails()
+	if err != nil {
+		return
+	}
 	// Check preconditions for JAS and XSC.
-	if entitlements, err = checkEntitlements(auditParams.ServerDetails(), auditParams); err != nil {
+	if entitlements, err = checkEntitlements(serverDetails, auditParams); err != nil {
 		return
 	}
 
@@ -155,7 +158,11 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 
 func runJasScanners(auditParams *Params, results *Results) (err error) {
 	results.ExtendedScanResults.EntitledForJas = true
-	return jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), auditParams.ServerDetails(), auditParams.workingDirs, auditParams.Progress())
+	serverDetails, err := auditParams.ServerDetails()
+	if err != nil {
+		return err
+	}
+	return jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
 }
 
 // checkEntitlements validates the entitlements for JAS and XSC.
@@ -270,20 +277,20 @@ func auditMultipleWorkingDirs(params *Params) *Results {
 func doAudit(params *Params) *Results {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
-	var err error
+	results := NewAuditResults()
 	technologies := params.Technologies()
 	if len(technologies) == 0 {
 		technologies = commandsutils.DetectedTechnologies()
 		if len(technologies) == 0 {
 			log.Info("Skipping vulnerable dependencies scanning...")
-			return NewAuditResults().SetAuditError(err)
+			return results
 		}
 	}
-	serverDetails := params.ServerDetails()
-	results := NewAuditResults()
+	serverDetails, err := params.ServerDetails()
 	if err != nil {
-		return NewAuditResults().SetAuditError(err)
+		return results.SetAuditError(err)
 	}
+
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		if tech == coreutils.Dotnet {
 			continue
@@ -319,7 +326,7 @@ func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Te
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
-	serverDetails := params.ServerDetails()
+	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return
 	}
@@ -355,13 +362,17 @@ func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Te
 }
 
 func getJavaDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return nil, err
+	}
 	return java.BuildDependencyTree(&java.DependencyTreeParams{
 		Tool:             tech,
 		InsecureTls:      params.InsecureTls(),
 		IgnoreConfigFile: params.IgnoreConfigFile(),
 		ExcludeTestDeps:  params.ExcludeTestDependencies(),
 		UseWrapper:       params.UseWrapper(),
-		Server:           params.ServerDetails(),
+		Server:           serverDetails,
 		DepsRepo:         params.DepsRepo(),
 	})
 }

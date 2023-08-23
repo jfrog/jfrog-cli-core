@@ -105,7 +105,7 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*scan.ScanResponse, err
 		// Remove scan type param if Xray version is under the minimum supported version
 		params.xrayGraphScanParams.ScanType = ""
 	}
-	scanId, err := xrayManager.ScanGraph(*params.xrayGraphScanParams)
+	scanId, err := xrayManager.ScanGraph(params.xrayGraphScanParams)
 	if err != nil {
 		return nil, err
 	}

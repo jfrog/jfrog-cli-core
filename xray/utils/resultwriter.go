@@ -83,7 +83,6 @@ func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.Si
 }
 
 func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool, messages []string) (err error) {
-	log.Output()
 	printMessages(messages)
 	violations, vulnerabilities, licenses := SplitScanResults(results.getXrayScanResults())
 	if len(results.getXrayScanResults()) > 0 {
@@ -93,7 +92,6 @@ func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabi
 		}
 		printMessage(coreutils.PrintTitle("The full scan results are available here: ") + coreutils.PrintLink(resultsPath))
 	}
-
 	log.Output()
 	if includeVulnerabilities {
 		err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, scan)
@@ -108,13 +106,18 @@ func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabi
 			return
 		}
 	}
+	log.Output()
 	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
 		return
 	}
+	log.Output()
 	return PrintIacTable(results.IacScanResults, results.EntitledForJas)
 }
 
 func printMessages(messages []string) {
+	if len(messages) > 0 {
+		log.Output()
+	}
 	for _, m := range messages {
 		printMessage(m)
 	}

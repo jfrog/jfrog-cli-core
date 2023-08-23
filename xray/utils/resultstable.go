@@ -176,10 +176,16 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extende
 	}
 
 	if scan {
-		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
+	}
+	var emptyTableMessage string
+	if len(extendedResults.ScannedTechnologies) > 0 {
+		emptyTableMessage = "✨ No vulnerable dependencies were found ✨"
+	} else {
+		emptyTableMessage = "Couldn't determine a package manager or build tool used by this project"
 	}
 
-	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
+	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerable Dependencies", emptyTableMessage, printExtended)
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
@@ -308,7 +314,7 @@ func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecr
 func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
-		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secrets",
+		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secret Detection",
 			"✨ No secrets were found ✨", false)
 	}
 	return nil

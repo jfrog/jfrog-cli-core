@@ -103,7 +103,8 @@ func (params *Params) SetXrayVersion(version string) *Params {
 
 type Results struct {
 	IsMultipleRootProject bool
-	AuditError            error
+	ScaError              error
+	JasError              error
 	ExtendedScanResults   *xrayutils.ExtendedScanResults
 }
 
@@ -111,8 +112,13 @@ func NewAuditResults() *Results {
 	return &Results{ExtendedScanResults: &xrayutils.ExtendedScanResults{}}
 }
 
-func (r *Results) JoinAuditError(err error) *Results {
-	r.AuditError = errors.Join(r.AuditError, err)
+func (r *Results) SetScaError(err error) *Results {
+	r.ScaError = err
+	return r
+}
+
+func (r *Results) SetJasError(err error) *Results {
+	r.JasError = err
 	return r
 }
 
@@ -146,10 +152,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	// Initialize Results struct
 	results = NewAuditResults()
 	// The sca scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
-	scaErr := runScaScan(auditParams, results)
-	if scaErr != nil {
-		results.JoinAuditError(scaErr)
-	}
+	results.ScaError = runScaScan(auditParams, results)
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {
@@ -159,10 +162,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	// Run scanners only if the user is entitled for Advanced Security
 	if isEntitled {
 		results.ExtendedScanResults.EntitledForJas = true
-		jasErr := jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
-		if jasErr != nil {
-			results.JoinAuditError(jasErr)
-		}
+		results.JasError = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
 	}
 	return
 }

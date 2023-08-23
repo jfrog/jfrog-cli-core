@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"errors"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -98,8 +99,8 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 	if !auditResults.ExtendedScanResults.EntitledForJas {
 		messages = []string{coreutils.PrintTitle("The ‘jf audit’ command also supports JFrog Advanced Security features, such as 'Contextual Analysis', 'Secret Detection', 'IaC Scan'.\nThis feature isn't enabled on your system. Read more - ") + coreutils.PrintLink("https://jfrog.com/xray/")}
 	}
-	// Print Scan results on all cases except if errors accrued on Generic Audit command and no security/license issues found.
-	printScanResults := !(auditResults.AuditError != nil && xrutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
+	// Print Scan results on all cases except if errors accrued on SCA scan and no security/license issues found.
+	printScanResults := !(auditResults.ScaError != nil && xrutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
 	if printScanResults {
 		err = xrutils.PrintScanResults(auditResults.ExtendedScanResults,
 			nil,
@@ -113,8 +114,7 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 			return
 		}
 	}
-	if auditResults.AuditError != nil {
-		err = auditResults.AuditError
+	if err = errors.Join(auditResults.ScaError, auditResults.JasError); err != nil {
 		return
 	}
 

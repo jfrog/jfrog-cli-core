@@ -182,7 +182,7 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extende
 	if len(extendedResults.ScannedTechnologies) > 0 {
 		emptyTableMessage = "✨ No vulnerable dependencies were found ✨"
 	} else {
-		emptyTableMessage = "Couldn't determine a package manager or build tool used by this project"
+		emptyTableMessage = coreutils.PrintYellow("🔧 Couldn't determine a package manager or build tool used by this project 🔧")
 	}
 
 	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerable Dependencies", emptyTableMessage, printExtended)

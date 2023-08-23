@@ -302,6 +302,11 @@ func PrintComment(str string) string {
 	return colorStr(str, color.Gray)
 }
 
+// Print the test to the console in gray color.
+func PrintYellow(str string) string {
+	return colorStr(str, color.Yellow)
+}
+
 // Print the test to the console with the specified color.
 func colorStr(str string, c color.Color) string {
 	// Add styles only on supported terminals

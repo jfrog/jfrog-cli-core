@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	ApplicabilityFeatureId   = "contextual_analysis"
 	applicabilityScanType    = "analyze-applicability"
 	applicabilityScanCommand = "ca"
 )
@@ -106,7 +105,11 @@ func getDirectDependenciesSet(dependencyTrees []*xrayUtils.GraphNode) *datastruc
 }
 
 func (a *ApplicabilityScanManager) Run(wd string) (err error) {
-	log.Info("Running applicability scanning in the", wd, "directory...")
+	if len(a.scanner.workingDirs) > 1 {
+		log.Info("Running applicability scanning in the", wd, "directory...")
+	} else {
+		log.Info("Running applicability scanning...")
+	}
 	if err = a.createConfigFile(wd); err != nil {
 		return
 	}

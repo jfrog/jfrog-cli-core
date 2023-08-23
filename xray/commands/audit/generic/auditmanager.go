@@ -17,7 +17,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -33,14 +33,14 @@ type Params struct {
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
-	*clientUtils.GraphBasicParams
+	*xrayutils.GraphBasicParams
 	xrayVersion string
 }
 
 func NewAuditParams() *Params {
 	return &Params{
 		xrayGraphScanParams: &services.XrayGraphScanParams{},
-		GraphBasicParams:    &clientUtils.GraphBasicParams{},
+		GraphBasicParams:    &xrayutils.GraphBasicParams{},
 	}
 }
 
@@ -65,7 +65,7 @@ func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayG
 	return params
 }
 
-func (params *Params) SetGraphBasicParams(gbp *clientUtils.GraphBasicParams) *Params {
+func (params *Params) SetGraphBasicParams(gbp *xrayutils.GraphBasicParams) *Params {
 	params.GraphBasicParams = gbp
 	return params
 }
@@ -106,12 +106,11 @@ func (params *Params) SetXrayVersion(version string) *Params {
 type Results struct {
 	IsMultipleRootProject bool
 	AuditError            error
-	ExtendedScanResults   *clientUtils.ExtendedScanResults
-	ScannedTechnologies   []coreutils.Technology
+	ExtendedScanResults   *xrayutils.ExtendedScanResults
 }
 
 func NewAuditResults() *Results {
-	return &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
+	return &Results{ExtendedScanResults: &xrayutils.ExtendedScanResults{}}
 }
 
 func (r *Results) SetAuditError(err error) *Results {
@@ -149,9 +148,8 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 
 	// Run scanners only if the user is entitled for Advanced Security
 	if isEntitled {
-		xrayScanResults := results.ExtendedScanResults.XrayResults
-		scannedTechnologies := results.ScannedTechnologies
-		results.ExtendedScanResults, err = jas.GetExtendedScanResults(xrayScanResults, auditParams.FullDependenciesTree(), serverDetails, scannedTechnologies, auditParams.WorkingDirs())
+		results.ExtendedScanResults.EntitledForJas = true
+		err = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
 	}
 	return
 }
@@ -161,12 +159,12 @@ func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayV
 	if err != nil {
 		return
 	}
-	if !version.NewVersion(xrayVersion).AtLeast(clientUtils.EntitlementsMinVersion) {
+	if !version.NewVersion(xrayVersion).AtLeast(xrayutils.EntitlementsMinVersion) {
 		log.Debug("Entitlements check for ‘Advanced Security’ package failed:")
-		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
+		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion)
 		return
 	}
-	entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
+	entitled, err = xrayManager.IsEntitled(xrayutils.ApplicabilityFeatureId)
 	return
 }
 
@@ -217,7 +215,7 @@ func auditMultipleWorkingDirs(params *Params) *Results {
 		if !results.IsMultipleRootProject {
 			results.IsMultipleRootProject = auditResults.IsMultipleRootProject
 		}
-		results.ScannedTechnologies = append(results.ScannedTechnologies, auditResults.ScannedTechnologies...)
+		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, auditResults.ExtendedScanResults.ScannedTechnologies...)
 	}
 	return results
 }
@@ -226,20 +224,20 @@ func auditMultipleWorkingDirs(params *Params) *Results {
 func doAudit(params *Params) *Results {
 	// If no technologies were given, try to detect all types of technologies used.
 	// Otherwise, run audit for requested technologies only.
-	var err error
+	results := NewAuditResults()
 	technologies := params.Technologies()
 	if len(technologies) == 0 {
 		technologies = commandsutils.DetectedTechnologies()
 		if len(technologies) == 0 {
 			log.Info("Skipping vulnerable dependencies scanning...")
-			return NewAuditResults().SetAuditError(err)
+			return results
 		}
 	}
 	serverDetails, err := params.ServerDetails()
-	results := NewAuditResults()
 	if err != nil {
-		return NewAuditResults().SetAuditError(err)
+		return results.SetAuditError(err)
 	}
+
 	for _, tech := range coreutils.ToTechnologies(technologies) {
 		if tech == coreutils.Dotnet {
 			continue
@@ -266,12 +264,12 @@ func doAudit(params *Params) *Results {
 		if !results.IsMultipleRootProject {
 			results.IsMultipleRootProject = len(flattenTree) > 1
 		}
-		results.ScannedTechnologies = append(results.ScannedTechnologies, tech)
+		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
 	}
 	return results.SetAuditError(err)
 }
 
-func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
@@ -310,7 +308,7 @@ func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 	return services.FlattenGraph(dependencyTrees)
 }
 
-func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
+func getJavaDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return nil, err

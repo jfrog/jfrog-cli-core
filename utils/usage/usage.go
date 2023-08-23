@@ -101,10 +101,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 }
 
 func (ur *UsageReporter) WaitForResponses() (err error) {
-	if err = ur.reportWaitGroup.Wait(); err != nil {
-		log.Debug(ReportUsagePrefix, err.Error())
-	}
-	return
+	return ur.reportWaitGroup.Wait()
 }
 
 func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error) {

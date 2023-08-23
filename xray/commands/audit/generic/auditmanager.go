@@ -96,11 +96,6 @@ func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
 	return params
 }
 
-func (params *Params) SetXrayVersion(version string) *Params {
-	params.xrayVersion = version
-	return params
-}
-
 type Results struct {
 	IsMultipleRootProject bool
 	ScaError              error
@@ -116,31 +111,32 @@ func NewAuditResults() *Results {
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
 func RunAudit(auditParams *Params) (results *Results, err error) {
+	// Initialize Results struct
+	results = NewAuditResults()
+
 	serverDetails, err := auditParams.ServerDetails()
 	if err != nil {
 		return
 	}
-	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	var xrayManager *xray.XrayServicesManager
+	xrayManager, auditParams.xrayVersion, err = commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return
 	}
-	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, auditParams.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
 		return
 	}
-	isEntitled, err := isEntitledForJas(xrayManager, xrayVersion)
+	results.ExtendedScanResults.EntitledForJas, err = isEntitledForJas(xrayManager, auditParams.xrayVersion)
 	if err != nil {
 		return
 	}
-
-	auditParams.SetXrayVersion(xrayVersion)
 
 	errGroup := new(errgroup.Group)
-	if isEntitled {
+	if results.ExtendedScanResults.EntitledForJas {
 		// Download (if needed) the analyzer manager in a background routine.
 		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
 	}
-	// Initialize Results struct
-	results = NewAuditResults()
+
 	// The sca scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
 	results.ScaError = runScaScan(auditParams, results)
 
@@ -150,8 +146,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 
 	// Run scanners only if the user is entitled for Advanced Security
-	if isEntitled {
-		results.ExtendedScanResults.EntitledForJas = true
+	if results.ExtendedScanResults.EntitledForJas {
 		results.JasError = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
 	}
 	return
@@ -175,7 +170,7 @@ func runScaScan(params *Params, results *Results) (err error) {
 		if len(params.workingDirs) > 1 {
 			log.Info("Running SCA scan for vulnerable dependencies scan in", wd, "directory...")
 		} else {
-			log.Info("Running SCA scan vulnerable dependencies...")
+			log.Info("Running SCA scan for vulnerable dependencies...")
 		}
 		wdScanErr := runScaScanOnWorkingDir(params, results, wd, rootDir)
 		if wdScanErr != nil {

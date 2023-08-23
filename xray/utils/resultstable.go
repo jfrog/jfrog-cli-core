@@ -313,6 +313,7 @@ func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecr
 func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
+		log.Output()
 		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secret Detection",
 			"✨ No secrets were found ✨", false)
 	}
@@ -350,6 +351,7 @@ func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow
 func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
+		log.Output()
 		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
 	}

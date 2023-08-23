@@ -106,11 +106,9 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 			return
 		}
 	}
-	log.Output()
 	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	log.Output()
 	return PrintIacTable(results.IacScanResults, results.EntitledForJas)
 }
 

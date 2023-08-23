@@ -63,10 +63,10 @@ func (tcb *TransferConfigBase) GetRepoFilter() *utils.IncludeExcludeFilter {
 
 func (tcb *TransferConfigBase) CreateServiceManagers(dryRun bool) (err error) {
 	if tcb.SourceArtifactoryManager, err = utils.CreateServiceManager(tcb.SourceServerDetails, -1, 0, dryRun); err != nil {
-		return err
+		return
 	}
 	if tcb.TargetArtifactoryManager, err = utils.CreateServiceManager(tcb.TargetServerDetails, -1, 0, dryRun); err != nil {
-		return err
+		return
 	}
 	if tcb.SourceAccessManager, err = utils.CreateAccessServiceManager(tcb.SourceServerDetails, false); err != nil {
 		return
@@ -74,16 +74,15 @@ func (tcb *TransferConfigBase) CreateServiceManagers(dryRun bool) (err error) {
 	if tcb.TargetAccessManager, err = utils.CreateAccessServiceManager(tcb.TargetServerDetails, false); err != nil {
 		return
 	}
-
-	return err
+	return
 }
 
 // Make sure that the server is configured with a valid admin Access Token.
 // serverDetails - The server to check
 // accessManager - Access Manager to run ping
-func (tcb *TransferConfigBase) ValidateAccess(serverDetails *config.ServerDetails, accessManager *access.AccessServicesManager) error {
+func (tcb *TransferConfigBase) ValidateAccessServerConnection(serverDetails *config.ServerDetails, accessManager *access.AccessServicesManager) error {
 	if serverDetails.Password != "" {
-		return fmt.Errorf("it looks like you configured the '%[1]s' instance with username and password.\n"+
+		return errorutils.CheckErrorf("it looks like you configured the '%[1]s' instance with username and password.\n"+
 			"This command can be used with admin Access Token only.\n"+
 			"Please use the 'jf c edit %[1]s' command to configure the Access Token, and then re-run the command", serverDetails.ServerId)
 	}
@@ -321,11 +320,7 @@ func (tcb *TransferConfigBase) removeFederatedMembers(federatedRepoParams interf
 	} else {
 		return federatedRepoParams, nil
 	}
-	response, err := MapToInterface(repoMap)
-	if err != nil {
-		return nil, err
-	}
-	return response, errorutils.CheckError(err)
+	return MapToInterface(repoMap)
 }
 
 // Create a repository in the target server and assign the repository to the required project, if any.
@@ -333,8 +328,7 @@ func (tcb *TransferConfigBase) removeFederatedMembers(federatedRepoParams interf
 // repoKey    - Repository key
 func (tcb *TransferConfigBase) createRepositoryAndAssignToProject(repoParams interface{}, repoKey string) (err error) {
 	var projectKey string
-	repoParams, projectKey, err = removeProjectKeyIfNeeded(repoParams, repoKey)
-	if err != nil {
+	if repoParams, projectKey, err = removeProjectKeyIfNeeded(repoParams, repoKey); err != nil {
 		return
 	}
 	if projectKey != "" {
@@ -354,7 +348,8 @@ func (tcb *TransferConfigBase) createRepositoryAndAssignToProject(repoParams int
 }
 
 // Remove non-default project key from the repository parameters if existed and the repository key does not start with it.
-// This is needed to allow creating repository assigned to projects so that the repository name is not st
+// This is needed to allow creating repository assigned to projects so that the repository name is not starting with the project key prefix.
+// Returns the updated repository params, the project key if removed and an error if any.
 func removeProjectKeyIfNeeded(repoParams interface{}, repoKey string) (interface{}, string, error) {
 	var projectKey string
 	repoMap, err := InterfaceToMap(repoParams)

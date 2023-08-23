@@ -566,14 +566,14 @@ func (tcc *TransferConfigCommand) validateServerPrerequisites() (err error) {
 
 	// Check connectivity to JFrog Access if the source Artifactory version is >= 7.0.0
 	if versionErr := coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, commandsUtils.MinJFrogProjectsArtifactoryVersion); versionErr == nil {
-		if err = tcc.ValidateAccess(tcc.SourceServerDetails, tcc.SourceAccessManager); err != nil {
+		if err = tcc.ValidateAccessServerConnection(tcc.SourceServerDetails, tcc.SourceAccessManager); err != nil {
 			return
 		}
 	}
 
 	// Make sure source and target Artifactory URLs are different
-	if err := tcc.ValidateDifferentServers(); err != nil {
-		return err
+	if err = tcc.ValidateDifferentServers(); err != nil {
+		return
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
 	return tcc.validateTargetServer()

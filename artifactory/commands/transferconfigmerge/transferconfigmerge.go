@@ -107,10 +107,10 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 
 	projectsSupported = true
 
-	if err = tcmc.ValidateAccess(tcmc.SourceServerDetails, tcmc.SourceAccessManager); err != nil {
+	if err = tcmc.ValidateAccessServerConnection(tcmc.SourceServerDetails, tcmc.SourceAccessManager); err != nil {
 		return
 	}
-	if err = tcmc.ValidateAccess(tcmc.TargetServerDetails, tcmc.TargetAccessManager); err != nil {
+	if err = tcmc.ValidateAccessServerConnection(tcmc.TargetServerDetails, tcmc.TargetAccessManager); err != nil {
 		return
 	}
 

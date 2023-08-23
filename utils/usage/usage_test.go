@@ -100,7 +100,9 @@ func TestConvertToXrayUsage(t *testing.T) {
 func TestConvertToEcosystemUsage(t *testing.T) {
 	reporter := NewUsageReporter(productName, &config.ServerDetails{Url: serverUrl})
 	for i := 0; i < len(features); i++ {
-		assert.Equal(t, xrayEvents[i], reporter.convertAttributesToXrayEvents(features[i])[0])
+		report, err := reporter.convertAttributesToEcosystemReports(features[i])
+		assert.NoError(t, err)
+		assert.Equal(t, ecosystemData[i], report[0])
 	}
 }
 

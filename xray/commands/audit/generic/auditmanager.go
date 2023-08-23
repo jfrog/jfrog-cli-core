@@ -143,7 +143,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 		// Download (if needed) the analyzer manager in a background routine.
 		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
 	}
-	// The audit scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
+	// The sca scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
 	results = runScaScan(auditParams)
 
 	// Wait for the Download of the AnalyzerManager to complete.

@@ -192,14 +192,15 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 }
 
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
-	flattenGraph, err := audit.GetTechDependencyTree(ca.GraphBasicParams, tech)
+	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.GraphBasicParams, tech)
 	if err != nil {
 		return err
 	}
 	// Validate the graph isn't empty.
-	if len(ca.FullDependenciesTree()) == 0 {
+	if len(fullDependenciesTree) == 0 {
 		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.ToString())
 	}
+	rootNode := fullDependenciesTree[0]
 	if err = ca.SetRepo(tech); err != nil {
 		return err
 	}
@@ -216,7 +217,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if err != nil {
 		return err
 	}
-	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, ca.FullDependenciesTree()[0].Id, "", "")
+	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, rootNode.Id, "", "")
 	if ca.Progress() != nil {
 		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))
 	}
@@ -238,11 +239,9 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		parallelRequests:     ca.parallelRequests,
 	}
 	packagesStatusMap := sync.Map{}
-	// Root node id represents the project name and shouldn't be validated with curation
-	rootNodeId := ca.FullDependenciesTree()[0].Id
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
-	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNodeId)
-	analyzer.fillGraphRelations(ca.FullDependenciesTree()[0], &packagesStatusMap,
+	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNode.Id)
+	analyzer.fillGraphRelations(rootNode, &packagesStatusMap,
 		&packagesStatus, "", "", datastructures.MakeSet[string](), true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName

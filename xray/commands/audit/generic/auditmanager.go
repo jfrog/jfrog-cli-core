@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
+	"github.com/jfrog/gofrog/datastructures"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
@@ -147,7 +148,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 
 	// Run scanners only if the user is entitled for Advanced Security
 	if results.ExtendedScanResults.EntitledForJas {
-		results.JasError = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
+		results.JasError = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.Progress())
 	}
 	return
 }
@@ -210,7 +211,7 @@ func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDi
 		if tech == coreutils.Dotnet {
 			continue
 		}
-		flattenTree, techErr := GetTechDependencyTree(params.GraphBasicParams, tech)
+		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.GraphBasicParams, tech)
 		if techErr != nil {
 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
 			continue
@@ -231,7 +232,13 @@ func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDi
 			err = errors.Join(err, fmt.Errorf("'%s' Xray dependency tree scan request failed:\n%s\n", tech, techErr.Error()))
 			continue
 		}
-		techResults = audit.BuildImpactPathsForScanResponse(techResults, params.FullDependenciesTree())
+		techResults = audit.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
+		if tech == coreutils.Pip {
+			params.AppendDirectDependencies(getDirectDependenciesFromTree(flattenTree))
+
+		} else {
+			params.AppendDirectDependencies(getDirectDependenciesFromTree(fullDependencyTrees))
+		}
 		results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
 		if !results.IsMultipleRootProject {
 			results.IsMultipleRootProject = len(flattenTree) > 1
@@ -241,7 +248,18 @@ func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDi
 	return
 }
 
-func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
+// This function retrieves the dependency trees of the scanned project and extracts a set that contains only the direct dependencies.
+func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []string {
+	directDependencies := datastructures.MakeSet[string]()
+	for _, tree := range dependencyTrees {
+		for _, node := range tree.Nodes {
+			directDependencies.Add(node.Id)
+		}
+	}
+	return directDependencies.ToSlice()
+}
+
+func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
@@ -249,35 +267,32 @@ func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Te
 	if err != nil {
 		return
 	}
-	var dependencyTrees []*xrayCmdUtils.GraphNode
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
-		dependencyTrees, err = getJavaDependencyTree(params, tech)
+		fullDependencyTrees, err = getJavaDependencyTree(params, tech)
 	case coreutils.Npm:
-		dependencyTrees, err = npm.BuildDependencyTree(params.Args())
+		fullDependencyTrees, err = npm.BuildDependencyTree(params.Args())
 	case coreutils.Yarn:
-		dependencyTrees, err = yarn.BuildDependencyTree()
+		fullDependencyTrees, err = yarn.BuildDependencyTree()
 	case coreutils.Go:
-		dependencyTrees, err = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
+		fullDependencyTrees, err = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
-		dependencyTrees, err = python.BuildDependencyTree(&python.AuditPython{
+		fullDependencyTrees, err = python.BuildDependencyTree(&python.AuditPython{
 			Server:              serverDetails,
 			Tool:                pythonutils.PythonTool(tech),
 			RemotePypiRepo:      params.DepsRepo(),
 			PipRequirementsFile: params.PipRequirementsFile()})
 	case coreutils.Nuget:
-		dependencyTrees, err = nuget.BuildDependencyTree()
+		fullDependencyTrees, err = nuget.BuildDependencyTree()
 	default:
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	// Save the full dependencyTree to build impact paths for vulnerable dependencies
-	params.SetFullDependenciesTree(dependencyTrees)
-
 	// Flatten the graph to speed up the ScanGraph request
-	return services.FlattenGraph(dependencyTrees)
+	flatTree, err = services.FlattenGraph(fullDependencyTrees)
+	return
 }
 
 func getJavaDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {

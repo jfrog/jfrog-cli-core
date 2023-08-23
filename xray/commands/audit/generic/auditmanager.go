@@ -112,16 +112,6 @@ func NewAuditResults() *Results {
 	return &Results{ExtendedScanResults: &xrayutils.ExtendedScanResults{}}
 }
 
-func (r *Results) SetScaError(err error) *Results {
-	r.ScaError = err
-	return r
-}
-
-func (r *Results) SetJasError(err error) *Results {
-	r.JasError = err
-	return r
-}
-
 // Runs an audit scan based on the provided auditParams.
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.

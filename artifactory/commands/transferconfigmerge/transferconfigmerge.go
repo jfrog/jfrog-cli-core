@@ -9,10 +9,10 @@ import (
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
 	accessServices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
@@ -104,7 +104,7 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 		return
 	}
 	// Check if JFrog Projects supported by Source Artifactory version
-	versionErr := coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, minJFrogProjectsArtifactoryVersion)
+	versionErr := clientutils.ValidateMinimumVersion(clientutils.Projects, sourceArtifactoryVersion, minJFrogProjectsArtifactoryVersion)
 	if versionErr != nil {
 		// Projects not supported by Source Artifactory version
 		return

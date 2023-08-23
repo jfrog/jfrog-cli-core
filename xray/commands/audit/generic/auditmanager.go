@@ -17,7 +17,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	clientUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	xrayUtils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -33,14 +34,14 @@ type Params struct {
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
-	*clientUtils.GraphBasicParams
+	*xrayUtils.GraphBasicParams
 	xrayVersion string
 }
 
 func NewAuditParams() *Params {
 	return &Params{
 		xrayGraphScanParams: &services.XrayGraphScanParams{},
-		GraphBasicParams:    &clientUtils.GraphBasicParams{},
+		GraphBasicParams:    &xrayUtils.GraphBasicParams{},
 	}
 }
 
@@ -65,7 +66,7 @@ func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayG
 	return params
 }
 
-func (params *Params) SetGraphBasicParams(gbp *clientUtils.GraphBasicParams) *Params {
+func (params *Params) SetGraphBasicParams(gbp *xrayUtils.GraphBasicParams) *Params {
 	params.GraphBasicParams = gbp
 	return params
 }
@@ -106,12 +107,12 @@ func (params *Params) SetXrayVersion(version string) *Params {
 type Results struct {
 	IsMultipleRootProject bool
 	AuditError            error
-	ExtendedScanResults   *clientUtils.ExtendedScanResults
+	ExtendedScanResults   *xrayUtils.ExtendedScanResults
 	ScannedTechnologies   []coreutils.Technology
 }
 
 func NewAuditResults() *Results {
-	return &Results{ExtendedScanResults: &clientUtils.ExtendedScanResults{}}
+	return &Results{ExtendedScanResults: &xrayUtils.ExtendedScanResults{}}
 }
 
 func (r *Results) SetAuditError(err error) *Results {
@@ -161,18 +162,18 @@ func isEntitledForJas(serverDetails *config.ServerDetails) (entitled bool, xrayV
 	if err != nil {
 		return
 	}
-	if !version.NewVersion(xrayVersion).AtLeast(clientUtils.EntitlementsMinVersion) {
+	if !version.NewVersion(xrayVersion).AtLeast(xrayUtils.EntitlementsMinVersion) {
 		log.Debug("Entitlements check for ‘Advanced Security’ package failed:")
-		log.Debug(coreutils.MinimumVersionMsg, coreutils.Xray, xrayVersion, clientUtils.EntitlementsMinVersion)
+		log.Debug(clientutils.MinimumVersionMsg, clientutils.Xray, xrayVersion, xrayUtils.EntitlementsMinVersion)
 		return
 	}
-	entitled, err = xrayManager.IsEntitled(clientUtils.ApplicabilityFeatureId)
+	entitled, err = xrayManager.IsEntitled(xrayUtils.ApplicabilityFeatureId)
 	return
 }
 
 // genericAudit audits all the projects found in the given workingDirs
 func genericAudit(params *Params) *Results {
-	if err := coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+	if err := clientutils.ValidateMinimumVersion(clientutils.Xray, params.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
 		return NewAuditResults().SetAuditError(err)
 	}
 	log.Info("JFrog Xray version is:", params.xrayVersion)
@@ -271,7 +272,7 @@ func doAudit(params *Params) *Results {
 	return results.SetAuditError(err)
 }
 
-func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *xrayUtils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, err error) {
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}
@@ -310,7 +311,7 @@ func GetTechDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.
 	return services.FlattenGraph(dependencyTrees)
 }
 
-func getJavaDependencyTree(params *clientUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
+func getJavaDependencyTree(params *xrayUtils.GraphBasicParams, tech coreutils.Technology) ([]*xrayCmdUtils.GraphNode, error) {
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return nil, err

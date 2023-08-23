@@ -539,7 +539,7 @@ func (tcc *TransferConfigCommand) validateMinVersion() error {
 	}
 
 	// Validate minimal Artifactory version in the source server
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
 	if err != nil {
 		return err
 	}

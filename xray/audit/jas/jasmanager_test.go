@@ -9,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,32 +28,8 @@ var fakeBasicXrayResults = []services.ScanResponse{
 	},
 }
 
-var fakeBasicDependencyGraph = []*xrayUtils.GraphNode{
-	{
-		Id: "parent_node_id",
-		Nodes: []*xrayUtils.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
-			{Id: "issueId_2_direct_dependency", Nodes: nil},
-		},
-	},
-}
-
-var multipleFakeBasicDependencyGraph = []*xrayUtils.GraphNode{
-	{
-		Id: "parent_node_id",
-		Nodes: []*xrayUtils.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
-			{Id: "issueId_2_direct_dependency", Nodes: nil},
-		},
-	},
-	{
-		Id: "parent_node_id",
-		Nodes: []*xrayUtils.GraphNode{
-			{Id: "issueId_3_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_2_non_direct_dependency"}}},
-			{Id: "issueId_4_direct_dependency", Nodes: nil},
-		},
-	},
-}
+var mockDirectDependencies = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}
+var mockMultiRootDirectDependencies = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency", "issueId_3_direct_dependency", "issueId_4_direct_dependency"}
 
 var fakeServerDetails = config.ServerDetails{
 	Url:      "platformUrl",
@@ -73,13 +48,13 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
 	}()
 	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
-	err = RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, &fakeServerDetails, nil, nil)
+	err = RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, &fakeServerDetails, nil, nil)
 	// Expect error:
 	assert.Error(t, err)
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Pip}}
-	err := RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, nil, nil, nil)
+	err := RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, nil, nil, nil)
 	assert.NoError(t, err)
 }

@@ -216,8 +216,9 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 
 	// Flag override
 	if idtp.localJFrogHomePath != "" {
-		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s'.", idtp.localJFrogHomePath))
-		if exists, target, err = idtp.transferManger.findDestination(idtp.localJFrogHomePath); err != nil || exists {
+		jfrogHomeDir := strings.TrimSpace(idtp.localJFrogHomePath)
+		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s'.", jfrogHomeDir))
+		if exists, target, err = idtp.transferManger.findDestination(jfrogHomeDir); err != nil || exists {
 			return
 		}
 		if !exists {
@@ -227,8 +228,9 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 	}
 	// Environment variable override
 	if envVal, exists = os.LookupEnv(jfrogHomeEnvVar); exists {
-		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s' retrieved from the '%s' environment variable.", envVal, jfrogHomeEnvVar))
-		if exists, target, err = idtp.transferManger.findDestination(envVal); err != nil || exists {
+		jfrogHomeDir := strings.TrimSpace(envVal)
+		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s' retrieved from the '%s' environment variable.", jfrogHomeDir, jfrogHomeEnvVar))
+		if exists, target, err = idtp.transferManger.findDestination(jfrogHomeDir); err != nil || exists {
 			return
 		}
 	}

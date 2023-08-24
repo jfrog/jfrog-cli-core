@@ -315,7 +315,7 @@ func (cc *ConfigCommand) resolveServerId() string {
 	if cc.details.ServerId != "" {
 		return cc.details.ServerId
 	}
-	if cc.defaultDetails.ServerId != "" {
+	if cc.defaultDetails != nil && cc.defaultDetails.ServerId != "" {
 		return cc.defaultDetails.ServerId
 	}
 	return config.DefaultServerId

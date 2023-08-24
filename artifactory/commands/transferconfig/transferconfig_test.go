@@ -255,12 +255,48 @@ func TestValidateMinVersion(t *testing.T) {
 		t.Run(testCase.testName, func(t *testing.T) {
 			sourceRtVersion = testCase.sourceVersion
 			targetRtVersion = testCase.targetVersion
-			err := createTransferConfigCommand(t, sourceServerDetails, targetServerDetails).validateMinVersion()
+			actualSourceRtVersion, err := createTransferConfigCommand(t, sourceServerDetails, targetServerDetails).validateMinVersion()
 			if testCase.expectedError == "" {
 				assert.NoError(t, err)
+				assert.Equal(t, sourceRtVersion, actualSourceRtVersion)
 			} else {
 				assert.ErrorContains(t, err, testCase.expectedError)
 			}
 		})
 	}
+}
+
+func TestValidateAccessServerConnection(t *testing.T) {
+	// Create transfer config command
+	testServer, serverDetails, accessManager := commonTests.CreateAccessRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.RequestURI {
+		case "/access/api/v1/system/ping":
+			w.WriteHeader(http.StatusOK)
+		default:
+			assert.Fail(t, "Unexpected request URI: "+r.RequestURI)
+		}
+	})
+	defer testServer.Close()
+
+	transferConfigCmd := createTransferConfigCommand(t, nil, nil)
+	err := transferConfigCmd.ValidateAccessServerConnection(serverDetails, accessManager)
+	assert.NoError(t, err)
+}
+
+func TestValidateAccessServerConnectionForbidden(t *testing.T) {
+	// Create transfer config command
+	testServer, serverDetails, accessManager := commonTests.CreateAccessRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.RequestURI {
+		case "/access/api/v1/system/ping":
+			w.WriteHeader(http.StatusForbidden)
+		default:
+			assert.Fail(t, "Unexpected request URI: "+r.RequestURI)
+		}
+	})
+	defer testServer.Close()
+
+	transferConfigCmd := createTransferConfigCommand(t, nil, nil)
+	// Assert access token invalid error
+	err := transferConfigCmd.ValidateAccessServerConnection(serverDetails, accessManager)
+	assert.ErrorContains(t, err, "the 'test-server' instance Access Token is not valid. Please provide a valid access token by running the 'jf c edit test-server'")
 }

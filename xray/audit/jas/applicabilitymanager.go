@@ -7,7 +7,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -68,14 +67,18 @@ func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanRespon
 		for _, vulnerability := range scanResult.Vulnerabilities {
 			if isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
 				for _, cve := range vulnerability.Cves {
-					directsCves.Add(cve.Id)
+					if cve.Id != "" {
+						directsCves.Add(cve.Id)
+					}
 				}
 			}
 		}
 		for _, violation := range scanResult.Violations {
 			if isDirectComponents(maps.Keys(violation.Components), directDependencies) {
 				for _, cve := range violation.Cves {
-					directsCves.Add(cve.Id)
+					if cve.Id != "" {
+						directsCves.Add(cve.Id)
+					}
 				}
 			}
 		}
@@ -91,17 +94,6 @@ func isDirectComponents(components []string, directDependencies []string) bool {
 		}
 	}
 	return false
-}
-
-// This function retrieves the dependency trees of the scanned project and extracts a set that contains only the direct dependencies.
-func getDirectDependenciesSet(dependencyTrees []*xrayUtils.GraphNode) *datastructures.Set[string] {
-	directDependencies := datastructures.MakeSet[string]()
-	for _, tree := range dependencyTrees {
-		for _, node := range tree.Nodes {
-			directDependencies.Add(node.Id)
-		}
-	}
-	return directDependencies
 }
 
 func (a *ApplicabilityScanManager) Run(wd string) (err error) {

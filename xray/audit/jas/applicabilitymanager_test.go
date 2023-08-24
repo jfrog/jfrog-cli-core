@@ -13,6 +13,9 @@ import (
 	"testing"
 )
 
+var fakeDirectDeps = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}
+var fakeMultiDirectDeps = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency", "issueId_3_direct_dependency", "issueId_4_direct_dependency"}
+
 func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	// Act
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
@@ -23,7 +26,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, fakeDirectDeps, scanner)
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
@@ -84,7 +87,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(noDirectDependenciesResults, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(noDirectDependenciesResults, fakeDirectDeps, scanner)
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
@@ -293,43 +296,6 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 }
 
-func TestGetDirectDependenciesList(t *testing.T) {
-	tests := []struct {
-		dependenciesTrees []*xrayUtils.GraphNode
-		expectedResult    []string
-	}{
-		{
-			dependenciesTrees: nil,
-			expectedResult:    []string{},
-		},
-		{
-			dependenciesTrees: []*xrayUtils.GraphNode{
-				{Id: "parent_node_id", Nodes: []*xrayUtils.GraphNode{
-					{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
-					{Id: "issueId_2_direct_dependency", Nodes: nil},
-				},
-				},
-			},
-			expectedResult: []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"},
-		},
-		{
-			dependenciesTrees: []*xrayUtils.GraphNode{
-				{Id: "parent_node_id", Nodes: []*xrayUtils.GraphNode{
-					{Id: "issueId_1_direct_dependency", Nodes: nil},
-					{Id: "issueId_2_direct_dependency", Nodes: nil},
-				},
-				},
-			},
-			expectedResult: []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"},
-		},
-	}
-
-	for _, test := range tests {
-		result := getDirectDependenciesSet(test.dependenciesTrees)
-		assert.ElementsMatch(t, test.expectedResult, result.ToSlice())
-	}
-}
-
 func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
@@ -340,7 +306,7 @@ func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, scanner)
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)

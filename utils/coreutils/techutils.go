@@ -217,24 +217,11 @@ func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map
 	return detected
 }
 
-// DetectTechnologiesToString returns a string that includes all the names of the detected technologies separated by a comma.
-func DetectedTechnologiesToString(detected map[Technology]bool) string {
-	keys := DetectedTechnologiesToSlice(detected)
-	if len(keys) > 0 {
-		detectedTechnologiesString := strings.Join(keys, ", ")
-		detectedTechnologiesString += "."
-		return detectedTechnologiesString
-	}
-	return ""
-}
-
 // DetectedTechnologiesToSlice returns a string slice that includes all the names of the detected technologies.
 func DetectedTechnologiesToSlice(detected map[Technology]bool) []string {
-	keys := make([]string, len(detected))
-	i := 0
+	keys := make([]string, 0, len(detected))
 	for tech := range detected {
-		keys[i] = string(tech)
-		i++
+		keys = append(keys, string(tech))
 	}
 	return keys
 }

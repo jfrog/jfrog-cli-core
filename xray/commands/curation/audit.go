@@ -200,7 +200,6 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if len(fullDependenciesTree) == 0 {
 		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.ToString())
 	}
-	rootNode := fullDependenciesTree[0]
 	if err = ca.SetRepo(tech); err != nil {
 		return err
 	}
@@ -217,6 +216,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if err != nil {
 		return err
 	}
+	rootNode := fullDependenciesTree[0]
 	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, rootNode.Id, "", "")
 	if ca.Progress() != nil {
 		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))

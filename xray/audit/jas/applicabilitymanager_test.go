@@ -1,20 +1,15 @@
 package jas
 
 import (
-	"github.com/jfrog/gofrog/datastructures"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
 )
-
-var fakeDirectDeps = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}
-var fakeMultiDirectDeps = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency", "issueId_3_direct_dependency", "issueId_4_direct_dependency"}
 
 func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	// Act
@@ -26,7 +21,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, fakeDirectDeps, scanner)
+	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, mockDirectDependencies, scanner)
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
@@ -87,7 +82,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(noDirectDependenciesResults, fakeDirectDeps, scanner)
+	applicabilityManager := newApplicabilityScanManager(noDirectDependenciesResults, mockDirectDependencies, scanner)
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
@@ -100,7 +95,6 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	multipleDependencyTrees := []*xrayUtils.GraphNode{multipleFakeBasicDependencyGraph[0], multipleFakeBasicDependencyGraph[1]}
 
 	// Act
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
@@ -110,7 +104,7 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, multipleDependencyTrees, scanner)
+	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, mockMultiRootDirectDependencies, scanner)
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
@@ -141,7 +135,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(noViolationScanResponse, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(noViolationScanResponse, mockDirectDependencies, scanner)
 
 	// Assert
 	assert.NoError(t, err)
@@ -173,7 +167,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(noVulnerabilitiesScanResponse, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(noVulnerabilitiesScanResponse, mockDirectDependencies, scanner)
 
 	// Assert
 	assert.NotEmpty(t, applicabilityManager)
@@ -191,7 +185,7 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	results, err := getApplicabilityScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph,
+	results, err := getApplicabilityScanResults(fakeBasicXrayResults, mockDirectDependencies,
 		[]coreutils.Technology{coreutils.Nuget, coreutils.Go}, scanner)
 
 	// Assert
@@ -209,7 +203,7 @@ func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(nil, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(nil, mockDirectDependencies, scanner)
 	assert.NoError(t, err)
 	// Assert
 	eligible := applicabilityManager.shouldRunApplicabilityScan([]coreutils.Technology{coreutils.Npm})
@@ -243,11 +237,11 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		directDependenciesSet := datastructures.MakeSet[string]()
+		var directDependencies []string
 		for _, direct := range test.directDependencies {
-			directDependenciesSet.Add(direct)
+			directDependencies = append(directDependencies, direct)
 		}
-		cves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, directDependenciesSet)
+		cves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, directDependencies)
 		assert.Equal(t, test.cvesCount, cves.Size())
 	}
 }
@@ -288,11 +282,11 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		directDependenciesSet := datastructures.MakeSet[string]()
+		var directDependencies []string
 		for _, direct := range test.directDependencies {
-			directDependenciesSet.Add(direct)
+			directDependencies = append(directDependencies, direct)
 		}
-		assert.Equal(t, test.cvesCount, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, directDependenciesSet).Size())
+		assert.Equal(t, test.cvesCount, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, directDependencies).Size())
 	}
 }
 
@@ -335,7 +329,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, mockDirectDependencies, scanner)
 	applicabilityManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "empty-results.sarif")
 
 	// Act
@@ -359,7 +353,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, mockDirectDependencies, scanner)
 	applicabilityManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "applicable-cve-results.sarif")
 
 	// Act
@@ -382,7 +376,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 			assert.NoError(t, scanner.scannerDirCleanupFunc())
 		}
 	}()
-	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, fakeBasicDependencyGraph, scanner)
+	applicabilityManager := newApplicabilityScanManager(fakeBasicXrayResults, mockDirectDependencies, scanner)
 	applicabilityManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "no-applicable-cves-results.sarif")
 
 	// Act
@@ -399,7 +393,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
-	err := RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, &fakeServerDetails, nil, nil)
+	err := RunScannersAndSetResults(scanResults, mockDirectDependencies, &fakeServerDetails, nil, nil)
 
 	// Expect error:
 	assert.ErrorContains(t, err, "failed to run Applicability scan")

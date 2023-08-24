@@ -237,11 +237,7 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		var directDependencies []string
-		for _, direct := range test.directDependencies {
-			directDependencies = append(directDependencies, direct)
-		}
-		cves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, directDependencies)
+		cves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, test.directDependencies)
 		assert.Equal(t, test.cvesCount, cves.Size())
 	}
 }
@@ -282,11 +278,7 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		var directDependencies []string
-		for _, direct := range test.directDependencies {
-			directDependencies = append(directDependencies, direct)
-		}
-		assert.Equal(t, test.cvesCount, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, directDependencies).Size())
+		assert.Equal(t, test.cvesCount, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies).Size())
 	}
 }
 

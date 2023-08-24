@@ -538,22 +538,22 @@ var Severities = map[string]map[string]*Severity{
 	"Critical": {
 		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 12, style: color.New(color.BgLightRed, color.LightWhite)},
 		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 11, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.Gray)},
+		NotApplicableStringValue:             {emoji: "", title: "Critical", numValue: 4, style: color.New(color.Gray)},
 	},
 	"High": {
 		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 10, style: color.New(color.Red)},
 		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Gray)},
+		NotApplicableStringValue:             {emoji: "", title: "High", numValue: 3, style: color.New(color.Gray)},
 	},
 	"Medium": {
 		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 8, style: color.New(color.Yellow)},
 		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 7, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Gray)},
+		NotApplicableStringValue:             {emoji: "", title: "Medium", numValue: 2, style: color.New(color.Gray)},
 	},
 	"Low": {
 		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 6},
 		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 5},
-		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 1, style: color.New(color.Gray)},
+		NotApplicableStringValue:             {emoji: "", title: "Low", numValue: 1, style: color.New(color.Gray)},
 	},
 }
 

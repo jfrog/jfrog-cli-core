@@ -121,15 +121,17 @@ func NewAuditResults() *Results {
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
 func RunAudit(auditParams *Params) (results *Results, err error) {
 	var entitlements *XrayEntitlements
-	serverDetails, err := auditParams.ServerDetails()
-	if err != nil {
+	var serverDetails *config.ServerDetails
+
+	// Initialize Results struct
+	results = NewAuditResults()
+	if serverDetails, err = auditParams.ServerDetails(); err != nil {
 		return
 	}
-	// Check preconditions for JAS and XSC.
+	// Check entitlements for JAS and XSC and update auditParams with results.
 	if entitlements, err = checkEntitlements(serverDetails, auditParams); err != nil {
 		return
 	}
-
 	// The sca scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
 	results.ScaError = runScaScan(auditParams, results)
 
@@ -139,13 +141,13 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	}
 	// Run scanners only if the user is entitled for Advanced Security
 	if entitlements.Jas {
+		results.ExtendedScanResults.EntitledForJas = entitlements.Jas
 		results.JasError = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
 	}
 	return
 }
 
-
-func isEntitledForJas(xrayManager *manager.SecurityServiceManager, xrayVersion string) (entitled bool, err error) {
+func isEntitledForJas(xrayManager manager.SecurityServiceManager, xrayVersion string) (entitled bool, err error) {
 	if e := coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
 		log.Debug(e)
 		return
@@ -153,16 +155,19 @@ func isEntitledForJas(xrayManager *manager.SecurityServiceManager, xrayVersion s
 	entitled, err = xrayManager.IsEntitled(xrayutils.ApplicabilityFeatureId)
 	return
 }
+
 // checkEntitlements validates the entitlements for JAS and XSC.
 func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (entitlements *XrayEntitlements, err error) {
-	xrayManager, xrayVersion, err := commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	var xrayManager manager.SecurityServiceManager
+
+	xrayManager, params.xrayVersion, err = commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return
 	}
-	params.SetXrayVersion(xrayVersion)
+
 	// Check entitlements
 	var jasEntitle, xscEntitled bool
-	if jasEntitle, err = isEntitledForJas(xrayVersion, xrayManager); err != nil {
+	if jasEntitle, err = isEntitledForJas(xrayManager, params.xrayVersion); err != nil {
 		return
 	}
 	if xscEntitled, err = isEntitledForXsc(xrayManager, serverDetails); err != nil {
@@ -183,14 +188,12 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 
 // Checks for the availability of XSC service, if true adjust XSC url
 func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails *config.ServerDetails) (xscEnabled bool, err error) {
-	xscEnabled, xscVersion, err := xrayManager.IsXscEnabled()
+	xscEnabled, serverDetails.XscVersion, err = xrayManager.IsXscEnabled()
 	if err != nil || !xscEnabled {
 		return
 	}
-	serverDetails.XscVersion = xscVersion
 	return
 }
-
 
 func runScaScan(params *Params, results *Results) (err error) {
 	rootDir, err := os.Getwd()

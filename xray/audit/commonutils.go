@@ -53,7 +53,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
+func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []scan.ScanResponse, err error) {
 	if progress != nil {
 		progress.SetHeadlineMsg("Scanning for vulnerabilities")
 	}

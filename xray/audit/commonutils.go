@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
@@ -20,37 +19,31 @@ import (
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slices"
 )
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
-	exceededDepthCounter := 0
-	xrayDependencyTree := buildXrayDependencyTree(treeHelper, []string{nodeId}, &exceededDepthCounter)
-	if exceededDepthCounter > 0 {
-		log.Debug("buildXrayDependencyTree exceeded max tree depth", exceededDepthCounter, "times")
+	rootNode := &xrayUtils.GraphNode{
+		Id:    nodeId,
+		Nodes: []*xrayUtils.GraphNode{},
 	}
-	return xrayDependencyTree
+	populateXrayDependencyTree(rootNode, treeHelper)
+	return rootNode
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string, exceededDepthCounter *int) *xrayUtils.GraphNode {
-	nodeId := impactPath[len(impactPath)-1]
-	// Initialize the new node
-	xrDependencyTree := &xrayUtils.GraphNode{}
-	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
-	if len(impactPath) >= buildinfo.RequestedByMaxLength {
-		*exceededDepthCounter++
-		return xrDependencyTree
-	}
+func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[string][]string) {
 	// Recursively create & append all node's dependencies.
-	for _, dependency := range treeHelper[nodeId] {
-		// Prevent circular dependencies parsing
-		if slices.Contains(impactPath, dependency) {
+	for _, childDependency := range treeHelper[currNode.Id] {
+		childNode := &xrayUtils.GraphNode{
+			Id:     childDependency,
+			Nodes:  []*xrayUtils.GraphNode{},
+			Parent: &xrayUtils.ParentNode{Id: currNode.Id, Parent: currNode.Parent},
+		}
+		if childNode.NodeHasLoop() {
 			continue
 		}
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency), exceededDepthCounter))
+		currNode.Nodes = append(currNode.Nodes, childNode)
+		populateXrayDependencyTree(childNode, treeHelper)
 	}
-	return xrDependencyTree
 }
 
 func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
@@ -59,8 +52,8 @@ func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphN
 	}
 
 	for _, moduleDependencyTree := range modulesDependencyTrees {
-		scanGraphParams.XrayGraphScanParams().Graph = moduleDependencyTree
-		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(scanGraphParams.XrayGraphScanParams().Graph.Nodes), technology)
+		scanGraphParams.XrayGraphScanParams().AuditGraph = moduleDependencyTree
+		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(moduleDependencyTree.Nodes), technology)
 		if progress != nil {
 			progress.SetHeadlineMsg(scanMessage)
 		}

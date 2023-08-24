@@ -281,7 +281,7 @@ func populatePythonDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGra
 		childNode := &xrayUtils.GraphNode{
 			Id:     pythonPackageTypeIdentifier + dependency,
 			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: currNode,
+			Parent: &xrayUtils.ParentNode{Id: currNode.Id, Parent: currNode.Parent},
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)
 		populatePythonDependencyTree(childNode, dependenciesGraph)

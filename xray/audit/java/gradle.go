@@ -257,7 +257,7 @@ func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildre
 		childNode := &xrayUtils.GraphNode{
 			Id:     GavPackageTypeIdentifier + gav,
 			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: currNode,
+			Parent: &xrayUtils.ParentNode{Id: currNode.Id, Parent: currNode.Parent},
 		}
 		if currNode.NodeHasLoop() {
 			return

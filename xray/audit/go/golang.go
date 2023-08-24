@@ -81,7 +81,7 @@ func populateGoDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGraph m
 		childNode := &xrayUtils.GraphNode{
 			Id:     goPackageTypeIdentifier + childName,
 			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: currNode,
+			Parent: &xrayUtils.ParentNode{Id: currNode.Id, Parent: currNode.Parent},
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)
 		populateGoDependencyTree(childNode, dependenciesGraph, dependenciesList)

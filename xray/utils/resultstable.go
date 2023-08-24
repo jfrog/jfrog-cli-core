@@ -32,13 +32,13 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 	// Print tables, if scan is true; print the scan tables.
-	if scan {
+	if isBinaryScan {
 		err = coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(securityViolationsRows), "Security Violations", "No security violations were found", printExtended)
 		if err != nil {
 			return err
@@ -169,13 +169,13 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 
-	if scan {
+	if isBinaryScan {
 		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
 	}
 
@@ -242,12 +242,12 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintLicensesTable(licenses []services.License, printExtended, scan bool) error {
+func PrintLicensesTable(licenses []services.License, printExtended, isBinaryScan bool) error {
 	licensesRows, err := PrepareLicenses(licenses)
 	if err != nil {
 		return err
 	}
-	if scan {
+	if isBinaryScan {
 		return coreutils.PrintTable(formats.ConvertToLicenseScanTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
 	}
 	return coreutils.PrintTable(formats.ConvertToLicenseTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)

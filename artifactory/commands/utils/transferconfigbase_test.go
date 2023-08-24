@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	repoKey    = "repoKey"
+	projectKey = "test-proj"
+)
+
 var transferConfigTestDir = filepath.Join("testdata", "transferconfig")
 
 func TestIsDefaultCredentialsDefault(t *testing.T) {
@@ -269,6 +274,80 @@ func testDeactivateKeyEncryption(t *testing.T, wasEncrypted bool) {
 	assert.False(t, reactivated)
 	assert.NoError(t, reactivate())
 	assert.Equal(t, reactivated, wasEncrypted)
+}
+
+var removeProjectKeyCases = []struct {
+	repoKey            string
+	projectKey         string
+	expectedProjectKey string
+}{
+	{repoKey: repoKey, projectKey: "", expectedProjectKey: ""},
+	{repoKey: repoKey, projectKey: "default", expectedProjectKey: ""},
+	{repoKey: repoKey, projectKey: projectKey, expectedProjectKey: projectKey},
+	{repoKey: projectKey + "-" + repoKey, projectKey: projectKey, expectedProjectKey: ""},
+}
+
+func TestRemoveProjectKey(t *testing.T) {
+	repoParams := services.NewLocalRepositoryBaseParams()
+
+	for _, testCase := range removeProjectKeyCases {
+		t.Run(testCase.repoKey, func(t *testing.T) {
+			repoParams.ProjectKey = testCase.projectKey
+			actualRepoParams, actualProjectKey, err := removeProjectKeyIfNeeded(repoParams, testCase.repoKey)
+			assert.NoError(t, err)
+			assert.Equal(t, testCase.expectedProjectKey, actualProjectKey)
+			if testCase.expectedProjectKey == "" {
+				assert.Equal(t, repoParams, actualRepoParams)
+			} else {
+				assert.NotEqual(t, repoParams, actualRepoParams)
+			}
+		})
+	}
+}
+
+func TestRemoveProjectKeyIllegal(t *testing.T) {
+	type illegalRepoParamsStruct struct {
+		ProjectKey int `json:"projectKey"`
+	}
+	illegalRepoParams := &illegalRepoParamsStruct{ProjectKey: 7}
+	actualRepoParams, projectKey, err := removeProjectKeyIfNeeded(illegalRepoParams, repoKey)
+	assert.ErrorContains(t, err, "couldn't parse the 'projectKey' value '7' of repository 'repoKey'")
+	assert.Empty(t, projectKey)
+	assert.Nil(t, actualRepoParams)
+}
+
+func TestCreateRepositoryAndAssignToProject(t *testing.T) {
+	projectUnassigned := false
+	repositoryCreated := false
+	projectAssigned := false
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.RequestURI {
+		case "/access/api/v1/projects/_/attach/repositories/local-repo":
+			projectUnassigned = true
+		case "/api/repositories/local-repo":
+			repositoryCreated = true
+			body, err := io.ReadAll(r.Body)
+			assert.NoError(t, err)
+			_, exist := getRepoParamsMap(t, body)["projectKey"]
+			assert.False(t, exist)
+		case "/access/api/v1/projects/_/attach/repositories/local-repo/test-proj?force=true":
+			projectAssigned = true
+		default:
+			assert.Fail(t, "Unexpected request URI: "+r.RequestURI)
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	defer testServer.Close()
+	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
+
+	repoParams := services.NewLocalRepositoryBaseParams()
+	repoParams.Key = "local-repo"
+	repoParams.ProjectKey = projectKey
+	err := transferConfigBase.createRepositoryAndAssignToProject(repoParams, repoParams.Key)
+	assert.NoError(t, err)
+	assert.True(t, projectUnassigned)
+	assert.True(t, repositoryCreated)
+	assert.True(t, projectAssigned)
 }
 
 func createTransferConfigBase(t *testing.T, sourceServerDetails, targetServerDetails *config.ServerDetails) *TransferConfigBase {

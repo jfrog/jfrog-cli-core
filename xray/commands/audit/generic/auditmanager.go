@@ -192,15 +192,16 @@ func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDi
 		err = errors.Join(err, os.Chdir(rootDir))
 	}()
 
-	// If no technologies were given, try to detect all types of technologies used.
-	// Otherwise, run audit for requested technologies only.
-	technologies := params.Technologies()
-	if len(technologies) == 0 {
+	var technologies []string
+	requestedTechnologies := params.Technologies()
+	if len(requestedTechnologies) != 0 {
+		technologies = requestedTechnologies
+	} else {
 		technologies = commandsutils.DetectedTechnologies()
-		if len(technologies) == 0 {
-			log.Info("Skipping vulnerable dependencies scanning...")
-			return
-		}
+	}
+	if len(technologies) == 0 {
+		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
+		return
 	}
 	serverDetails, err := params.ServerDetails()
 	if err != nil {

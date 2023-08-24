@@ -277,32 +277,37 @@ func ExtractXrayOutputFormatFromArgs(args []string) (cleanArgs []string, format 
 	return
 }
 
-// Print the test to the console in green color.
+// Add green color style to the string if possible.
 func PrintTitle(str string) string {
 	return colorStr(str, color.Green)
 }
 
-// Print the test to the console in cyan color.
+// Add cyan color style to the string if possible.
 func PrintLink(str string) string {
 	return colorStr(str, color.Cyan)
 }
 
-// Print the test to the console with bold style.
+// Add bold style to the string if possible.
 func PrintBold(str string) string {
 	return colorStr(str, color.Bold)
 }
 
-// Print the test to the console with bold style.
+// Add bold and green style to the string if possible.
 func PrintBoldTitle(str string) string {
 	return PrintBold(PrintTitle(str))
 }
 
-// Print the test to the console in gray color.
+// Add gray color style to the string if possible.
 func PrintComment(str string) string {
 	return colorStr(str, color.Gray)
 }
 
-// Print the test to the console with the specified color.
+// Add yellow color style to the string if possible.
+func PrintYellow(str string) string {
+	return colorStr(str, color.Yellow)
+}
+
+// Add the requested style to the string if possible.
 func colorStr(str string, c color.Color) string {
 	// Add styles only on supported terminals
 	if log.IsStdOutTerminal() && log.IsColorsSupported() {

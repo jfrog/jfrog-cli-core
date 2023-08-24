@@ -83,7 +83,6 @@ func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.Si
 }
 
 func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool, messages []string) (err error) {
-	log.Output()
 	printMessages(messages)
 	violations, vulnerabilities, licenses := SplitScanResults(results.getXrayScanResults())
 	if len(results.getXrayScanResults()) > 0 {
@@ -93,7 +92,6 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 		}
 		printMessage(coreutils.PrintTitle("The full scan results are available here: ") + coreutils.PrintLink(resultsPath))
 	}
-
 	log.Output()
 	if includeVulnerabilities {
 		err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, isBinaryScan)
@@ -115,6 +113,9 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 }
 
 func printMessages(messages []string) {
+	if len(messages) > 0 {
+		log.Output()
+	}
 	for _, m := range messages {
 		printMessage(m)
 	}

@@ -37,7 +37,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 		return
 	}
 	time.Sleep(1 * time.Second)
-	log.Info("Attempting to get the authentication token...")
+	log.Debug("Attempting to get the authentication token...")
 	token, err = accessManager.GetLoginAuthenticationToken(uuidStr)
 	if err != nil {
 		return
@@ -45,7 +45,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 	if token.AccessToken == "" {
 		return token, errorutils.CheckErrorf("failed getting authentication token after web log")
 	}
-	log.Info("Received token from platform!")
+	log.Info("You're now logged in!")
 	return
 }
 

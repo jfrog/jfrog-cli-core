@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -65,7 +64,7 @@ func (a *AdvancedSecurityScanner) Run(scannerCmd ScannerCmd) (err error) {
 	return
 }
 
-func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, dependencyTrees []*xrayUtils.GraphNode,
+func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDependencies []string,
 	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr) (err error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
@@ -82,7 +81,7 @@ func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, dependency
 	if progress != nil {
 		progress.SetHeadlineMsg("Running applicability scanning")
 	}
-	scanResults.ApplicabilityScanResults, err = getApplicabilityScanResults(scanResults.XrayResults, dependencyTrees, scanResults.ScannedTechnologies, scanner)
+	scanResults.ApplicabilityScanResults, err = getApplicabilityScanResults(scanResults.XrayResults, directDependencies, scanResults.ScannedTechnologies, scanner)
 	if err != nil {
 		return
 	}

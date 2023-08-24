@@ -123,15 +123,13 @@ var DefaultMaxColWidth = 25
 // └──────┴─────┴───────────────────────────┴───────────┘
 
 func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) (err error) {
+	if title != "" {
+		log.Output(title)
+	}
 	tableWriter, err := PrepareTable(rows, emptyTableMessage, printExtended)
 	if err != nil || tableWriter == nil {
 		return
 	}
-
-	if title != "" {
-		log.Output(title)
-	}
-
 	if log.IsStdOutTerminal() || os.Getenv("GITLAB_CI") == "" {
 		tableWriter.SetStyle(table.StyleLight)
 	}

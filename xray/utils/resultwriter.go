@@ -60,10 +60,10 @@ type sarifProperties struct {
 // printExtended -If true, show extended results.
 // scan - If true, use an output layout suitable for `jf scan` or `jf docker scan` results. Otherwise, use a layout compatible for `jf audit` .
 // messages - Option array of messages, to be displayed if the format is Table
-func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, scan bool, messages []string) error {
+func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, isBinaryScan bool, messages []string) error {
 	switch format {
 	case Table:
-		return printScanResultsTables(results, scan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, messages)
+		return printScanResultsTables(results, isBinaryScan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, messages)
 	case SimpleJson:
 		jsonTable, err := convertScanToSimpleJson(results, simpleJsonError, isMultipleRoots, includeLicenses, false)
 		if err != nil {
@@ -82,8 +82,7 @@ func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.Si
 	return nil
 }
 
-func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool, messages []string) (err error) {
-	log.Output()
+func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool, messages []string) (err error) {
 	printMessages(messages)
 	violations, vulnerabilities, licenses := SplitScanResults(results.getXrayScanResults())
 	if len(results.getXrayScanResults()) > 0 {
@@ -93,35 +92,37 @@ func printScanResultsTables(results *ExtendedScanResults, scan, includeVulnerabi
 		}
 		printMessage(coreutils.PrintTitle("The full scan results are available here: ") + coreutils.PrintLink(resultsPath))
 	}
-
 	log.Output()
 	if includeVulnerabilities {
-		err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, scan)
+		err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, isBinaryScan)
 	} else {
-		err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended, scan)
+		err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended, isBinaryScan)
 	}
 	if err != nil {
 		return
 	}
 	if includeLicenses {
-		if err = PrintLicensesTable(licenses, printExtended, scan); err != nil {
+		if err = PrintLicensesTable(licenses, printExtended, isBinaryScan); err != nil {
 			return
 		}
 	}
-	if err = PrintSecretsTable(results.SecretsScanResults, results.EligibleForSecretScan); err != nil {
+	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	return PrintIacTable(results.IacScanResults, results.EligibleForIacScan)
+	return PrintIacTable(results.IacScanResults, results.EntitledForJas)
 }
 
 func printMessages(messages []string) {
+	if len(messages) > 0 {
+		log.Output()
+	}
 	for _, m := range messages {
 		printMessage(m)
 	}
 }
 
 func printMessage(message string) {
-	log.Output("💬", message)
+	log.Output("💬" + message)
 }
 
 func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool, scanningTool, toolURI string) (string, error) {

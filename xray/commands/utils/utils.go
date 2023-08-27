@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -12,6 +13,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"os"
+	"strings"
 )
 
 const (
@@ -194,13 +196,12 @@ func DetectedTechnologies() (technologies []string) {
 	if err != nil {
 		return
 	}
-	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
-	if detectedTechnologiesString == "" {
-		log.Info("Couldn't determine a package manager or build tool used by this project in the current path:", wd)
+	if len(detectedTechnologies) == 0 {
 		return
 	}
-	log.Info("Detected: " + detectedTechnologiesString)
-	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies)
+	techStringsList := coreutils.DetectedTechnologiesToSlice(detectedTechnologies)
+	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ",")))
+	return techStringsList
 }
 
 func DetectNumOfThreads(threadsCount int) (int, error) {

@@ -53,12 +53,7 @@ func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string
 	return xrDependencyTree
 }
 
-func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
-	if len(modulesDependencyTrees) == 0 {
-		err = errorutils.CheckErrorf("No dependencies were found. Please try to build your project and re-run the audit command.")
-		return
-	}
-
+func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
 	if progress != nil {
 		progress.SetHeadlineMsg("Scanning for vulnerabilities")
 	}
@@ -69,7 +64,7 @@ func Audit(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.Progr
 		if progress != nil {
 			progress.SetHeadlineMsg(scanMessage)
 		}
-		log.Info(scanMessage, "...")
+		log.Info(scanMessage + "...")
 		var scanResults *services.ScanResponse
 		scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
 		if err != nil {

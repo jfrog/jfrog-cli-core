@@ -1,6 +1,8 @@
 package jas
 
 import (
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -29,10 +31,10 @@ func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.So
 		err = utils.ParseAnalyzerManagerError(utils.Secrets, err)
 		return
 	}
-	if len(secretScanManager.secretsScannerResults) > 0 {
-		log.Info(len(secretScanManager.secretsScannerResults), "secrets were found")
-	}
 	results = secretScanManager.secretsScannerResults
+	if len(results) > 0 {
+		log.Info(len(results), "secrets were found")
+	}
 	return
 }
 
@@ -90,15 +92,5 @@ func hideSecret(secret string) string {
 	if len(secret) <= 3 {
 		return "***"
 	}
-	hiddenSecret := ""
-	i := 0
-	for i < 3 { // Show first 3 digits
-		hiddenSecret += string(secret[i])
-		i++
-	}
-	for i < 15 {
-		hiddenSecret += "*"
-		i++
-	}
-	return hiddenSecret
+	return secret[:3] + strings.Repeat("*", 12)
 }

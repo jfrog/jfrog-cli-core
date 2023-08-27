@@ -1,6 +1,9 @@
 package jas
 
 import (
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
@@ -123,7 +126,6 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 }
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-	// Act
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
 	assert.NoError(t, err)
@@ -134,9 +136,8 @@ func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	}()
 	secretsResults, err := getSecretsScanResults(scanner)
 
-	// Assert
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to run Secrets scan")
+	assert.ErrorContains(t, err, "failed to run Secrets scan")
 	assert.Nil(t, secretsResults)
 }
 

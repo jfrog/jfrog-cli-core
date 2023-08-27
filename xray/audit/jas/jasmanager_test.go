@@ -1,15 +1,32 @@
 package jas
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"os"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
+
+var (
+	analyzerManagerExecutionError error = nil
+	analyzerManagerExists               = true
+)
+
+type analyzerManagerMock struct {
+}
+
+func (am *analyzerManagerMock) Exec(string, string, *config.ServerDetails) error {
+	return analyzerManagerExecutionError
+}
+
+func (am *analyzerManagerMock) ExistLocally() (bool, error) {
+	return analyzerManagerExists, nil
+}
 
 var fakeBasicXrayResults = []services.ScanResponse{
 	{
@@ -27,32 +44,8 @@ var fakeBasicXrayResults = []services.ScanResponse{
 	},
 }
 
-var fakeBasicDependencyGraph = []*xrayUtils.GraphNode{
-	{
-		Id: "parent_node_id",
-		Nodes: []*xrayUtils.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
-			{Id: "issueId_2_direct_dependency", Nodes: nil},
-		},
-	},
-}
-
-var multipleFakeBasicDependencyGraph = []*xrayUtils.GraphNode{
-	{
-		Id: "parent_node_id",
-		Nodes: []*xrayUtils.GraphNode{
-			{Id: "issueId_1_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_1_non_direct_dependency"}}},
-			{Id: "issueId_2_direct_dependency", Nodes: nil},
-		},
-	},
-	{
-		Id: "parent_node_id",
-		Nodes: []*xrayUtils.GraphNode{
-			{Id: "issueId_3_direct_dependency", Nodes: []*xrayUtils.GraphNode{{Id: "issueId_2_non_direct_dependency"}}},
-			{Id: "issueId_4_direct_dependency", Nodes: nil},
-		},
-	},
-}
+var mockDirectDependencies = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}
+var mockMultiRootDirectDependencies = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency", "issueId_3_direct_dependency", "issueId_4_direct_dependency"}
 
 var fakeServerDetails = config.ServerDetails{
 	Url:      "platformUrl",
@@ -62,23 +55,22 @@ var fakeServerDetails = config.ServerDetails{
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	tmpDir, err := fileutils.CreateTempDir()
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
+	}()
 	assert.NoError(t, err)
 	assert.NoError(t, os.Setenv(coreutils.HomeDir, tmpDir))
 	defer func() {
 		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
 	}()
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, &fakeServerDetails, []coreutils.Technology{coreutils.Yarn}, nil)
-
-	// Assert
+	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
+	err = RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, &fakeServerDetails, nil, nil)
+	// Expect error:
 	assert.Error(t, err)
-	assert.Nil(t, extendedResults)
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
-	// Act
-	extendedResults, err := GetExtendedScanResults(fakeBasicXrayResults, fakeBasicDependencyGraph, nil, []coreutils.Technology{coreutils.Pip}, nil)
-
-	// Assert
-	assert.NotNil(t, extendedResults)
+	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Pip}}
+	err := RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, nil, nil, nil)
 	assert.NoError(t, err)
 }

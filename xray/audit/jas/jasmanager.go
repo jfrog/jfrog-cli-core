@@ -6,13 +6,11 @@ import (
 	"path/filepath"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v3"
 )
@@ -67,46 +65,46 @@ func (a *AdvancedSecurityScanner) Run(scannerCmd ScannerCmd) (err error) {
 	return
 }
 
-func GetExtendedScanResults(xrayResults []services.ScanResponse, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails, scannedTechnologies []coreutils.Technology, workingDirs []string) (*utils.ExtendedScanResults, error) {
+func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDependencies []string,
+	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr) (err error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
-		return &utils.ExtendedScanResults{XrayResults: xrayResults}, nil
+		return
 	}
 	scanner, err := NewAdvancedSecurityScanner(workingDirs, serverDetails)
 	if err != nil {
-		return nil, err
+		return
 	}
 	defer func() {
 		cleanup := scanner.scannerDirCleanupFunc
 		err = errors.Join(err, cleanup())
 	}()
-	applicabilityScanResults, err := getApplicabilityScanResults(
-		xrayResults, dependencyTrees, scannedTechnologies, scanner)
-	if err != nil {
-		return nil, err
+	if progress != nil {
+		progress.SetHeadlineMsg("Running applicability scanning")
 	}
-	secretsScanResults, err := getSecretsScanResults(scanner)
+	scanResults.ApplicabilityScanResults, err = getApplicabilityScanResults(scanResults.XrayResults, directDependencies, scanResults.ScannedTechnologies, scanner)
 	if err != nil {
-		return nil, err
+		return
 	}
-	iacScanResults, err := getIacScanResults(scanner)
+	if progress != nil {
+		progress.SetHeadlineMsg("Running secrets scanning")
+	}
+	scanResults.SecretsScanResults, err = getSecretsScanResults(scanner)
 	if err != nil {
-		return nil, err
+		return
 	}
-	zeroDayScanResult, err := getZeroDayScanResults(scanner)
+	if progress != nil {
+		progress.SetHeadlineMsg("Running IaC scanning")
+	}
+	scanResults.IacScanResults, err = getIacScanResults(scanner)
 	if err != nil {
-		return nil, err
+		return
 	}
-	return &utils.ExtendedScanResults{
-		EntitledForJas:           true,
-		XrayResults:              xrayResults,
-		ScannedTechnologies:      scannedTechnologies,
-		ApplicabilityScanResults: applicabilityScanResults,
-		SecretsScanResults:       secretsScanResults,
-		IacScanResults:           iacScanResults,
-		ZeroDayResults:           zeroDayScanResult,
-	}, nil
+	if progress != nil {
+		progress.SetHeadlineMsg("Running SAST scanning")
+	}
+	scanResults.ZeroDayResults, err = getZeroDayScanResults(scanner)
+	return
 }
 
 func deleteJasProcessFiles(configFile string, resultFile string) error {

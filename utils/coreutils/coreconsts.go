@@ -34,7 +34,7 @@ const (
 	PluginsExecDirName                  = "bin"
 	PluginsResourcesDirName             = "resources"
 
-	// Env
+	//#nosec G101
 	ErrorHandling      = "JFROG_CLI_ERROR_HANDLING"
 	TempDir            = "JFROG_CLI_TEMP_DIR"
 	LogLevel           = "JFROG_CLI_LOG_LEVEL"
@@ -49,9 +49,10 @@ const (
 
 // Although these vars are constant, they are defined inside a vars section and not a constants section because the tests modify these values.
 var (
-	HomeDir       = "JFROG_CLI_HOME_DIR"
-	BuildName     = "JFROG_CLI_BUILD_NAME"
-	BuildNumber   = "JFROG_CLI_BUILD_NUMBER"
-	Project       = "JFROG_CLI_BUILD_PROJECT"
+	HomeDir     = "JFROG_CLI_HOME_DIR"
+	BuildName   = "JFROG_CLI_BUILD_NAME"
+	BuildNumber = "JFROG_CLI_BUILD_NUMBER"
+	Project     = "JFROG_CLI_BUILD_PROJECT"
+	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
 )

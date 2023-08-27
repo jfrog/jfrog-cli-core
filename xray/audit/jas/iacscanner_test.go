@@ -12,7 +12,7 @@ import (
 func TestNewIacScanManager(t *testing.T) {
 	// Act
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -32,7 +32,7 @@ func TestNewIacScanManager(t *testing.T) {
 
 func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -60,7 +60,7 @@ func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 func TestIacParseResults_EmptyResults(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -80,7 +80,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 	// Arrange
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {

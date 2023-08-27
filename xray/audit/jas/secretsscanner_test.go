@@ -11,7 +11,7 @@ import (
 
 func TestNewSecretsScanManager(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -29,7 +29,7 @@ func TestNewSecretsScanManager(t *testing.T) {
 
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -62,7 +62,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -81,7 +81,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 func TestParseResults_EmptyResults(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -102,7 +102,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -123,7 +123,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {

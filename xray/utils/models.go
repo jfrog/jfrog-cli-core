@@ -3,14 +3,13 @@ package utils
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
 type GraphBasicParams struct {
 	serverDetails           *config.ServerDetails
 	outputFormat            OutputFormat
 	progress                ioUtils.ProgressMgr
-	fullDependenciesTree    []*xrayUtils.GraphNode
+	directDependencies      []string
 	excludeTestDependencies bool
 	useWrapper              bool
 	insecureTls             bool
@@ -21,12 +20,12 @@ type GraphBasicParams struct {
 	ignoreConfigFile        bool
 }
 
-func (gbp *GraphBasicParams) FullDependenciesTree() []*xrayUtils.GraphNode {
-	return gbp.fullDependenciesTree
+func (gbp *GraphBasicParams) DirectDependencies() []string {
+	return gbp.directDependencies
 }
 
-func (gbp *GraphBasicParams) SetFullDependenciesTree(fullDependenciesTree []*xrayUtils.GraphNode) *GraphBasicParams {
-	gbp.fullDependenciesTree = fullDependenciesTree
+func (gbp *GraphBasicParams) AppendDirectDependencies(directDependencies []string) *GraphBasicParams {
+	gbp.directDependencies = append(gbp.directDependencies, directDependencies...)
 	return gbp
 }
 

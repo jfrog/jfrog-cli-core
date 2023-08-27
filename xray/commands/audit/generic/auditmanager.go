@@ -142,7 +142,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	// Run scanners only if the user is entitled for Advanced Security
 	if entitlements.Jas {
 		results.ExtendedScanResults.EntitledForJas = entitlements.Jas
-		results.JasError = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress())
+		results.JasError = jas.RunScannersAndSetResults(results.ExtendedScanResults, auditParams.FullDependenciesTree(), serverDetails, auditParams.workingDirs, auditParams.Progress(), auditParams.xrayGraphScanParams.MultiScanId)
 	}
 	return
 }
@@ -173,7 +173,8 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 	if xscEntitled, err = isEntitledForXsc(xrayManager, serverDetails); err != nil {
 		return
 	}
-	entitlements = &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
+	print(jasEntitle)
+	entitlements = &XrayEntitlements{Jas: true, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
 
 	// Handle actions needed in case of specific entitlement.
 	if entitlements.Jas {

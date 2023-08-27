@@ -16,7 +16,7 @@ import (
 func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	// Act
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -35,7 +35,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	// Act
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -77,7 +77,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 	fakeBasicXrayResults[0].Violations[0].Components["issueId_2_non_direct_dependency"] = scan.Component{}
 
 	// Act
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -100,7 +100,7 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	multipleDependencyTrees := []*xrayUtils.GraphNode{multipleFakeBasicDependencyGraph[0], multipleFakeBasicDependencyGraph[1]}
 
 	// Act
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -131,7 +131,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 	}
 
 	// Act
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -163,7 +163,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	}
 
 	// Act
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -181,7 +181,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 
 func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -199,7 +199,7 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -333,7 +333,7 @@ func TestGetDirectDependenciesList(t *testing.T) {
 func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -362,7 +362,7 @@ func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -386,7 +386,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -409,7 +409,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	// Arrange
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
+	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails, "")
 	assert.NoError(t, err)
 	defer func() {
 		if scanner.scannerDirCleanupFunc != nil {
@@ -433,7 +433,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
-	err := RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, &fakeServerDetails, nil, nil)
+	err := RunScannersAndSetResults(scanResults, fakeBasicDependencyGraph, &fakeServerDetails, nil, nil, "")
 
 	// Expect error:
 	assert.ErrorContains(t, err, "failed to run Applicability scan")

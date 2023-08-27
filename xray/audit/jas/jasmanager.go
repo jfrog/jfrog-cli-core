@@ -32,7 +32,7 @@ type AdvancedSecurityScanner struct {
 	scannerDirCleanupFunc func() error
 }
 
-func NewAdvancedSecurityScanner(workingDirs []string, serverDetails *config.ServerDetails) (scanner *AdvancedSecurityScanner, err error) {
+func NewAdvancedSecurityScanner(workingDirs []string, serverDetails *config.ServerDetails, multiScanId string) (scanner *AdvancedSecurityScanner, err error) {
 	scanner = &AdvancedSecurityScanner{}
 	if scanner.analyzerManager.AnalyzerManagerFullPath, err = utils.GetAnalyzerManagerExecutable(); err != nil {
 		return
@@ -48,6 +48,7 @@ func NewAdvancedSecurityScanner(workingDirs []string, serverDetails *config.Serv
 	scanner.configFileName = filepath.Join(tempDir, "config.yaml")
 	scanner.resultsFileName = filepath.Join(tempDir, "results.sarif")
 	scanner.workingDirs, err = utils.GetFullPathsWorkingDirs(workingDirs)
+	scanner.analyzerManager.MultiScanId = multiScanId
 	return
 }
 
@@ -66,12 +67,12 @@ func (a *AdvancedSecurityScanner) Run(scannerCmd ScannerCmd) (err error) {
 }
 
 func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, dependencyTrees []*xrayUtils.GraphNode,
-	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr) (err error) {
+	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr, multiScanId string) (err error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
 		return
 	}
-	scanner, err := NewAdvancedSecurityScanner(workingDirs, serverDetails)
+	scanner, err := NewAdvancedSecurityScanner(workingDirs, serverDetails, multiScanId)
 	if err != nil {
 		return
 	}

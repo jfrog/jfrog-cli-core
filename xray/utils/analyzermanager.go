@@ -94,13 +94,17 @@ func (e *ExtendedScanResults) getXrayScanResults() []scan.ScanResponse {
 
 type AnalyzerManager struct {
 	AnalyzerManagerFullPath string
+	MultiScanId             string
 }
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return err
 	}
-	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile)
+
+	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
+	commandss := []string{am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId}
+	print(strings.Join(commandss, "."))
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {
@@ -110,6 +114,10 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *c
 	}()
 	cmd.Dir = filepath.Dir(am.AnalyzerManagerFullPath)
 	err = cmd.Run()
+
+	if err != nil {
+		log.Error("am error! ", err.Error())
+	}
 	return errorutils.CheckError(err)
 }
 

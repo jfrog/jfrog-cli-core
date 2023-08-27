@@ -217,7 +217,7 @@ func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDi
 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
 			continue
 		}
-		if len(flattenTree) == 0 {
+		if len(flattenTree.Nodes) == 0 {
 			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
 			continue
 		}
@@ -234,15 +234,19 @@ func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDi
 			continue
 		}
 		techResults = audit.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
+		var directDependencies []string
 		if tech == coreutils.Pip {
-			params.AppendDirectDependencies(getDirectDependenciesFromTree(flattenTree))
-
+			// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
+			// Our solution for this case is to send all dependencies to the CA scanner.
+			directDependencies = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
 		} else {
-			params.AppendDirectDependencies(getDirectDependenciesFromTree(fullDependencyTrees))
+			directDependencies = getDirectDependenciesFromTree(fullDependencyTrees)
 		}
+		params.AppendDirectDependencies(directDependencies)
+
 		results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
 		if !results.IsMultipleRootProject {
-			results.IsMultipleRootProject = len(flattenTree) > 1
+			results.IsMultipleRootProject = len(fullDependencyTrees) > 1
 		}
 		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
 	}
@@ -260,7 +264,7 @@ func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []
 	return directDependencies.ToSlice()
 }
 
-func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree []*xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}

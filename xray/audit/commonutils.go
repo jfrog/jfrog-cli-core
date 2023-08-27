@@ -36,7 +36,7 @@ func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[st
 		childNode := &xrayUtils.GraphNode{
 			Id:     childDependency,
 			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: &xrayUtils.ParentNode{Id: currNode.Id, Parent: currNode.Parent},
+			Parent: currNode,
 		}
 		if childNode.NodeHasLoop() {
 			continue
@@ -46,32 +46,26 @@ func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[st
 	}
 }
 
-func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
+func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
+	scanGraphParams.XrayGraphScanParams().AuditGraph = dependencyTree
+	scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(dependencyTree.Nodes), technology)
 	if progress != nil {
-		progress.SetHeadlineMsg("Scanning for vulnerabilities")
+		progress.SetHeadlineMsg(scanMessage)
 	}
-
-	for _, moduleDependencyTree := range modulesDependencyTrees {
-		scanGraphParams.XrayGraphScanParams().AuditGraph = moduleDependencyTree
-		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(moduleDependencyTree.Nodes), technology)
-		if progress != nil {
-			progress.SetHeadlineMsg(scanMessage)
-		}
-		log.Info(scanMessage + "...")
-		var scanResults *services.ScanResponse
-		scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
-		if err != nil {
-			err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
-			return
-		}
-		for i := range scanResults.Vulnerabilities {
-			scanResults.Vulnerabilities[i].Technology = technology.ToString()
-		}
-		for i := range scanResults.Violations {
-			scanResults.Violations[i].Technology = technology.ToString()
-		}
-		results = append(results, *scanResults)
+	log.Info(scanMessage + "...")
+	var scanResults *services.ScanResponse
+	scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
+	if err != nil {
+		err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
+		return
 	}
+	for i := range scanResults.Vulnerabilities {
+		scanResults.Vulnerabilities[i].Technology = technology.ToString()
+	}
+	for i := range scanResults.Violations {
+		scanResults.Violations[i].Technology = technology.ToString()
+	}
+	results = append(results, *scanResults)
 	return
 }
 

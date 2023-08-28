@@ -171,14 +171,14 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 
 	// Validate Xray minimum version for graph scan command
-	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.GraphScanMinXrayVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, utils.GraphScanMinXrayVersion)
 	if err != nil {
 		return err
 	}
 
 	if scanCmd.bypassArchiveLimits {
 		// Validate Xray minimum version for BypassArchiveLimits flag for indexer
-		err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.BypassArchiveLimitsMinXrayVersion)
+		err = clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, utils.BypassArchiveLimitsMinXrayVersion)
 		if err != nil {
 			return err
 		}

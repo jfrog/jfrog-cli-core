@@ -7,6 +7,7 @@ import (
 
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -93,7 +94,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
-	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], utils.Secrets)
 
 	// Assert
 	assert.NoError(t, err)
@@ -114,7 +115,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
-	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], utils.Secrets)
 
 	// Assert
 	assert.NoError(t, err)

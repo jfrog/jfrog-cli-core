@@ -45,7 +45,8 @@ type sarifProperties struct {
 	XrayID              string
 	File                string
 	LineColumn          string
-	SecretsOrIacType    string
+	Type                string
+	CodeFlows           [][]formats.SourceCodeLocationRow
 }
 
 // PrintScanResults prints the scan results in the specified format.
@@ -109,7 +110,10 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	return PrintIacTable(results.IacScanResults, results.EntitledForJas)
+	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
+		return
+	}
+	return PrintSastTable(results.ZeroDayResults, results.EntitledForJas)
 }
 
 func printMessages(messages []string) {
@@ -126,6 +130,9 @@ func printMessage(message string) {
 }
 
 func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool, scanningTool, toolURI string) (string, error) {
+	// TODO: Refactor, when AM return a scan result it is already in sarif format.
+	// We are doing double redundant work, converting from Sarif result to ExtendedScanResults and now back to Sarif
+	// Should only convert sca to new information or add additional attributes / change existing.
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -170,6 +177,10 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		iacRows := PrepareIacs(extendedResults.IacScanResults)
 		jsonTable.Iacs = iacRows
 	}
+	if len(extendedResults.ZeroDayResults) > 0 {
+		sastRows := PrepareSast(extendedResults.ZeroDayResults)
+		jsonTable.Sast = sastRows
+	}
 	if includeLicenses {
 		licJsonTable, err := PrepareLicenses(licenses)
 		if err != nil {
@@ -193,7 +204,7 @@ func convertScanToSarif(run *sarif.Run, extendedResults *ExtendedScanResults, is
 			return err
 		}
 	}
-	return convertToIacOrSecretsSarif(run, &jsonTable, markdownOutput)
+	return convertToSourceCodeResultSarif(run, &jsonTable, markdownOutput)
 }
 
 func convertToVulnerabilityOrViolationSarif(run *sarif.Run, jsonTable *formats.SimpleJsonResults, markdownOutput bool) error {
@@ -203,55 +214,71 @@ func convertToVulnerabilityOrViolationSarif(run *sarif.Run, jsonTable *formats.S
 	return convertVulnerabilitiesToSarif(jsonTable, run, markdownOutput)
 }
 
-func convertToIacOrSecretsSarif(run *sarif.Run, jsonTable *formats.SimpleJsonResults, markdownOutput bool) error {
-	var err error
+func convertToSourceCodeResultSarif(run *sarif.Run, jsonTable *formats.SimpleJsonResults, markdownOutput bool) (err error) {
 	for _, secret := range jsonTable.Secrets {
-		properties := getIacOrSecretsProperties(secret, markdownOutput, true)
+		properties := getSourceCodeProperties(secret, markdownOutput, Secrets)
 		if err = addPropertiesToSarifRun(run, &properties); err != nil {
-			return err
+			return
 		}
 	}
 
 	for _, iac := range jsonTable.Iacs {
-		properties := getIacOrSecretsProperties(iac, markdownOutput, false)
+		properties := getSourceCodeProperties(iac, markdownOutput, IaC)
 		if err = addPropertiesToSarifRun(run, &properties); err != nil {
-			return err
+			return
 		}
 	}
-	return err
+
+	for _, sast := range jsonTable.Sast {
+		properties := getSourceCodeProperties(sast, markdownOutput, ZeroDay)
+		if err = addPropertiesToSarifRun(run, &properties); err != nil {
+			return
+		}
+	}
+	return
 }
 
-func getIacOrSecretsProperties(secretOrIac formats.IacSecretsRow, markdownOutput, isSecret bool) sarifProperties {
-	file := strings.TrimPrefix(secretOrIac.File, string(os.PathSeparator))
+func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutput bool, scanType ScanType) sarifProperties {
+	file := strings.TrimPrefix(sourceCodeIssue.File, string(os.PathSeparator))
 	mapSeverityToScore := map[string]string{
 		"":         "0.0",
+		"unknown":  "0.0",
 		"low":      "3.9",
 		"medium":   "6.9",
 		"high":     "8.9",
 		"critical": "10",
 	}
-	severity := mapSeverityToScore[strings.ToLower(secretOrIac.Severity)]
+	severity := mapSeverityToScore[strings.ToLower(sourceCodeIssue.Severity)]
 	markdownDescription := ""
-	headline := "Infrastructure as Code Vulnerability"
-	secretOrFinding := "Finding"
-	if isSecret {
-		secretOrFinding = "Secret"
+	headline := ""
+	secretOrFinding := ""
+
+	switch scanType {
+	case IaC:
+		headline = "Infrastructure as Code Vulnerability"
+		secretOrFinding = "Finding"
+	case ZeroDay:
+		headline = sourceCodeIssue.Text
+		secretOrFinding = "Finding"
+	case Secrets:
 		headline = "Potential Secret Exposed"
+		secretOrFinding = "Secret"
 	}
 	if markdownOutput {
 		headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s |\n", secretOrFinding)
 		separatorRow := "| :---: | :---: | :---: | :---: |\n"
 		tableHeader := headerRow + separatorRow
-		markdownDescription = tableHeader + fmt.Sprintf("| %s | %s | %s | %s |", secretOrIac.Severity, file, secretOrIac.LineColumn, secretOrIac.Text)
+		markdownDescription = tableHeader + fmt.Sprintf("| %s | %s | %s | %s |", sourceCodeIssue.Severity, file, sourceCodeIssue.LineColumn, sourceCodeIssue.Text)
 	}
 	return sarifProperties{
 		Headline:            headline,
 		Severity:            severity,
-		Description:         secretOrIac.Text,
+		Description:         sourceCodeIssue.Text,
 		MarkdownDescription: markdownDescription,
 		File:                file,
-		LineColumn:          secretOrIac.LineColumn,
-		SecretsOrIacType:    secretOrIac.Type,
+		LineColumn:          sourceCodeIssue.LineColumn,
+		Type:                sourceCodeIssue.Type,
+		CodeFlows:           sourceCodeIssue.CodeFlow,
 	}
 }
 
@@ -371,17 +398,13 @@ func addPropertiesToSarifRun(run *sarif.Run, properties *sarifProperties) error 
 	if markdownDescription != "" {
 		description = ""
 	}
-	line := 0
-	column := 0
-	var err error
-	if properties.LineColumn != "" {
-		lineColumn := strings.Split(properties.LineColumn, ":")
-		if line, err = strconv.Atoi(lineColumn[0]); err != nil {
-			return err
-		}
-		if column, err = strconv.Atoi(lineColumn[1]); err != nil {
-			return err
-		}
+	location, err := getSarifLocation(properties.File, properties.LineColumn)
+	if err != nil {
+		return err
+	}
+	codeFlows, err := getCodeFlowProperties(properties)
+	if err != nil {
+		return err
 	}
 	ruleID := generateSarifRuleID(properties)
 	run.AddRule(ruleID).
@@ -389,18 +412,54 @@ func addPropertiesToSarifRun(run *sarif.Run, properties *sarifProperties) error 
 		WithProperties(pb.Properties).
 		WithMarkdownHelp(markdownDescription)
 	run.CreateResultForRule(ruleID).
+		WithCodeFlows(codeFlows).
 		WithMessage(sarif.NewTextMessage(properties.Headline)).
-		AddLocation(
-			sarif.NewLocationWithPhysicalLocation(
-				sarif.NewPhysicalLocation().
-					WithArtifactLocation(
-						sarif.NewSimpleArtifactLocation(properties.File),
-					).WithRegion(
-					sarif.NewSimpleRegion(line, line).
-						WithStartColumn(column)),
-			),
-		)
+		AddLocation(location)
 	return nil
+}
+
+func getSarifLocation(file, lineCol string) (location *sarif.Location, err error) {
+	line := 0
+	column := 0
+	if lineCol != "" {
+		lineColumn := strings.Split(lineCol, ":")
+		if line, err = strconv.Atoi(lineColumn[0]); err != nil {
+			return
+		}
+		if column, err = strconv.Atoi(lineColumn[1]); err != nil {
+			return
+		}
+	}
+	location = sarif.NewLocationWithPhysicalLocation(
+		sarif.NewPhysicalLocation().
+			WithArtifactLocation(
+				sarif.NewSimpleArtifactLocation(file),
+			).WithRegion(
+			sarif.NewSimpleRegion(line, line).
+				WithStartColumn(column)),
+	)
+	return
+}
+
+func getCodeFlowProperties(properties *sarifProperties) (flows []*sarif.CodeFlow, err error) {
+	for _, codeFlow := range properties.CodeFlows {
+		if len(codeFlow) == 0 {
+			continue
+		}
+		converted := sarif.NewCodeFlow()
+		locations := []*sarif.ThreadFlowLocation{}
+		for _, location := range codeFlow {
+			var convertedLocation *sarif.Location
+			if convertedLocation, err = getSarifLocation(location.File, location.LineColumn); err != nil {
+				return
+			}
+			locations = append(locations, sarif.NewThreadFlowLocation().WithLocation(convertedLocation))
+		}
+
+		converted.AddThreadFlow(sarif.NewThreadFlow().WithLocations(locations))
+		flows = append(flows, converted)
+	}
+	return
 }
 
 func generateSarifRuleID(properties *sarifProperties) string {

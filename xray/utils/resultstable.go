@@ -284,22 +284,24 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
-func PrepareSecrets(secrets []SourceCodeScanResult) []formats.IacSecretsRow {
+func PrepareSecrets(secrets []SourceCodeScanResult) []formats.SourceCodeRow {
 	return prepareSecrets(secrets, false)
 }
 
-func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.IacSecretsRow {
-	var secretsRows []formats.IacSecretsRow
+func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var secretsRows []formats.SourceCodeRow
 	for _, secret := range secrets {
 		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
 		secretsRows = append(secretsRows,
-			formats.IacSecretsRow{
+			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
-				File:             secret.File,
-				LineColumn:       secret.LineColumn,
-				Text:             secret.Text,
-				Type:             secret.Type,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       secret.File,
+					LineColumn: secret.LineColumn,
+					Text:       secret.Text,
+				},
+				Type: secret.Type,
 			},
 		)
 	}
@@ -322,22 +324,24 @@ func PrintSecretsTable(secrets []SourceCodeScanResult, entitledForSecretsScan bo
 }
 
 // Prepare iacs for all non-table formats (without style or emoji)
-func PrepareIacs(iacs []SourceCodeScanResult) []formats.IacSecretsRow {
+func PrepareIacs(iacs []SourceCodeScanResult) []formats.SourceCodeRow {
 	return prepareIacs(iacs, false)
 }
 
-func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.IacSecretsRow {
-	var iacRows []formats.IacSecretsRow
+func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var iacRows []formats.SourceCodeRow
 	for _, iac := range iacs {
 		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
 		iacRows = append(iacRows,
-			formats.IacSecretsRow{
+			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
-				File:             iac.File,
-				LineColumn:       iac.LineColumn,
-				Text:             iac.Text,
-				Type:             iac.Type,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       iac.File,
+					LineColumn: iac.LineColumn,
+					Text:       iac.Text,
+				},
+				Type: iac.Type,
 			},
 		)
 	}
@@ -355,6 +359,65 @@ func PrintIacTable(iacs []SourceCodeScanResult, entitledForIacScan bool) error {
 		log.Output()
 		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
+	}
+	return nil
+}
+
+func PrepareSast(sasts []SourceCodeScanResult) []formats.SourceCodeRow {
+	return prepareSast(sasts, false)
+}
+
+func prepareSast(sasts []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var sastRows []formats.SourceCodeRow
+	for _, sast := range sasts {
+		currSeverity := GetSeverity(sast.Severity, ApplicableStringValue)
+		sastRows = append(sastRows,
+			formats.SourceCodeRow{
+				Severity:         currSeverity.printableTitle(isTable),
+				SeverityNumValue: currSeverity.numValue,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       sast.File,
+					LineColumn: sast.LineColumn,
+					Text:       sast.Text,
+				},
+				Type:     sast.Type,
+				CodeFlow: toSourceCodeCodeFlowRow(sast, isTable),
+			},
+		)
+	}
+
+	sort.Slice(sastRows, func(i, j int) bool {
+		return sastRows[i].SeverityNumValue > sastRows[j].SeverityNumValue
+	})
+
+	return sastRows
+}
+
+func toSourceCodeCodeFlowRow(result SourceCodeScanResult, isTable bool) (flows [][]formats.SourceCodeLocationRow) {
+	if isTable {
+		// Not displaying in table
+		return
+	}
+	for _, flowStack := range result.CodeFlow {
+		rowFlow := []formats.SourceCodeLocationRow{}
+		for _, location := range flowStack {
+			rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
+				File:       location.File,
+				LineColumn: location.LineColumn,
+				Text:       location.Text,
+			})
+		}
+		flows = append(flows, rowFlow)
+	}
+	return
+}
+
+func PrintSastTable(sast []SourceCodeScanResult, entitledForSastScan bool) error {
+	if entitledForSastScan {
+		sastRows := prepareSast(sast, true)
+		log.Output()
+		return coreutils.PrintTable(formats.ConvertToSastTableRow(sastRows), "Static Application Security Testing (SAST)",
+			"✨ No Static Application Security Testing vulnerabilities were found ✨", false)
 	}
 	return nil
 }
@@ -537,24 +600,29 @@ func (s *Severity) printableTitle(isTable bool) string {
 
 var Severities = map[string]map[string]*Severity{
 	"Critical": {
-		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 12, style: color.New(color.BgLightRed, color.LightWhite)},
-		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 11, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
 	},
 	"High": {
-		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 10, style: color.New(color.Red)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
+		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
 	},
 	"Medium": {
-		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 8, style: color.New(color.Yellow)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 7, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
+		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
 	},
 	"Low": {
-		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 6},
-		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 5},
-		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 1, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 9},
+		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 8},
+		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
+	},
+	"Unknown": {
+		ApplicableStringValue:                {emoji: "😐", title: "Unknown", numValue: 7},
+		ApplicabilityUndeterminedStringValue: {emoji: "😐", title: "Unknown", numValue: 6},
+		NotApplicableStringValue:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
 	},
 }
 

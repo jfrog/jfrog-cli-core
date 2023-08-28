@@ -54,7 +54,7 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 		return
 	}
 	var workingDirResults []utils.SourceCodeScanResult
-	workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, true)
+	workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.Secrets)
 	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
 	return
 }

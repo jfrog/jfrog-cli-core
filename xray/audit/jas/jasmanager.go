@@ -127,7 +127,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func getSourceCodeScanResults(resultsFileName, workingDir string, isSecret bool) ([]utils.SourceCodeScanResult, error) {
+func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.ScanType) ([]utils.SourceCodeScanResult, error) {
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -143,18 +143,14 @@ func getSourceCodeScanResults(resultsFileName, workingDir string, isSecret bool)
 		if len(result.Suppressions) > 0 {
 			continue
 		}
-		text := *result.Message.Text
-		if isSecret {
-			text = hideSecret(*result.Locations[0].PhysicalLocation.Region.Snippet.Text)
+		index := utils.GetOrCreateCodeScanResult(result, workingDir, &sourceCodeScanResults)
+		if scanType == utils.Secrets {
+			sourceCodeScanResults[index].Text = hideSecret(utils.GetResultLocationSnippet(result.Locations[0]))
 		}
-		newResult := utils.SourceCodeScanResult{
-			Severity:   utils.GetResultSeverity(result),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), workingDir),
-			LineColumn: utils.GetResultLocationInFile(result),
-			Text:       text,
-			Type:       *result.RuleID,
+		if scanType == utils.ZeroDay {
+			flows := utils.GetResultCodeFlows(result, workingDir)
+			sourceCodeScanResults[index].CodeFlow = append(sourceCodeScanResults[index].CodeFlow, flows...)
 		}
-		sourceCodeScanResults = append(sourceCodeScanResults, newResult)
 	}
 	return sourceCodeScanResults, nil
 }

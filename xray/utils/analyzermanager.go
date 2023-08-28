@@ -20,7 +20,9 @@ import (
 )
 
 var (
-	levelToSeverity = map[string]string{"error": "High", "warning": "Medium", "info": "Low"}
+	// levelToSeverity = map[string]string{"error": "High", "warning": "Medium", "info": "Low"}
+	// Default is Medium for all other values
+	levelToSeverity = map[string]string{"error": "High", "note": "Low", "none": "Unknown"}
 )
 
 const (
@@ -72,12 +74,17 @@ var exitCodeErrorsMap = map[int]string{
 	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
 }
 
-type SourceCodeScanResult struct {
-	Severity   string
+type SourceCodeLocation struct {
 	File       string
 	LineColumn string
-	Type       string
 	Text       string
+}
+
+type SourceCodeScanResult struct {
+	SourceCodeLocation
+	Severity string
+	Type     string
+	CodeFlow [][]SourceCodeLocation
 }
 
 type ExtendedScanResults struct {
@@ -209,25 +216,109 @@ func RemoveDuplicateValues(stringSlice []string) []string {
 	return finalSlice
 }
 
+func GetResultIfExists(file, lineCol, text string, results []SourceCodeScanResult) int {
+	for i, result := range results {
+		if result.File == file && result.LineColumn == lineCol && result.Text == text {
+			return i
+		}
+	}
+	return -1
+}
+
+// If a result with the same file, line, column and text exists return it. otherwise create a new result and add it to results
+// Used to combine results from similar places instead of reporting multiple duplicate rows
+func GetOrCreateCodeScanResult(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) int {
+	file := ExtractRelativePath(GetResultFileName(result), workingDir)
+	lineCol := GetResultLocationInFile(result)
+	text := *result.Message.Text
+	// Already exists
+	if index := GetResultIfExists(file, lineCol, text, *results); index >= 0 {
+		return index
+	}
+	// New result
+	newResult := SourceCodeScanResult{
+		Severity: GetResultSeverity(result),
+		SourceCodeLocation: SourceCodeLocation{
+			File:       file,
+			LineColumn: lineCol,
+			Text:       text,
+		},
+		Type: *result.RuleID,
+	}
+	index := len(*results)
+	*results = append(*results, newResult)
+
+	return index
+}
+
 func GetResultFileName(result *sarif.Result) string {
 	if len(result.Locations) > 0 {
-		filePath := result.Locations[0].PhysicalLocation.ArtifactLocation.URI
-		if filePath != nil {
-			return *filePath
-		}
+		return getResultFileName(result.Locations[0])
+	}
+	return ""
+}
+
+func getResultFileName(location *sarif.Location) string {
+	filePath := location.PhysicalLocation.ArtifactLocation.URI
+	if filePath != nil {
+		return *filePath
 	}
 	return ""
 }
 
 func GetResultLocationInFile(result *sarif.Result) string {
 	if len(result.Locations) > 0 {
-		startLine := result.Locations[0].PhysicalLocation.Region.StartLine
-		startColumn := result.Locations[0].PhysicalLocation.Region.StartColumn
-		if startLine != nil && startColumn != nil {
-			return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
-		}
+		return getResultLocationInFile(result.Locations[0])
 	}
 	return ""
+}
+
+func getResultLocationInFile(location *sarif.Location) string {
+	startLine := location.PhysicalLocation.Region.StartLine
+	startColumn := location.PhysicalLocation.Region.StartColumn
+	if startLine != nil && startColumn != nil {
+		return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
+	}
+	return ""
+}
+
+func GetResultLocationSnippet(location *sarif.Location) string {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
+		return *location.PhysicalLocation.Region.Snippet.Text
+	}
+	return ""
+}
+
+func GetResultCodeFlows(result *sarif.Result, workingDir string) (flows [][]SourceCodeLocation) {
+	if len(result.CodeFlows) == 0 {
+		return
+	}
+	for _, codeFlow := range result.CodeFlows {
+		if codeFlow == nil || len(codeFlow.ThreadFlows) == 0 {
+			continue
+		}
+		for _, threadFlow := range codeFlow.ThreadFlows {
+			if threadFlow == nil || len(threadFlow.Locations) == 0 {
+				continue
+			}
+			flow := []SourceCodeLocation{}
+			for _, location := range threadFlow.Locations {
+				if location == nil {
+					continue
+				}
+				flow = append(flow, SourceCodeLocation{
+					File:       ExtractRelativePath(getResultFileName(location.Location), workingDir),
+					LineColumn: getResultLocationInFile(location.Location),
+					Text:       GetResultLocationSnippet(location.Location),
+				})
+			}
+			if len(flow) == 0 {
+				continue
+			}
+			flows = append(flows, flow)
+		}
+	}
+	return
 }
 
 func ExtractRelativePath(resultPath string, projectRoot string) string {

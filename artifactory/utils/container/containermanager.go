@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -257,5 +258,5 @@ func ValidateClientApiVersion() error {
 		log.Error("The Docker client Api version is expected to be 'major.minor'. The actual output is:", content)
 		return errorutils.CheckError(err)
 	}
-	return coreutils.ValidateMinimumVersion(coreutils.DockerApi, content, MinSupportedApiVersion)
+	return utils.ValidateMinimumVersion(utils.DockerApi, content, MinSupportedApiVersion)
 }

@@ -4,7 +4,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -59,7 +59,7 @@ func (ccb *ContainerCommandBase) IsGetRepoSupported() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, currentVersion, MinRtVersionForRepoFetching)
+	err = clientutils.ValidateMinimumVersion(clientutils.Artifactory, currentVersion, MinRtVersionForRepoFetching)
 	return err == nil, nil
 }
 

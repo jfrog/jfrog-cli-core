@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray"
@@ -101,7 +102,7 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 		return nil, err
 	}
 
-	err = coreutils.ValidateMinimumVersion(coreutils.Xray, params.xrayVersion, ScanTypeMinXrayVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Xray, params.xrayVersion, ScanTypeMinXrayVersion)
 	if err != nil {
 		// Remove scan type param if Xray version is under the minimum supported version
 		params.xrayGraphScanParams.ScanType = ""

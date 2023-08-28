@@ -17,8 +17,10 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	usageReporter "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
 	serviceUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -234,7 +236,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 }
 
 func (tdc *TransferFilesCommand) reportTransferFilesUsage() {
-	log.Debug(usage.ReportUsagePrefix + "Sending Transfer Files info...")
+	log.Debug(usageReporter.ReportUsagePrefix, "Sending Transfer Files info...")
 	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
 	if err != nil {
 		log.Debug(err.Error())
@@ -708,7 +710,7 @@ func validateDataTransferPluginMinimumVersion(currentVersion string) error {
 	if strings.Contains(currentVersion, "SNAPSHOT") {
 		return nil
 	}
-	return coreutils.ValidateMinimumVersion(coreutils.DataTransfer, currentVersion, dataTransferPluginMinVersion)
+	return clientutils.ValidateMinimumVersion(clientutils.DataTransfer, currentVersion, dataTransferPluginMinVersion)
 }
 
 // Verify connection to the source Artifactory instance, and that the user plugin is installed, responsive, and stands in the minimal version requirement.

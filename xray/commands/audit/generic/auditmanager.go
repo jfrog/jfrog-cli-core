@@ -127,7 +127,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 	if err != nil {
 		return
 	}
-	if err = coreutils.ValidateMinimumVersion(coreutils.Xray, auditParams.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
 		return
 	}
 	results.ExtendedScanResults.EntitledForJas, err = isEntitledForJas(xrayManager, auditParams.xrayVersion)
@@ -157,7 +157,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 }
 
 func isEntitledForJas(xrayManager *xray.XrayServicesManager, xrayVersion string) (entitled bool, err error) {
-	if e := coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
+	if e := clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
 		log.Debug(e)
 		return
 	}

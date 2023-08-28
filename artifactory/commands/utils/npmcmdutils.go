@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -54,7 +55,7 @@ func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error
 	}
 
 	// Validate version.
-	return coreutils.ValidateMinimumVersion(coreutils.Artifactory, versionStr, minSupportedArtifactoryVersionForNpmCmds)
+	return clientutils.ValidateMinimumVersion(clientutils.Artifactory, versionStr, minSupportedArtifactoryVersionForNpmCmds)
 }
 
 func getNpmAuthFromArtifactory(artDetails *auth.ServiceDetails) (npmAuth string, err error) {

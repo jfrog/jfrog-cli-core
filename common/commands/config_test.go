@@ -40,6 +40,20 @@ func TestUsernameSavedLowercase(t *testing.T) {
 	assert.Equal(t, outputConfig.User, "admin", "The config command is supposed to save username as lowercase")
 }
 
+func TestDefaultServerId(t *testing.T) {
+	inputDetails := tests.CreateTestServerDetails()
+	inputDetails.User = "admin"
+	inputDetails.Password = "password"
+	// Remove server ID to verify the default one will be applied in non-interactive execution.
+	inputDetails.ServerId = ""
+
+	doConfig(t, "", inputDetails, false, true, false)
+	outputConfig, err := GetConfig(config.DefaultServerId, false)
+	assert.NoError(t, err)
+	assert.Equal(t, config.DefaultServerId, outputConfig.ServerId)
+	assert.NoError(t, NewConfigCommand(Delete, config.DefaultServerId).Run())
+}
+
 func TestArtifactorySshKey(t *testing.T) {
 	inputDetails := tests.CreateTestServerDetails()
 	inputDetails.SshKeyPath = "/tmp/sshKey"
@@ -172,6 +186,10 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 }
 
 func TestMakeDefaultOption(t *testing.T) {
+	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
 	originalDefault := tests.CreateTestServerDetails()
 	originalDefault.ServerId = "originalDefault"
 	originalDefault.IsDefault = false
@@ -186,7 +204,6 @@ func TestMakeDefaultOption(t *testing.T) {
 	// Config a second server and pass the makeDefault option.
 	configAndAssertDefault(t, newDefault, true)
 	defer deleteServer(t, newDefault.ServerId)
-
 }
 
 func configAndAssertDefault(t *testing.T, inputDetails *config.ServerDetails, makeDefault bool) {
@@ -321,11 +338,15 @@ func configAndGetTestServer(t *testing.T, inputDetails *config.ServerDetails, ba
 }
 
 func configAndGetServer(t *testing.T, serverId string, inputDetails *config.ServerDetails, basicAuthOnly, interactive, makeDefault bool) (*config.ServerDetails, error) {
+	doConfig(t, serverId, inputDetails, basicAuthOnly, interactive, makeDefault)
+	return GetConfig(serverId, false)
+}
+
+func doConfig(t *testing.T, serverId string, inputDetails *config.ServerDetails, basicAuthOnly, interactive, makeDefault bool) {
 	configCmd := NewConfigCommand(AddOrEdit, serverId).SetDetails(inputDetails).SetUseBasicAuthOnly(basicAuthOnly).
 		SetInteractive(interactive).SetMakeDefault(makeDefault)
 	configCmd.disablePrompts = true
 	assert.NoError(t, configCmd.Run())
-	return GetConfig(serverId, false)
 }
 
 func configStructToString(t *testing.T, artConfig *config.ServerDetails) string {

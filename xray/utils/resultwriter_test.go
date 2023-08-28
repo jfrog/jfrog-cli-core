@@ -104,14 +104,14 @@ func TestGetCves(t *testing.T) {
 func TestGetIacOrSecretsProperties(t *testing.T) {
 	testCases := []struct {
 		name           string
-		secretOrIac    formats.SourceCodeRow
+		row    formats.SourceCodeRow
 		markdownOutput bool
 		isSecret       ScanType
 		expectedOutput sarifProperties
 	}{
 		{
 			name: "Infrastructure as Code vulnerability without markdown output",
-			secretOrIac: formats.SourceCodeRow{
+			row: formats.SourceCodeRow{
 				Severity: "high",
 				SourceCodeLocationRow: formats.SourceCodeLocationRow{
 					File:       path.Join("path", "to", "file"),
@@ -137,7 +137,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 		},
 		{
 			name: "Potential secret exposed with markdown output",
-			secretOrIac: formats.SourceCodeRow{
+			row: formats.SourceCodeRow{
 				Severity: "medium",
 				SourceCodeLocationRow: formats.SourceCodeLocationRow{
 					File:       path.Join("path", "to", "file"),
@@ -165,7 +165,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			output := getSourceCodeProperties(testCase.secretOrIac, testCase.markdownOutput, testCase.isSecret)
+			output := getSourceCodeProperties(testCase.row, testCase.markdownOutput, testCase.isSecret)
 			assert.Equal(t, testCase.expectedOutput.Applicable, output.Applicable)
 			assert.Equal(t, testCase.expectedOutput.Cves, output.Cves)
 			assert.Equal(t, testCase.expectedOutput.Headline, output.Headline)
@@ -175,7 +175,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 			assert.Equal(t, testCase.expectedOutput.XrayID, output.XrayID)
 			assert.Equal(t, testCase.expectedOutput.File, output.File)
 			assert.Equal(t, testCase.expectedOutput.LineColumn, output.LineColumn)
-			assert.Equal(t, testCase.expectedOutput.Type, output.SecretsOrIacType)
+			assert.Equal(t, testCase.expectedOutput.Type, output.Type)
 		})
 	}
 }

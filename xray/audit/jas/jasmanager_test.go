@@ -12,22 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var (
-	analyzerManagerExecutionError error = nil
-	analyzerManagerExists               = true
-)
-
-type analyzerManagerMock struct {
-}
-
-func (am *analyzerManagerMock) Exec(string, string, *config.ServerDetails) error {
-	return analyzerManagerExecutionError
-}
-
-func (am *analyzerManagerMock) ExistLocally() (bool, error) {
-	return analyzerManagerExists, nil
-}
-
 var fakeBasicXrayResults = []services.ScanResponse{
 	{
 		ScanId: "scanId_1",

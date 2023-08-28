@@ -544,7 +544,7 @@ func (tcc *TransferConfigCommand) validateMinVersion() (sourceArtifactoryVersion
 	}
 
 	// Validate minimal Artifactory version in the source server
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
 	if err != nil {
 		return
 	}
@@ -565,7 +565,7 @@ func (tcc *TransferConfigCommand) validateServerPrerequisites() (err error) {
 	}
 
 	// Check connectivity to JFrog Access if the source Artifactory version is >= 7.0.0
-	if versionErr := coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, commandsUtils.MinJFrogProjectsArtifactoryVersion); versionErr == nil {
+	if versionErr := clientutils.ValidateMinimumVersion(clientutils.Projects, sourceArtifactoryVersion, commandsUtils.MinJFrogProjectsArtifactoryVersion); versionErr == nil {
 		if err = tcc.ValidateAccessServerConnection(tcc.SourceServerDetails, tcc.SourceAccessManager); err != nil {
 			return
 		}

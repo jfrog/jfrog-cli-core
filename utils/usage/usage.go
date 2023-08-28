@@ -1,6 +1,8 @@
 package usage
 
 import (
+	"fmt"
+
 	"golang.org/x/sync/errgroup"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -101,7 +103,10 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 }
 
 func (ur *UsageReporter) WaitForResponses() (err error) {
-	return ur.reportWaitGroup.Wait()
+	if err = ur.reportWaitGroup.Wait(); err != nil {
+		err = fmt.Errorf("%s %s", ReportUsagePrefix, err.Error())
+	}
+	return 
 }
 
 func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error) {

@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	usageReporter "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -32,11 +31,7 @@ func Exec(command Command) error {
 
 func reportUsage(command Command, channel chan<- bool) {
 	defer signalReportUsageFinished(channel)
-	reportUsage, err := clientutils.GetBoolEnvValue(coreutils.ReportUsage, true)
-	if err != nil {
-		log.Debug(usageReporter.ReportUsagePrefix, err.Error())
-		return
-	}
+	reportUsage := usageReporter.ShouldReportUsage()
 	if reportUsage {
 		serverDetails, err := command.ServerDetails()
 		if err != nil {

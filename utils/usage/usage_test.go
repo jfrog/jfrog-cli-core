@@ -207,7 +207,7 @@ func createXrayUsageHandler(t *testing.T, productId, commandName, clientId strin
 			_, err := buf.ReadFrom(r.Body)
 			assert.NoError(t, err)
 			featureId := xrayusage.GetExpectedXrayEventName(productId, commandName)
-			assert.Equal(t, fmt.Sprintf(`[{"data":{"clientId":"%s"},"product_name":"%s","event_name":"%s","origin":"API"}]`, clientId, productId, featureId), buf.String())
+			assert.Equal(t, fmt.Sprintf(`[{"data":{"clientId":"%s"},"product_name":"%s","event_name":"%s","origin":"API_CLI"}]`, clientId, productId, featureId), buf.String())
 
 			// Send response OK
 			w.WriteHeader(http.StatusOK)

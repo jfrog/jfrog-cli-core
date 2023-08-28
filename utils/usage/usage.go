@@ -106,7 +106,7 @@ func (ur *UsageReporter) WaitForResponses() (err error) {
 	if err = ur.reportWaitGroup.Wait(); err != nil {
 		err = fmt.Errorf("%s %s", ReportUsagePrefix, err.Error())
 	}
-	return 
+	return
 }
 
 func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error) {

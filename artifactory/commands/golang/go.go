@@ -9,9 +9,9 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
-	rtutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
+	rtutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -261,7 +261,7 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 // PackageName string should be in the following format: <Package Path>/@V/<Requested Branch Name>.info OR latest.info
 // For example the jfrog/jfrog-cli/@v/master.info packageName will return the corresponding canonical version (vX.Y.Z) string for the jfrog-cli master branch.
 func getPackageVersion(repoName, packageName string, details auth.ServiceDetails) (string, error) {
-	artifactoryApiUrl, err := rtutils.BuildArtifactoryUrl(details.GetUrl(), "api/go/"+repoName, make(map[string]string))
+	artifactoryApiUrl, err := rtutils.BuildUrl(details.GetUrl(), "api/go/"+repoName, make(map[string]string))
 	if err != nil {
 		return "", err
 	}

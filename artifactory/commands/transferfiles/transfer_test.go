@@ -23,7 +23,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -117,7 +118,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 	pluginVersion = curVersion
 	err := getAndValidateDataTransferPlugin(srcPluginManager)
 	if errorExpected {
-		assert.EqualError(t, err, coreutils.ValidateMinimumVersion(coreutils.DataTransfer, curVersion, dataTransferPluginMinVersion).Error())
+		assert.EqualError(t, err, clientutils.ValidateMinimumVersion(clientutils.DataTransfer, curVersion, dataTransferPluginMinVersion).Error())
 		return
 	}
 	assert.NoError(t, err)
@@ -319,7 +320,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 		case "/api/storageinfo":
 			// Response for GetStorageInfo
 			w.WriteHeader(http.StatusOK)
-			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{
+			response := &artifactoryUtils.StorageInfo{RepositoriesSummaryList: []artifactoryUtils.RepositorySummary{
 				{RepoKey: "repo-1"}, {RepoKey: "repo-2"},
 				{RepoKey: "federated-repo-1"}, {RepoKey: "federated-repo-2"},
 				{RepoKey: "artifactory-build-info", PackageType: "BuildInfo"}, {RepoKey: "proj-build-info", PackageType: "BuildInfo"}},

@@ -300,7 +300,7 @@ func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Te
 	if err != nil {
 		return
 	}
-	log.Debug(fmt.Sprintf("Created '%s' dependency tree with %d nodes. Elapsed time: %.1f seconds.", tech.ToFormal(), len(uniqueDeps), time.Now().Sub(startTime).Seconds()))
+	log.Debug(fmt.Sprintf("Created '%s' dependency tree with %d nodes. Elapsed time: %.1f seconds.", tech.ToFormal(), len(uniqueDeps), time.Since(startTime).Seconds()))
 	flatTree, err = createFlatTree(uniqueDeps)
 	return
 }

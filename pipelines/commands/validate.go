@@ -12,7 +12,6 @@ import (
 type ValidateCommand struct {
 	serverDetails *config.ServerDetails
 	files         string
-	data          []byte
 	directory     string
 }
 
@@ -72,11 +71,9 @@ func (vc *ValidateCommand) preparePayload() ([]byte, error) {
 		filesFromDir, err := utils.GetAllFilesFromDirectory(vc.directory)
 		if err != nil && len(vc.files) == 0 {
 			return []byte{}, err
-		} else if err != nil {
-			log.Warn("Unable to read files from directory ", vc.directory, " proceeding with validation on ", vc.files)
-		} else {
-			files = filesFromDir
 		}
+		log.Info("Proceeding with validation on ", vc.files)
+		files = filesFromDir
 	}
 	pipelineDefinitions, err := structureFileContentAsPipelineDefinition(files, "")
 	if err != nil {

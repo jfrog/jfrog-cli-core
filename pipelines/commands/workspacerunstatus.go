@@ -46,7 +46,7 @@ func (wrs *WorkspaceRunStatusCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	pipelineNames := make([]string, len(pipelinesBranch))
+	pipelineNames := make([]string, 0)
 	for pipName := range pipelinesBranch {
 		pipelineNames = append(pipelineNames, pipName)
 	}

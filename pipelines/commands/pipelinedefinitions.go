@@ -19,16 +19,14 @@ type ValidationFiles struct {
 func structureFileContentAsPipelineDefinition(allPipelineFiles []string, values string) ([]PipelineDefinition, error) {
 	var pipelineDefinitions []PipelineDefinition
 	for _, pathToFile := range allPipelineFiles {
-		log.Info("Attaching pipelines definition file: ", pathToFile)
+		log.Debug("Attaching pipelines definition file: ", pathToFile)
 		fileContent, fileInfo, err := utils.GetFileContentAndBaseName(pathToFile)
 		if err != nil {
 			return nil, err
 		}
-		ymlType := "pipelines"
+		ymlType := ""
 		if strings.EqualFold(fileInfo.Name(), "values.yml") {
 			ymlType = "values"
-		} else if strings.Contains(fileInfo.Name(), "resources") {
-			ymlType = "resources"
 		}
 		if len(fileContent) == 0 {
 			continue

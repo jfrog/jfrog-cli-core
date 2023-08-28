@@ -25,7 +25,6 @@ const (
 type WorkspaceRunCommand struct {
 	serverDetails *config.ServerDetails
 	pathToFiles   string
-	data          []byte
 	project       string
 	values        string
 }
@@ -149,7 +148,7 @@ func (wc *WorkspaceRunCommand) pollSyncStatusAndTriggerRun(serviceManager *pipel
 	if err != nil {
 		return err
 	}
-	pipelineNames := make([]string, len(pipelinesBranch))
+	pipelineNames := make([]string, 0)
 	for pipName, branch := range pipelinesBranch {
 		log.Info(coreutils.PrintTitle("Triggering pipeline run for: "), pipName)
 		pipelineNames = append(pipelineNames, pipName)

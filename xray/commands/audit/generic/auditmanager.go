@@ -18,6 +18,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/manager"
@@ -149,7 +150,7 @@ func RunAudit(auditParams *Params) (results *Results, err error) {
 }
 
 func isEntitledForJas(xrayManager manager.SecurityServiceManager, xrayVersion string) (entitled bool, err error) {
-	if e := coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
+	if e := clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
 		log.Debug(e)
 		return
 	}

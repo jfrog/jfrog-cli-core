@@ -1,33 +1,20 @@
 package jas
 
 import (
-	"errors"
-	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/owenrumney/go-sarif/v2/sarif"
-	"gopkg.in/yaml.v2"
-	"os"
-	"path/filepath"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
-	secretsScanCommand    = "sec"
-	secretsScannersNames  = "tokens, entropy"
-	secretsScannerType    = "secrets-scan"
-	secScanFailureMessage = "failed to run secrets scan. Cause: %s"
+	secretsScanCommand = "sec"
+	secretsScannerType = "secrets-scan"
 )
 
 type SecretScanManager struct {
 	secretsScannerResults []utils.IacOrSecretResult
-	configFileName        string
-	resultsFileName       string
-	analyzerManager       utils.AnalyzerManagerInterface
-	serverDetails         *config.ServerDetails
-	projectRootPath       string
+	scanner               *AdvancedSecurityScanner
 }
 
 // The getSecretsScanResults function runs the secrets scan flow, which includes the following steps:
@@ -36,60 +23,40 @@ type SecretScanManager struct {
 // Parsing the analyzer manager results.
 // Return values:
 // []utils.IacOrSecretResult: a list of the secrets that were found.
-// bool: true if the user is entitled to secrets scan, false otherwise.
 // error: An error object (if any).
-func getSecretsScanResults(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) ([]utils.IacOrSecretResult,
-	bool, error) {
-	secretScanManager, cleanupFunc, err := newSecretsScanManager(serverDetails, analyzerManager)
-	if err != nil {
-		return nil, false, fmt.Errorf(secScanFailureMessage, err.Error())
-	}
-	defer func() {
-		if cleanupFunc != nil {
-			err = errors.Join(err, cleanupFunc())
-		}
-	}()
-	if err = secretScanManager.run(); err != nil {
-		if utils.IsNotEntitledError(err) || utils.IsUnsupportedCommandError(err) {
-			return nil, false, nil
-		}
-		return nil, true, fmt.Errorf(secScanFailureMessage, err.Error())
-	}
-	return secretScanManager.secretsScannerResults, true, nil
-}
-
-func newSecretsScanManager(serverDetails *config.ServerDetails, analyzerManager utils.AnalyzerManagerInterface) (manager *SecretScanManager,
-	cleanup func() error, err error) {
-	tempDir, err := fileutils.CreateTempDir()
-	if err != nil {
+func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.IacOrSecretResult, err error) {
+	secretScanManager := newSecretsScanManager(scanner)
+	log.Info("Running secrets scanning...")
+	if err = secretScanManager.scanner.Run(secretScanManager); err != nil {
+		err = utils.ParseAnalyzerManagerError(utils.Secrets, err)
 		return
 	}
-	cleanup = func() error {
-		return fileutils.RemoveTempDir(tempDir)
+	results = secretScanManager.secretsScannerResults
+	if len(results) > 0 {
+		log.Info(len(results), "secrets were found")
 	}
-	return &SecretScanManager{
-		secretsScannerResults: []utils.IacOrSecretResult{},
-		configFileName:        filepath.Join(tempDir, "config.yaml"),
-		resultsFileName:       filepath.Join(tempDir, "results.sarif"),
-		analyzerManager:       analyzerManager,
-		serverDetails:         serverDetails,
-	}, cleanup, nil
+	return
 }
 
-func (s *SecretScanManager) run() (err error) {
-	defer func() {
-		if deleteJasProcessFiles(s.configFileName, s.resultsFileName) != nil {
-			deleteFilesError := deleteJasProcessFiles(s.configFileName, s.resultsFileName)
-			err = errors.Join(err, deleteFilesError)
-		}
-	}()
-	if err = s.createConfigFile(); err != nil {
+func newSecretsScanManager(scanner *AdvancedSecurityScanner) (manager *SecretScanManager) {
+	return &SecretScanManager{
+		secretsScannerResults: []utils.IacOrSecretResult{},
+		scanner:               scanner,
+	}
+}
+
+func (s *SecretScanManager) Run(wd string) (err error) {
+	scanner := s.scanner
+	if err = s.createConfigFile(wd); err != nil {
 		return
 	}
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	return s.setScanResults()
+	var workingDirResults []utils.IacOrSecretResult
+	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, wd, true)
+	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
+	return
 }
 
 type secretsScanConfig struct {
@@ -100,81 +67,30 @@ type secretsScanConfiguration struct {
 	Roots       []string `yaml:"roots"`
 	Output      string   `yaml:"output"`
 	Type        string   `yaml:"type"`
-	Scanners    string   `yaml:"scanners"`
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (s *SecretScanManager) createConfigFile() error {
-	currentDir, err := coreutils.GetWorkingDirectory()
-	if err != nil {
-		return err
-	}
-	s.projectRootPath = currentDir
+func (s *SecretScanManager) createConfigFile(currentWd string) error {
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:       []string{currentDir},
-				Output:      s.resultsFileName,
+				Roots:       []string{currentWd},
+				Output:      s.scanner.resultsFileName,
 				Type:        secretsScannerType,
-				Scanners:    secretsScannersNames,
 				SkippedDirs: skippedDirs,
 			},
 		},
 	}
-	yamlData, err := yaml.Marshal(&configFileContent)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	err = os.WriteFile(s.configFileName, yamlData, 0644)
-	return errorutils.CheckError(err)
+	return createScannersConfigFile(s.scanner.configFileName, configFileContent)
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
-	if err := utils.SetAnalyzerManagerEnvVariables(s.serverDetails); err != nil {
-		return err
-	}
-	return s.analyzerManager.Exec(s.configFileName, secretsScanCommand)
-}
-
-func (s *SecretScanManager) setScanResults() error {
-	report, err := sarif.Open(s.resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	var secretsResults []*sarif.Result
-	if len(report.Runs) > 0 {
-		secretsResults = report.Runs[0].Results
-	}
-
-	finalSecretsList := []utils.IacOrSecretResult{}
-
-	for _, secret := range secretsResults {
-		newSecret := utils.IacOrSecretResult{
-			Severity:   utils.GetResultSeverity(secret),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(secret), s.projectRootPath),
-			LineColumn: utils.GetResultLocationInFile(secret),
-			Text:       hideSecret(*secret.Locations[0].PhysicalLocation.Region.Snippet.Text),
-			Type:       *secret.RuleID,
-		}
-		finalSecretsList = append(finalSecretsList, newSecret)
-	}
-	s.secretsScannerResults = finalSecretsList
-	return nil
+	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, s.scanner.serverDetails)
 }
 
 func hideSecret(secret string) string {
 	if len(secret) <= 3 {
 		return "***"
 	}
-	hiddenSecret := ""
-	i := 0
-	for i < 3 { // Show first 3 digits
-		hiddenSecret += string(secret[i])
-		i++
-	}
-	for i < 15 {
-		hiddenSecret += "*"
-		i++
-	}
-	return hiddenSecret
+	return secret[:3] + strings.Repeat("*", 12)
 }

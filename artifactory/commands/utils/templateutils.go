@@ -10,7 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-const PathErrorSuffixMsg = " please enter a path, in which the new template file will be created"
+const pathErrorSuffixMsg = " please enter a path, in which the new template file will be created"
 
 type TemplateUserCommand interface {
 	// Returns the file path.
@@ -52,14 +52,14 @@ func ValidateTemplatePath(templatePath string) error {
 		return errorutils.CheckError(err)
 	}
 	if exists || strings.HasSuffix(templatePath, string(os.PathSeparator)) {
-		return errorutils.CheckErrorf("path cannot be a directory," + PathErrorSuffixMsg)
+		return errorutils.CheckErrorf("path cannot be a directory," + pathErrorSuffixMsg)
 	}
 	exists, err = fileutils.IsFileExists(templatePath, false)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 	if exists {
-		return errorutils.CheckErrorf("file already exists," + PathErrorSuffixMsg)
+		return errorutils.CheckErrorf("file already exists," + pathErrorSuffixMsg)
 	}
 	return nil
 }

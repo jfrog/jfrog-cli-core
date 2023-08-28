@@ -1,7 +1,6 @@
 package transfer
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
@@ -36,7 +35,7 @@ func (tst *TransferSettingsCommand) Run() error {
 	ioutils.ScanFromConsole("Set the maximum number of working threads", &threadsNumberInput, currThreadsNumber)
 	threadsNumber, err := strconv.Atoi(threadsNumberInput)
 	if err != nil || threadsNumber < 1 || threadsNumber > MaxThreadsLimit {
-		return errorutils.CheckError(errors.New("the value must be a number between 1 and " + strconv.Itoa(MaxThreadsLimit)))
+		return errorutils.CheckErrorf("the value must be a number between 1 and " + strconv.Itoa(MaxThreadsLimit))
 	}
 	conf := &utils.TransferSettings{ThreadsNumber: threadsNumber}
 	err = utils.SaveTransferSettings(conf)

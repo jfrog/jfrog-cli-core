@@ -1,8 +1,12 @@
 package utils
 
 import (
+	"errors"
+	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
+	"path/filepath"
 	"testing"
 )
 
@@ -131,5 +135,88 @@ func TestGetResultSeverity(t *testing.T) {
 
 	for _, test := range tests {
 		assert.Equal(t, test.expectedSeverity, GetResultSeverity(test.result))
+	}
+}
+
+func TestScanTypeErrorMsg(t *testing.T) {
+	tests := []struct {
+		scanner ScanType
+		err     error
+		wantMsg string
+	}{
+		{
+			scanner: Applicability,
+			err:     errors.New("an error occurred"),
+			wantMsg: fmt.Sprintf(ErrFailedScannerRun, Applicability, "an error occurred"),
+		},
+		{
+			scanner: Applicability,
+			err:     nil,
+			wantMsg: "",
+		},
+		{
+			scanner: Secrets,
+			err:     nil,
+			wantMsg: "",
+		},
+		{
+			scanner: Secrets,
+			err:     errors.New("an error occurred"),
+			wantMsg: fmt.Sprintf(ErrFailedScannerRun, Secrets, "an error occurred"),
+		},
+		{
+			scanner: IaC,
+			err:     nil,
+			wantMsg: "",
+		},
+		{
+			scanner: IaC,
+			err:     errors.New("an error occurred"),
+			wantMsg: fmt.Sprintf(ErrFailedScannerRun, IaC, "an error occurred"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Scanner: %s", test.scanner), func(t *testing.T) {
+			gotMsg := test.scanner.FormattedError(test.err)
+			if gotMsg == nil {
+				assert.Nil(t, test.err)
+				return
+			}
+			assert.Equal(t, test.wantMsg, gotMsg.Error())
+		})
+	}
+}
+
+func TestGetFullPathsWorkingDirs(t *testing.T) {
+	currentDir, err := coreutils.GetWorkingDirectory()
+	assert.NoError(t, err)
+	dir1, err := filepath.Abs("dir1")
+	assert.NoError(t, err)
+	dir2, err := filepath.Abs("dir2")
+	assert.NoError(t, err)
+	tests := []struct {
+		name         string
+		workingDirs  []string
+		expectedDirs []string
+	}{
+		{
+			name:         "EmptyWorkingDirs",
+			workingDirs:  []string{},
+			expectedDirs: []string{currentDir},
+		},
+		{
+			name:         "ValidWorkingDirs",
+			workingDirs:  []string{"dir1", "dir2"},
+			expectedDirs: []string{dir1, dir2},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actualDirs, err := GetFullPathsWorkingDirs(test.workingDirs)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedDirs, actualDirs, "Incorrect full paths of working directories")
+		})
 	}
 }

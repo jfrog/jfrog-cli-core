@@ -32,13 +32,13 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 	// Print tables, if scan is true; print the scan tables.
-	if scan {
+	if isBinaryScan {
 		err = coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(securityViolationsRows), "Security Violations", "No security violations were found", printExtended)
 		if err != nil {
 			return err
@@ -169,17 +169,22 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, scan bool) error {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 
-	if scan {
-		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
+	if isBinaryScan {
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
 	}
-
-	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerabilities", "✨ No vulnerabilities were found ✨", printExtended)
+	var emptyTableMessage string
+	if len(extendedResults.ScannedTechnologies) > 0 {
+		emptyTableMessage = "✨ No vulnerable dependencies were found ✨"
+	} else {
+		emptyTableMessage = coreutils.PrintYellow("🔧 Couldn't determine a package manager or build tool used by this project 🔧")
+	}
+	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerable Dependencies", emptyTableMessage, printExtended)
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
@@ -242,12 +247,12 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintLicensesTable(licenses []services.License, printExtended, scan bool) error {
+func PrintLicensesTable(licenses []services.License, printExtended, isBinaryScan bool) error {
 	licensesRows, err := PrepareLicenses(licenses)
 	if err != nil {
 		return err
 	}
-	if scan {
+	if isBinaryScan {
 		return coreutils.PrintTable(formats.ConvertToLicenseScanTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
 	}
 	return coreutils.PrintTable(formats.ConvertToLicenseTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
@@ -308,7 +313,8 @@ func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecr
 func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
-		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secrets",
+		log.Output()
+		return coreutils.PrintTable(formats.ConvertToSecretsTableRow(secretsRows), "Secret Detection",
 			"✨ No secrets were found ✨", false)
 	}
 	return nil
@@ -345,6 +351,7 @@ func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow
 func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
+		log.Output()
 		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
 	}
@@ -531,22 +538,22 @@ var Severities = map[string]map[string]*Severity{
 	"Critical": {
 		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 12, style: color.New(color.BgLightRed, color.LightWhite)},
 		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 11, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "👌", title: "Critical", numValue: 10},
+		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.Gray)},
 	},
 	"High": {
-		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 8, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "👌", title: "High", numValue: 7},
+		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 10, style: color.New(color.Red)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
+		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Gray)},
 	},
 	"Medium": {
-		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 6, style: color.New(color.Yellow)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 5, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "👌", title: "Medium", numValue: 4},
+		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 8, style: color.New(color.Yellow)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 7, style: color.New(color.Yellow)},
+		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Gray)},
 	},
 	"Low": {
-		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 3},
-		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 2},
-		NotApplicableStringValue:             {emoji: "👌", title: "Low", numValue: 1},
+		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 6},
+		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 5},
+		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 1, style: color.New(color.Gray)},
 	},
 }
 
@@ -626,13 +633,13 @@ func getOperationalRiskViolationReadableData(violation services.Violation) *oper
 }
 
 // simplifyVulnerabilities returns a new slice of services.Vulnerability that contains only the unique vulnerabilities from the input slice
-// The uniqueness of the vulnerabilities is determined by the getUniqueKey function
+// The uniqueness of the vulnerabilities is determined by the GetUniqueKey function
 func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multipleRoots bool) []services.Vulnerability {
 	var uniqueVulnerabilities = make(map[string]*services.Vulnerability)
 	for _, vulnerability := range scanVulnerabilities {
 		for vulnerableComponentId := range vulnerability.Components {
 			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
-			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, vulnerability.Cves, len(vulnerability.Components[vulnerableComponentId].FixedVersions) > 0)
+			packageKey := GetUniqueKey(vulnerableDependency, vulnerableVersion, vulnerability.IssueId, len(vulnerability.Components[vulnerableComponentId].FixedVersions) > 0)
 			if uniqueVulnerability, exist := uniqueVulnerabilities[packageKey]; exist {
 				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, vulnerability.Components[vulnerableComponentId].FixedVersions...)
 				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, vulnerability.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
@@ -662,13 +669,13 @@ func simplifyVulnerabilities(scanVulnerabilities []services.Vulnerability, multi
 }
 
 // simplifyViolations returns a new slice of services.Violations that contains only the unique violations from the input slice
-// The uniqueness of the violations is determined by the getUniqueKey function
+// The uniqueness of the violations is determined by the GetUniqueKey function
 func simplifyViolations(scanViolations []services.Violation, multipleRoots bool) []services.Violation {
 	var uniqueViolations = make(map[string]*services.Violation)
 	for _, violation := range scanViolations {
 		for vulnerableComponentId := range violation.Components {
 			vulnerableDependency, vulnerableVersion, _ := SplitComponentId(vulnerableComponentId)
-			packageKey := getUniqueKey(vulnerableDependency, vulnerableVersion, violation.Cves, len(violation.Components[vulnerableComponentId].FixedVersions) > 0)
+			packageKey := GetUniqueKey(vulnerableDependency, vulnerableVersion, violation.IssueId, len(violation.Components[vulnerableComponentId].FixedVersions) > 0)
 			if uniqueVulnerability, exist := uniqueViolations[packageKey]; exist {
 				fixedVersions := appendUniqueFixVersions(uniqueVulnerability.Components[vulnerableComponentId].FixedVersions, violation.Components[vulnerableComponentId].FixedVersions...)
 				impactPaths := appendUniqueImpactPaths(uniqueVulnerability.Components[vulnerableComponentId].ImpactPaths, violation.Components[vulnerableComponentId].ImpactPaths, multipleRoots)
@@ -792,20 +799,16 @@ func appendUniqueFixVersions(targetFixVersions []string, sourceFixVersions ...st
 	return result
 }
 
-// getUniqueKey returns a unique string key of format "vulnerableDependency:vulnerableVersion:cveId:fixVersionExist"
-func getUniqueKey(vulnerableDependency, vulnerableVersion string, cves []services.Cve, fixVersionExist bool) string {
-	var cveId string
-	if len(cves) != 0 {
-		cveId = cves[0].Id
-	}
-	return fmt.Sprintf("%s:%s:%s:%t", vulnerableDependency, vulnerableVersion, cveId, fixVersionExist)
+// GetUniqueKey returns a unique string key of format "vulnerableDependency:vulnerableVersion:xrayID:fixVersionExist"
+func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVersionExist bool) string {
+	return strings.Join([]string{vulnerableDependency, vulnerableVersion, xrayID, strconv.FormatBool(fixVersionExist)}, ":")
 }
 
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
 func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
-	if !extendedResults.EntitledForJas {
+	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
 		return ""
 	}
 	if len(xrayCves) == 0 {
@@ -830,9 +833,12 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 }
 
 func printApplicableCveValue(applicableValue string, isTable bool) string {
-	if applicableValue == ApplicableStringValue && isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() ||
-		os.Getenv("GITLAB_CI") != "") {
-		return color.New(color.Red).Render(ApplicableStringValue)
+	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
+		if applicableValue == ApplicableStringValue {
+			return color.New(color.Red).Render(applicableValue)
+		} else if applicableValue == NotApplicableStringValue {
+			return color.New(color.Green).Render(applicableValue)
+		}
 	}
 	return applicableValue
 }

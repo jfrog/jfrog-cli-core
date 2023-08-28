@@ -3,29 +3,25 @@ package envsetup
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-client-go/access/services"
-	"net/http"
-	"net/url"
-	"strings"
-	"time"
-
-	"github.com/pkg/browser"
-
-	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
+	"github.com/jfrog/jfrog-cli-core/v2/general"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	clientioutils "github.com/jfrog/jfrog-client-go/utils/io"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/pkg/browser"
+	"net/http"
+	"time"
 )
 
 type OutputFormat string
@@ -59,7 +55,7 @@ type EnvSetupCommand struct {
 	encodedConnectionDetails string
 	id                       uuid.UUID
 	serverDetails            *config.ServerDetails
-	progress                 clientioutils.ProgressMgr
+	progress                 ioUtils.ProgressMgr
 	outputFormat             OutputFormat
 }
 
@@ -77,7 +73,7 @@ func (ftc *EnvSetupCommand) ServerDetails() (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func (ftc *EnvSetupCommand) SetProgress(progress clientioutils.ProgressMgr) {
+func (ftc *EnvSetupCommand) SetProgress(progress ioUtils.ProgressMgr) {
 	ftc.progress = progress
 }
 
@@ -174,7 +170,7 @@ func (ftc *EnvSetupCommand) SetupAndConfigServer() (err error) {
 	if err != nil {
 		return
 	}
-	err = configServer(server)
+	err = general.ConfigServerWithDeducedId(server, false, false)
 	return
 }
 
@@ -233,7 +229,7 @@ func (ftc *EnvSetupCommand) setupExistingUser() (server *config.ServerDetails, e
 func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *config.ServerDetails) (err error) {
 	// User has limited number of retries to enter his correct password.
 	// Password validation is operated by Artifactory ping API.
-	server.ArtifactoryUrl = clientutils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
+	server.ArtifactoryUrl = clientUtils.AddTrailingSlashIfNeeded(server.Url) + "artifactory/"
 	for i := 0; i < enterPasswordMaxRetries; i++ {
 		server.Password, err = ioutils.ScanJFrogPasswordFromConsole()
 		if err != nil {
@@ -248,7 +244,7 @@ func (ftc *EnvSetupCommand) scanAndValidateJFrogPasswordFromConsole(server *conf
 		}
 		log.Output(err.Error())
 	}
-	err = errorutils.CheckError(errors.New("bad credentials: Wrong password. "))
+	err = errorutils.CheckErrorf("bad credentials: Wrong password. ")
 	return
 }
 
@@ -293,7 +289,7 @@ func (ftc *EnvSetupCommand) CommandName() string {
 	return "setup"
 }
 
-// Returns the new server deatailes from My-JFrog
+// Returns the new server details from My-JFrog
 func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerDetails, err error) {
 	requestBody := &myJfrogGetStatusRequest{CliRegistrationId: ftc.id.String()}
 	requestContent, err := json.Marshal(requestBody)
@@ -385,21 +381,6 @@ func (ftc *EnvSetupCommand) getNewServerDetails() (serverDetails *config.ServerD
 	}
 	ftc.serverDetails = serverDetails
 	return serverDetails, nil
-}
-
-// Add the given server details to the cli's config by running a 'jf config' command
-func configServer(server *config.ServerDetails) error {
-	u, err := url.Parse(server.Url)
-	if errorutils.CheckError(err) != nil {
-		return err
-	}
-	// Take the server name from host name: https://myjfrog.jfrog.com/ -> myjfrog
-	serverId := strings.Split(u.Host, ".")[0]
-	configCmd := commands.NewConfigCommand(commands.AddOrEdit, serverId).SetInteractive(false).SetDetails(server)
-	if err = configCmd.Run(); err != nil {
-		return err
-	}
-	return commands.NewConfigCommand(commands.Use, serverId).SetInteractive(false).SetDetails(server).Run()
 }
 
 type myJfrogGetStatusRequest struct {

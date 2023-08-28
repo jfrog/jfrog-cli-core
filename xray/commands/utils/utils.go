@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -12,6 +13,7 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"os"
+	"strings"
 )
 
 const (
@@ -185,7 +187,7 @@ func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails)
 	return xrayManager, xrayVersion, nil
 }
 
-func DetectedTechnologies() (technologies []string, err error) {
+func DetectedTechnologies() (technologies []string) {
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -194,12 +196,12 @@ func DetectedTechnologies() (technologies []string, err error) {
 	if err != nil {
 		return
 	}
-	detectedTechnologiesString := coreutils.DetectedTechnologiesToString(detectedTechnologies)
-	if detectedTechnologiesString == "" {
-		return nil, errorutils.CheckErrorf("could not determine the package manager / build tool used by this project.")
+	if len(detectedTechnologies) == 0 {
+		return
 	}
-	log.Info("Detected: " + detectedTechnologiesString)
-	return coreutils.DetectedTechnologiesToSlice(detectedTechnologies), nil
+	techStringsList := coreutils.DetectedTechnologiesToSlice(detectedTechnologies)
+	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ",")))
+	return techStringsList
 }
 
 func DetectNumOfThreads(threadsCount int) (int, error) {

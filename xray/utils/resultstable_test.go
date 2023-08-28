@@ -172,17 +172,12 @@ func TestAppendUniqueFixVersions(t *testing.T) {
 func TestGetUniqueKey(t *testing.T) {
 	vulnerableDependency := "test-dependency"
 	vulnerableVersion := "1.0"
-	cves := []services.Cve{}
-	expectedKey := "test-dependency:1.0::true"
-	key := getUniqueKey(vulnerableDependency, vulnerableVersion, cves, true)
+	expectedKey := "test-dependency:1.0:XRAY-12234:true"
+	key := GetUniqueKey(vulnerableDependency, vulnerableVersion, "XRAY-12234", true)
 	assert.Equal(t, expectedKey, key)
 
-	cves = []services.Cve{
-		{Id: "CVE-1"},
-		{Id: "CVE-2"},
-	}
-	expectedKey = "test-dependency:1.0:CVE-1:false"
-	key = getUniqueKey(vulnerableDependency, vulnerableVersion, cves, false)
+	expectedKey = "test-dependency:1.0:XRAY-12143:false"
+	key = GetUniqueKey(vulnerableDependency, vulnerableVersion, "XRAY-12143", false)
 	assert.Equal(t, expectedKey, key)
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/parallel"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -32,9 +33,8 @@ const (
 	BlockingReasonPolicy   = "Policy violations"
 	BlockingReasonNotFound = "Package pending update"
 
-	totalConcurrentRequests = 10
-	directRelation          = "direct"
-	indirectRelation        = "indirect"
+	directRelation   = "direct"
+	indirectRelation = "indirect"
 
 	BlockMessageKey  = "jfrog packages curation"
 	NotBeingFoundKey = "not being found"
@@ -64,35 +64,33 @@ type PackageStatus struct {
 	Action            string   `json:"action"`
 	ParentName        string   `json:"direct_dependency_package_name"`
 	ParentVersion     string   `json:"direct_dependency_package_version"`
-	BlockedPackageUrl string   `json:"blocked_package_url"`
+	BlockedPackageUrl string   `json:"blocked_package_url,omitempty"`
 	PackageName       string   `json:"blocked_package_name"`
 	PackageVersion    string   `json:"blocked_package_version"`
 	BlockingReason    string   `json:"blocking_reason"`
 	DepRelation       string   `json:"dependency_relation"`
 	PkgType           string   `json:"type"`
-	Policy            []Policy `json:"policies"`
+	Policy            []Policy `json:"policies,omitempty"`
 }
 
 type Policy struct {
-	Policy    string `json:"policy"`
-	Condition string `json:"condition"`
+	Policy         string `json:"policy"`
+	Condition      string `json:"condition"`
+	Explanation    string `json:"explanation"`
+	Recommendation string `json:"recommendation"`
 }
 
 type PackageStatusTable struct {
-	Status            string        `col-name:"Action"`
-	ParentName        string        `col-name:"Direct Dependency\nPackage Name"`
-	ParentVersion     string        `col-name:"Direct Dependency\nPackage Version"`
-	BlockedPackageUrl string        `col-name:"Blocked Package URL"`
-	PackageName       string        `col-name:"Blocked Package\nName"`
-	PackageVersion    string        `col-name:"Blocked Package\nVersion"`
-	BlockingReason    string        `col-name:"Blocking Reason"`
-	PkgType           string        `col-name:"Package Type"`
-	Policy            []policyTable `embed-table:"true"`
-}
-
-type policyTable struct {
-	Policy    string `col-name:"Violated Policy\nName"`
-	Condition string `col-name:"Violated Condition\nName"`
+	ParentName     string `col-name:"Direct\nDependency\nPackage\nName" auto-merge:"true"`
+	ParentVersion  string `col-name:"Direct\nDependency\nPackage\nVersion" auto-merge:"true"`
+	PackageName    string `col-name:"Blocked\nPackage\nName" auto-merge:"true"`
+	PackageVersion string `col-name:"Blocked\nPackage\nVersion" auto-merge:"true"`
+	BlockingReason string `col-name:"Blocking Reason" auto-merge:"true"`
+	PkgType        string `col-name:"Package\nType" auto-merge:"true"`
+	Policy         string `col-name:"Violated\nPolicy\nName"`
+	Condition      string `col-name:"Violated Condition\nName"`
+	Explanation    string `col-name:"Explanation"`
+	Recommendation string `col-name:"Recommendation"`
 }
 
 type treeAnalyzer struct {
@@ -180,16 +178,13 @@ func (ca *CurationAuditCommand) Run() (err error) {
 }
 
 func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatus) error {
-	techs, err := cmdUtils.DetectedTechnologies()
-	if err != nil {
-		return err
-	}
+	techs := cmdUtils.DetectedTechnologies()
 	for _, tech := range techs {
 		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
 			log.Info(fmt.Sprintf(errorTemplateUnsupportedTech, tech))
 			continue
 		}
-		if err = ca.auditTree(coreutils.Technology(tech), results); err != nil {
+		if err := ca.auditTree(coreutils.Technology(tech), results); err != nil {
 			return err
 		}
 	}
@@ -197,12 +192,12 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 }
 
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
-	flattenGraph, err := audit.GetTechDependencyTree(ca.GraphBasicParams, tech)
+	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.GraphBasicParams, tech)
 	if err != nil {
 		return err
 	}
 	// Validate the graph isn't empty.
-	if len(ca.FullDependenciesTree()) == 0 {
+	if len(fullDependenciesTree) == 0 {
 		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.ToString())
 	}
 	if err = ca.SetRepo(tech); err != nil {
@@ -221,9 +216,13 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if err != nil {
 		return err
 	}
-	_, projectName, projectVersion := getUrlNameAndVersionByTech(tech, ca.FullDependenciesTree()[0].Id, "", "")
+	rootNode := fullDependenciesTree[0]
+	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, rootNode.Id, "", "")
 	if ca.Progress() != nil {
 		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))
+	}
+	if projectScope != "" {
+		projectName = projectScope + "/" + projectName
 	}
 	if ca.parallelRequests == 0 {
 		ca.parallelRequests = cmdUtils.TotalConcurrentRequests
@@ -240,12 +239,10 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		parallelRequests:     ca.parallelRequests,
 	}
 	packagesStatusMap := sync.Map{}
-	// Root node id represents the project name and shouldn't be validated with curation
-	rootNodeId := ca.FullDependenciesTree()[0].Id
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
-	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNodeId)
-	analyzer.fillGraphRelations(ca.FullDependenciesTree()[0], &packagesStatusMap,
-		&packagesStatus, "", "", true)
+	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNode.Id)
+	analyzer.fillGraphRelations(rootNode, &packagesStatusMap,
+		&packagesStatus, "", "", datastructures.MakeSet[string](), true)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName
 	})
@@ -257,7 +254,7 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 	if format == "" {
 		format = utils.Table
 	}
-	log.Output(fmt.Sprintf("Found %v blocked packges for project %s", len(packagesStatus), projectPath))
+	log.Output(fmt.Sprintf("Found %v blocked packages for project %s", len(packagesStatus), projectPath))
 	switch format {
 	case utils.Json:
 		if len(packagesStatus) > 0 {
@@ -279,24 +276,34 @@ func printResult(format utils.OutputFormat, projectPath string, packagesStatus [
 
 func convertToPackageStatusTable(packagesStatus []*PackageStatus) []PackageStatusTable {
 	var pkgStatusTable []PackageStatusTable
-	for _, pkgStatus := range packagesStatus {
+	for index, pkgStatus := range packagesStatus {
+		// We use auto-merge supported by the 'go-pretty' library. It doesn't have an option to merge lines by a group of unique fields.
+		// In order to so, we make each group merge only with itself by adding or not adding space. This way, it won't be merged with the next group.
+		uniqLineSep := ""
+		if index%2 == 0 {
+			uniqLineSep = " "
+		}
 		pkgTable := PackageStatusTable{
-			Status:            pkgStatus.Action,
-			ParentName:        pkgStatus.ParentName,
-			ParentVersion:     pkgStatus.ParentVersion,
-			BlockedPackageUrl: pkgStatus.BlockedPackageUrl,
-			PackageName:       pkgStatus.PackageName,
-			PackageVersion:    pkgStatus.PackageVersion,
-			BlockingReason:    pkgStatus.BlockingReason,
-			PkgType:           pkgStatus.PkgType,
+			ParentName:     pkgStatus.ParentName + uniqLineSep,
+			ParentVersion:  pkgStatus.ParentVersion + uniqLineSep,
+			PackageName:    pkgStatus.PackageName + uniqLineSep,
+			PackageVersion: pkgStatus.PackageVersion + uniqLineSep,
+			BlockingReason: pkgStatus.BlockingReason + uniqLineSep,
+			PkgType:        pkgStatus.PkgType + uniqLineSep,
 		}
-		var policiesCondTable []policyTable
+		if len(pkgStatus.Policy) == 0 {
+			pkgStatusTable = append(pkgStatusTable, pkgTable)
+			continue
+		}
 		for _, policyCond := range pkgStatus.Policy {
-			policiesCondTable = append(policiesCondTable, policyTable(policyCond))
+			pkgTable.Policy = policyCond.Policy
+			pkgTable.Explanation = policyCond.Explanation
+			pkgTable.Recommendation = policyCond.Recommendation
+			pkgTable.Condition = policyCond.Condition
+			pkgStatusTable = append(pkgStatusTable, pkgTable)
 		}
-		pkgTable.Policy = policiesCondTable
-		pkgStatusTable = append(pkgStatusTable, pkgTable)
 	}
+
 	return pkgStatusTable
 }
 
@@ -312,8 +319,8 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 			return err
 		}
 		if !exists {
-			return errorutils.CheckError(errors.New("no config file was found! Before running the npm command on a " +
-				"project for the first time, the project should be configured using the 'jf npmc' command"))
+			return errorutils.CheckErrorf("no config file was found! Before running the npm command on a " +
+				"project for the first time, the project should be configured using the 'jf npmc' command")
 		}
 		vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
 		if err != nil {
@@ -331,13 +338,21 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 }
 
 func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap *sync.Map,
-	packagesStatus *[]*PackageStatus, parent, parentVersion string, isRoot bool) {
+	packagesStatus *[]*PackageStatus, parent, parentVersion string, visited *datastructures.Set[string], isRoot bool) {
 	for _, child := range node.Nodes {
-		packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, child.Id, nc.url, nc.repo)
+		packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, child.Id, nc.url, nc.repo)
 		if isRoot {
 			parent = name
 			parentVersion = version
+			if scope != "" {
+				parent = scope + "/" + parent
+			}
 		}
+		if visited.Exists(scope + name + version + "-" + parent + parentVersion) {
+			continue
+		}
+
+		visited.Add(scope + name + version + "-" + parent + parentVersion)
 		if pkgStatus, exist := preProcessMap.Load(packageUrl); exist {
 			relation := indirectRelation
 			if isRoot {
@@ -352,7 +367,7 @@ func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcess
 				*packagesStatus = append(*packagesStatus, &pkgStatusClone)
 			}
 		}
-		nc.fillGraphRelations(child, preProcessMap, packagesStatus, parent, parentVersion, false)
+		nc.fillGraphRelations(child, preProcessMap, packagesStatus, parent, parentVersion, visited, false)
 	}
 }
 func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map, rootNodeId string) error {
@@ -383,7 +398,10 @@ func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map
 }
 
 func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) error {
-	packageUrl, name, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
+	packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
+	if scope != "" {
+		name = scope + "/" + name
+	}
 	resp, _, err := nc.rtManager.Client().SendHead(packageUrl, &nc.httpClientDetails)
 	if err != nil {
 		if resp != nil && resp.StatusCode >= 400 {
@@ -450,7 +468,7 @@ func (nc *treeAnalyzer) getBlockedPackageDetails(packageUrl string, name string,
 }
 
 // Return policies and conditions names from the FORBIDDEN HTTP error message.
-// Message structure: Package %s:%s download was blocked by JFrog Packages Curation service due to the following policies violated {%s, %s},{%s, %s}.
+// Message structure: Package %s:%s download was blocked by JFrog Packages Curation service due to the following policies violated {%s, %s, %s, %s},{%s, %s, %s, %s}.
 func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 	var policies []Policy
 	msg := respError.Errors[0].Message
@@ -458,25 +476,39 @@ func (nc *treeAnalyzer) extractPoliciesFromMsg(respError *ErrorsResp) []Policy {
 	for _, match := range allMatches {
 		match = strings.TrimSuffix(strings.TrimPrefix(match, "{"), "}")
 		polCond := strings.Split(match, ",")
-		if len(polCond) == 2 {
+		if len(polCond) >= 2 {
 			pol := polCond[0]
 			cond := polCond[1]
+
+			if len(polCond) == 4 {
+				exp, rec := makeLegiblePolicyDetails(polCond[2], polCond[3])
+				policies = append(policies, Policy{Policy: strings.TrimSpace(pol),
+					Condition: strings.TrimSpace(cond), Explanation: strings.TrimSpace(exp), Recommendation: strings.TrimSpace(rec)})
+				continue
+			}
 			policies = append(policies, Policy{Policy: strings.TrimSpace(pol), Condition: strings.TrimSpace(cond)})
 		}
 	}
 	return policies
 }
 
-func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, version string) {
+// Adding a new line after the headline and replace every "|" with a new line.
+func makeLegiblePolicyDetails(explanation, recommendation string) (string, string) {
+	explanation = strings.ReplaceAll(strings.Replace(explanation, ": ", ":\n", 1), " | ", "\n")
+	recommendation = strings.ReplaceAll(strings.Replace(recommendation, ": ", ":\n", 1), " | ", "\n")
+	return explanation, recommendation
+}
+
+func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, scope string, version string) {
 	if tech == coreutils.Npm {
-		return getNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
+		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
 	}
 	return
 }
 
 // The graph holds, for each node, the component ID (xray representation)
 // from which we extract the package name, version, and construct the Artifactory download URL.
-func getNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, version string) {
+func getNpmNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, scope, version string) {
 	id = strings.TrimPrefix(id, tech+"://")
 
 	nameVersion := strings.Split(id, ":")
@@ -485,12 +517,11 @@ func getNameScopeAndVersion(id, artiUrl, repo, tech string) (downloadUrl, name, 
 		version = nameVersion[1]
 	}
 	scopeSplit := strings.Split(name, "/")
-	var scope string
 	if len(scopeSplit) > 1 {
 		scope = scopeSplit[0]
 		name = scopeSplit[1]
 	}
-	return buildNpmDownloadUrl(artiUrl, repo, name, scope, version), name, version
+	return buildNpmDownloadUrl(artiUrl, repo, name, scope, version), name, scope, version
 }
 
 func buildNpmDownloadUrl(url, repo, name, scope, version string) string {

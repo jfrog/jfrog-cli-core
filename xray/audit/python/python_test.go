@@ -9,13 +9,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var expectedPipUniqueDeps = []string{
+	pythonPackageTypeIdentifier + "setuptools:67.6.1",
+	pythonPackageTypeIdentifier + "pip:23.0.1",
+	pythonPackageTypeIdentifier + "pip-example:1.2.3",
+	pythonPackageTypeIdentifier + "pexpect:4.8.0",
+	pythonPackageTypeIdentifier + "ptyprocess:0.7.0",
+}
+
 func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
+	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
+	assert.ElementsMatch(t, uniqueDeps, expectedPipUniqueDeps)
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)
@@ -35,8 +44,9 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// No requirements file field specified, expect the command to use the fallback 'pip install -r requirements.txt' command
-	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
+	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
+	assert.ElementsMatch(t, uniqueDeps, expectedPipUniqueDeps)
 	assert.Len(t, rootNode, 1)
 	if assert.True(t, len(rootNode[0].Nodes) > 2) {
 		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.7.0")
@@ -52,8 +62,9 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "requirementsproject"))
 	defer cleanUp()
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
+	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
 	assert.NoError(t, err)
+	assert.ElementsMatch(t, uniqueDeps, expectedPipUniqueDeps)
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)
@@ -70,11 +81,17 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, "pipenv-project")
 	defer cleanUp()
+	expectedPipenvUniqueDeps := []string{
+		pythonPackageTypeIdentifier + "pypi://toml:0.10.2",
+		pythonPackageTypeIdentifier + "pexpect:4.8.0",
+		pythonPackageTypeIdentifier + "ptyprocess:0.7.0",
+	}
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pipenv})
+	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pipenv})
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.ElementsMatch(t, uniqueDeps, expectedPipenvUniqueDeps)
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)
@@ -91,11 +108,25 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, "poetry-project")
 	defer cleanUp()
+	expectedPoetryUniqueDeps := []string{
+		pythonPackageTypeIdentifier + "wcwidth:0.2.5",
+		pythonPackageTypeIdentifier + "colorama:0.4.6",
+		pythonPackageTypeIdentifier + "packaging:22.0",
+		pythonPackageTypeIdentifier + "python:",
+		pythonPackageTypeIdentifier + "pluggy:0.13.1",
+		pythonPackageTypeIdentifier + "py:1.11.0",
+		pythonPackageTypeIdentifier + "atomicwrites:1.4.1",
+		pythonPackageTypeIdentifier + "attrs:22.1.0",
+		pythonPackageTypeIdentifier + "more-itertools:9.0.0",
+		pythonPackageTypeIdentifier + "numpy:1.24.0",
+		pythonPackageTypeIdentifier + "pytest:5.4.3",
+	}
 	// Run getModulesDependencyTrees
-	rootNode, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Poetry})
+	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Poetry})
 	if err != nil {
 		t.Fatal(err)
 	}
+	assert.ElementsMatch(t, uniqueDeps, expectedPoetryUniqueDeps)
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)

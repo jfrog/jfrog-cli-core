@@ -18,26 +18,33 @@ func TestParseYarnDependenciesList(t *testing.T) {
 		"pack5@npm:5.0.0":        {Value: "pack5@npm:5.0.0", Details: biutils.YarnDepDetails{Version: "5.0.0", Dependencies: []biutils.YarnDependencyPointer{{Locator: "pack2@npm:2.0.0"}}}},
 	}
 
-	rootXrayId := "npm://@jfrog/pack3:3.0.0"
+	rootXrayId := npmPackageTypeIdentifier + "@jfrog/pack3:3.0.0"
 	expectedTree := &xrayUtils.GraphNode{
 		Id: rootXrayId,
 		Nodes: []*xrayUtils.GraphNode{
-			{Id: "npm://pack1:1.0.0",
+			{Id: npmPackageTypeIdentifier + "pack1:1.0.0",
 				Nodes: []*xrayUtils.GraphNode{
-					{Id: "npm://pack4:4.0.0",
+					{Id: npmPackageTypeIdentifier + "pack4:4.0.0",
 						Nodes: []*xrayUtils.GraphNode{}},
 				}},
-			{Id: "npm://pack2:2.0.0",
+			{Id: npmPackageTypeIdentifier + "pack2:2.0.0",
 				Nodes: []*xrayUtils.GraphNode{
-					{Id: "npm://pack4:4.0.0",
+					{Id: npmPackageTypeIdentifier + "pack4:4.0.0",
 						Nodes: []*xrayUtils.GraphNode{}},
-					{Id: "npm://pack5:5.0.0",
+					{Id: npmPackageTypeIdentifier + "pack5:5.0.0",
 						Nodes: []*xrayUtils.GraphNode{}},
 				}},
 		},
 	}
+	expectedUniqueDeps := []string{
+		npmPackageTypeIdentifier + "pack1:1.0.0",
+		npmPackageTypeIdentifier + "pack2:2.0.0",
+		npmPackageTypeIdentifier + "pack4:4.0.0",
+		npmPackageTypeIdentifier + "pack5:5.0.0",
+		npmPackageTypeIdentifier + "@jfrog/pack3:3.0.0",
+	}
 
-	xrayDependenciesTree := parseYarnDependenciesMap(yarnDependencies, rootXrayId)
-
+	xrayDependenciesTree, uniqueDeps := parseYarnDependenciesMap(yarnDependencies, rootXrayId)
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
 	assert.True(t, tests.CompareTree(expectedTree, xrayDependenciesTree), "expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 }

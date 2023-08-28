@@ -311,8 +311,8 @@ github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcU
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/subosito/gotenv v1.4.2 h1:X1TuBLAMDFbaTAChgCBLu3DU3UPyELpnF2jjJ2cz/S8=
 github.com/subosito/gotenv v1.4.2/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
-github.com/sverdlov93/jfrog-client-go v1.0.2-0.20230827144938-ccda48c70926 h1:2sVHjF/Q9j/ICAF+adeSaXK1FgcqYIeoetRcL27FMZE=
-github.com/sverdlov93/jfrog-client-go v1.0.2-0.20230827144938-ccda48c70926/go.mod h1:icb00ZJN/mMMNkQduHDkzpqsXH9Flwi3f3COYexq3Nc=
+github.com/sverdlov93/jfrog-client-go v1.0.2-0.20230828154406-3b31491972e0 h1:Gbvx5d9log8gOg8BsP+rkZ8LGZr3VePQ4pEg5N8Mx3A=
+github.com/sverdlov93/jfrog-client-go v1.0.2-0.20230828154406-3b31491972e0/go.mod h1:icb00ZJN/mMMNkQduHDkzpqsXH9Flwi3f3COYexq3Nc=
 github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/ulikunitz/xz v0.5.9 h1:RsKRIA2MO8x56wkkcd3LbtcE/uMszhb6DpRf+3uwa3I=
 github.com/ulikunitz/xz v0.5.9/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=

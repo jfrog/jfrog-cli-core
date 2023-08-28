@@ -46,8 +46,9 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(&DependencyTreeParams{})
+	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
+		assert.Len(t, uniqueDeps, 11)
 		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
 		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "webservice")
@@ -69,10 +70,10 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
+	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
-
+		assert.Len(t, uniqueDeps, 11)
 		// Check module
 		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "api")
 		assert.Len(t, module.Nodes, 4)
@@ -93,10 +94,10 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
+	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
-
+		assert.Len(t, uniqueDeps, 11)
 		// Check direct dependency
 		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "services")
 		assert.Empty(t, directDependency.Nodes)
@@ -178,10 +179,11 @@ func TestGetGraphFromDepTree(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 	testCase := struct {
 		name           string
-		expectedResult map[string]map[string]string
+		expectedTree   map[string]map[string]string
+		expectedUnique []string
 	}{
 		name: "ValidOutputFileContent",
-		expectedResult: map[string]map[string]string{
+		expectedTree: map[string]map[string]string{
 			GavPackageTypeIdentifier + "shared":                   {},
 			GavPackageTypeIdentifier + filepath.Base(tempDirPath): {},
 			GavPackageTypeIdentifier + "services":                 {},
@@ -200,15 +202,30 @@ func TestGetGraphFromDepTree(t *testing.T) {
 				GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":       "",
 			},
 		},
+		expectedUnique: []string{
+			GavPackageTypeIdentifier + "webservice",
+			GavPackageTypeIdentifier + "junit:junit:4.11",
+			GavPackageTypeIdentifier + "commons-io:commons-io:1.2",
+			GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7",
+			GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0",
+			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0",
+			GavPackageTypeIdentifier + "commons-collections:commons-collections:3.2",
+			GavPackageTypeIdentifier + "api",
+			GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4",
+			GavPackageTypeIdentifier + "org.hamcrest:hamcrest-core:1.3",
+			GavPackageTypeIdentifier + "org.slf4j:slf4j-api:1.4.2",
+		},
 	}
 
 	manager := &depTreeManager{}
 	outputFileContent, err := manager.runGradleDepTree()
 	assert.NoError(t, err)
-	result, err := (&depTreeManager{}).getGraphFromDepTree(outputFileContent)
+	depTree, uniqueDeps, err := (&depTreeManager{}).getGraphFromDepTree(outputFileContent)
 	assert.NoError(t, err)
-	for _, dependency := range result {
-		depChild, exists := testCase.expectedResult[dependency.Id]
+	assert.ElementsMatch(t, testCase.expectedUnique, uniqueDeps)
+
+	for _, dependency := range depTree {
+		depChild, exists := testCase.expectedTree[dependency.Id]
 		assert.True(t, exists)
 		assert.Equal(t, len(depChild), len(dependency.Nodes))
 	}

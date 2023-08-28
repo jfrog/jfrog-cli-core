@@ -3,46 +3,50 @@ package audit
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"testing"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/maps"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
 )
 
-func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
+const maxUniqueAppearances = 5
+
+func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) (*xrayUtils.GraphNode, []string) {
 	rootNode := &xrayUtils.GraphNode{
 		Id:    nodeId,
 		Nodes: []*xrayUtils.GraphNode{},
 	}
-	populateXrayDependencyTree(rootNode, treeHelper)
-	return rootNode
+	dependencyAppearances := map[string]int8{}
+	populateXrayDependencyTree(rootNode, treeHelper, &dependencyAppearances)
+	return rootNode, maps.Keys(dependencyAppearances)
 }
 
-func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[string][]string) {
+func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[string][]string, dependencyAppearances *map[string]int8) {
+	(*dependencyAppearances)[currNode.Id]++
 	// Recursively create & append all node's dependencies.
-	for _, childDependency := range treeHelper[currNode.Id] {
+	for _, childDepId := range treeHelper[currNode.Id] {
 		childNode := &xrayUtils.GraphNode{
-			Id:     childDependency,
+			Id:     childDepId,
 			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
 		}
-		if childNode.NodeHasLoop() {
+		if (*dependencyAppearances)[childDepId] > maxUniqueAppearances || childNode.NodeHasLoop() {
 			continue
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)
-		populateXrayDependencyTree(childNode, treeHelper)
+		populateXrayDependencyTree(childNode, treeHelper, dependencyAppearances)
 	}
 }
 

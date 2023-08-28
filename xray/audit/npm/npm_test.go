@@ -96,11 +96,16 @@ func TestParseNpmDependenciesList(t *testing.T) {
 		},
 	}
 
-	xrayDependenciesTree := parseNpmDependenciesList(dependencies, packageInfo)
+	xrayDependenciesTree, uniqueDeps := parseNpmDependenciesList(dependencies, packageInfo)
 	equals := tests.CompareTree(expectedTree, xrayDependenciesTree)
 	if !equals {
 		t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 	}
+	expectedUniqueDeps := []string{xrayDependenciesTree.Id}
+	for _, dep := range dependencies {
+		expectedUniqueDeps = append(expectedUniqueDeps, npmPackageTypeIdentifier+dep.Id)
+	}
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
 
 }
 
@@ -111,6 +116,6 @@ func TestIgnoreScripts(t *testing.T) {
 
 	// The package.json file contain a postinstall script running an "exit 1" command.
 	// Without the "--ignore-scripts" flag, the test will fail.
-	_, err := BuildDependencyTree([]string{})
+	_, _, err := BuildDependencyTree([]string{})
 	assert.NoError(t, err)
 }

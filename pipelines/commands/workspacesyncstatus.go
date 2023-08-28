@@ -51,7 +51,10 @@ func (wss *WorkspaceSyncStatusCommand) Run() error {
 	log.Info("Workspace sync status : \n")
 	for _, syncStatusResp := range response {
 		if strings.EqualFold(syncStatusResp.Name, wss.project) {
-			syncStatusOutput, _ := json.MarshalIndent(syncStatusResp, "", "  ")
+			syncStatusOutput, err := json.MarshalIndent(syncStatusResp, "", "  ")
+			if err != nil {
+				return err
+			}
 			fmt.Print(string(syncStatusOutput))
 		}
 	}

@@ -104,7 +104,7 @@ func TestGetCves(t *testing.T) {
 func TestGetIacOrSecretsProperties(t *testing.T) {
 	testCases := []struct {
 		name           string
-		row    formats.SourceCodeRow
+		row            formats.SourceCodeRow
 		markdownOutput bool
 		isSecret       ScanType
 		expectedOutput sarifProperties

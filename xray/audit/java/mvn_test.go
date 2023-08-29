@@ -1,9 +1,7 @@
 package java
 
 import (
-	"fmt"
 	"os"
-	"sync"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
@@ -12,19 +10,6 @@ import (
 )
 
 func TestMavenTreesMultiModule(t *testing.T) {
-
-	myList := []string{"a", "b", "c", "d", "e", "f", "g"}
-	var wg sync.WaitGroup
-
-	for _, letter := range myList {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			fmt.Println(letter)
-		}()
-	}
-	wg.Wait()
-
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, "maven-example")
 	defer cleanUp()

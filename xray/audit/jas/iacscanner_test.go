@@ -5,26 +5,18 @@ import (
 	"path/filepath"
 	"testing"
 
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewIacScanManager(t *testing.T) {
+	scanner, cleanUp := initJasTest(t, "currentDir")
+	defer cleanUp()
 	// Act
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
 	iacScanManager := newIacScanManager(scanner)
 
 	// Assert
-	assert.NoError(t, err)
 	assert.NotEmpty(t, iacScanManager)
 	assert.NotEmpty(t, iacScanManager.scanner.configFileName)
 	assert.NotEmpty(t, iacScanManager.scanner.resultsFileName)
@@ -33,14 +25,9 @@ func TestNewIacScanManager(t *testing.T) {
 }
 
 func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner([]string{"currentDir"}, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t, "currentDir")
+	defer cleanUp()
+
 	iacScanManager := newIacScanManager(scanner)
 
 	currWd, err := coreutils.GetWorkingDirectory()
@@ -60,19 +47,15 @@ func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 }
 
 func TestIacParseResults_EmptyResults(t *testing.T) {
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
+
 	// Arrange
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
 	iacScanManager := newIacScanManager(scanner)
 	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "no-violations.sarif")
 
 	// Act
+	var err error
 	iacScanManager.iacScannerResults, err = getSourceCodeScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], utils.IaC)
 
 	// Assert
@@ -81,18 +64,14 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 }
 
 func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
 	// Arrange
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
 	iacScanManager := newIacScanManager(scanner)
 	iacScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations.sarif")
 
 	// Act
+	var err error
 	iacScanManager.iacScannerResults, err = getSourceCodeScanResults(iacScanManager.scanner.resultsFileName, scanner.workingDirs[0], utils.IaC)
 
 	// Assert

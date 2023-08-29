@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -35,6 +36,17 @@ var fakeServerDetails = config.ServerDetails{
 	Url:      "platformUrl",
 	Password: "password",
 	User:     "user",
+}
+
+func initJasTest(t *testing.T, workingDirs ...string) (*AdvancedSecurityScanner, func()) {
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
+	scanner, err := NewAdvancedSecurityScanner(workingDirs, &fakeServerDetails)
+	assert.NoError(t, err)
+	return scanner, func() {
+		if scanner.scannerDirCleanupFunc != nil {
+			assert.NoError(t, scanner.scannerDirCleanupFunc())
+		}
+	}
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {

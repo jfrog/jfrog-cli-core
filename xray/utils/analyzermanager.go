@@ -57,7 +57,7 @@ const (
 	Applicability ScanType = "Applicability"
 	Secrets       ScanType = "Secrets"
 	IaC           ScanType = "IaC"
-	ZeroDay       ScanType = "ZeroDay"
+	Sast          ScanType = "Sast"
 )
 
 func (st ScanType) FormattedError(err error) error {
@@ -92,7 +92,7 @@ type ExtendedScanResults struct {
 	ApplicabilityScanResults map[string]string
 	SecretsScanResults       []SourceCodeScanResult
 	IacScanResults           []SourceCodeScanResult
-	ZeroDayResults           []SourceCodeScanResult
+	SastResults              []SourceCodeScanResult
 	EntitledForJas           bool
 }
 

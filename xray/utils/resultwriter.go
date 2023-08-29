@@ -113,7 +113,7 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	return PrintSastTable(results.ZeroDayResults, results.EntitledForJas)
+	return PrintSastTable(results.SastResults, results.EntitledForJas)
 }
 
 func printMessages(messages []string) {
@@ -177,8 +177,8 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		iacRows := PrepareIacs(extendedResults.IacScanResults)
 		jsonTable.Iacs = iacRows
 	}
-	if len(extendedResults.ZeroDayResults) > 0 {
-		sastRows := PrepareSast(extendedResults.ZeroDayResults)
+	if len(extendedResults.SastResults) > 0 {
+		sastRows := PrepareSast(extendedResults.SastResults)
 		jsonTable.Sast = sastRows
 	}
 	if includeLicenses {
@@ -230,7 +230,7 @@ func convertToSourceCodeResultSarif(run *sarif.Run, jsonTable *formats.SimpleJso
 	}
 
 	for _, sast := range jsonTable.Sast {
-		properties := getSourceCodeProperties(sast, markdownOutput, ZeroDay)
+		properties := getSourceCodeProperties(sast, markdownOutput, Sast)
 		if err = addPropertiesToSarifRun(run, &properties); err != nil {
 			return
 		}
@@ -257,7 +257,7 @@ func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutp
 	case IaC:
 		headline = "Infrastructure as Code Vulnerability"
 		secretOrFinding = "Finding"
-	case ZeroDay:
+	case Sast:
 		headline = sourceCodeIssue.Text
 		secretOrFinding = "Finding"
 	case Secrets:

@@ -103,7 +103,7 @@ func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDepe
 	if progress != nil {
 		progress.SetHeadlineMsg("Running SAST scanning")
 	}
-	scanResults.ZeroDayResults, err = getZeroDayScanResults(scanner)
+	scanResults.SastResults, err = getSastScanResults(scanner)
 	return
 }
 
@@ -147,7 +147,7 @@ func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils
 		if scanType == utils.Secrets {
 			sourceCodeScanResults[index].Text = hideSecret(utils.GetResultLocationSnippet(result.Locations[0]))
 		}
-		if scanType == utils.ZeroDay {
+		if scanType == utils.Sast {
 			flows := utils.GetResultCodeFlows(result, workingDir)
 			sourceCodeScanResults[index].CodeFlow = append(sourceCodeScanResults[index].CodeFlow, flows...)
 		}

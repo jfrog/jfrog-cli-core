@@ -16,9 +16,9 @@ func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	// Run getModulesDependencyTrees
 	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
-	assert.Contains(t, uniqueDeps, "pexpect:4.8.0")
-	assert.Contains(t, uniqueDeps, "ptyprocess:0.7.0")
-	assert.Contains(t, uniqueDeps, "pip-example:1.2.3")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"pexpect:4.8.0")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"ptyprocess:0.7.0")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"pip-example:1.2.3")
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)
@@ -40,9 +40,9 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	// No requirements file field specified, expect the command to use the fallback 'pip install -r requirements.txt' command
 	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
-	assert.Contains(t, uniqueDeps, "pexpect:4.8.0")
-	assert.Contains(t, uniqueDeps, "ptyprocess:0.7.0")
-	assert.Contains(t, uniqueDeps, "pip-example:1.2.3")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"pexpect:4.8.0")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"ptyprocess:0.7.0")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"pip-example:1.2.3")
 	assert.Len(t, rootNode, 1)
 	if assert.True(t, len(rootNode[0].Nodes) > 2) {
 		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.7.0")

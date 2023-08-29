@@ -49,7 +49,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, uniqueDeps, 11)
-		assert.Len(t, modulesDependencyTrees, 3)
+		assert.Len(t, modulesDependencyTrees, 2)
 		// Check module
 		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "webservice")
 		assert.Len(t, module.Nodes, 7)
@@ -222,7 +222,7 @@ func TestGetGraphFromDepTree(t *testing.T) {
 	assert.NoError(t, err)
 	depTree, uniqueDeps, err := (&depTreeManager{}).getGraphFromDepTree(outputFileContent)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, testCase.expectedUnique, uniqueDeps)
+	assert.ElementsMatch(t, uniqueDeps, testCase.expectedUnique)
 
 	for _, dependency := range depTree {
 		depChild, exists := testCase.expectedTree[dependency.Id]

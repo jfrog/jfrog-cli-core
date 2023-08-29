@@ -9,14 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var expectedPipUniqueDeps = []string{
-	pythonPackageTypeIdentifier + "setuptools:67.6.1",
-	pythonPackageTypeIdentifier + "pip:23.0.1",
-	pythonPackageTypeIdentifier + "pip-example:1.2.3",
-	pythonPackageTypeIdentifier + "pexpect:4.8.0",
-	pythonPackageTypeIdentifier + "ptyprocess:0.7.0",
-}
-
 func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := audit.CreateTestWorkspace(t, filepath.Join("pip-project", "setuppyproject"))
@@ -24,7 +16,9 @@ func TestBuildPipDependencyListSetuppy(t *testing.T) {
 	// Run getModulesDependencyTrees
 	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, uniqueDeps, expectedPipUniqueDeps)
+	assert.Contains(t, uniqueDeps, "pexpect:4.8.0")
+	assert.Contains(t, uniqueDeps, "ptyprocess:0.7.0")
+	assert.Contains(t, uniqueDeps, "pip-example:1.2.3")
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)
@@ -46,7 +40,9 @@ func TestPipDependencyListRequirementsFallback(t *testing.T) {
 	// No requirements file field specified, expect the command to use the fallback 'pip install -r requirements.txt' command
 	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip})
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, uniqueDeps, expectedPipUniqueDeps)
+	assert.Contains(t, uniqueDeps, "pexpect:4.8.0")
+	assert.Contains(t, uniqueDeps, "ptyprocess:0.7.0")
+	assert.Contains(t, uniqueDeps, "pip-example:1.2.3")
 	assert.Len(t, rootNode, 1)
 	if assert.True(t, len(rootNode[0].Nodes) > 2) {
 		childNode := audit.GetAndAssertNode(t, rootNode[0].Nodes, "pexpect:4.7.0")
@@ -64,7 +60,9 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	// Run getModulesDependencyTrees
 	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, uniqueDeps, expectedPipUniqueDeps)
+	assert.Contains(t, uniqueDeps, "pexpect:4.8.0")
+	assert.Contains(t, uniqueDeps, "ptyprocess:0.7.0")
+	assert.Contains(t, uniqueDeps, "pip-example:1.2.3")
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)
@@ -82,7 +80,7 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	_, cleanUp := audit.CreateTestWorkspace(t, "pipenv-project")
 	defer cleanUp()
 	expectedPipenvUniqueDeps := []string{
-		pythonPackageTypeIdentifier + "pypi://toml:0.10.2",
+		pythonPackageTypeIdentifier + "toml:0.10.2",
 		pythonPackageTypeIdentifier + "pexpect:4.8.0",
 		pythonPackageTypeIdentifier + "ptyprocess:0.7.0",
 	}

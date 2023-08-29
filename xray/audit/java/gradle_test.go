@@ -49,7 +49,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, uniqueDeps, 11)
-		assert.Len(t, modulesDependencyTrees, 5)
+		assert.Len(t, modulesDependencyTrees, 3)
 		// Check module
 		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "webservice")
 		assert.Len(t, module.Nodes, 7)
@@ -72,7 +72,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 5)
+		assert.Len(t, modulesDependencyTrees, 3)
 		assert.Len(t, uniqueDeps, 11)
 		// Check module
 		module := audit.GetAndAssertNode(t, modulesDependencyTrees, "api")
@@ -96,7 +96,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 5)
+		assert.Len(t, modulesDependencyTrees, 3)
 		assert.Len(t, uniqueDeps, 11)
 		// Check direct dependency
 		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "services")

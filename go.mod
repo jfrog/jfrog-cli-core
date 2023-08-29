@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.4.6
-	github.com/jfrog/build-info-go v1.9.8
+	github.com/jfrog/build-info-go v1.9.9
 	github.com/jfrog/gofrog v1.3.0
 	github.com/jfrog/jfrog-client-go v1.31.6
 	github.com/magiconair/properties v1.8.7
@@ -93,7 +93,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/eyaldelarea/jfrog-client-go v1.28.4-0.20230828141303-56c6cacd5eb4
+replace github.com/jfrog/jfrog-client-go => github.com/eyaldelarea/jfrog-client-go v1.28.4-0.20230829064018-97b4701be69d
 
 //replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230828134416-f0db33dd9344
 

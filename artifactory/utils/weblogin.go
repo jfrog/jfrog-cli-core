@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -26,17 +27,17 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 		return
 	}
 	if err = accessManager.SendLoginAuthenticationRequest(uuidStr); err != nil {
-		log.Info("web login is only supported for Artifactory version 7.63.1 and above. " +
-			"Make sure the details you entered are correct and that Artifactory stands in the version requirement.")
+		err = errors.Join(err,
+			errorutils.CheckErrorf("The 'Web Login' functionality is only supported for Artifactory version 7.64.0 and above. "+
+				"Make sure the details you entered are correct and that Artifactory meets the version requirement."))
 		return
 	}
 	log.Info("Please log in to the JFrog platform using the opened browser.")
-	err = browser.OpenURL(clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrogCLI")
-	if err != nil {
+	if err = browser.OpenURL(clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrogCLI"); err != nil {
 		return
 	}
 	time.Sleep(1 * time.Second)
-	log.Info("Attempting to get the authentication token...")
+	log.Debug("Attempting to get the authentication token...")
 	token, err = accessManager.GetLoginAuthenticationToken(uuidStr)
 	if err != nil {
 		return
@@ -44,7 +45,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 	if token.AccessToken == "" {
 		return token, errorutils.CheckErrorf("failed getting authentication token after web log")
 	}
-	log.Info("Received token from platform!")
+	log.Info("You're now logged in!")
 	return
 }
 

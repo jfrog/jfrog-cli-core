@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -46,7 +46,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, DockerScanMinXrayVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, DockerScanMinXrayVersion)
 	if err != nil {
 		return err
 	}

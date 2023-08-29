@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -58,7 +57,7 @@ func getGradleDependencyLocalPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dependenciesPath, "gradle", build.GradleExtractorDependencyVersion), nil
+	return filepath.Join(dependenciesPath, "gradle"), nil
 }
 
 func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string, threads int, disableDeploy bool) (props map[string]string, wrapper, plugin bool, err error) {

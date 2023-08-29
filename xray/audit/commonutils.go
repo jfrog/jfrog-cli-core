@@ -51,7 +51,7 @@ func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[st
 }
 
 func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
-	scanGraphParams.XrayGraphScanParams().AuditGraph = dependencyTree
+	scanGraphParams.XrayGraphScanParams().DependencyGraph = dependencyTree
 	scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(dependencyTree.Nodes), technology)
 	if progress != nil {
 		progress.SetHeadlineMsg(scanMessage)

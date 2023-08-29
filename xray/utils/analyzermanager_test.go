@@ -115,11 +115,11 @@ func TestExtractRelativePath(t *testing.T) {
 }
 
 func TestGetResultSeverity(t *testing.T) {
-	levelValueHigh := "error"
-	levelValueMedium := "warning"
-	levelValueMedium2 := "info"
-	levelValueLow := "note"
-	levelValueUnknown := "none"
+	levelValueHigh := string(Err)
+	levelValueMedium := string(Warning)
+	levelValueMedium2 := string(Info)
+	levelValueLow := string(Note)
+	levelValueUnknown := string(None)
 
 	tests := []struct {
 		result           *sarif.Result

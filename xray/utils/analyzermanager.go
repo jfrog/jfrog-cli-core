@@ -19,9 +19,25 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
+type Level string
+
+const (
+	Err     Level = "error"
+	Warning Level = "warning"
+	Info    Level = "info"
+	Note    Level = "note"
+	None    Level = "none"
+
+	SeverityDefaultValue = "Medium"
+)
+
 var (
-	// Default is Medium for all other values
-	levelToSeverity = map[string]string{"error": "High", "note": "Low", "none": "Unknown"}
+	// All other values (include default) mapped as 'Medium' severity
+	levelToSeverity = map[Level]string{
+		Err:  "High",
+		Note: "Low",
+		None: "Unknown",
+	}
 )
 
 const (
@@ -38,7 +54,6 @@ const (
 	jfTokenEnvVariable            = "JF_TOKEN"
 	jfPlatformUrlEnvVariable      = "JF_PLATFORM_URL"
 	logDirEnvVariable             = "AM_LOG_DIRECTORY"
-	SeverityDefaultValue          = "Medium"
 	notEntitledExitCode           = 31
 	unsupportedCommandExitCode    = 13
 	unsupportedOsExitCode         = 55
@@ -233,7 +248,7 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 
 func GetResultSeverity(result *sarif.Result) string {
 	if result.Level != nil {
-		if severity, ok := levelToSeverity[*result.Level]; ok {
+		if severity, ok := levelToSeverity[Level(*result.Level)]; ok {
 			return severity
 		}
 	}

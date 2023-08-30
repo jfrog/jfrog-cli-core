@@ -161,7 +161,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 	// Sort the rows by severity and whether the row contains fixed versions
 	sortVulnerabilityOrViolationRows(securityViolationsRows)
 	sort.Slice(licenseViolationsRows, func(i, j int) bool {
-		return licenseViolationsRows[i].SeverityNumValue > licenseViolationsRows[j].SeverityNumValue
+		return licenseViolationsRows[i].LicenseKey < licenseViolationsRows[j].LicenseKey
 	})
 	sort.Slice(operationalRiskViolationsRows, func(i, j int) bool {
 		return operationalRiskViolationsRows[i].SeverityNumValue > operationalRiskViolationsRows[j].SeverityNumValue
@@ -289,6 +289,9 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 		}
 	}
 
+	sort.Slice(licensesRows, func(i, j int) bool {
+		return licensesRows[i].LicenseKey < licensesRows[j].LicenseKey
+	})
 	return licensesRows, nil
 }
 
@@ -696,15 +699,17 @@ func simplifyViolations(scanViolations []services.Violation, multipleRoots bool)
 				continue
 			}
 			uniqueViolations[packageKey] = &services.Violation{
-				Severity:      violation.Severity,
-				ViolationType: violation.ViolationType,
-				Components:    map[string]services.Component{vulnerableComponentId: violation.Components[vulnerableComponentId]},
-				WatchName:     violation.WatchName,
-				IssueId:       violation.IssueId,
-				Cves:          violation.Cves,
-				LicenseKey:    violation.LicenseKey,
-				LicenseName:   violation.LicenseName,
-				Technology:    violation.Technology,
+				Severity:            violation.Severity,
+				ViolationType:       violation.ViolationType,
+				Components:          map[string]services.Component{vulnerableComponentId: violation.Components[vulnerableComponentId]},
+				WatchName:           violation.WatchName,
+				IssueId:             violation.IssueId,
+				Cves:                violation.Cves,
+				LicenseKey:          violation.LicenseKey,
+				LicenseName:         violation.LicenseName,
+				Technology:          violation.Technology,
+				ExtendedInformation: violation.ExtendedInformation,
+				Summary:             violation.Summary,
 			}
 		}
 	}

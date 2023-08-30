@@ -2,6 +2,7 @@ package audit
 
 import (
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
@@ -152,8 +153,40 @@ func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Comp
 			FixedVersions: components[dependencyName].FixedVersions,
 			Cpes:          components[dependencyName].Cpes,
 		}
-		issuesImpactPathsMap[dependencyName] = emptyPathsComponent
+		if _, exist := issuesImpactPathsMap[dependencyName]; !exist {
+			issuesImpactPathsMap[dependencyName] = emptyPathsComponent
+		} else {
+			sortedFixedVersions := mergeSortedVersions(issuesImpactPathsMap[dependencyName].FixedVersions, emptyPathsComponent.FixedVersions)
+			issuesImpactPathsMap[dependencyName].FixedVersions = sortedFixedVersions
+			issuesImpactPathsMap[dependencyName].Cpes =
+				append(issuesImpactPathsMap[dependencyName].Cpes, emptyPathsComponent.Cpes...)
+		}
 	}
+}
+
+// This functions receives two sorted slices of versions and returns a merged slice which is sorted.
+// For example, firstVersions - ["[1.7.0]", "[2.3.1]"],  secondVersions - ["[1.8.1]"].
+// Result: ["[1.7.0]", "[1.8.1]", "[2.3.1]"]
+func mergeSortedVersions(firstVersions, secondVersions []string) []string {
+	mergedVersions := make([]string, 0, len(firstVersions)+len(secondVersions))
+	firstVersionsIndex, secondVersionsIndex := 0, 0
+
+	for firstVersionsIndex < len(firstVersions) && secondVersionsIndex < len(secondVersions) {
+		trimmedFirstVersion := version.NewVersion(strings.Trim(firstVersions[firstVersionsIndex], "[]"))
+		trimmedSecondVersion := strings.Trim(secondVersions[secondVersionsIndex], "[]")
+		if trimmedFirstVersion.Compare(trimmedSecondVersion) >= 0 {
+			mergedVersions = append(mergedVersions, firstVersions[firstVersionsIndex])
+			firstVersionsIndex++
+		} else {
+			mergedVersions = append(mergedVersions, secondVersions[secondVersionsIndex])
+			secondVersionsIndex++
+		}
+	}
+
+	// Append what's left
+	mergedVersions = append(mergedVersions, firstVersions[firstVersionsIndex:]...)
+	mergedVersions = append(mergedVersions, secondVersions[secondVersionsIndex:]...)
+	return mergedVersions
 }
 
 // Set the impact paths for each issue in the map

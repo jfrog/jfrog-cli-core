@@ -237,7 +237,6 @@ func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDi
 		techResults = audit.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
 		if tech == coreutils.Pip {
 			params.AppendDirectDependencies(getDirectDependenciesFromTree(flattenTree))
-
 		} else {
 			params.AppendDirectDependencies(getDirectDependenciesFromTree(fullDependencyTrees))
 		}

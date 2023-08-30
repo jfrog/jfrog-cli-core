@@ -99,8 +99,7 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 		assert.Len(t, modulesDependencyTrees, 2)
 		assert.Len(t, uniqueDeps, 11)
 		// Check direct dependency
-		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "api")
-		assert.Empty(t, directDependency.Nodes)
+		assert.Nil(t, audit.GetModule(modulesDependencyTrees, "services"))
 	}
 }
 

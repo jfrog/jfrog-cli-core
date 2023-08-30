@@ -112,6 +112,11 @@ var technologiesData = map[Technology]TechData{
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},
 		formal:     "NuGet",
+		// .NET CLI is used for NuGet projects
+		execCommand:                "dotnet",
+		packageInstallationCommand: "add",
+		// packageName -v packageVersion
+		packageVersionOperator: " -v ",
 	},
 	Dotnet: {
 		indicators: []string{".sln", ".csproj"},
@@ -155,7 +160,7 @@ func (tech Technology) IsCiSetup() bool {
 	return technologiesData[tech].ciSetupSupport
 }
 
-func (tech Technology) GetPackageOperator() string {
+func (tech Technology) GetPackageVersionOperator() string {
 	return technologiesData[tech].packageVersionOperator
 }
 

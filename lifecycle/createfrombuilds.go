@@ -11,7 +11,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
-func (rbc *ReleaseBundleCreate) createFromBuilds(servicesManager *lifecycle.LifecycleServicesManager,
+func (rbc *ReleaseBundleCreateCommand) createFromBuilds(servicesManager *lifecycle.LifecycleServicesManager,
 	rbDetails services.ReleaseBundleDetails, params services.CreateOrPromoteReleaseBundleParams) error {
 
 	builds := CreateFromBuildsSpec{}
@@ -34,7 +34,7 @@ func (rbc *ReleaseBundleCreate) createFromBuilds(servicesManager *lifecycle.Life
 	return servicesManager.CreateReleaseBundleFromBuilds(rbDetails, params, buildsSource)
 }
 
-func (rbc *ReleaseBundleCreate) convertToBuildsSource(builds CreateFromBuildsSpec) (services.CreateFromBuildsSource, error) {
+func (rbc *ReleaseBundleCreateCommand) convertToBuildsSource(builds CreateFromBuildsSpec) (services.CreateFromBuildsSource, error) {
 	buildsSource := services.CreateFromBuildsSource{}
 	for _, build := range builds.Builds {
 		buildSource := services.BuildSource{BuildName: build.Name}
@@ -49,7 +49,7 @@ func (rbc *ReleaseBundleCreate) convertToBuildsSource(builds CreateFromBuildsSpe
 	return buildsSource, nil
 }
 
-func (rbc *ReleaseBundleCreate) getLatestBuildNumberIfEmpty(buildName, buildNumber, project string) (string, error) {
+func (rbc *ReleaseBundleCreateCommand) getLatestBuildNumberIfEmpty(buildName, buildNumber, project string) (string, error) {
 	if buildNumber != "" {
 		return buildNumber, nil
 	}
@@ -69,7 +69,7 @@ func (rbc *ReleaseBundleCreate) getLatestBuildNumberIfEmpty(buildName, buildNumb
 	return buildNumber, nil
 }
 
-func (rbc *ReleaseBundleCreate) getAqlService() (*rtServices.AqlService, error) {
+func (rbc *ReleaseBundleCreateCommand) getAqlService() (*rtServices.AqlService, error) {
 	rtServiceManager, err := rtUtils.CreateServiceManager(rbc.serverDetails, 3, 0, false)
 	if err != nil {
 		return nil, err

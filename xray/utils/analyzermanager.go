@@ -22,7 +22,7 @@ import (
 type SarifLevel string
 
 const (
-	Err     SarifLevel = "error"
+	Error   SarifLevel = "error"
 	Warning SarifLevel = "warning"
 	Info    SarifLevel = "info"
 	Note    SarifLevel = "note"
@@ -34,9 +34,9 @@ const (
 var (
 	// All other values (include default) mapped as 'Medium' severity
 	levelToSeverity = map[SarifLevel]string{
-		Err:  "High",
-		Note: "Low",
-		None: "Unknown",
+		Error: "High",
+		Note:  "Low",
+		None:  "Unknown",
 	}
 )
 
@@ -248,7 +248,7 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 
 func GetResultSeverity(result *sarif.Result) string {
 	if result.Level != nil {
-		if severity, ok := levelToSeverity[SarifLevel(*result.Level)]; ok {
+		if severity, ok := levelToSeverity[SarifLevel(strings.ToLower(*result.Level))]; ok {
 			return severity
 		}
 	}

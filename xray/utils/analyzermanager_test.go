@@ -3,11 +3,12 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
-	"testing"
 )
 
 func TestRemoveDuplicateValues(t *testing.T) {
@@ -115,7 +116,7 @@ func TestExtractRelativePath(t *testing.T) {
 }
 
 func TestGetResultSeverity(t *testing.T) {
-	levelValueHigh := string(Err)
+	levelValueHigh := string(Error)
 	levelValueMedium := string(Warning)
 	levelValueMedium2 := string(Info)
 	levelValueLow := string(Note)

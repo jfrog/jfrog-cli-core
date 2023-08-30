@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
@@ -74,18 +73,14 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
+
 	secretScanManager := newSecretsScanManager(scanner)
 	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
+	var err error
 	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], utils.Secrets)
 
 	// Assert
@@ -95,14 +90,9 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 }
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
+
 	secretsResults, err := getSecretsScanResults(scanner)
 
 	assert.Error(t, err)

@@ -43,7 +43,7 @@ func TestBuildGoDependencyList(t *testing.T) {
 	}
 	rootNode, uniqueDeps, err := BuildDependencyTree(server, "test-remote")
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 
 	assert.Equal(t, "https://user:sdsdccs2232@api.go.here/artifactoryapi/go/test-remote|direct", os.Getenv("GOPROXY"))
 	assert.NotEmpty(t, rootNode)

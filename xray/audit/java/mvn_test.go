@@ -31,7 +31,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildMvnDependencyTree(&DependencyTreeParams{IgnoreConfigFile: true})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
-		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
+		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
 		multi := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {
@@ -81,7 +81,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 
 	modulesDependencyTrees, uniqueDeps, err := buildMvnDependencyTree(&DependencyTreeParams{IgnoreConfigFile: true, UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
-		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
+		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
 		multi := audit.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {

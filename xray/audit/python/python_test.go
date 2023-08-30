@@ -89,7 +89,7 @@ func TestBuildPipenvDependencyList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.ElementsMatch(t, uniqueDeps, expectedPipenvUniqueDeps)
+	assert.ElementsMatch(t, uniqueDeps, expectedPipenvUniqueDeps, "First is actual, Second is Expected")
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)
@@ -124,7 +124,7 @@ func TestBuildPoetryDependencyList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assert.ElementsMatch(t, uniqueDeps, expectedPoetryUniqueDeps)
+	assert.ElementsMatch(t, uniqueDeps, expectedPoetryUniqueDeps, "First is actual, Second is Expected")
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)

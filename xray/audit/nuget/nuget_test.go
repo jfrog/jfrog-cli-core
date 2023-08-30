@@ -35,7 +35,7 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 		nugetPackageTypeIdentifier + "MsbuildLibrary",
 	}
 	xrayDependenciesTree, uniqueDeps := parseNugetDependencyTree(dependencies)
-	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 	expectedTreeJson, err := os.ReadFile("expectedTree.json")
 	assert.NoError(t, err)
 

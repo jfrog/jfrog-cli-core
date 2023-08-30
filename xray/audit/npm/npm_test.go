@@ -105,7 +105,7 @@ func TestParseNpmDependenciesList(t *testing.T) {
 	for _, dep := range dependencies {
 		expectedUniqueDeps = append(expectedUniqueDeps, npmPackageTypeIdentifier+dep.Id)
 	}
-	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 
 }
 

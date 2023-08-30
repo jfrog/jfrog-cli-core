@@ -45,6 +45,6 @@ func TestParseYarnDependenciesList(t *testing.T) {
 	}
 
 	xrayDependenciesTree, uniqueDeps := parseYarnDependenciesMap(yarnDependencies, rootXrayId)
-	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps)
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 	assert.True(t, tests.CompareTree(expectedTree, xrayDependenciesTree), "expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 }

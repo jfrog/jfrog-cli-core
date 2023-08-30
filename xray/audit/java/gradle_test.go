@@ -96,10 +96,10 @@ func TestGradleTreesExcludeTestDeps(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 3)
+		assert.Len(t, modulesDependencyTrees, 2)
 		assert.Len(t, uniqueDeps, 11)
 		// Check direct dependency
-		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "services")
+		directDependency := audit.GetAndAssertNode(t, modulesDependencyTrees, "api")
 		assert.Empty(t, directDependency.Nodes)
 	}
 }
@@ -178,9 +178,9 @@ func TestGetGraphFromDepTree(t *testing.T) {
 	}()
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 	testCase := struct {
-		name           string
-		expectedTree   map[string]map[string]string
-		expectedUnique []string
+		name               string
+		expectedTree       map[string]map[string]string
+		expectedUniqueDeps []string
 	}{
 		name: "ValidOutputFileContent",
 		expectedTree: map[string]map[string]string{
@@ -202,7 +202,7 @@ func TestGetGraphFromDepTree(t *testing.T) {
 				GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":       "",
 			},
 		},
-		expectedUnique: []string{
+		expectedUniqueDeps: []string{
 			GavPackageTypeIdentifier + "webservice",
 			GavPackageTypeIdentifier + "junit:junit:4.11",
 			GavPackageTypeIdentifier + "commons-io:commons-io:1.2",
@@ -222,7 +222,7 @@ func TestGetGraphFromDepTree(t *testing.T) {
 	assert.NoError(t, err)
 	depTree, uniqueDeps, err := (&depTreeManager{}).getGraphFromDepTree(outputFileContent)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, uniqueDeps, testCase.expectedUnique)
+	assert.ElementsMatch(t, uniqueDeps, testCase.expectedUniqueDeps, "First is actual, Second is Expected")
 
 	for _, dependency := range depTree {
 		depChild, exists := testCase.expectedTree[dependency.Id]

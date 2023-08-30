@@ -21,7 +21,7 @@ import (
 	"testing"
 )
 
-const maxUniqueAppearances = 5
+const maxUniqueAppearances = 10
 
 func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) (*xrayUtils.GraphNode, []string) {
 	rootNode := &xrayUtils.GraphNode{
@@ -42,7 +42,7 @@ func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[st
 			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
 		}
-		if (*dependencyAppearances)[childDepId] > maxUniqueAppearances || childNode.NodeHasLoop() {
+		if (*dependencyAppearances)[childDepId] >= maxUniqueAppearances || childNode.NodeHasLoop() {
 			continue
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)

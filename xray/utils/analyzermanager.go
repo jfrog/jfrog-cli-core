@@ -50,16 +50,16 @@ const (
 	ApplicabilityUndeterminedStringValue = "Undetermined"
 )
 
-type ScanType string
+type JasScanType string
 
 const (
-	Applicability ScanType = "Applicability"
-	Secrets       ScanType = "Secrets"
-	IaC           ScanType = "IaC"
-	Sast          ScanType = "Sast"
+	Applicability JasScanType = "Applicability"
+	Secrets       JasScanType = "Secrets"
+	IaC           JasScanType = "IaC"
+	Sast          JasScanType = "Sast"
 )
 
-func (st ScanType) FormattedError(err error) error {
+func (st JasScanType) FormattedError(err error) error {
 	if err != nil {
 		return fmt.Errorf(ErrFailedScannerRun, st, err.Error())
 	}
@@ -101,10 +101,6 @@ func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 
 type AnalyzerManager struct {
 	AnalyzerManagerFullPath string
-}
-
-func (am *AnalyzerManager) GetAnalyzerManagerDir() string {
-	return filepath.Dir(am.AnalyzerManagerFullPath)
 }
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
@@ -190,7 +186,7 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	return nil
 }
 
-func ParseAnalyzerManagerError(scanner ScanType, err error) error {
+func ParseAnalyzerManagerError(scanner JasScanType, err error) error {
 	var exitError *exec.ExitError
 	if errors.As(err, &exitError) {
 		exitCode := exitError.ExitCode()

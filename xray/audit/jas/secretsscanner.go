@@ -1,6 +1,7 @@
 package jas
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -33,7 +34,7 @@ func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.So
 	}
 	results = secretScanManager.secretsScannerResults
 	if len(results) > 0 {
-		log.Info(len(results), "secrets were found")
+		log.Info("Found", len(results), "secrets")
 	}
 	return
 }
@@ -54,7 +55,9 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 		return
 	}
 	var workingDirResults []utils.SourceCodeScanResult
-	workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.Secrets)
+	if workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.Secrets); err != nil {
+		return
+	}
 	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
 	return
 }
@@ -85,7 +88,7 @@ func (s *SecretScanManager) createConfigFile(currentWd string) error {
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
-	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, s.scanner.analyzerManager.GetAnalyzerManagerDir(), s.scanner.serverDetails)
+	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, filepath.Dir(s.scanner.analyzerManager.AnalyzerManagerFullPath), s.scanner.serverDetails)
 }
 
 func hideSecret(secret string) string {

@@ -43,9 +43,7 @@ func initJasTest(t *testing.T, workingDirs ...string) (*AdvancedSecurityScanner,
 	scanner, err := NewAdvancedSecurityScanner(workingDirs, &fakeServerDetails)
 	assert.NoError(t, err)
 	return scanner, func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
+		assert.NoError(t, scanner.scannerDirCleanupFunc())
 	}
 }
 

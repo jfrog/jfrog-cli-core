@@ -1,6 +1,8 @@
 package jas
 
 import (
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -53,7 +55,9 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 		return
 	}
 	var workingDirResults []utils.SourceCodeScanResult
-	workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.IaC)
+	if workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.IaC); err != nil {
+		return
+	}
 	iac.iacScannerResults = append(iac.iacScannerResults, workingDirResults...)
 	return
 }
@@ -84,5 +88,5 @@ func (iac *IacScanManager) createConfigFile(currentWd string) error {
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {
-	return iac.scanner.analyzerManager.Exec(iac.scanner.configFileName, iacScanCommand, iac.scanner.analyzerManager.GetAnalyzerManagerDir(), iac.scanner.serverDetails)
+	return iac.scanner.analyzerManager.Exec(iac.scanner.configFileName, iacScanCommand, filepath.Dir(iac.scanner.analyzerManager.AnalyzerManagerFullPath), iac.scanner.serverDetails)
 }

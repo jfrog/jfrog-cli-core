@@ -17,11 +17,12 @@ func TestNewIacScanManager(t *testing.T) {
 	iacScanManager := newIacScanManager(scanner)
 
 	// Assert
-	assert.NotEmpty(t, iacScanManager)
-	assert.NotEmpty(t, iacScanManager.scanner.configFileName)
-	assert.NotEmpty(t, iacScanManager.scanner.resultsFileName)
-	assert.NotEmpty(t, iacScanManager.scanner.workingDirs)
-	assert.Equal(t, &fakeServerDetails, iacScanManager.scanner.serverDetails)
+	if assert.NotNil(t, iacScanManager) {
+		assert.NotEmpty(t, iacScanManager.scanner.configFileName)
+		assert.NotEmpty(t, iacScanManager.scanner.resultsFileName)
+		assert.NotEmpty(t, iacScanManager.scanner.workingDirs)
+		assert.Equal(t, &fakeServerDetails, iacScanManager.scanner.serverDetails)
+	}
 }
 
 func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {

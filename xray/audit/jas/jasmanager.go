@@ -127,7 +127,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.ScanType) ([]utils.SourceCodeScanResult, error) {
+func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) ([]utils.SourceCodeScanResult, error) {
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return nil, err

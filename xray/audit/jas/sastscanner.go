@@ -28,7 +28,9 @@ func (zd *SastScanManager) Run(wd string) (err error) {
 		return
 	}
 	var workingDirResults []utils.SourceCodeScanResult
-	workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.Sast)
+	if workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.Sast); err != nil {
+		return
+	}
 	zd.sastScannerResults = append(zd.sastScannerResults, workingDirResults...)
 	return
 }
@@ -45,7 +47,7 @@ func getSastScanResults(scanner *AdvancedSecurityScanner) (results []utils.Sourc
 		return
 	}
 	if len(sastScanManager.sastScannerResults) > 0 {
-		log.Info(len(sastScanManager.sastScannerResults), "SAST vulnerabilities")
+		log.Info("Found", len(sastScanManager.sastScannerResults), "SAST vulnerabilities")
 	}
 	results = sastScanManager.sastScannerResults
 	return

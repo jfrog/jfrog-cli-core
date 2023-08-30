@@ -238,7 +238,7 @@ func convertToSourceCodeResultSarif(run *sarif.Run, jsonTable *formats.SimpleJso
 	return
 }
 
-func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutput bool, scanType ScanType) sarifProperties {
+func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutput bool, scanType JasScanType) sarifProperties {
 	file := strings.TrimPrefix(sourceCodeIssue.File, string(os.PathSeparator))
 	mapSeverityToScore := map[string]string{
 		"":         "0.0",

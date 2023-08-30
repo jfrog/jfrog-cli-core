@@ -106,7 +106,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 		name           string
 		row            formats.SourceCodeRow
 		markdownOutput bool
-		isSecret       ScanType
+		isSecret       JasScanType
 		expectedOutput sarifProperties
 	}{
 		{

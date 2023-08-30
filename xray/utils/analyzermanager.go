@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -16,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 var (
@@ -208,134 +205,6 @@ func RemoveDuplicateValues(stringSlice []string) []string {
 		}
 	}
 	return finalSlice
-}
-
-func GetResultIndexIfExists(file, lineCol, text string, results []SourceCodeScanResult) int {
-	for i, result := range results {
-		if result.File == file && result.LineColumn == lineCol && result.Text == text {
-			return i
-		}
-	}
-	return -1
-}
-
-// If a result with the same file, line, column and text exists return it. otherwise create a new result and add it to results
-// Used to combine results from similar places instead of reporting multiple duplicate rows
-func GetOrCreateCodeScanResult(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) int {
-	file := ExtractRelativePath(GetResultFileName(result), workingDir)
-	lineCol := GetResultLocationInFile(result)
-	text := *result.Message.Text
-	// Already exists
-	if index := GetResultIndexIfExists(file, lineCol, text, *results); index >= 0 {
-		return index
-	}
-	// New result
-	newResult := SourceCodeScanResult{
-		Severity: GetResultSeverity(result),
-		SourceCodeLocation: SourceCodeLocation{
-			File:       file,
-			LineColumn: lineCol,
-			Text:       text,
-		},
-		Type: *result.RuleID,
-	}
-	index := len(*results)
-	*results = append(*results, newResult)
-
-	return index
-}
-
-func GetResultFileName(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		return getResultFileName(result.Locations[0])
-	}
-	return ""
-}
-
-func getResultFileName(location *sarif.Location) string {
-	filePath := location.PhysicalLocation.ArtifactLocation.URI
-	if filePath != nil {
-		return *filePath
-	}
-	return ""
-}
-
-func GetResultLocationInFile(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		return getResultLocationInFile(result.Locations[0])
-	}
-	return ""
-}
-
-func getResultLocationInFile(location *sarif.Location) string {
-	startLine := location.PhysicalLocation.Region.StartLine
-	startColumn := location.PhysicalLocation.Region.StartColumn
-	if startLine != nil && startColumn != nil {
-		return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
-	}
-	return ""
-}
-
-func GetResultLocationSnippet(location *sarif.Location) string {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
-		return *location.PhysicalLocation.Region.Snippet.Text
-	}
-	return ""
-}
-
-func GetResultCodeFlows(result *sarif.Result, workingDir string) (flows [][]SourceCodeLocation) {
-	if len(result.CodeFlows) == 0 {
-		return
-	}
-	for _, codeFlow := range result.CodeFlows {
-		if codeFlow == nil || len(codeFlow.ThreadFlows) == 0 {
-			continue
-		}
-		flows = append(flows, extractThreadFlows(codeFlow.ThreadFlows, workingDir)...)
-	}
-	return
-}
-
-func extractThreadFlows(threadFlows []*sarif.ThreadFlow, workingDir string) (flows [][]SourceCodeLocation) {
-	for _, threadFlow := range threadFlows {
-		if threadFlow == nil || len(threadFlow.Locations) == 0 {
-			continue
-		}
-		flow := extractStackTraceLocations(threadFlow.Locations, workingDir)
-		if len(flow) > 0 {
-			flows = append(flows, flow)
-		}
-	}
-	return
-}
-
-func extractStackTraceLocations(locations []*sarif.ThreadFlowLocation, workingDir string) (flow []SourceCodeLocation) {
-	for _, location := range locations {
-		if location == nil {
-			continue
-		}
-		flow = append(flow, SourceCodeLocation{
-			File:       ExtractRelativePath(getResultFileName(location.Location), workingDir),
-			LineColumn: getResultLocationInFile(location.Location),
-			Text:       GetResultLocationSnippet(location.Location),
-		})
-	}
-	return
-}
-
-func ExtractRelativePath(resultPath string, projectRoot string) string {
-	filePrefix := "file://"
-	relativePath := strings.ReplaceAll(strings.ReplaceAll(resultPath, projectRoot, ""), filePrefix, "")
-	return relativePath
-}
-
-func GetResultSeverity(result *sarif.Result) string {
-	if result.Level != nil {
-		if severity, ok := levelToSeverity[*result.Level]; ok {
-			return severity
-		}
-	}
-	return SeverityDefaultValue
 }
 
 // Receives a list of relative path working dirs, returns a list of full paths working dirs

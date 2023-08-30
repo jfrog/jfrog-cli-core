@@ -128,31 +128,40 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 }
 
 func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) ([]utils.SourceCodeScanResult, error) {
+	// Read Sarif format results generated from the Jas scanner
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	var results []*sarif.Result
+	var sarifResults []*sarif.Result
 	if len(report.Runs) > 0 {
-		results = report.Runs[0].Results
+		// Jas scanners returns results in a single run entry
+		sarifResults = report.Runs[0].Results
 	}
+	return convertSarifResultsToSourceCodeScanResults(sarifResults, workingDir, scanType), nil
+}
 
+func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, workingDir string, scanType utils.JasScanType) []utils.SourceCodeScanResult {
 	var sourceCodeScanResults []utils.SourceCodeScanResult
-	for _, result := range results {
+	for _, sarifResult := range sarifResults {
 		// Describes a request to “suppress” a result (to exclude it from result lists)
-		if len(result.Suppressions) > 0 {
+		if len(sarifResult.Suppressions) > 0 {
 			continue
 		}
-		index := utils.GetOrCreateCodeScanResult(result, workingDir, &sourceCodeScanResults)
+		// Convert
+		sourceCodeScanResult := utils.IsSarifResultExistsInSourceCodeScanResults(sarifResult, workingDir, &sourceCodeScanResults)
+		if sourceCodeScanResult == nil {
+			sourceCodeScanResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir, &sourceCodeScanResults)
+		}
+		// Set specific Jas scan attributes
 		if scanType == utils.Secrets {
-			sourceCodeScanResults[index].Text = hideSecret(utils.GetResultLocationSnippet(result.Locations[0]))
+			sourceCodeScanResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
 		}
 		if scanType == utils.Sast {
-			flows := utils.GetResultCodeFlows(result, workingDir)
-			sourceCodeScanResults[index].CodeFlow = append(sourceCodeScanResults[index].CodeFlow, flows...)
+			sourceCodeScanResult.CodeFlow = append(sourceCodeScanResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
 		}
 	}
-	return sourceCodeScanResults, nil
+	return sourceCodeScanResults
 }
 
 func createScannersConfigFile(fileName string, fileContent interface{}) error {

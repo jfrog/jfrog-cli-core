@@ -115,7 +115,8 @@ var technologiesData = map[Technology]TechData{
 		// .NET CLI is used for NuGet projects
 		execCommand:                "dotnet",
 		packageInstallationCommand: "add",
-		packageVersionOperator:     "-v",
+		// Spaces in packageVersionOperator are intended and are not to be removed
+		packageVersionOperator: " -v ",
 	},
 	Dotnet: {
 		indicators: []string{".sln", ".csproj"},

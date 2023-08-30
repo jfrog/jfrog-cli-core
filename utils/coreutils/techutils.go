@@ -159,7 +159,7 @@ func (tech Technology) IsCiSetup() bool {
 	return technologiesData[tech].ciSetupSupport
 }
 
-func (tech Technology) GetPackageOperator() string {
+func (tech Technology) GetPackageVersionOperator() string {
 	return technologiesData[tech].packageVersionOperator
 }
 

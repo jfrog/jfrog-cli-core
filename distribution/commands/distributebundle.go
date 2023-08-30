@@ -4,12 +4,12 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/distribution/services"
+	"github.com/jfrog/jfrog-client-go/utils/distribution"
 )
 
-type DistributeReleaseBundleCommand struct {
+type DistributeReleaseBundleV1Command struct {
 	serverDetails           *config.ServerDetails
-	distributeBundlesParams services.DistributionParams
+	distributeBundlesParams distribution.DistributionParams
 	distributionRules       *spec.DistributionRules
 	sync                    bool
 	maxWaitMinutes          int
@@ -17,46 +17,46 @@ type DistributeReleaseBundleCommand struct {
 	autoCreateRepo          bool
 }
 
-func NewReleaseBundleDistributeCommand() *DistributeReleaseBundleCommand {
-	return &DistributeReleaseBundleCommand{}
+func NewReleaseBundleDistributeV1Command() *DistributeReleaseBundleV1Command {
+	return &DistributeReleaseBundleV1Command{}
 }
 
-func (db *DistributeReleaseBundleCommand) SetServerDetails(serverDetails *config.ServerDetails) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleV1Command) SetServerDetails(serverDetails *config.ServerDetails) *DistributeReleaseBundleV1Command {
 	db.serverDetails = serverDetails
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) SetDistributeBundleParams(params services.DistributionParams) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleV1Command) SetDistributeBundleParams(params distribution.DistributionParams) *DistributeReleaseBundleV1Command {
 	db.distributeBundlesParams = params
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) SetDistributionRules(distributionRules *spec.DistributionRules) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleV1Command) SetDistributionRules(distributionRules *spec.DistributionRules) *DistributeReleaseBundleV1Command {
 	db.distributionRules = distributionRules
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) SetSync(sync bool) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleV1Command) SetSync(sync bool) *DistributeReleaseBundleV1Command {
 	db.sync = sync
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) SetMaxWaitMinutes(maxWaitMinutes int) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleV1Command) SetMaxWaitMinutes(maxWaitMinutes int) *DistributeReleaseBundleV1Command {
 	db.maxWaitMinutes = maxWaitMinutes
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) SetDryRun(dryRun bool) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleV1Command) SetDryRun(dryRun bool) *DistributeReleaseBundleV1Command {
 	db.dryRun = dryRun
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) SetAutoCreateRepo(autoCreateRepo bool) *DistributeReleaseBundleCommand {
+func (db *DistributeReleaseBundleV1Command) SetAutoCreateRepo(autoCreateRepo bool) *DistributeReleaseBundleV1Command {
 	db.autoCreateRepo = autoCreateRepo
 	return db
 }
 
-func (db *DistributeReleaseBundleCommand) Run() error {
+func (db *DistributeReleaseBundleV1Command) Run() error {
 	servicesManager, err := utils.CreateDistributionServiceManager(db.serverDetails, db.dryRun)
 	if err != nil {
 		return err
@@ -72,10 +72,10 @@ func (db *DistributeReleaseBundleCommand) Run() error {
 	return servicesManager.DistributeReleaseBundle(db.distributeBundlesParams, db.autoCreateRepo)
 }
 
-func (db *DistributeReleaseBundleCommand) ServerDetails() (*config.ServerDetails, error) {
+func (db *DistributeReleaseBundleV1Command) ServerDetails() (*config.ServerDetails, error) {
 	return db.serverDetails, nil
 }
 
-func (db *DistributeReleaseBundleCommand) CommandName() string {
+func (db *DistributeReleaseBundleV1Command) CommandName() string {
 	return "rt_distribute_bundle"
 }

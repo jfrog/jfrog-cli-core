@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/distribution"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -100,9 +101,9 @@ func (db *DeleteReleaseBundleCommand) confirmDelete(distributionRulesEmpty bool)
 			"You can avoid this confirmation message by adding --quiet to the command.", false), nil
 	}
 
-	var distributionRulesBodies []services.DistributionRulesBody
+	var distributionRulesBodies []distribution.DistributionRulesBody
 	for _, rule := range db.deleteBundlesParams.DistributionRules {
-		distributionRulesBodies = append(distributionRulesBodies, services.DistributionRulesBody{
+		distributionRulesBodies = append(distributionRulesBodies, distribution.DistributionRulesBody{
 			SiteName:     rule.GetSiteName(),
 			CityName:     rule.GetCityName(),
 			CountryCodes: rule.GetCountryCodes(),

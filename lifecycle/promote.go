@@ -7,65 +7,69 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-type ReleaseBundlePromote struct {
+type ReleaseBundlePromoteCommand struct {
 	releaseBundleCmd
 	environment string
 	overwrite   bool
 }
 
-func NewReleaseBundlePromote() *ReleaseBundlePromote {
-	return &ReleaseBundlePromote{}
+func NewReleaseBundlePromoteCommand() *ReleaseBundlePromoteCommand {
+	return &ReleaseBundlePromoteCommand{}
 }
 
-func (rbp *ReleaseBundlePromote) SetServerDetails(serverDetails *config.ServerDetails) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetServerDetails(serverDetails *config.ServerDetails) *ReleaseBundlePromoteCommand {
 	rbp.serverDetails = serverDetails
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetReleaseBundleName(releaseBundleName string) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetReleaseBundleName(releaseBundleName string) *ReleaseBundlePromoteCommand {
 	rbp.releaseBundleName = releaseBundleName
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetReleaseBundleVersion(releaseBundleVersion string) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetReleaseBundleVersion(releaseBundleVersion string) *ReleaseBundlePromoteCommand {
 	rbp.releaseBundleVersion = releaseBundleVersion
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetSigningKeyName(signingKeyName string) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetSigningKeyName(signingKeyName string) *ReleaseBundlePromoteCommand {
 	rbp.signingKeyName = signingKeyName
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetSync(sync bool) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetSync(sync bool) *ReleaseBundlePromoteCommand {
 	rbp.sync = sync
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetReleaseBundleProject(rbProjectKey string) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetReleaseBundleProject(rbProjectKey string) *ReleaseBundlePromoteCommand {
 	rbp.rbProjectKey = rbProjectKey
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetEnvironment(environment string) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetEnvironment(environment string) *ReleaseBundlePromoteCommand {
 	rbp.environment = environment
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) SetOverwrite(overwrite bool) *ReleaseBundlePromote {
+func (rbp *ReleaseBundlePromoteCommand) SetOverwrite(overwrite bool) *ReleaseBundlePromoteCommand {
 	rbp.overwrite = overwrite
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromote) CommandName() string {
+func (rbp *ReleaseBundlePromoteCommand) CommandName() string {
 	return "rb_promote"
 }
 
-func (rbp *ReleaseBundlePromote) ServerDetails() (*config.ServerDetails, error) {
+func (rbp *ReleaseBundlePromoteCommand) ServerDetails() (*config.ServerDetails, error) {
 	return rbp.serverDetails, nil
 }
 
-func (rbp *ReleaseBundlePromote) Run() error {
+func (rbp *ReleaseBundlePromoteCommand) Run() error {
+	if err := validateArtifactoryVersionSupported(rbp.serverDetails); err != nil {
+		return err
+	}
+
 	servicesManager, rbDetails, params, err := rbp.getPrerequisites()
 	if err != nil {
 		return err

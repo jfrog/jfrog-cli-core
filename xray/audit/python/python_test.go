@@ -59,8 +59,8 @@ func TestBuildPipDependencyListRequirements(t *testing.T) {
 	// Run getModulesDependencyTrees
 	rootNode, uniqueDeps, err := BuildDependencyTree(&AuditPython{Tool: pythonutils.Pip, PipRequirementsFile: "requirements.txt"})
 	assert.NoError(t, err)
-	assert.Contains(t, uniqueDeps, "pexpect:4.7.0")
-	assert.Contains(t, uniqueDeps, "ptyprocess:0.7.0")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"pexpect:4.7.0")
+	assert.Contains(t, uniqueDeps, pythonPackageTypeIdentifier+"ptyprocess:0.7.0")
 	assert.Len(t, rootNode, 1)
 	if len(rootNode) > 0 {
 		assert.NotEmpty(t, rootNode[0].Nodes)

@@ -19,21 +19,21 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
-type Level string
+type SarifLevel string
 
 const (
-	Err     Level = "error"
-	Warning Level = "warning"
-	Info    Level = "info"
-	Note    Level = "note"
-	None    Level = "none"
+	Err     SarifLevel = "error"
+	Warning SarifLevel = "warning"
+	Info    SarifLevel = "info"
+	Note    SarifLevel = "note"
+	None    SarifLevel = "none"
 
 	SeverityDefaultValue = "Medium"
 )
 
 var (
 	// All other values (include default) mapped as 'Medium' severity
-	levelToSeverity = map[Level]string{
+	levelToSeverity = map[SarifLevel]string{
 		Err:  "High",
 		Note: "Low",
 		None: "Unknown",
@@ -248,7 +248,7 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 
 func GetResultSeverity(result *sarif.Result) string {
 	if result.Level != nil {
-		if severity, ok := levelToSeverity[Level(*result.Level)]; ok {
+		if severity, ok := levelToSeverity[SarifLevel(*result.Level)]; ok {
 			return severity
 		}
 	}

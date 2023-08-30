@@ -175,9 +175,8 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 	if xscEntitled, err = isEntitledForXsc(xrayManager, serverDetails); err != nil {
 		return
 	}
-	print(jasEntitle)
-	entitlements = &XrayEntitlements{Jas: true, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
 
+	entitlements = &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
 	// Handle actions needed in case of specific entitlement.
 	if entitlements.Jas {
 		// Download the analyzer manager in a background routine.

@@ -61,9 +61,10 @@ func (auditCmd *GenericAuditCommand) SetPrintExtendedTable(printExtendedTable bo
 
 func (auditCmd *GenericAuditCommand) CreateXrayGraphScanParams() *scan.XrayGraphScanParams {
 	params := &scan.XrayGraphScanParams{
-		RepoPath: auditCmd.targetRepoPath,
-		Watches:  auditCmd.watches,
-		ScanType: scan.Dependency,
+		RepoPath:    auditCmd.targetRepoPath,
+		Watches:     auditCmd.watches,
+		ScanType:    scan.Dependency,
+		MultiScanId: os.Getenv(coreutils.MultiScanId),
 	}
 	if auditCmd.projectKey == "" {
 		params.ProjectKey = os.Getenv(coreutils.Project)
@@ -87,20 +88,6 @@ func (auditCmd *GenericAuditCommand) Run() (err error) {
 		SetFixableOnly(auditCmd.fixableOnly).
 		SetGraphBasicParams(auditCmd.GraphBasicParams)
 
-	// TODO this is testings
-	auditParams.xrayGraphScanParams.XscGitInfoContext = &scan.XscGitInfoContext{
-		GitRepoUrl:    "https://amtestings.com",
-		GitRepoName:   "analyzerManager",
-		GitProject:    "myproject",
-		GitProvider:   "github",
-		Technologies:  []string{"npm"},
-		BranchName:    "main",
-		LastCommit:    "https://github.com/EyalDelarea/analyzerManager/commit/8ed82a82c26133b1bcf556d6dc2db0c2",
-		CommitHash:    "8ed82a82c26133b1bcf556d6dc2db0c2",
-		CommitMessage: "test",
-		CommitAuthor:  "eyal",
-		Date:          "2017-07-21T20:32:28Z",
-	}
 	auditResults, err := RunAudit(auditParams)
 	if err != nil {
 		return

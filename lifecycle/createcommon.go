@@ -4,65 +4,69 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
-type ReleaseBundleCreate struct {
+type ReleaseBundleCreateCommand struct {
 	releaseBundleCmd
 	buildsSpecPath         string
 	releaseBundlesSpecPath string
 }
 
-func NewReleaseBundleCreate() *ReleaseBundleCreate {
-	return &ReleaseBundleCreate{}
+func NewReleaseBundleCreateCommand() *ReleaseBundleCreateCommand {
+	return &ReleaseBundleCreateCommand{}
 }
 
-func (rbc *ReleaseBundleCreate) SetServerDetails(serverDetails *config.ServerDetails) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetServerDetails(serverDetails *config.ServerDetails) *ReleaseBundleCreateCommand {
 	rbc.serverDetails = serverDetails
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetReleaseBundleName(releaseBundleName string) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetReleaseBundleName(releaseBundleName string) *ReleaseBundleCreateCommand {
 	rbc.releaseBundleName = releaseBundleName
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetReleaseBundleVersion(releaseBundleVersion string) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetReleaseBundleVersion(releaseBundleVersion string) *ReleaseBundleCreateCommand {
 	rbc.releaseBundleVersion = releaseBundleVersion
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetSigningKeyName(signingKeyName string) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetSigningKeyName(signingKeyName string) *ReleaseBundleCreateCommand {
 	rbc.signingKeyName = signingKeyName
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetSync(sync bool) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetSync(sync bool) *ReleaseBundleCreateCommand {
 	rbc.sync = sync
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetReleaseBundleProject(rbProjectKey string) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetReleaseBundleProject(rbProjectKey string) *ReleaseBundleCreateCommand {
 	rbc.rbProjectKey = rbProjectKey
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetBuildsSpecPath(buildsSpecPath string) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetBuildsSpecPath(buildsSpecPath string) *ReleaseBundleCreateCommand {
 	rbc.buildsSpecPath = buildsSpecPath
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) SetReleaseBundlesSpecPath(releaseBundlesSpecPath string) *ReleaseBundleCreate {
+func (rbc *ReleaseBundleCreateCommand) SetReleaseBundlesSpecPath(releaseBundlesSpecPath string) *ReleaseBundleCreateCommand {
 	rbc.releaseBundlesSpecPath = releaseBundlesSpecPath
 	return rbc
 }
 
-func (rbc *ReleaseBundleCreate) CommandName() string {
+func (rbc *ReleaseBundleCreateCommand) CommandName() string {
 	return "rb_create"
 }
 
-func (rbc *ReleaseBundleCreate) ServerDetails() (*config.ServerDetails, error) {
+func (rbc *ReleaseBundleCreateCommand) ServerDetails() (*config.ServerDetails, error) {
 	return rbc.serverDetails, nil
 }
 
-func (rbc *ReleaseBundleCreate) Run() error {
+func (rbc *ReleaseBundleCreateCommand) Run() error {
+	if err := validateArtifactoryVersionSupported(rbc.serverDetails); err != nil {
+		return err
+	}
+
 	servicesManager, rbDetails, params, err := rbc.getPrerequisites()
 	if err != nil {
 		return err

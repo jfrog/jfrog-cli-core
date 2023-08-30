@@ -215,7 +215,7 @@ func RemoveDuplicateValues(stringSlice []string) []string {
 	return finalSlice
 }
 
-func GetResultIfExists(file, lineCol, text string, results []SourceCodeScanResult) int {
+func GetResultIndexIfExists(file, lineCol, text string, results []SourceCodeScanResult) int {
 	for i, result := range results {
 		if result.File == file && result.LineColumn == lineCol && result.Text == text {
 			return i
@@ -231,7 +231,7 @@ func GetOrCreateCodeScanResult(result *sarif.Result, workingDir string, results 
 	lineCol := GetResultLocationInFile(result)
 	text := *result.Message.Text
 	// Already exists
-	if index := GetResultIfExists(file, lineCol, text, *results); index >= 0 {
+	if index := GetResultIndexIfExists(file, lineCol, text, *results); index >= 0 {
 		return index
 	}
 	// New result
@@ -296,26 +296,34 @@ func GetResultCodeFlows(result *sarif.Result, workingDir string) (flows [][]Sour
 		if codeFlow == nil || len(codeFlow.ThreadFlows) == 0 {
 			continue
 		}
-		for _, threadFlow := range codeFlow.ThreadFlows {
-			if threadFlow == nil || len(threadFlow.Locations) == 0 {
-				continue
-			}
-			flow := []SourceCodeLocation{}
-			for _, location := range threadFlow.Locations {
-				if location == nil {
-					continue
-				}
-				flow = append(flow, SourceCodeLocation{
-					File:       ExtractRelativePath(getResultFileName(location.Location), workingDir),
-					LineColumn: getResultLocationInFile(location.Location),
-					Text:       GetResultLocationSnippet(location.Location),
-				})
-			}
-			if len(flow) == 0 {
-				continue
-			}
+		flows = append(flows, extractThreadFlows(codeFlow.ThreadFlows, workingDir)...)
+	}
+	return
+}
+
+func extractThreadFlows(threadFlows []*sarif.ThreadFlow, workingDir string) (flows [][]SourceCodeLocation) {
+	for _, threadFlow := range threadFlows {
+		if threadFlow == nil || len(threadFlow.Locations) == 0 {
+			continue
+		}
+		flow := extractStackTraceLocations(threadFlow.Locations, workingDir)
+		if len(flow) > 0 {
 			flows = append(flows, flow)
 		}
+	}
+	return
+}
+
+func extractStackTraceLocations(locations []*sarif.ThreadFlowLocation, workingDir string) (flow []SourceCodeLocation) {
+	for _, location := range locations {
+		if location == nil {
+			continue
+		}
+		flow = append(flow, SourceCodeLocation{
+			File:       ExtractRelativePath(getResultFileName(location.Location), workingDir),
+			LineColumn: getResultLocationInFile(location.Location),
+			Text:       GetResultLocationSnippet(location.Location),
+		})
 	}
 	return
 }

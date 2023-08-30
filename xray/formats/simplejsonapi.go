@@ -36,41 +36,42 @@ type VulnerabilityOrViolationRow struct {
 	Technology                coreutils.Technology      `json:"-"`
 }
 
+type LicenseBase struct {
+	ImpactedDependencyName    string         `json:"impactedPackageName"`
+	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
+	ImpactedDependencyType    string         `json:"impactedPackageType"`
+	Components                []ComponentRow `json:"components"`
+}
+
+type LicenseBaseWithKey struct {
+	LicenseBase
+	LicenseKey string `json:"licenseKey"`
+}
+
 type LicenseRow struct {
-	LicenseKey                string           `json:"licenseKey"`
-	ImpactedDependencyName    string           `json:"impactedPackageName"`
-	ImpactedDependencyVersion string           `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string           `json:"impactedPackageType"`
-	Components                []ComponentRow   `json:"components"`
-	ImpactPaths               [][]ComponentRow `json:"impactPaths"`
+	LicenseBaseWithKey
+	ImpactPaths [][]ComponentRow `json:"impactPaths"`
 }
 
 type LicenseViolationRow struct {
-	LicenseKey                string         `json:"licenseKey"`
-	Severity                  string         `json:"severity"`
-	Applicable                string         `json:"applicable"`
-	SeverityNumValue          int            `json:"-"` // For sorting
-	ImpactedDependencyName    string         `json:"impactedPackageName"`
-	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string         `json:"impactedPackageType"`
-	Components                []ComponentRow `json:"components"`
+	Severity         string `json:"severity"`
+	Applicable       string `json:"applicable"`
+	SeverityNumValue int    `json:"-"` // For sorting
+	LicenseBaseWithKey
 }
 
 type OperationalRiskViolationRow struct {
-	Severity                  string         `json:"severity"`
-	SeverityNumValue          int            `json:"-"` // For sorting
-	ImpactedDependencyName    string         `json:"impactedPackageName"`
-	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string         `json:"impactedPackageType"`
-	Components                []ComponentRow `json:"components"`
-	RiskReason                string         `json:"riskReason"`
-	IsEol                     string         `json:"isEndOfLife"`
-	EolMessage                string         `json:"endOfLifeMessage"`
-	Cadence                   string         `json:"cadence"`
-	Commits                   string         `json:"commits"`
-	Committers                string         `json:"committers"`
-	NewerVersions             string         `json:"newerVersions"`
-	LatestVersion             string         `json:"latestVersion"`
+	Severity         string `json:"severity"`
+	SeverityNumValue int    `json:"-"` // For sorting
+	LicenseBase
+	RiskReason    string `json:"riskReason"`
+	IsEol         string `json:"isEndOfLife"`
+	EolMessage    string `json:"endOfLifeMessage"`
+	Cadence       string `json:"cadence"`
+	Commits       string `json:"commits"`
+	Committers    string `json:"committers"`
+	NewerVersions string `json:"newerVersions"`
+	LatestVersion string `json:"latestVersion"`
 }
 
 type IacSecretsRow struct {

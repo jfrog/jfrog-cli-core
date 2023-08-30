@@ -115,13 +115,17 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
-						LicenseKey:                violation.LicenseKey,
-						Severity:                  currSeverity.printableTitle(isTable),
-						SeverityNumValue:          currSeverity.numValue,
-						ImpactedDependencyName:    impactedPackagesNames[compIndex],
-						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-						Components:                components[compIndex],
+						LicenseBaseWithKey: formats.LicenseBaseWithKey{
+							LicenseBase: formats.LicenseBase{
+								ImpactedDependencyName:    impactedPackagesNames[compIndex],
+								ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+								ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+								Components:                components[compIndex],
+							},
+							LicenseKey: violation.LicenseKey,
+						},
+						Severity:         currSeverity.printableTitle(isTable),
+						SeverityNumValue: currSeverity.numValue,
 					},
 				)
 			}
@@ -130,20 +134,22 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
-					Severity:                  currSeverity.printableTitle(isTable),
-					SeverityNumValue:          currSeverity.numValue,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					Components:                components[compIndex],
-					IsEol:                     violationOpRiskData.isEol,
-					Cadence:                   violationOpRiskData.cadence,
-					Commits:                   violationOpRiskData.commits,
-					Committers:                violationOpRiskData.committers,
-					NewerVersions:             violationOpRiskData.newerVersions,
-					LatestVersion:             violationOpRiskData.latestVersion,
-					RiskReason:                violationOpRiskData.riskReason,
-					EolMessage:                violationOpRiskData.eolMessage,
+					Severity:         currSeverity.printableTitle(isTable),
+					SeverityNumValue: currSeverity.numValue,
+					LicenseBase: formats.LicenseBase{
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
+					IsEol:         violationOpRiskData.isEol,
+					Cadence:       violationOpRiskData.cadence,
+					Commits:       violationOpRiskData.commits,
+					Committers:    violationOpRiskData.committers,
+					NewerVersions: violationOpRiskData.newerVersions,
+					LatestVersion: violationOpRiskData.latestVersion,
+					RiskReason:    violationOpRiskData.riskReason,
+					EolMessage:    violationOpRiskData.eolMessage,
 				}
 				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
 			}
@@ -268,12 +274,16 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				formats.LicenseRow{
-					LicenseKey:                license.Key,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					Components:                components[compIndex],
-					ImpactPaths:               impactPaths[compIndex],
+					LicenseBaseWithKey: formats.LicenseBaseWithKey{
+						LicenseBase: formats.LicenseBase{
+							ImpactedDependencyName:    impactedPackagesNames[compIndex],
+							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+							Components:                components[compIndex],
+						},
+						LicenseKey: license.Key,
+					},
+					ImpactPaths: impactPaths[compIndex],
 				},
 			)
 		}

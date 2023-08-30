@@ -242,7 +242,6 @@ func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutp
 	file := strings.TrimPrefix(sourceCodeIssue.File, string(os.PathSeparator))
 	mapSeverityToScore := map[string]string{
 		"":         "0.0",
-		"unknown":  "0.0",
 		"low":      "3.9",
 		"medium":   "6.9",
 		"high":     "8.9",

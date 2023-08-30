@@ -20,8 +20,7 @@ import (
 )
 
 var (
-	// Default is Medium for all other values
-	levelToSeverity = map[string]string{"error": "High", "note": "Low", "none": "Unknown"}
+	levelToSeverity = map[string]string{"error": "High", "warning": "Medium", "info": "Low"}
 )
 
 const (

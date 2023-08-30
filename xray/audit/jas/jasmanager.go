@@ -152,6 +152,7 @@ func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, wo
 		sourceCodeScanResult := utils.IsSarifResultExistsInSourceCodeScanResults(sarifResult, workingDir, &sourceCodeScanResults)
 		if sourceCodeScanResult == nil {
 			sourceCodeScanResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir, &sourceCodeScanResults)
+			sourceCodeScanResults = append(sourceCodeScanResults, *sourceCodeScanResult)
 		}
 		// Set specific Jas scan attributes
 		if scanType == utils.Secrets {

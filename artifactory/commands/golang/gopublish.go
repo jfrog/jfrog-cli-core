@@ -1,13 +1,13 @@
 package golang
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os/exec"
 
 	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -82,7 +82,7 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, artifactoryVersion, minSupportedArtifactoryVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Artifactory, artifactoryVersion, minSupportedArtifactoryVersion)
 	if err != nil {
 		return err
 	}

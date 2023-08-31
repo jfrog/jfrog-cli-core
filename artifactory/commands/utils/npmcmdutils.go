@@ -2,13 +2,13 @@ package utils
 
 import (
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"net/http"
 	"os"
 	"strings"
 
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -115,16 +115,7 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 // The returned restore function can be called to restore the file's state - the file in filePath will be replaced by the backup in backupPath.
 // If there is no file at filePath, a backup file won't be created, and the restore function will delete the file at filePath.
 func BackupFile(filePath, backupPath string) (restore func() error, err error) {
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return createRestoreFileFunc(filePath, backupPath), nil
-		}
-		return nil, errorutils.CheckError(err)
-	}
-
-	fileMode := fileInfo.Mode()
-	if err = ioutils.CopyFile(filePath, backupPath, fileMode); err != nil {
+	if err = biutils.CopyFile(filePath, backupPath); err != nil {
 		return nil, err
 	}
 	log.Debug("The file", filePath, "was backed up successfully to", backupPath)

@@ -2,6 +2,7 @@ package python
 
 import (
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -82,7 +83,7 @@ func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]s
 		}
 	}()
 
-	err = fileutils.CopyDir(wd, tempDirPath, true, nil)
+	err = biutils.CopyDir(wd, tempDirPath, true, nil)
 	if err != nil {
 		return
 	}

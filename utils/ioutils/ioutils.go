@@ -7,7 +7,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/term"
-	"io"
 	"os"
 	"strings"
 	"syscall"
@@ -64,36 +63,6 @@ func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
 		*scanInto = defaultValue
 	}
 	*scanInto = strings.TrimSpace(*scanInto)
-}
-
-func CopyFile(src, dst string, fileMode os.FileMode) (err error) {
-	from, err := os.Open(src)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	defer func() {
-		e := from.Close()
-		if err == nil {
-			err = e
-		}
-	}()
-
-	to, err := os.OpenFile(dst, os.O_RDWR|os.O_CREATE, fileMode)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	defer func() {
-		e := to.Close()
-		if err == nil {
-			err = e
-		}
-	}()
-
-	if _, err = io.Copy(to, from); err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	return errorutils.CheckError(os.Chmod(dst, fileMode))
 }
 
 func DoubleWinPathSeparator(filePath string) string {

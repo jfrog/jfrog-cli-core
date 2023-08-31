@@ -215,7 +215,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 		return err
 	}
 	// Copy the entire content of the relevant Go pkg directory to the requested destination path.
-	err = fileutils.CopyDir(packageFilesPath, destPath, true, nil)
+	err = biutils.CopyDir(packageFilesPath, destPath, true, nil)
 	if err != nil {
 		return fmt.Errorf("couldn't find suitable package files: %s", packageFilesPath)
 	}
@@ -249,11 +249,8 @@ func getPackageFilePathFromArtifactory(packageName, rtTargetRepo string, authArt
 			return
 		}
 	}
-	path, err := getFileSystemPackagePath(packageCachePath, name, version)
-	if err != nil {
-		return "", err
-	}
-	return path, nil
+	packageFilesPath, err = getFileSystemPackagePath(packageCachePath, name, version)
+	return
 
 }
 
@@ -315,7 +312,7 @@ func getFileSystemPackagePath(packageCachePath, name, version string) (string, e
 		path, _ = filepath.Split(path)
 		path = strings.TrimSuffix(path, separator)
 	}
-	return "", errors.New("Could not find package:" + name + " in:" + packageCachePath)
+	return "", errors.New("Could not find package: " + name + " in: " + packageCachePath)
 }
 
 // buildPackageVersionRequest returns a string representing the version request to Artifactory.

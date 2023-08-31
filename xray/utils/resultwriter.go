@@ -248,10 +248,9 @@ func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutp
 		"critical": "10",
 	}
 	severity := mapSeverityToScore[strings.ToLower(sourceCodeIssue.Severity)]
-	markdownDescription := ""
+
 	headline := ""
 	secretOrFinding := ""
-
 	switch scanType {
 	case IaC:
 		headline = "Infrastructure as Code Vulnerability"
@@ -263,6 +262,8 @@ func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutp
 		headline = "Potential Secret Exposed"
 		secretOrFinding = "Secret"
 	}
+	
+	markdownDescription := ""
 	if markdownOutput {
 		headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s |\n", secretOrFinding)
 		separatorRow := "| :---: | :---: | :---: | :---: |\n"

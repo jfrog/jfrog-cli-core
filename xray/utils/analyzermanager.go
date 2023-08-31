@@ -101,10 +101,7 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *c
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return err
 	}
-
 	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
-	commandss := []string{am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId}
-	print(strings.Join(commandss, "."))
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {

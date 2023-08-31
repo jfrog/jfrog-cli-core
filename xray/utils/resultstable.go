@@ -556,9 +556,9 @@ var Severities = map[string]map[string]*Severity{
 		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
 	},
 	"Unknown": {
-		ApplicableStringValue:                {emoji: "😐", title: "Unknown", numValue: 7},
-		ApplicabilityUndeterminedStringValue: {emoji: "😐", title: "Unknown", numValue: 6},
-		NotApplicableStringValue:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "🤔", title: "Unknown", numValue: 7},
+		ApplicabilityUndeterminedStringValue: {emoji: "🤔", title: "Unknown", numValue: 6},
+		NotApplicableStringValue:             {emoji: "🤔", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
 	},
 }
 

@@ -160,7 +160,7 @@ func (ca *NpmCommand) PreparePrerequisites(repo string) error {
 }
 
 func (ca *NpmCommand) setRestoreNpmrcFunc() error {
-	restoreNpmrcFunc, err := commandUtils.BackupFile(filepath.Join(ca.workingDirectory, npmrcFileName), filepath.Join(ca.workingDirectory, npmrcBackupFileName))
+	restoreNpmrcFunc, err := commandUtils.BackupFile(filepath.Join(ca.workingDirectory, npmrcFileName), npmrcBackupFileName)
 	if err != nil {
 		return err
 	}

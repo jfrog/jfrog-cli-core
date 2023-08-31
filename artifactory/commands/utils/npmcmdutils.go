@@ -1,14 +1,16 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -114,28 +116,51 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 // BackupFile creates a backup of the file in filePath. The backup will be found at backupPath.
 // The returned restore function can be called to restore the file's state - the file in filePath will be replaced by the backup in backupPath.
 // If there is no file at filePath, a backup file won't be created, and the restore function will delete the file at filePath.
-func BackupFile(filePath, backupPath string) (restore func() error, err error) {
+func BackupFile(filePath, backupFileName string) (restore func() error, err error) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return createRestoreFileFunc(filePath, backupPath), nil
+			return createRestoreFileFunc(filePath, backupFileName), nil
 		}
 		return nil, errorutils.CheckError(err)
 	}
 
-	fileMode := fileInfo.Mode()
-	if err = ioutils.CopyFile(filePath, backupPath, fileMode); err != nil {
+	if err = cloneFile(filePath, backupFileName, fileInfo.Mode()); err != nil {
 		return nil, err
 	}
-	log.Debug("The file", filePath, "was backed up successfully to", backupPath)
-	return createRestoreFileFunc(filePath, backupPath), nil
+	log.Debug("The file", filePath, "was backed up successfully to", backupFileName)
+	return createRestoreFileFunc(filePath, backupFileName), nil
+}
+
+func cloneFile(origFile, newName string, fileMode os.FileMode) (err error) {
+	from, err := os.Open(origFile)
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	defer func() {
+		err = errors.Join(err, from.Close())
+	}()
+
+	to, err := os.OpenFile(filepath.Join(filepath.Dir(origFile), newName), os.O_RDWR|os.O_CREATE, fileMode)
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	defer func() {
+		err = errors.Join(err, to.Close())
+	}()
+
+	if _, err = io.Copy(to, from); err != nil {
+		err = errorutils.CheckError(err)
+	}
+	return
 }
 
 // createRestoreFileFunc creates a function for restoring a file from its backup.
 // The returned function replaces the file in filePath with the backup in backupPath.
 // If there is no file at backupPath (which means there was no file at filePath when BackupFile() was called), then the function deletes the file at filePath.
-func createRestoreFileFunc(filePath, backupPath string) func() error {
+func createRestoreFileFunc(filePath, backupFileName string) func() error {
 	return func() error {
+		backupPath := filepath.Join(filepath.Dir(filePath), backupFileName)
 		if _, err := os.Stat(backupPath); err != nil {
 			if os.IsNotExist(err) {
 				err = os.Remove(filePath)
@@ -148,7 +173,6 @@ func createRestoreFileFunc(filePath, backupPath string) func() error {
 			return errorutils.CheckError(err)
 		}
 		log.Debug("Restored the file", filePath, "successfully")
-
 		return nil
 	}
 }

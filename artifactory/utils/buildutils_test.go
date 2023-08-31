@@ -1,6 +1,7 @@
 package utils
 
 import (
+	biutils "github.com/jfrog/build-info-go/utils"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,7 +35,7 @@ func TestGetBuildName(t *testing.T) {
 	defer createTempDirCallback()
 
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
-	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
+	assert.NoError(t, biutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
 	wd, err := os.Getwd()
 	assert.NoError(t, err, "Failed to get current dir")
@@ -79,7 +79,7 @@ func TestGetEmptyBuildNameOnUnixAccessDenied(t *testing.T) {
 
 	destConfFile := filepath.Join(tmpDir, ".jfrog", "projects")
 	srcConfFile := filepath.Join("testdata", "build.yaml")
-	assert.NoError(t, fileutils.CopyFile(destConfFile, srcConfFile))
+	assert.NoError(t, biutils.CopyFile(destConfFile, srcConfFile))
 
 	// Remove permissions from config file.
 	assert.NoError(t, os.Chmod(destConfFile, 0000))
@@ -111,7 +111,7 @@ func TestGetBuildNumber(t *testing.T) {
 
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
-	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
+	assert.NoError(t, biutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 
 	wd, err := os.Getwd()
 	assert.NoError(t, err, "Failed to get current dir")
@@ -217,7 +217,7 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	buildConfig.SetBuildName("")
 	// Create build config in temp folder
 	confFileName := filepath.Join(tmpDir, ".jfrog", "projects")
-	assert.NoError(t, fileutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
+	assert.NoError(t, biutils.CopyFile(confFileName, filepath.Join("testdata", "build.yaml")))
 	wd, err := os.Getwd()
 	assert.NoError(t, err, "Failed to get current dir")
 	chdirCallBack := testsutils.ChangeDirWithCallback(t, wd, tmpDir)

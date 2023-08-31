@@ -2,7 +2,7 @@ package transferinstall
 
 import (
 	"fmt"
-	downloadutils "github.com/jfrog/build-info-go/utils"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -293,7 +293,7 @@ func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error)
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = downloadutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
+		if err = biutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
 			err = downloadConnectionErr(src, fileName, err.Error())
 			return
 		}
@@ -311,7 +311,7 @@ func CopyFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = fileutils.CopyFile(dstDirPath, srcPath); err != nil {
+		if err = biutils.CopyFile(dstDirPath, srcPath); err != nil {
 			return
 		}
 	}

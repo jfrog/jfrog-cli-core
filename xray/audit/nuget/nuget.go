@@ -1,6 +1,7 @@
 package nuget
 
 import (
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
@@ -14,7 +15,7 @@ const (
 	nugetPackageTypeIdentifier = "nuget://"
 )
 
-func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
+func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return
@@ -27,11 +28,12 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 	if err != nil {
 		return
 	}
-	dependencyTree = parseNugetDependencyTree(buildInfo)
+	dependencyTree, uniqueDeps = parseNugetDependencyTree(buildInfo)
 	return
 }
 
-func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*xrayUtils.GraphNode) {
+func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*xrayUtils.GraphNode, allUniqueDeps []string) {
+	uniqueDepsSet := datastructures.MakeSet[string]()
 	for _, module := range buildInfo.Modules {
 		treeMap := make(map[string][]string)
 		for _, dependency := range module.Dependencies {
@@ -43,7 +45,12 @@ func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*xrayUtils
 				treeMap[parent] = []string{dependencyId}
 			}
 		}
-		nodes = append(nodes, audit.BuildXrayDependencyTree(treeMap, nugetPackageTypeIdentifier+module.Id))
+		dependencyTree, uniqueDeps := audit.BuildXrayDependencyTree(treeMap, nugetPackageTypeIdentifier+module.Id)
+		nodes = append(nodes, dependencyTree)
+		for _, uniqueDep := range uniqueDeps {
+			uniqueDepsSet.Add(uniqueDep)
+		}
 	}
+	allUniqueDeps = uniqueDepsSet.ToSlice()
 	return
 }

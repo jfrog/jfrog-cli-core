@@ -122,7 +122,7 @@ func BackupFile(filePath, backupPath string) (restore func() error, err error) {
 	if !exists {
 		return createRestoreFileFunc(filePath, backupPath), nil
 	}
-	if err = biutils.CopyFile(filePath, backupPath); err != nil {
+	if err = biutils.CopyFile(backupPath, filePath); err != nil {
 		return nil, err
 	}
 	log.Debug("The file", filePath, "was backed up successfully to", backupPath)

@@ -2,6 +2,7 @@ package npm
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/build/utils"
@@ -169,7 +170,7 @@ func (ca *NpmCommand) setRestoreNpmrcFunc() error {
 		}
 		return restoreNpmrcFunc()
 	}
-	return err
+	return nil
 }
 
 func (ca *NpmCommand) setArtifactoryAuth() error {
@@ -280,10 +281,7 @@ func (ca *NpmCommand) Run() (err error) {
 		return
 	}
 	defer func() {
-		e := ca.restoreNpmrcFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, ca.restoreNpmrcFunc())
 	}()
 	if err = ca.CreateTempNpmrc(); err != nil {
 		return
@@ -293,9 +291,7 @@ func (ca *NpmCommand) Run() (err error) {
 		return
 	}
 
-	if err = ca.collectDependencies(); err != nil {
-		return
-	}
+	err = ca.collectDependencies()
 	return
 }
 

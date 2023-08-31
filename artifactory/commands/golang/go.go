@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -16,6 +17,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -131,39 +133,37 @@ func (gc *GoCommand) extractNoFallbackFromArgs() (cleanArgs []string, err error)
 	return
 }
 
-func (gc *GoCommand) run() error {
-	err := goutils.LogGoVersion()
+func (gc *GoCommand) run() (err error) {
+	err = goutils.LogGoVersion()
 	if err != nil {
-		return err
+		return
 	}
 	goBuildInfo, err := utils.PrepareBuildPrerequisites(gc.buildConfiguration)
 	if err != nil {
-		return err
+		return
 	}
 	defer func() {
 		if goBuildInfo != nil && err != nil {
-			e := goBuildInfo.Clean()
-			if e != nil {
-				err = errors.New(err.Error() + "\n" + e.Error())
-			}
+			err = errors.Join(err, goBuildInfo.Clean())
 		}
 	}()
 
 	resolverDetails, err := gc.resolverParams.ServerDetails()
 	if err != nil {
-		return err
+		return
 	}
 	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo())
 	if err != nil {
-		return err
+		return
 	}
 	// If noFallback=false, missing packages will be fetched directly from VCS
 	if !gc.noFallback {
 		repoUrl += "|direct"
 	}
 	err = biutils.RunGo(gc.goArg, repoUrl)
-	if err != nil {
-		return coreutils.ConvertExitCodeError(errorutils.CheckError(err))
+	if errorutils.CheckError(err) != nil {
+		err = coreutils.ConvertExitCodeError(err)
+		return
 	}
 
 	if goBuildInfo != nil {
@@ -172,39 +172,39 @@ func (gc *GoCommand) run() error {
 		if isGoGetCommand := len(gc.goArg) > 0 && gc.goArg[0] == "get"; isGoGetCommand {
 			if len(gc.goArg) < 2 {
 				// Package name was not supplied. Invalid go get commend
-				return errorutils.CheckErrorf("Invalid get command. Package name is missing")
+				err = errorutils.CheckErrorf("Invalid get command. Package name is missing")
+				return
 			}
 			tempDirPath, err = fileutils.CreateTempDir()
 			if err != nil {
-				return err
+				return
 			}
 			// Cleanup the temp working directory at the end.
 			defer func() {
-				e := fileutils.RemoveTempDir(tempDirPath)
-				if err == nil {
-					err = e
-				}
+				err = errors.Join(err, fileutils.RemoveTempDir(tempDirPath))
 			}()
-			serverDetails, err := resolverDetails.CreateArtAuthConfig()
+			var serverDetails auth.ServiceDetails
+			serverDetails, err = resolverDetails.CreateArtAuthConfig()
 			if err != nil {
-				return err
+				return
 			}
 			err = copyGoPackageFiles(tempDirPath, gc.goArg[1], gc.resolverParams.TargetRepo(), serverDetails)
 			if err != nil {
-				return err
+				return
 			}
 		}
-		goModule, err := goBuildInfo.AddGoModule(tempDirPath)
-		if err != nil {
-			return errorutils.CheckError(err)
+		var goModule *build.GoModule
+		goModule, err = goBuildInfo.AddGoModule(tempDirPath)
+		if errorutils.CheckError(err) != nil {
+			return
 		}
 		if gc.buildConfiguration.GetModule() != "" {
 			goModule.SetName(gc.buildConfiguration.GetModule())
 		}
-		return errorutils.CheckError(goModule.CalcDependencies())
+		err = errorutils.CheckError(goModule.CalcDependencies())
 	}
 
-	return err
+	return
 }
 
 // copyGoPackageFiles copies the package files from the go mod cache directory to the given destPath.
@@ -219,7 +219,18 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 	if err != nil {
 		return fmt.Errorf("couldn't find suitable package files: %s", packageFilesPath)
 	}
-	return nil
+	// Set permission recursively
+	return filepath.Walk(destPath,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			err = os.Chmod(path, 666)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 }
 
 // getPackageFilePathFromArtifactory returns a string that represents the package files cache path.

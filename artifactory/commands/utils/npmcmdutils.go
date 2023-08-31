@@ -115,6 +115,13 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 // The returned restore function can be called to restore the file's state - the file in filePath will be replaced by the backup in backupPath.
 // If there is no file at filePath, a backup file won't be created, and the restore function will delete the file at filePath.
 func BackupFile(filePath, backupPath string) (restore func() error, err error) {
+	exists, err := fileutils.IsFileExists(filePath, false)
+	if err != nil {
+		return
+	}
+	if !exists {
+		return createRestoreFileFunc(filePath, backupPath), nil
+	}
 	if err = biutils.CopyFile(filePath, backupPath); err != nil {
 		return nil, err
 	}

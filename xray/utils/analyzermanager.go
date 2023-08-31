@@ -21,24 +21,25 @@ var (
 )
 
 const (
-	EntitlementsMinVersion        = "3.66.5"
-	ApplicabilityFeatureId        = "contextual_analysis"
-	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerVersion        = "1.2.4.1953469"
-	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1"
-	analyzerManagerDirName        = "analyzerManager"
-	analyzerManagerExecutableName = "analyzerManager"
-	analyzerManagerLogDirName     = "analyzerManagerLogs"
-	jfUserEnvVariable             = "JF_USER"
-	jfPasswordEnvVariable         = "JF_PASS"
-	jfTokenEnvVariable            = "JF_TOKEN"
-	jfPlatformUrlEnvVariable      = "JF_PLATFORM_URL"
-	logDirEnvVariable             = "AM_LOG_DIRECTORY"
-	SeverityDefaultValue          = "Medium"
-	notEntitledExitCode           = 31
-	unsupportedCommandExitCode    = 13
-	unsupportedOsExitCode         = 55
-	ErrFailedScannerRun           = "failed to run %s scan. Exit code received: %s"
+	EntitlementsMinVersion           = "3.66.5"
+	ApplicabilityFeatureId           = "contextual_analysis"
+	AnalyzerManagerZipName           = "analyzerManager.zip"
+	AnalyzerManagerVersion           = "1.2.4.1953469"
+	MinAnalyzerManagerVersionForSast = "1.3"
+	analyzerManagerDownloadPath      = "xsc-gen-exe-analyzer-manager-local/v1"
+	analyzerManagerDirName           = "analyzerManager"
+	analyzerManagerExecutableName    = "analyzerManager"
+	analyzerManagerLogDirName        = "analyzerManagerLogs"
+	jfUserEnvVariable                = "JF_USER"
+	jfPasswordEnvVariable            = "JF_PASS"
+	jfTokenEnvVariable               = "JF_TOKEN"
+	jfPlatformUrlEnvVariable         = "JF_PLATFORM_URL"
+	logDirEnvVariable                = "AM_LOG_DIRECTORY"
+	SeverityDefaultValue             = "Medium"
+	notEntitledExitCode              = 31
+	unsupportedCommandExitCode       = 13
+	unsupportedOsExitCode            = 55
+	ErrFailedScannerRun              = "failed to run %s scan. Exit code received: %s"
 )
 
 const (
@@ -122,7 +123,7 @@ func GetAnalyzerManagerDownloadPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(analyzerManagerDownloadPath, analyzerManagerVersion, osAndArc, AnalyzerManagerZipName), nil
+	return path.Join(analyzerManagerDownloadPath, AnalyzerManagerVersion, osAndArc, AnalyzerManagerZipName), nil
 }
 
 func GetAnalyzerManagerDirAbsolutePath() (string, error) {

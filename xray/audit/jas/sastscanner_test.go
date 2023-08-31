@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 func TestNewSastScanManager(t *testing.T) {
 	scanner, cleanUp := initJasTest(t, "currentDir")
 	defer cleanUp()

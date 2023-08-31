@@ -262,7 +262,7 @@ func getSourceCodeProperties(sourceCodeIssue formats.SourceCodeRow, markdownOutp
 		headline = "Potential Secret Exposed"
 		secretOrFinding = "Secret"
 	}
-	
+
 	markdownDescription := ""
 	if markdownOutput {
 		headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s |\n", secretOrFinding)

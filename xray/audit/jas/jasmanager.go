@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -98,6 +99,9 @@ func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDepe
 	}
 	scanResults.IacScanResults, err = getIacScanResults(scanner)
 	if err != nil {
+		return
+	}
+	if !version.NewVersion(utils.AnalyzerManagerVersion).AtLeast(utils.MinAnalyzerManagerVersionForSast) {
 		return
 	}
 	if progress != nil {

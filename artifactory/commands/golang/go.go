@@ -225,7 +225,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 			if err != nil {
 				return err
 			}
-			err = os.Chmod(path, 666)
+			err = os.Chmod(path, 0666)
 			if err != nil {
 				return err
 			}

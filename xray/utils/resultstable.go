@@ -112,7 +112,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 				)
 			}
 		case "license":
-			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndetermined)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
@@ -127,7 +127,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 				)
 			}
 		case "operational_risk":
-			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndetermined)
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
@@ -291,7 +291,7 @@ func PrepareSecrets(secrets []SourceCodeScanResult) []formats.SourceCodeRow {
 func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
 	var secretsRows []formats.SourceCodeRow
 	for _, secret := range secrets {
-		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
+		currSeverity := GetSeverity(secret.Severity, Applicable)
 		secretsRows = append(secretsRows,
 			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
@@ -331,7 +331,7 @@ func PrepareIacs(iacs []SourceCodeScanResult) []formats.SourceCodeRow {
 func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
 	var iacRows []formats.SourceCodeRow
 	for _, iac := range iacs {
-		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
+		currSeverity := GetSeverity(iac.Severity, Applicable)
 		iacRows = append(iacRows,
 			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
@@ -370,7 +370,7 @@ func PrepareSast(sasts []SourceCodeScanResult) []formats.SourceCodeRow {
 func prepareSast(sasts []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
 	var sastRows []formats.SourceCodeRow
 	for _, sast := range sasts {
-		currSeverity := GetSeverity(sast.Severity, ApplicableStringValue)
+		currSeverity := GetSeverity(sast.Severity, Applicable)
 		sastRows = append(sastRows,
 			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
@@ -600,29 +600,29 @@ func (s *Severity) printableTitle(isTable bool) string {
 
 var Severities = map[string]map[ApplicabilityStatus]*Severity{
 	"Critical": {
-		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
-		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
+		Applicable:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndetermined: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicable:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
 	},
 	"High": {
-		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
+		Applicable:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
+		ApplicabilityUndetermined: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
+		NotApplicable:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
 	},
 	"Medium": {
-		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
+		Applicable:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
+		ApplicabilityUndetermined: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
+		NotApplicable:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
 	},
 	"Low": {
-		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 9},
-		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 8},
-		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
+		Applicable:                {emoji: "👻", title: "Low", numValue: 9},
+		ApplicabilityUndetermined: {emoji: "👻", title: "Low", numValue: 8},
+		NotApplicable:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
 	},
 	"Unknown": {
-		ApplicableStringValue:                {emoji: "😐", title: "Unknown", numValue: 7},
-		ApplicabilityUndeterminedStringValue: {emoji: "😐", title: "Unknown", numValue: 6},
-		NotApplicableStringValue:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
+		Applicable:                {emoji: "😐", title: "Unknown", numValue: 7},
+		ApplicabilityUndetermined: {emoji: "😐", title: "Unknown", numValue: 6},
+		NotApplicable:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
 	},
 }
 
@@ -636,7 +636,7 @@ func (s *Severity) Emoji() string {
 
 func GetSeveritiesFormat(severity string) (string, error) {
 	formattedSeverity := cases.Title(language.Und).String(severity)
-	if formattedSeverity != "" && Severities[formattedSeverity][ApplicableStringValue] == nil {
+	if formattedSeverity != "" && Severities[formattedSeverity][Applicable] == nil {
 		return "", errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(Severities)))
 	}
 
@@ -649,12 +649,12 @@ func GetSeverity(severityTitle string, applicable ApplicabilityStatus) *Severity
 	}
 
 	switch applicable {
-	case NotApplicableStringValue:
-		return Severities[severityTitle][NotApplicableStringValue]
-	case ApplicableStringValue:
-		return Severities[severityTitle][ApplicableStringValue]
+	case NotApplicable:
+		return Severities[severityTitle][NotApplicable]
+	case Applicable:
+		return Severities[severityTitle][Applicable]
 	default:
-		return Severities[severityTitle][ApplicabilityUndeterminedStringValue]
+		return Severities[severityTitle][ApplicabilityUndetermined]
 	}
 }
 
@@ -877,17 +877,21 @@ func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVer
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
 func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) ApplicabilityStatus {
-	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 || len(xrayCves) == 0 {
-		return ApplicabilityUndeterminedStringValue
+	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
+		return NotScanned
+	}
+
+	if len(xrayCves) == 0 {
+		return ApplicabilityUndetermined
 	}
 	cveExistsInResult := false
-	finalApplicableValue := NotApplicableStringValue
+	finalApplicableValue := NotApplicable
 	for _, cve := range xrayCves {
 		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScanResults[cve.Id]; exists {
 			cveExistsInResult = true
-			if currentCveApplicableValue == ApplicableStringValue {
+			if currentCveApplicableValue == Applicable {
 				return currentCveApplicableValue
-			} else if currentCveApplicableValue == ApplicabilityUndeterminedStringValue {
+			} else if currentCveApplicableValue == ApplicabilityUndetermined {
 				finalApplicableValue = currentCveApplicableValue
 			}
 		}
@@ -895,14 +899,14 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	if cveExistsInResult {
 		return finalApplicableValue
 	}
-	return ApplicabilityUndeterminedStringValue
+	return ApplicabilityUndetermined
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		if applicableValue == ApplicableStringValue {
+		if applicableValue == Applicable {
 			return color.New(color.Red).Render(applicableValue)
-		} else if applicableValue == NotApplicableStringValue {
+		} else if applicableValue == NotApplicable {
 			return color.New(color.Green).Render(applicableValue)
 		}
 	}

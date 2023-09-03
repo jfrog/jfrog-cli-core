@@ -166,7 +166,7 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 func (a *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {
 	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(a.directDependenciesCves))
 	for _, cve := range a.directDependenciesCves {
-		applicabilityResults[cve] = utils.ApplicabilityUndeterminedStringValue
+		applicabilityResults[cve] = utils.ApplicabilityUndetermined
 	}
 
 	report, err := sarif.Open(a.scanner.resultsFileName)
@@ -188,9 +188,9 @@ func (a *ApplicabilityScanManager) getScanResults() (applicabilityResults map[st
 // Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise
 func resultKindToApplicabilityStatus(kind *string) utils.ApplicabilityStatus {
 	if !(kind != nil && *kind == "pass") {
-		return utils.ApplicableStringValue
+		return utils.Applicable
 	}
-	return utils.NotApplicableStringValue
+	return utils.NotApplicable
 }
 
 func getCveFromRuleId(sarifRuleId string) string {

@@ -279,7 +279,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(results))
 	for _, cveResult := range results {
-		assert.Equal(t, utils.ApplicabilityUndeterminedStringValue, cveResult)
+		assert.Equal(t, utils.ApplicabilityUndetermined, cveResult)
 	}
 }
 
@@ -296,8 +296,8 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(results))
-	assert.Equal(t, utils.ApplicableStringValue, results["testCve1"])
-	assert.Equal(t, utils.NotApplicableStringValue, results["testCve3"])
+	assert.Equal(t, utils.Applicable, results["testCve1"])
+	assert.Equal(t, utils.NotApplicable, results["testCve3"])
 }
 
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
@@ -314,7 +314,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(results))
 	for _, cveResult := range results {
-		assert.Equal(t, utils.NotApplicableStringValue, cveResult)
+		assert.Equal(t, utils.NotApplicable, cveResult)
 	}
 }
 

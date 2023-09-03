@@ -61,9 +61,10 @@ const (
 type ApplicabilityStatus string
 
 const (
-	ApplicableStringValue                ApplicabilityStatus = "Applicable"
-	NotApplicableStringValue             ApplicabilityStatus = "Not Applicable"
-	ApplicabilityUndeterminedStringValue ApplicabilityStatus = "Undetermined"
+	Applicable                ApplicabilityStatus = "Applicable"
+	NotApplicable             ApplicabilityStatus = "Not Applicable"
+	ApplicabilityUndetermined ApplicabilityStatus = "Undetermined"
+	NotScanned                ApplicabilityStatus = ""
 )
 
 type JasScanType string

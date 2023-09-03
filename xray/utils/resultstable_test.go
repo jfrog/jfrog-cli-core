@@ -427,31 +427,31 @@ func TestGetApplicableCveValue(t *testing.T) {
 	testCases := []struct {
 		scanResults    *ExtendedScanResults
 		cves           []formats.CveRow
-		expectedResult string
+		expectedResult ApplicabilityStatus
 	}{
 		{scanResults: &ExtendedScanResults{EntitledForJas: false}, expectedResult: ""},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": ApplicableStringValue, "testCve2": NotApplicableStringValue},
+			ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": ApplicableStringValue, "testCve2": NotApplicableStringValue},
 			EntitledForJas:           true},
 			cves: nil, expectedResult: ApplicabilityUndeterminedStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
 			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve2"}}, expectedResult: ApplicableStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
 			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve3"}}, expectedResult: ApplicabilityUndeterminedStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": NotApplicableStringValue},
+			ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicableStringValue, "testCve2": NotApplicableStringValue},
 			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: NotApplicableStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
+			ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
 			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicableStringValue},
 		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicabilityUndeterminedStringValue},
+			ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicableStringValue, "testCve2": ApplicabilityUndeterminedStringValue},
 			EntitledForJas:           true},
 			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicabilityUndeterminedStringValue},
 	}
@@ -525,7 +525,7 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 				{
 					Summary:                   "Summary 1",
 					Severity:                  "Critical",
-					Applicable:                ApplicableStringValue,
+					Applicable:                string(ApplicableStringValue),
 					SeverityNumValue:          13,
 					FixedVersions:             []string{"1.0.0"},
 					ImpactedDependencyName:    "Dependency 1",
@@ -533,7 +533,7 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 				},
 				{
 					Summary:                   "Summary 2",
-					Applicable:                NotApplicableStringValue,
+					Applicable:                string(NotApplicableStringValue),
 					Severity:                  "Critical",
 					SeverityNumValue:          11,
 					ImpactedDependencyName:    "Dependency 2",
@@ -541,7 +541,7 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 				},
 				{
 					Summary:                   "Summary 3",
-					Applicable:                ApplicabilityUndeterminedStringValue,
+					Applicable:                string(ApplicabilityUndeterminedStringValue),
 					Severity:                  "Critical",
 					SeverityNumValue:          12,
 					ImpactedDependencyName:    "Dependency 3",

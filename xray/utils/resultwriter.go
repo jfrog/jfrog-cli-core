@@ -225,6 +225,7 @@ func getIacOrSecretsProperties(secretOrIac formats.IacSecretsRow, markdownOutput
 	file := strings.TrimPrefix(secretOrIac.File, string(os.PathSeparator))
 	mapSeverityToScore := map[string]string{
 		"":         "0.0",
+		"unknown":  "0.0",
 		"low":      "3.9",
 		"medium":   "6.9",
 		"high":     "8.9",

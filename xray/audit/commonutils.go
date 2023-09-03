@@ -2,93 +2,85 @@ package audit
 
 import (
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/jfrog/jfrog-client-go/xray/scan"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slices"
 )
 
-func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
-	exceededDepthCounter := 0
-	xrayDependencyTree := buildXrayDependencyTree(treeHelper, []string{nodeId}, &exceededDepthCounter)
-	if exceededDepthCounter > 0 {
-		log.Debug("buildXrayDependencyTree exceeded max tree depth", exceededDepthCounter, "times")
+const maxUniqueAppearances = 10
+
+func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) (*xrayUtils.GraphNode, []string) {
+	rootNode := &xrayUtils.GraphNode{
+		Id:    nodeId,
+		Nodes: []*xrayUtils.GraphNode{},
 	}
-	return xrayDependencyTree
+	dependencyAppearances := map[string]int8{}
+	populateXrayDependencyTree(rootNode, treeHelper, &dependencyAppearances)
+	return rootNode, maps.Keys(dependencyAppearances)
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string, exceededDepthCounter *int) *xrayUtils.GraphNode {
-	nodeId := impactPath[len(impactPath)-1]
-	// Initialize the new node
-	xrDependencyTree := &xrayUtils.GraphNode{}
-	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
-	if len(impactPath) >= buildinfo.RequestedByMaxLength {
-		*exceededDepthCounter++
-		return xrDependencyTree
-	}
+func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[string][]string, dependencyAppearances *map[string]int8) {
+	(*dependencyAppearances)[currNode.Id]++
 	// Recursively create & append all node's dependencies.
-	for _, dependency := range treeHelper[nodeId] {
-		// Prevent circular dependencies parsing
-		if slices.Contains(impactPath, dependency) {
+	for _, childDepId := range treeHelper[currNode.Id] {
+		childNode := &xrayUtils.GraphNode{
+			Id:     childDepId,
+			Nodes:  []*xrayUtils.GraphNode{},
+			Parent: currNode,
+		}
+		if (*dependencyAppearances)[childDepId] >= maxUniqueAppearances || childNode.NodeHasLoop() {
 			continue
 		}
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency), exceededDepthCounter))
+		currNode.Nodes = append(currNode.Nodes, childNode)
+		populateXrayDependencyTree(childNode, treeHelper, dependencyAppearances)
 	}
-	return xrDependencyTree
 }
 
-func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []scan.ScanResponse, err error) {
-	if progress != nil {
-		progress.SetHeadlineMsg("Scanning for vulnerabilities")
-	}
+func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []scan.ScanResponse, err error) {
 	// Optional, set technology for XSC context
 	xscScanContextDetails := scanGraphParams.XrayGraphScanParams().XscGitInfoContext
 	if xscScanContextDetails != nil {
 		xscScanContextDetails.Technologies = []string{technology.ToString()}
 	}
-	for _, moduleDependencyTree := range modulesDependencyTrees {
-		scanGraphParams.XrayGraphScanParams().Graph = moduleDependencyTree
-		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(scanGraphParams.XrayGraphScanParams().Graph.Nodes), technology)
-		if progress != nil {
-			progress.SetHeadlineMsg(scanMessage)
-		}
-		log.Info(scanMessage + "...")
-		var scanResults *scan.ScanResponse
-		scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
-		if err != nil {
-			err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
-			return
-		}
-		for i := range scanResults.Vulnerabilities {
-			scanResults.Vulnerabilities[i].Technology = technology.ToString()
-		}
-		for i := range scanResults.Violations {
-			scanResults.Violations[i].Technology = technology.ToString()
-		}
-		results = append(results, *scanResults)
+	scanGraphParams.XrayGraphScanParams().DependenciesGraph = dependencyTree
+	scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(dependencyTree.Nodes), technology)
+	if progress != nil {
+		progress.SetHeadlineMsg(scanMessage)
 	}
+	log.Info(scanMessage + "...")
+	var scanResults *scan.ScanResponse
+	scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
+	if err != nil {
+		err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
+		return
+	}
+	for i := range scanResults.Vulnerabilities {
+		scanResults.Vulnerabilities[i].Technology = technology.ToString()
+	}
+	for i := range scanResults.Violations {
+		scanResults.Violations[i].Technology = technology.ToString()
+	}
+	results = append(results, *scanResults)
 	return
 }
 
 func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
-	assert.NoError(t, fileutils.CopyDir(filepath.Join("..", "..", "commands", "testdata", sourceDir), tempDirPath, true, nil))
+	assert.NoError(t, biutils.CopyDir(filepath.Join("..", "..", "commands", "testdata", sourceDir), tempDirPath, true, nil))
 	wd, err := os.Getwd()
 	assert.NoError(t, err, "Failed to get current dir")
 	chdirCallback := testsutils.ChangeDirWithCallback(t, wd, tempDirPath)

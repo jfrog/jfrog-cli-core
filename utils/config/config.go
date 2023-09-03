@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/buger/jsonparser"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
@@ -390,7 +391,7 @@ func createHomeDirBackup() error {
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
 	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLocksDirName, coreutils.JfrogLogsDirName}
-	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
+	return biutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 
 // Version key doesn't exist in version 0

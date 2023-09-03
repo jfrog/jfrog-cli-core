@@ -3,11 +3,12 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
-	"path/filepath"
-	"testing"
 )
 
 func TestRemoveDuplicateValues(t *testing.T) {
@@ -115,9 +116,11 @@ func TestExtractRelativePath(t *testing.T) {
 }
 
 func TestGetResultSeverity(t *testing.T) {
-	levelValueHigh := "error"
-	levelValueMedium := "warning"
-	levelValueLow := "info"
+	levelValueHigh := string(Error)
+	levelValueMedium := string(Warning)
+	levelValueMedium2 := string(Info)
+	levelValueLow := string(Note)
+	levelValueUnknown := string(None)
 
 	tests := []struct {
 		result           *sarif.Result
@@ -129,8 +132,12 @@ func TestGetResultSeverity(t *testing.T) {
 			expectedSeverity: "High"},
 		{result: &sarif.Result{Level: &levelValueMedium},
 			expectedSeverity: "Medium"},
+		{result: &sarif.Result{Level: &levelValueMedium2},
+			expectedSeverity: "Medium"},
 		{result: &sarif.Result{Level: &levelValueLow},
 			expectedSeverity: "Low"},
+		{result: &sarif.Result{Level: &levelValueUnknown},
+			expectedSeverity: "Unknown"},
 	}
 
 	for _, test := range tests {

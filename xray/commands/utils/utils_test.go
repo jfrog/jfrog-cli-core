@@ -72,7 +72,7 @@ func TestFilterResultIfNeeded(t *testing.T) {
 				},
 			},
 			params: ScanGraphParams{
-				severityLevel: 8,
+				severityLevel: 11,
 			},
 			expected: scan.ScanResponse{
 				Violations: []scan.Violation{

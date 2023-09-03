@@ -2,6 +2,7 @@ package _go
 
 import (
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"os"
 	"strings"
@@ -16,7 +17,7 @@ const (
 	goSourceCodePrefix      = "github.com/golang/go:v"
 )
 
-func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dependencyTree []*xrayUtils.GraphNode, err error) {
+func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -46,15 +47,18 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 		Id:    goPackageTypeIdentifier + rootModuleName,
 		Nodes: []*xrayUtils.GraphNode{},
 	}
-	populateGoDependencyTree(rootNode, dependenciesGraph, dependenciesList)
+	uniqueDepsSet := datastructures.MakeSet[string]()
+	populateGoDependencyTree(rootNode, dependenciesGraph, dependenciesList, uniqueDepsSet)
 
-	// Add go version as child node to dependencies tree
-	err = addGoVersionAsDependency(rootNode)
+	goVersionDependency, err := getGoVersionAsDependency()
 	if err != nil {
 		return
 	}
+	rootNode.Nodes = append(rootNode.Nodes, goVersionDependency)
+	uniqueDepsSet.Add(goVersionDependency.Id)
 
 	dependencyTree = []*xrayUtils.GraphNode{rootNode}
+	uniqueDeps = uniqueDepsSet.ToSlice()
 	return
 }
 
@@ -67,10 +71,11 @@ func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
 	return os.Setenv("GOPROXY", repoUrl)
 }
 
-func populateGoDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool) {
+func populateGoDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGraph map[string][]string, dependenciesList map[string]bool, uniqueDepsSet *datastructures.Set[string]) {
 	if currNode.NodeHasLoop() {
 		return
 	}
+	uniqueDepsSet.Add(currNode.Id)
 	currDepChildren := dependenciesGraph[strings.TrimPrefix(currNode.Id, goPackageTypeIdentifier)]
 	// Recursively create & append all node's dependencies.
 	for _, childName := range currDepChildren {
@@ -84,20 +89,18 @@ func populateGoDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGraph m
 			Parent: currNode,
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)
-		populateGoDependencyTree(childNode, dependenciesGraph, dependenciesList)
+		populateGoDependencyTree(childNode, dependenciesGraph, dependenciesList, uniqueDepsSet)
 	}
 }
 
-func addGoVersionAsDependency(rootNode *xrayUtils.GraphNode) error {
+func getGoVersionAsDependency() (*xrayUtils.GraphNode, error) {
 	goVersion, err := utils.GetParsedGoVersion()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Convert "go1.17.3" to "github.com/golang/go:v1.17.3"
 	goVersionID := strings.ReplaceAll(goVersion.GetVersion(), "go", goSourceCodePrefix)
-	rootNode.Nodes = append(rootNode.Nodes, &xrayUtils.GraphNode{
-		Id:    goPackageTypeIdentifier + goVersionID,
-		Nodes: []*xrayUtils.GraphNode{},
-	})
-	return nil
+	return &xrayUtils.GraphNode{
+		Id: goPackageTypeIdentifier + goVersionID,
+	}, nil
 }

@@ -880,25 +880,22 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 || len(xrayCves) == 0 {
 		return ApplicabilityUndeterminedStringValue
 	}
-	atLeastOneUndetermined := false
+	cveExistsInResult := false
+	finalApplicableValue := NotApplicableStringValue
 	for _, cve := range xrayCves {
-		applicabilityResult, exists := extendedResults.ApplicabilityScanResults[cve.Id]
-		if !exists {
-			continue
-		}
-		if applicabilityResult == ApplicableStringValue {
-			// If at least one cve is applicable - final value is applicable
-			return ApplicableStringValue
-		}
-		if applicabilityResult == ApplicabilityUndeterminedStringValue {
-			// If at least one cve is undetermined - final value is undetermined
-			atLeastOneUndetermined = true
+		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScanResults[cve.Id]; exists {
+			cveExistsInResult = true
+			if currentCveApplicableValue == ApplicableStringValue {
+				return currentCveApplicableValue
+			} else if currentCveApplicableValue == ApplicabilityUndeterminedStringValue {
+				finalApplicableValue = currentCveApplicableValue
+			}
 		}
 	}
-	if atLeastOneUndetermined {
-		return ApplicabilityUndeterminedStringValue
+	if cveExistsInResult {
+		return finalApplicableValue
 	}
-	return NotApplicableStringValue
+	return ApplicabilityUndeterminedStringValue
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {

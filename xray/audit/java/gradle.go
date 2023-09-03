@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/datastructures"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -105,11 +106,13 @@ func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName 
 	if dtp.tree == nil {
 		dtp.tree = make(map[string][]dependenciesPaths)
 	}
-	dtp.tree[fileName] = append(dtp.tree[fileName], deps)
+	if len(deps.Paths) > 0 {
+		dtp.tree[fileName] = append(dtp.tree[fileName], deps)
+	}
 	return nil
 }
 
-func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*xrayUtils.GraphNode, err error) {
+func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	manager := &depTreeManager{useWrapper: params.UseWrapper}
 	if params.IgnoreConfigFile {
 		// In case we don't need to use the gradle config file,
@@ -125,9 +128,10 @@ func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*
 
 	outputFileContent, err := manager.runGradleDepTree()
 	if err != nil {
-		return nil, err
+		return
 	}
-	return manager.getGraphFromDepTree(outputFileContent)
+	dependencyTree, uniqueDeps, err = manager.getGraphFromDepTree(outputFileContent)
+	return
 }
 
 func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err error) {
@@ -234,25 +238,27 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 }
 
 // Assuming we ran gradle-dep-tree, getGraphFromDepTree receives the content of the depTreeOutputFile as input
-func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*xrayUtils.GraphNode, error) {
+func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*xrayUtils.GraphNode, []string, error) {
 	if err := dtp.parseDepTreeFiles(outputFileContent); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var depsGraph []*xrayUtils.GraphNode
+	uniqueDepsSet := datastructures.MakeSet[string]()
 	for dependency, children := range dtp.tree {
 		directDependency := &xrayUtils.GraphNode{
 			Id:    GavPackageTypeIdentifier + dependency,
 			Nodes: []*xrayUtils.GraphNode{},
 		}
 		for _, childPath := range children {
-			populateGradleDependencyTree(directDependency, childPath)
+			populateGradleDependencyTree(directDependency, childPath, uniqueDepsSet)
 		}
 		depsGraph = append(depsGraph, directDependency)
 	}
-	return depsGraph, nil
+	return depsGraph, uniqueDepsSet.ToSlice(), nil
 }
 
-func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildren dependenciesPaths) {
+func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildren dependenciesPaths, uniqueDepsSet *datastructures.Set[string]) {
+	uniqueDepsSet.Add(currNode.Id)
 	for gav, children := range currNodeChildren.Paths {
 		childNode := &xrayUtils.GraphNode{
 			Id:     GavPackageTypeIdentifier + gav,
@@ -262,7 +268,7 @@ func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildre
 		if currNode.NodeHasLoop() {
 			return
 		}
-		populateGradleDependencyTree(childNode, children)
+		populateGradleDependencyTree(childNode, children, uniqueDepsSet)
 		currNode.Nodes = append(currNode.Nodes, childNode)
 	}
 }

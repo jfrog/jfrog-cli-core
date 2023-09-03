@@ -13,7 +13,7 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
-func buildMvnDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.GraphNode, err error) {
+func buildMvnDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
 	defer func() {
 		err = errors.Join(err, cleanBuild())

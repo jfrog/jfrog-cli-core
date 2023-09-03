@@ -1,8 +1,10 @@
 package java
 
 import (
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"strconv"
 	"time"
@@ -40,35 +42,36 @@ func createBuildConfiguration(buildName string) (*artifactoryUtils.BuildConfigur
 
 // Create a dependency tree for each one of the modules in the build.
 // buildName - audit-mvn or audit-gradle
-func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*xrayUtils.GraphNode, error) {
+func createGavDependencyTree(buildConfig *artifactoryUtils.BuildConfiguration) ([]*xrayUtils.GraphNode, []string, error) {
 	buildName, err := buildConfig.GetBuildName()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	buildNumber, err := buildConfig.GetBuildNumber()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	generatedBuildsInfos, err := artifactoryUtils.GetGeneratedBuildsInfo(buildName, buildNumber, buildConfig.GetProject())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(generatedBuildsInfos) == 0 {
-		return nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildNumber)
+		return nil, nil, errorutils.CheckErrorf("Couldn't find build " + buildName + "/" + buildNumber)
 	}
 	modules := []*xrayUtils.GraphNode{}
+	uniqueDepsSet := datastructures.MakeSet[string]()
 	for _, module := range generatedBuildsInfos[0].Modules {
-		modules = append(modules, addModuleTree(module))
+		modules = append(modules, addModuleTree(module, uniqueDepsSet))
 	}
 
-	return modules, nil
+	return modules, uniqueDepsSet.ToSlice(), nil
 }
 
-func addModuleTree(module buildinfo.Module) *xrayUtils.GraphNode {
+func addModuleTree(module buildinfo.Module, uniqueDepsSet *datastructures.Set[string]) *xrayUtils.GraphNode {
 	moduleTree := &xrayUtils.GraphNode{
 		Id: GavPackageTypeIdentifier + module.Id,
 	}
-
+	uniqueDepsSet.Add(moduleTree.Id)
 	directDependencies := make(map[string]buildinfo.Dependency)
 	parentToChildren := newDependencyMultimap()
 	for index, dependency := range module.Dependencies {
@@ -86,7 +89,7 @@ func addModuleTree(module buildinfo.Module) *xrayUtils.GraphNode {
 	}
 
 	for _, directDependency := range directDependencies {
-		populateTransitiveDependencies(moduleTree, directDependency.Id, parentToChildren, []string{})
+		populateTransitiveDependencies(moduleTree, directDependency.Id, parentToChildren, []string{}, uniqueDepsSet)
 	}
 	return moduleTree
 }
@@ -105,7 +108,7 @@ func isDirectDependency(moduleId string, requestedBy [][]string) bool {
 	return false
 }
 
-func populateTransitiveDependencies(parent *xrayUtils.GraphNode, dependencyId string, parentToChildren *dependencyMultimap, idsAdded []string) {
+func populateTransitiveDependencies(parent *xrayUtils.GraphNode, dependencyId string, parentToChildren *dependencyMultimap, idsAdded []string, uniqueDepsSet *datastructures.Set[string]) {
 	if hasLoop(idsAdded, dependencyId) {
 		return
 	}
@@ -114,9 +117,10 @@ func populateTransitiveDependencies(parent *xrayUtils.GraphNode, dependencyId st
 		Id:    GavPackageTypeIdentifier + dependencyId,
 		Nodes: []*xrayUtils.GraphNode{},
 	}
+	uniqueDepsSet.Add(node.Id)
 	parent.Nodes = append(parent.Nodes, node)
 	for _, child := range parentToChildren.getChildren(node.Id) {
-		populateTransitiveDependencies(node, child.Id, parentToChildren, idsAdded)
+		populateTransitiveDependencies(node, child.Id, parentToChildren, idsAdded, uniqueDepsSet)
 	}
 }
 
@@ -129,11 +133,24 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 	return false
 }
 
-func BuildDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.GraphNode, err error) {
-	if params.Tool == coreutils.Maven {
-		return buildMvnDependencyTree(params)
+func BuildDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return nil, nil, err
 	}
-	return buildGradleDependencyTree(params)
+	dependencyTreeParams := &DependencyTreeParams{
+		Tool:             tech,
+		InsecureTls:      params.InsecureTls(),
+		IgnoreConfigFile: params.IgnoreConfigFile(),
+		ExcludeTestDeps:  params.ExcludeTestDependencies(),
+		UseWrapper:       params.UseWrapper(),
+		Server:           serverDetails,
+		DepsRepo:         params.DepsRepo(),
+	}
+	if tech == coreutils.Maven {
+		return buildMvnDependencyTree(dependencyTreeParams)
+	}
+	return buildGradleDependencyTree(dependencyTreeParams)
 }
 
 type dependencyMultimap struct {

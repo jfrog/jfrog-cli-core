@@ -128,8 +128,8 @@ func (scanCmd *ScanCommand) SetBypassArchiveLimits(bypassArchiveLimits bool) *Sc
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.GraphNode, error) {
-	var indexerResults xrayUtils.GraphNode
+func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.BinaryGraphNode, error) {
+	var indexerResults xrayUtils.BinaryGraphNode
 	indexerCmd := exec.Command(scanCmd.indexerPath, indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir)
 	if scanCmd.bypassArchiveLimits {
 		indexerCmd.Args = append(indexerCmd.Args, "--bypass-archive-limits")
@@ -140,7 +140,8 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.GraphNode, er
 	indexerCmd.Stderr = &stderr
 	err := indexerCmd.Run()
 	if err != nil {
-		if e, ok := err.(*exec.ExitError); ok {
+		var e *exec.ExitError
+		if errors.As(err, &e) {
 			if e.ExitCode() == fileNotSupportedExitCode {
 				log.Debug(fmt.Sprintf("File %s is not supported by Xray indexer app.", filePath))
 				return &indexerResults, nil
@@ -231,13 +232,16 @@ func (scanCmd *ScanCommand) handlePossibleErrors(flatResults []services.ScanResp
 	if len(scanErrors) > 0 {
 		return errorutils.CheckErrorf(scanErrors[0].ErrorMessage)
 	}
+
 	if err != nil {
-		if e, ok := err.(*exec.ExitError); ok {
+		var e *exec.ExitError
+		if errors.As(err, &e) {
 			if e.ExitCode() != coreutils.ExitCodeVulnerableBuild.Code {
-				return errors.New("Scan command failed. " + err.Error())
+				err = errors.New("Scan command failed. " + err.Error())
 			}
 		}
 	}
+
 	log.Info("Scan completed successfully.")
 	return nil
 }
@@ -333,7 +337,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
 				params := &services.XrayGraphScanParams{
-					Graph:                  graph,
+					BinaryGraph:            graph,
 					RepoPath:               getXrayRepoPathFromTarget(file.Target),
 					Watches:                scanCmd.watches,
 					IncludeLicenses:        scanCmd.includeLicenses,

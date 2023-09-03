@@ -32,8 +32,19 @@ func TestBuildGoDependencyList(t *testing.T) {
 		User:           "user",
 		AccessToken:    "sdsdccs2232",
 	}
-	rootNode, err := BuildDependencyTree(server, "test-remote")
+	goVersionID, err := getGoVersionAsDependency()
 	assert.NoError(t, err)
+	expectedUniqueDeps := []string{
+		goPackageTypeIdentifier + "golang.org/x/text:v0.3.3",
+		goPackageTypeIdentifier + "rsc.io/quote:v1.5.2",
+		goPackageTypeIdentifier + "rsc.io/sampler:v1.3.0",
+		goPackageTypeIdentifier + "testGoList",
+		goVersionID.Id,
+	}
+	rootNode, uniqueDeps, err := BuildDependencyTree(server, "test-remote")
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
+
 	assert.Equal(t, "https://user:sdsdccs2232@api.go.here/artifactoryapi/go/test-remote|direct", os.Getenv("GOPROXY"))
 	assert.NotEmpty(t, rootNode)
 

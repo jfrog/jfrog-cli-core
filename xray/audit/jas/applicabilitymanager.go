@@ -110,7 +110,7 @@ func (a *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = a.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults map[string]string
+	var workingDirResults map[string]utils.ApplicabilityStatus
 	if workingDirResults, err = a.getScanResults(); err != nil {
 		return
 	}

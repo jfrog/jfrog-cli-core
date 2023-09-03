@@ -1,6 +1,7 @@
 package usage
 
 import (
+	"errors"
 	"fmt"
 
 	"golang.org/x/sync/errgroup"
@@ -86,18 +87,27 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 	}
 	log.Debug(ReportUsagePrefix, "Sending info...")
 	if ur.sendToEcosystem {
-		ur.reportWaitGroup.Go(func() error {
-			return ur.reportToEcosystem(features...)
+		ur.reportWaitGroup.Go(func() (err error) {
+			if err = errors.Join(err, ur.reportToEcosystem(features...)); err != nil {
+				err = fmt.Errorf("ecosystem, %s", err.Error())
+			}
+			return
 		})
 	}
 	if ur.sendToXray {
-		ur.reportWaitGroup.Go(func() error {
-			return ur.reportToXray(features...)
+		ur.reportWaitGroup.Go(func() (err error) {
+			if err = errors.Join(err, ur.reportToXray(features...)); err != nil {
+				err = fmt.Errorf("xray, %s", err.Error())
+			}
+			return
 		})
 	}
 	if ur.sendToArtifactory {
-		ur.reportWaitGroup.Go(func() error {
-			return ur.reportToArtifactory(features...)
+		ur.reportWaitGroup.Go(func() (err error) {
+			if err = errors.Join(err, ur.reportToArtifactory(features...)); err != nil {
+				err = fmt.Errorf("artifactory, %s", err.Error())
+			}
+			return
 		})
 	}
 }

@@ -96,7 +96,7 @@ type SourceCodeScanResult struct {
 	SourceCodeLocation
 	Severity string
 	Type     string
-	CodeFlow [][]SourceCodeLocation
+	CodeFlow []*[]SourceCodeLocation
 }
 
 type ExtendedScanResults struct {

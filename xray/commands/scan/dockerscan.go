@@ -125,11 +125,12 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}
 
 	// Replace sha_256 with commands
+	// TODO this needs to be replaced just before printing...ad the impact path here are not generic for all scan
 	for _, res := range extendedScanResults.XrayResults {
 		for _, vul := range res.Vulnerabilities {
 			for _, cop := range vul.Components {
 				compos := &cop.ImpactPaths[0][1]
-				suffix := strings.TrimSuffix(strings.TrimPrefix(compos.FullPath, "sha256__"), ".tar")[:50]
+				suffix := strings.TrimSuffix(strings.TrimPrefix(compos.FullPath, "sha256__"), ".tar")
 				asn := dockerCommandsMapping[suffix]
 				compos.FullPath = asn
 				compos.ComponentId = asn

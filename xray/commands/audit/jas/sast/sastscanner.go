@@ -8,7 +8,6 @@ import (
 
 const (
 	sastScanCommand = "zd"
-	sastScannerType = "analyze-codebase"
 )
 
 type SastScanManager struct {

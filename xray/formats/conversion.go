@@ -139,7 +139,7 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 	return
 }
 
-func ConvertToSecretsTableRow(rows []IacSecretsRow) (tableRows []secretsTableRow) {
+func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, secretsTableRow{
 			severity:   rows[i].Severity,
@@ -151,9 +151,21 @@ func ConvertToSecretsTableRow(rows []IacSecretsRow) (tableRows []secretsTableRow
 	return
 }
 
-func ConvertToIacTableRow(rows []IacSecretsRow) (tableRows []iacTableRow) {
+func ConvertToIacTableRow(rows []SourceCodeRow) (tableRows []iacTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, iacTableRow{
+			severity:   rows[i].Severity,
+			file:       rows[i].File,
+			lineColumn: rows[i].LineColumn,
+			text:       rows[i].Text,
+		})
+	}
+	return
+}
+
+func ConvertToSastTableRow(rows []SourceCodeRow) (tableRows []sastTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, sastTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,

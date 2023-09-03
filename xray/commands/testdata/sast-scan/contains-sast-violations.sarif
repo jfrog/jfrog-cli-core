@@ -1,0 +1,907 @@
+{
+    "runs": [
+        {
+            "tool": {
+                "driver": {
+                    "name": "USAF",
+                    "rules": [
+                        {
+                            "id": "python-command-injection",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "78"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\nRemote Code Execution is a type of vulnerability that allows an attacker\nto execute arbitrary code on a remote computer or device.\nThis can allow the attacker to gain full control of the target system, potentially\nleading to sensitive information being compromised or unauthorized actions being performed.\n\nIn this query we look for user inputs that can flow directly into execution commands\nin Python. There are many types of Command Injection, so in the future we will make\nfine-tuning changes that will need to apply to this query in the future.\n",
+                                "markdown": "\nRemote Code Execution is a type of vulnerability that allows an attacker\nto execute arbitrary code on a remote computer or device.\nThis can allow the attacker to gain full control of the target system, potentially\nleading to sensitive information being compromised or unauthorized actions being performed.\n\nIn this query we look for user inputs that can flow directly into execution commands\nin Python. There are many types of Command Injection, so in the future we will make\nfine-tuning changes that will need to apply to this query in the future.\n"
+                            },
+                            "shortDescription": {
+                                "text": "Command Injection"
+                            }
+                        },
+                        {
+                            "id": "python-flask-debug",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "1295"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\n### Overview\nDebug mode in a Flask app is a feature that allows the developer to see detailed\nerror messages and tracebacks when an error occurs. This can be useful for debugging\nand troubleshooting, but it can also create a security vulnerability if the app is\ndeployed in debug mode. In debug mode, Flask will display detailed error messages and\ntracebacks to the user, even if the error is caused by malicious input.\nThis can provide attackers with valuable information about the app's internal workings\nand vulnerabilities, making it easier for them to exploit those vulnerabilities.\n\n### Query operation\nIn this query we look Flask applications that set the `debug` argument to `True`\n\n### Vulnerable example\n```python\nfrom flask import Flask\n\napp = Flask(__name__)\n\n@app.route('/')\ndef hello():\n    return 'Hello, World!'\n\nif __name__ == '__main__':\n    app.run(debug=True)\n```\nIn this example, the Flask application is set to run in debug mode by passing\n`debug=True` as an argument to the `app.run()` function. This will make the application\nemit potentially sensitive information to the users.\n\n### Remediation\nWhen using `app.run`, omit the `debug` flag or set it to `False` -\n```diff\nif __name__ == '__main__':\n-    app.run(debug=True)\n+    app.run()\n```\n",
+                                "markdown": "\n### Overview\nDebug mode in a Flask app is a feature that allows the developer to see detailed\nerror messages and tracebacks when an error occurs. This can be useful for debugging\nand troubleshooting, but it can also create a security vulnerability if the app is\ndeployed in debug mode. In debug mode, Flask will display detailed error messages and\ntracebacks to the user, even if the error is caused by malicious input.\nThis can provide attackers with valuable information about the app's internal workings\nand vulnerabilities, making it easier for them to exploit those vulnerabilities.\n\n### Query operation\nIn this query we look Flask applications that set the `debug` argument to `True`\n\n### Vulnerable example\n```python\nfrom flask import Flask\n\napp = Flask(__name__)\n\n@app.route('/')\ndef hello():\n    return 'Hello, World!'\n\nif __name__ == '__main__':\n    app.run(debug=True)\n```\nIn this example, the Flask application is set to run in debug mode by passing\n`debug=True` as an argument to the `app.run()` function. This will make the application\nemit potentially sensitive information to the users.\n\n### Remediation\nWhen using `app.run`, omit the `debug` flag or set it to `False` -\n```diff\nif __name__ == '__main__':\n-    app.run(debug=True)\n+    app.run()\n```\n"
+                            },
+                            "shortDescription": {
+                                "text": "Flask Running in Debug"
+                            }
+                        },
+                        {
+                            "id": "python-open-redirect",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "601"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\n### Overview\nAn open redirect is a type of vulnerability that occurs when a web application or website\nredirects a user to an arbitrary URL, without properly validating the destination URL.\nThis can allow an attacker to redirect a user to a malicious website via a trusted website,\npotentially tricking the user into providing sensitive information or downloading malware.\n\n### Query operation\nIn this query we look for redirections that are affected by any user input.\n\n### Vulnerable example\nIn the following example, the application has a route `/redirect`\nthat takes a query parameter `url` and performs a redirection to that URL\nusing Flask's redirect() function.\n```python\nfrom flask import Flask, request, redirect\n\napp = Flask(__name__)\n\n@app.route('/')\ndef index():\n    return \"\"\"\n    <h1>Welcome to Example App</h1>\n    <a href=\"/redirect?url=https://www.google.com\">Click here</a> to visit Google.\n    \"\"\"\n\n@app.route('/redirect')\ndef redirect_to_external():\n    url = request.args.get('url', '/')\n    return redirect(url)\n\nif __name__ == '__main__':\n    app.run()\n```\nThe vulnerability lies in the fact that the application does not validate or sanitize the\n`url` parameter, allowing an attacker to redirect users to malicious or unintended websites.\nAn attacker could exploit this vulnerability by modifying the `url` parameter to a different\nsite, such as:\n`http://localhost:5000/redirect?url=https://www.malicious.com`\n\n### Remediation\nBefore redirection, check whether the target URL leads to a trusted domain, for example by\nusing a whitelist -\n```python\ndef is_safe_url(url):\n    # Whitelist trusted domains\n    trusted_domains = ['https://www.google.com', 'https://www.example.com']\n\n    # Check if the provided URL is in the trusted domains\n    for domain in trusted_domains:\n    if url.startswith(domain):\n        return True\n\n    return False\n```\n\n```diff\n@app.route('/redirect')\ndef redirect_to_external():\n    url = request.args.get('url', '/')\n\n    # Validate the URL to ensure it's a trusted destination\n+    if is_safe_url(url):\n+         return redirect(url)\n+    else:\n+         abort(400)  # Bad Request\n```\n",
+                                "markdown": "\n### Overview\nAn open redirect is a type of vulnerability that occurs when a web application or website\nredirects a user to an arbitrary URL, without properly validating the destination URL.\nThis can allow an attacker to redirect a user to a malicious website via a trusted website,\npotentially tricking the user into providing sensitive information or downloading malware.\n\n### Query operation\nIn this query we look for redirections that are affected by any user input.\n\n### Vulnerable example\nIn the following example, the application has a route `/redirect`\nthat takes a query parameter `url` and performs a redirection to that URL\nusing Flask's redirect() function.\n```python\nfrom flask import Flask, request, redirect\n\napp = Flask(__name__)\n\n@app.route('/')\ndef index():\n    return \"\"\"\n    <h1>Welcome to Example App</h1>\n    <a href=\"/redirect?url=https://www.google.com\">Click here</a> to visit Google.\n    \"\"\"\n\n@app.route('/redirect')\ndef redirect_to_external():\n    url = request.args.get('url', '/')\n    return redirect(url)\n\nif __name__ == '__main__':\n    app.run()\n```\nThe vulnerability lies in the fact that the application does not validate or sanitize the\n`url` parameter, allowing an attacker to redirect users to malicious or unintended websites.\nAn attacker could exploit this vulnerability by modifying the `url` parameter to a different\nsite, such as:\n`http://localhost:5000/redirect?url=https://www.malicious.com`\n\n### Remediation\nBefore redirection, check whether the target URL leads to a trusted domain, for example by\nusing a whitelist -\n```python\ndef is_safe_url(url):\n    # Whitelist trusted domains\n    trusted_domains = ['https://www.google.com', 'https://www.example.com']\n\n    # Check if the provided URL is in the trusted domains\n    for domain in trusted_domains:\n    if url.startswith(domain):\n        return True\n\n    return False\n```\n\n```diff\n@app.route('/redirect')\ndef redirect_to_external():\n    url = request.args.get('url', '/')\n\n    # Validate the URL to ensure it's a trusted destination\n+    if is_safe_url(url):\n+         return redirect(url)\n+    else:\n+         abort(400)  # Bad Request\n```\n"
+                            },
+                            "shortDescription": {
+                                "text": "Open Redirect"
+                            }
+                        },
+                        {
+                            "id": "python-parameter-injection",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "74"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\nRemote Code Execution is a type of vulnerability that allows an attacker\nto execute arbitrary code on a remote computer or device.\nThis can allow the attacker to gain full control of the target system, potentially\nleading to sensitive information being compromised or unauthorized actions being performed.\n\nIn this query we look for user inputs that can flow directly into execution commands\nin Python. There are many types of Command Injection, so in the future we will make\nfine-tuning changes that will need to apply to this query in the future.\n",
+                                "markdown": "\nRemote Code Execution is a type of vulnerability that allows an attacker\nto execute arbitrary code on a remote computer or device.\nThis can allow the attacker to gain full control of the target system, potentially\nleading to sensitive information being compromised or unauthorized actions being performed.\n\nIn this query we look for user inputs that can flow directly into execution commands\nin Python. There are many types of Command Injection, so in the future we will make\nfine-tuning changes that will need to apply to this query in the future.\n"
+                            },
+                            "shortDescription": {
+                                "text": "Parameter Injection"
+                            }
+                        },
+                        {
+                            "id": "python-path-traversal",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "22"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\n### Overview\nPath traversal, also known as directory traversal, is a type of vulnerability that allows an\nattacker to access files or directories on a computer or device that are outside of\nthe intended directory.\nAllowing arbitrary read access can allow the attacker to read sensitive files, such as\nconfiguration files or sensitive data, potentially leading data loss\nor even system compromise.\nAllowing arbitrary write access is more severe and in most cases leads to arbitrary code\nexecution, via editing important system files or sensitive data.\n\n### Query operation\nIn this query we look for user input that can flow un-sanitized as a path into file access\nfunctions\n(either read or write access)\n\n### Vulnerable example\n```python\nfrom flask import Flask, request, send_file\napp = Flask(__name__)\n\n@app.route('/files/')\ndef serve_file():\n    filename = request.args.get('filename')\n    basepath = 'static/files/'\n    return send_file(basepath + filename)\n\nif __name__ == '__main__':\n    app.run()\n```\nIn this example, the application has a route `/files/` that serves files from a directory\ncalled `static/files`. The vulnerability lies in the fact that the application does not\nproperly validate or sanitize the `filename` parameter, allowing an attacker to traverse\nbeyond the intended directory and access sensitive files on the server.\nAn attacker could exploit this vulnerability by manipulating the `filename` parameter\nand providing a relative path to access files outside of the `static/files` directory.\nFor example, they could craft a URL like this:\n`http://localhost:5000/files/?filename=../../../etc/passwd`\n\n### Remediation\nWhen possible, use inherently safe path functions such as `send_from_directory` that perform\nfilename escaping -\n```diff\n@app.route('/files/')\ndef serve_file():\n    filename = request.args.get('filename')\n    basepath = 'static/files/'\n-    return send_file(basepath + filename)\n+    return send_from_directory(basepath, filename)\n```\nAlternatively, before accessing a potential path, check that the user's `filename` does not\nescape the intended path -\n```python\nfrom pathlib import Path\ndef is_escaping_path(basepath, userpath):\n    try:\n        Path(basepath).joinpath(userpath).resolve().relative_to(basepath.resolve())\n        return False\n    except ValueError:\n        return True\n```\n\n```diff\n@app.route('/files/')\ndef serve_file():\n    filename = request.args.get('filename')\n    basepath = 'static/files/'\n+    if is_escaping_path(basepath, filename):\n+         abort(400)  # Bad Request\n    return send_file(basepath + filename)\n```\nAlternatively - use inherently safe\n",
+                                "markdown": "\n### Overview\nPath traversal, also known as directory traversal, is a type of vulnerability that allows an\nattacker to access files or directories on a computer or device that are outside of\nthe intended directory.\nAllowing arbitrary read access can allow the attacker to read sensitive files, such as\nconfiguration files or sensitive data, potentially leading data loss\nor even system compromise.\nAllowing arbitrary write access is more severe and in most cases leads to arbitrary code\nexecution, via editing important system files or sensitive data.\n\n### Query operation\nIn this query we look for user input that can flow un-sanitized as a path into file access\nfunctions\n(either read or write access)\n\n### Vulnerable example\n```python\nfrom flask import Flask, request, send_file\napp = Flask(__name__)\n\n@app.route('/files/')\ndef serve_file():\n    filename = request.args.get('filename')\n    basepath = 'static/files/'\n    return send_file(basepath + filename)\n\nif __name__ == '__main__':\n    app.run()\n```\nIn this example, the application has a route `/files/` that serves files from a directory\ncalled `static/files`. The vulnerability lies in the fact that the application does not\nproperly validate or sanitize the `filename` parameter, allowing an attacker to traverse\nbeyond the intended directory and access sensitive files on the server.\nAn attacker could exploit this vulnerability by manipulating the `filename` parameter\nand providing a relative path to access files outside of the `static/files` directory.\nFor example, they could craft a URL like this:\n`http://localhost:5000/files/?filename=../../../etc/passwd`\n\n### Remediation\nWhen possible, use inherently safe path functions such as `send_from_directory` that perform\nfilename escaping -\n```diff\n@app.route('/files/')\ndef serve_file():\n    filename = request.args.get('filename')\n    basepath = 'static/files/'\n-    return send_file(basepath + filename)\n+    return send_from_directory(basepath, filename)\n```\nAlternatively, before accessing a potential path, check that the user's `filename` does not\nescape the intended path -\n```python\nfrom pathlib import Path\ndef is_escaping_path(basepath, userpath):\n    try:\n        Path(basepath).joinpath(userpath).resolve().relative_to(basepath.resolve())\n        return False\n    except ValueError:\n        return True\n```\n\n```diff\n@app.route('/files/')\ndef serve_file():\n    filename = request.args.get('filename')\n    basepath = 'static/files/'\n+    if is_escaping_path(basepath, filename):\n+         abort(400)  # Bad Request\n    return send_file(basepath + filename)\n```\nAlternatively - use inherently safe\n"
+                            },
+                            "shortDescription": {
+                                "text": "Path Traversal"
+                            }
+                        },
+                        {
+                            "id": "python-sqli",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "89"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\n### Overview\nSQL injection is a type of vulnerability that allows an attacker to execute arbitrary SQL\ncommands on a database.\nThis can allow the attacker to gain access to sensitive information,\nsuch as user credentials or sensitive data, or to perform unauthorized actions,\nsuch as deleting or modifying data.\n\n### Query operation\nIn this query we check if a user input can flow un-sanitized into an SQL query.\n\n### Vulnerable example\n```python\nfrom flask import Flask, request\nimport sqlite3\n\napp = Flask(__name__)\n\n@app.route('/login', methods=['POST'])\ndef login():\n    username = request.form.get('username')\n    password = request.form.get('password')\n\n    # Vulnerable SQL query\n    query = f\"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'\"\n\n    # Execute the query\n    conn = sqlite3.connect('database.db')\n    cursor = conn.cursor()\n    cursor.execute(query)\n    user = cursor.fetchone()\n    conn.close()\n\n    if user:\n        return 'Login successful'\n    else:\n        return 'Login failed'\n\nif __name__ == '__main__':\n    app.run()\n```\nIn this example, the application accepts a `username` and `password` from a login form via a\nPOST request. The SQL query is constructed using string concatenation, which makes it\nvulnerable to SQL injection attacks.\n\nAn attacker can exploit this vulnerability by entering `' OR 1=1 --` as the `username`.\nThe resulting query would become -\n```sql\nSELECT * FROM users WHERE username = '' OR 1=1 --' AND password = ''\n```\nwhich will always evaluate to TRUE, leading to an authentication bypass\nsince the attacker has no valid credentials.\n\n### Remediation\nReplace the vulnerable string concatenation with a parameterized query\nusing `?` placeholders -\n```diff\n@app.route('/login', methods=['POST'])\n    def login():\n    username = request.form.get('username')\n    password = request.form.get('password')\n\n    # Vulnerable SQL query\n-   query = f\"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'\"\n+   query = \"SELECT * FROM users WHERE username = ? AND password = ?\"\n\n    # Execute the query\n    conn = sqlite3.connect('database.db')\n    cursor = conn.cursor()\n-    cursor.execute(query)\n+    cursor.execute(query, (username, password))\n    user = cursor.fetchone()\n    conn.close()\n\n    if user:\n        return 'Login successful'\n    else:\n        return 'Login failed'\n```\n",
+                                "markdown": "\n### Overview\nSQL injection is a type of vulnerability that allows an attacker to execute arbitrary SQL\ncommands on a database.\nThis can allow the attacker to gain access to sensitive information,\nsuch as user credentials or sensitive data, or to perform unauthorized actions,\nsuch as deleting or modifying data.\n\n### Query operation\nIn this query we check if a user input can flow un-sanitized into an SQL query.\n\n### Vulnerable example\n```python\nfrom flask import Flask, request\nimport sqlite3\n\napp = Flask(__name__)\n\n@app.route('/login', methods=['POST'])\ndef login():\n    username = request.form.get('username')\n    password = request.form.get('password')\n\n    # Vulnerable SQL query\n    query = f\"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'\"\n\n    # Execute the query\n    conn = sqlite3.connect('database.db')\n    cursor = conn.cursor()\n    cursor.execute(query)\n    user = cursor.fetchone()\n    conn.close()\n\n    if user:\n        return 'Login successful'\n    else:\n        return 'Login failed'\n\nif __name__ == '__main__':\n    app.run()\n```\nIn this example, the application accepts a `username` and `password` from a login form via a\nPOST request. The SQL query is constructed using string concatenation, which makes it\nvulnerable to SQL injection attacks.\n\nAn attacker can exploit this vulnerability by entering `' OR 1=1 --` as the `username`.\nThe resulting query would become -\n```sql\nSELECT * FROM users WHERE username = '' OR 1=1 --' AND password = ''\n```\nwhich will always evaluate to TRUE, leading to an authentication bypass\nsince the attacker has no valid credentials.\n\n### Remediation\nReplace the vulnerable string concatenation with a parameterized query\nusing `?` placeholders -\n```diff\n@app.route('/login', methods=['POST'])\n    def login():\n    username = request.form.get('username')\n    password = request.form.get('password')\n\n    # Vulnerable SQL query\n-   query = f\"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'\"\n+   query = \"SELECT * FROM users WHERE username = ? AND password = ?\"\n\n    # Execute the query\n    conn = sqlite3.connect('database.db')\n    cursor = conn.cursor()\n-    cursor.execute(query)\n+    cursor.execute(query, (username, password))\n    user = cursor.fetchone()\n    conn.close()\n\n    if user:\n        return 'Login successful'\n    else:\n        return 'Login failed'\n```\n"
+                            },
+                            "shortDescription": {
+                                "text": "SQL Injection"
+                            }
+                        },
+                        {
+                            "id": "python-stack-trace-exposure",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "209"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\n### Overview\nStack trace exposure is a type of security vulnerability that occurs when a program reveals\nsensitive information, such as the names and locations of internal files and variables,\nin error messages or other diagnostic output. This can happen when a program crashes or\nencounters an error, and the stack trace (a record of the program's call stack at the time\nof the error) is included in the output. Stack trace exposure can provide attackers with\nvaluable information about a program's internal workings and vulnerabilities, making it\neasier for them to exploit those vulnerabilities and gain unauthorized access\nto the system.\n\n### Query operation\nIn this query we look for any stack trace information flowing into the output.\n\n### Vulnerable example\n```python\nimport traceback\n\ndef my_function():\n    try:\n        # Some code that may raise an exception\n        raise ValueError('Something went wrong')\n    except ValueError as e:\n        traceback.print_tb(e.__traceback__)\n\nmy_function()\n```\nIn this example, the `my_function()` function intentionally raises\na `ValueError` exception.\nThe `traceback.print_tb()` function is then used to print the stack trace\nwhen the exception is caught. The vulnerability lies in using `traceback.print_tb()`\nto output the stack trace directly to the console or any other output stream.\nIf this code were part of a web application or exposed through an API,\nthe stack trace would be exposed in the server logs or potentially returned\nas part of an error response to the client.\n\n### Remediation\nLog the exception to a logging framework or file, instead of outputting directly to the\nconsole-\n\n```python\ndef log_exception(exception):\n    logging.exception('An exception occurred', exc_info=exception)\n```\n\n```diff\ndef my_function():\n    try:\n        # Some code that may raise an exception\n        raise ValueError('Something went wrong')\n    except ValueError as e:\n-       traceback.print_tb(e.__traceback__)\n+       log_exception(e)\n```\n",
+                                "markdown": "\n### Overview\nStack trace exposure is a type of security vulnerability that occurs when a program reveals\nsensitive information, such as the names and locations of internal files and variables,\nin error messages or other diagnostic output. This can happen when a program crashes or\nencounters an error, and the stack trace (a record of the program's call stack at the time\nof the error) is included in the output. Stack trace exposure can provide attackers with\nvaluable information about a program's internal workings and vulnerabilities, making it\neasier for them to exploit those vulnerabilities and gain unauthorized access\nto the system.\n\n### Query operation\nIn this query we look for any stack trace information flowing into the output.\n\n### Vulnerable example\n```python\nimport traceback\n\ndef my_function():\n    try:\n        # Some code that may raise an exception\n        raise ValueError('Something went wrong')\n    except ValueError as e:\n        traceback.print_tb(e.__traceback__)\n\nmy_function()\n```\nIn this example, the `my_function()` function intentionally raises\na `ValueError` exception.\nThe `traceback.print_tb()` function is then used to print the stack trace\nwhen the exception is caught. The vulnerability lies in using `traceback.print_tb()`\nto output the stack trace directly to the console or any other output stream.\nIf this code were part of a web application or exposed through an API,\nthe stack trace would be exposed in the server logs or potentially returned\nas part of an error response to the client.\n\n### Remediation\nLog the exception to a logging framework or file, instead of outputting directly to the\nconsole-\n\n```python\ndef log_exception(exception):\n    logging.exception('An exception occurred', exc_info=exception)\n```\n\n```diff\ndef my_function():\n    try:\n        # Some code that may raise an exception\n        raise ValueError('Something went wrong')\n    except ValueError as e:\n-       traceback.print_tb(e.__traceback__)\n+       log_exception(e)\n```\n"
+                            },
+                            "shortDescription": {
+                                "text": "Stack Trace Exposure"
+                            }
+                        },
+                        {
+                            "id": "python-unsafe-deserialization",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "502"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\n### Overview\nUnsafe deserialization is a security vulnerability that occurs when a program deserializes\nuntrusted data with a potentially dangerous deserializer.\nDeserialization is the process of converting serialized data (data that\nhas been converted into a format that can be easily transmitted or stored) back into its\noriginal form. In some (\"unsafe\") serialization protocols, if an attacker is able to\nmanipulate the serialized data, they may be able to execute arbitrary code or perform other\nmalicious actions when the data is deserialized.\n\n### Query operation\nIn this query we look for user input that can flow un-sanitized to potentially unsafe\ndeserialization methods\n\n### Vulnerable example\n```python\nimport yaml\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.route('/process', methods=['POST'])\ndef process():\n    data = request.get_data()\n\n    # Vulnerable deserialization\n    obj = yaml.load(data)\n\n    # Process the deserialized object (for simplicity, we're just printing it)\n    print(obj)\n\n    return 'Data processed'\n\nif __name__ == '__main__':\n    app.run()\n```\nIn this example, the application exposes a `/process` endpoint that accepts data via a POST\nrequest. The vulnerable code uses the `yaml.load()` function\nto deserialize the received data.\nThe vulnerability lies in the fact that the `yaml` module can execute arbitrary code\nduring the deserialization process.\nAn attacker can exploit this by crafting a malicious payload\nthat executes arbitrary code when the `yaml.load()` function is called.\n\n### Remediation\nUse deserialization routines that are known to handle untrusted data securely, such as\n`yaml.safe_load`. It is highly recommended to use the `json` module for serialization, as it\ndeserializes untrusted data securely.\n\n```diff\n@app.route('/process', methods=['POST'])\ndef process():\n    data = request.get_data()\n\n    # Safe deserialization\n-    obj = yaml.load(data)\n+    obj = yaml.safe_load(data)\n\n    # Process the deserialized object (for simplicity, we're just printing it)\n    print(obj)\n\n    return 'Data processed'\n```\n",
+                                "markdown": "\n### Overview\nUnsafe deserialization is a security vulnerability that occurs when a program deserializes\nuntrusted data with a potentially dangerous deserializer.\nDeserialization is the process of converting serialized data (data that\nhas been converted into a format that can be easily transmitted or stored) back into its\noriginal form. In some (\"unsafe\") serialization protocols, if an attacker is able to\nmanipulate the serialized data, they may be able to execute arbitrary code or perform other\nmalicious actions when the data is deserialized.\n\n### Query operation\nIn this query we look for user input that can flow un-sanitized to potentially unsafe\ndeserialization methods\n\n### Vulnerable example\n```python\nimport yaml\nfrom flask import Flask, request\n\napp = Flask(__name__)\n\n@app.route('/process', methods=['POST'])\ndef process():\n    data = request.get_data()\n\n    # Vulnerable deserialization\n    obj = yaml.load(data)\n\n    # Process the deserialized object (for simplicity, we're just printing it)\n    print(obj)\n\n    return 'Data processed'\n\nif __name__ == '__main__':\n    app.run()\n```\nIn this example, the application exposes a `/process` endpoint that accepts data via a POST\nrequest. The vulnerable code uses the `yaml.load()` function\nto deserialize the received data.\nThe vulnerability lies in the fact that the `yaml` module can execute arbitrary code\nduring the deserialization process.\nAn attacker can exploit this by crafting a malicious payload\nthat executes arbitrary code when the `yaml.load()` function is called.\n\n### Remediation\nUse deserialization routines that are known to handle untrusted data securely, such as\n`yaml.safe_load`. It is highly recommended to use the `json` module for serialization, as it\ndeserializes untrusted data securely.\n\n```diff\n@app.route('/process', methods=['POST'])\ndef process():\n    data = request.get_data()\n\n    # Safe deserialization\n-    obj = yaml.load(data)\n+    obj = yaml.safe_load(data)\n\n    # Process the deserialized object (for simplicity, we're just printing it)\n    print(obj)\n\n    return 'Data processed'\n```\n"
+                            },
+                            "shortDescription": {
+                                "text": "Unsafe Deserialization"
+                            }
+                        },
+                        {
+                            "id": "python-xss",
+                            "defaultConfiguration": {
+                                "parameters": {
+                                    "properties": {
+                                        "CWE": "79"
+                                    }
+                                }
+                            },
+                            "fullDescription": {
+                                "text": "\n### Overview\nXSS, or Cross-Site Scripting, is a type of vulnerability that allows an attacker to\ninject malicious code into a website or web application.\nThis can allow the attacker to steal sensitive information from users, such as their\ncookies or login credentials, or to perform unauthorized actions on their behalf.\n\n### Query operation\nIn the query we look for any user input that flows into\na potential output of the application.\n\n### Vulnerable example\nIn the following example, the Flask application takes a user-supplied parameter (`name`)\nfrom the query string and renders it directly into an HTML template using the\n`render_template_string` function. The issue is that\nthe user input is not properly sanitized or escaped, making it vulnerable to XSS attacks.\n```python\nfrom flask import Flask, request, render_template_string\n\napp = Flask(__name__)\n\n@app.route('/')\ndef index():\n    name = request.args.get('name', 'Guest')\n    message = f'Hello, {name}!'\n    return render_template_string('<h1>{}</h1>'.format(message))\n\nif __name__ == '__main__':\napp.run()\n```\nAn attacker can exploit this vulnerability by injecting malicious JavaScript code into the\n`name` parameter. For instance, they could modify the URL to include the following payload:\n`http://localhost:5000/?name=<script>alert('XSS')</script>`\n\n### Remediation\nWhen rendering templates, use parametrized variable assignments (which are automatically\nescaped) instead of direct string manipulation -\n```diff\n@app.route('/')\ndef index():\n    name = request.args.get('name', 'Guest')\n    message = f'Hello, {name}!'\n-    return render_template_string('<h1>{}</h1>'.format(message))\n+    return render_template_string('<h1>{{ message }}</h1>', message=message)\n```\n",
+                                "markdown": "\n### Overview\nXSS, or Cross-Site Scripting, is a type of vulnerability that allows an attacker to\ninject malicious code into a website or web application.\nThis can allow the attacker to steal sensitive information from users, such as their\ncookies or login credentials, or to perform unauthorized actions on their behalf.\n\n### Query operation\nIn the query we look for any user input that flows into\na potential output of the application.\n\n### Vulnerable example\nIn the following example, the Flask application takes a user-supplied parameter (`name`)\nfrom the query string and renders it directly into an HTML template using the\n`render_template_string` function. The issue is that\nthe user input is not properly sanitized or escaped, making it vulnerable to XSS attacks.\n```python\nfrom flask import Flask, request, render_template_string\n\napp = Flask(__name__)\n\n@app.route('/')\ndef index():\n    name = request.args.get('name', 'Guest')\n    message = f'Hello, {name}!'\n    return render_template_string('<h1>{}</h1>'.format(message))\n\nif __name__ == '__main__':\napp.run()\n```\nAn attacker can exploit this vulnerability by injecting malicious JavaScript code into the\n`name` parameter. For instance, they could modify the URL to include the following payload:\n`http://localhost:5000/?name=<script>alert('XSS')</script>`\n\n### Remediation\nWhen rendering templates, use parametrized variable assignments (which are automatically\nescaped) instead of direct string manipulation -\n```diff\n@app.route('/')\ndef index():\n    name = request.args.get('name', 'Guest')\n    message = f'Hello, {name}!'\n-    return render_template_string('<h1>{}</h1>'.format(message))\n+    return render_template_string('<h1>{{ message }}</h1>', message=message)\n```\n"
+                            },
+                            "shortDescription": {
+                                "text": "XSS Vulnerability"
+                            }
+                        }
+                    ]
+                }
+            },
+            "invocations": [
+                {
+                    "executionSuccessful": true,
+                    "arguments": [
+                        "/Users/assafa/.jfrog/dependencies/analyzerManager/zd_scanner/scanner",
+                        "scan",
+                        "/var/folders/xv/th4cksxn7jv9wjrdnn1h4tj00000gq/T/jfrog.cli.temp.-1693477603-3697552683/results.sarif"
+                    ],
+                    "workingDirectory": {
+                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat"
+                    }
+                }
+            ],
+            "results": [
+                {
+                    "message": {
+                        "text": "SQL Injection"
+                    },
+                    "codeFlows": [
+                        {
+                            "threadFlows": [
+                                {
+                                    "locations": [
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 28,
+                                                        "endLine": 9,
+                                                        "snippet": {
+                                                            "text": "request.form"
+                                                        },
+                                                        "startColumn": 16,
+                                                        "startLine": 9
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 32,
+                                                        "endLine": 9,
+                                                        "snippet": {
+                                                            "text": "request.form.get"
+                                                        },
+                                                        "startColumn": 16,
+                                                        "startLine": 9
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 44,
+                                                        "endLine": 9,
+                                                        "snippet": {
+                                                            "text": "request.form.get(\"username\")"
+                                                        },
+                                                        "startColumn": 16,
+                                                        "startLine": 9
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 13,
+                                                        "endLine": 9,
+                                                        "snippet": {
+                                                            "text": "username"
+                                                        },
+                                                        "startColumn": 5,
+                                                        "startLine": 9
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 31,
+                                                        "endLine": 20,
+                                                        "snippet": {
+                                                            "text": "(username, password)"
+                                                        },
+                                                        "startColumn": 11,
+                                                        "startLine": 20
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 31,
+                                                        "endLine": 20,
+                                                        "snippet": {
+                                                            "text": "\"SELECT id, username, access_level FROM user WHERE username = '%s' AND password = '%s'\"\n        % (username, password)"
+                                                        },
+                                                        "startColumn": 9,
+                                                        "startLine": 19
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 10,
+                                                        "endLine": 18,
+                                                        "snippet": {
+                                                            "text": "query"
+                                                        },
+                                                        "startColumn": 5,
+                                                        "startLine": 18
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 39,
+                                                        "endLine": 22,
+                                                        "snippet": {
+                                                            "text": "query_db(query, [], True)"
+                                                        },
+                                                        "startColumn": 14,
+                                                        "startLine": 22
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.__init__.query_db"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/__init__.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 19,
+                                                        "endLine": 10,
+                                                        "snippet": {
+                                                            "text": "query"
+                                                        },
+                                                        "startColumn": 14,
+                                                        "startLine": 10
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.__init__.query_db"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/__init__.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 49,
+                                                        "endLine": 14,
+                                                        "snippet": {
+                                                            "text": "conn.cursor().execute(query, args)"
+                                                        },
+                                                        "startColumn": 15,
+                                                        "startLine": 14
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "level": "error",
+                    "locations": [
+                        {
+                            "logicalLocations": [
+                                {
+                                    "fullyQualifiedName": "flask_webgoat.__init__.query_db"
+                                }
+                            ],
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/__init__.py"
+                                },
+                                "region": {
+                                    "endColumn": 49,
+                                    "endLine": 14,
+                                    "snippet": {
+                                        "text": "conn.cursor().execute(query, args)"
+                                    },
+                                    "startColumn": 15,
+                                    "startLine": 14
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "python-sqli"
+                },
+                {
+                    "message": {
+                        "text": "SQL Injection"
+                    },
+                    "codeFlows": [
+                        {
+                            "threadFlows": [
+                                {
+                                    "locations": [
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 28,
+                                                        "endLine": 10,
+                                                        "snippet": {
+                                                            "text": "request.form"
+                                                        },
+                                                        "startColumn": 16,
+                                                        "startLine": 10
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 32,
+                                                        "endLine": 10,
+                                                        "snippet": {
+                                                            "text": "request.form.get"
+                                                        },
+                                                        "startColumn": 16,
+                                                        "startLine": 10
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 44,
+                                                        "endLine": 10,
+                                                        "snippet": {
+                                                            "text": "request.form.get(\"password\")"
+                                                        },
+                                                        "startColumn": 16,
+                                                        "startLine": 10
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 13,
+                                                        "endLine": 10,
+                                                        "snippet": {
+                                                            "text": "password"
+                                                        },
+                                                        "startColumn": 5,
+                                                        "startLine": 10
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 31,
+                                                        "endLine": 20,
+                                                        "snippet": {
+                                                            "text": "(username, password)"
+                                                        },
+                                                        "startColumn": 11,
+                                                        "startLine": 20
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 31,
+                                                        "endLine": 20,
+                                                        "snippet": {
+                                                            "text": "\"SELECT id, username, access_level FROM user WHERE username = '%s' AND password = '%s'\"\n        % (username, password)"
+                                                        },
+                                                        "startColumn": 9,
+                                                        "startLine": 19
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 10,
+                                                        "endLine": 18,
+                                                        "snippet": {
+                                                            "text": "query"
+                                                        },
+                                                        "startColumn": 5,
+                                                        "startLine": 18
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 39,
+                                                        "endLine": 22,
+                                                        "snippet": {
+                                                            "text": "query_db(query, [], True)"
+                                                        },
+                                                        "startColumn": 14,
+                                                        "startLine": 22
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.__init__.query_db"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/__init__.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 19,
+                                                        "endLine": 10,
+                                                        "snippet": {
+                                                            "text": "query"
+                                                        },
+                                                        "startColumn": 14,
+                                                        "startLine": 10
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.__init__.query_db"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/__init__.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 49,
+                                                        "endLine": 14,
+                                                        "snippet": {
+                                                            "text": "conn.cursor().execute(query, args)"
+                                                        },
+                                                        "startColumn": 15,
+                                                        "startLine": 14
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "level": "error",
+                    "locations": [
+                        {
+                            "logicalLocations": [
+                                {
+                                    "fullyQualifiedName": "flask_webgoat.__init__.query_db"
+                                }
+                            ],
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/__init__.py"
+                                },
+                                "region": {
+                                    "endColumn": 49,
+                                    "endLine": 14,
+                                    "snippet": {
+                                        "text": "conn.cursor().execute(query, args)"
+                                    },
+                                    "startColumn": 15,
+                                    "startLine": 14
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "python-sqli"
+                },
+                {
+                    "message": {
+                        "text": "Open Redirect"
+                    },
+                    "codeFlows": [
+                        {
+                            "threadFlows": [
+                                {
+                                    "locations": [
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login_and_redirect"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 23,
+                                                        "endLine": 33,
+                                                        "snippet": {
+                                                            "text": "request.args"
+                                                        },
+                                                        "startColumn": 11,
+                                                        "startLine": 33
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login_and_redirect"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 27,
+                                                        "endLine": 33,
+                                                        "snippet": {
+                                                            "text": "request.args.get"
+                                                        },
+                                                        "startColumn": 11,
+                                                        "startLine": 33
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login_and_redirect"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 34,
+                                                        "endLine": 33,
+                                                        "snippet": {
+                                                            "text": "request.args.get(\"url\")"
+                                                        },
+                                                        "startColumn": 11,
+                                                        "startLine": 33
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login_and_redirect"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 8,
+                                                        "endLine": 33,
+                                                        "snippet": {
+                                                            "text": "url"
+                                                        },
+                                                        "startColumn": 5,
+                                                        "startLine": 33
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        {
+                                            "location": {
+                                                "logicalLocations": [
+                                                    {
+                                                        "fullyQualifiedName": "flask_webgoat.auth.login_and_redirect"
+                                                    }
+                                                ],
+                                                "physicalLocation": {
+                                                    "artifactLocation": {
+                                                        "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                                    },
+                                                    "region": {
+                                                        "endColumn": 29,
+                                                        "endLine": 46,
+                                                        "snippet": {
+                                                            "text": "redirect(url)"
+                                                        },
+                                                        "startColumn": 16,
+                                                        "startLine": 46
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "level": "note",
+                    "locations": [
+                        {
+                            "logicalLocations": [
+                                {
+                                    "fullyQualifiedName": "flask_webgoat.auth.login_and_redirect"
+                                }
+                            ],
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/assafa/Documents/code/flask-webgoat/flask_webgoat/auth.py"
+                                },
+                                "region": {
+                                    "endColumn": 29,
+                                    "endLine": 46,
+                                    "snippet": {
+                                        "text": "redirect(url)"
+                                    },
+                                    "startColumn": 16,
+                                    "startLine": 46
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "python-open-redirect"
+                },
+                {
+                    "message": {
+                        "text": "Flask Running in Debug"
+                    },
+                    "locations": [
+                        {
+                            "logicalLocations": [
+                                {
+                                    "fullyQualifiedName": "run"
+                                }
+                            ],
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/assafa/Documents/code/flask-webgoat/run.py"
+                                },
+                                "region": {
+                                    "endColumn": 24,
+                                    "endLine": 15,
+                                    "snippet": {
+                                        "text": "app.run(debug=True)"
+                                    },
+                                    "startColumn": 5,
+                                    "startLine": 15
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "python-flask-debug"
+                }
+            ]
+        }
+    ],
+    "version": "2.1.0",
+    "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+}

@@ -273,7 +273,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	defer cleanUp()
 
 	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
-	applicabilityManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "empty-results.sarif")
+	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "commands", "testdata", "applicability-scan", "empty-results.sarif")
 
 	// Act
 	results, err := applicabilityManager.getScanResults()
@@ -291,7 +291,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
-	applicabilityManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "applicable-cve-results.sarif")
+	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "applicable-cve-results.sarif")
 
 	// Act
 	results, err := applicabilityManager.getScanResults()
@@ -308,7 +308,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
-	applicabilityManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "applicability-scan", "no-applicable-cves-results.sarif")
+	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "no-applicable-cves-results.sarif")
 
 	// Act
 	results, err := applicabilityManager.getScanResults()

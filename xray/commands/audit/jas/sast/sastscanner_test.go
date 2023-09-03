@@ -30,7 +30,7 @@ func TestSastParseResults_EmptyResults(t *testing.T) {
 
 	// Arrange
 	sastScanManager := newSastScanManager(scanner)
-	sastScanManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "sast-scan", "no-violations.sarif")
+	sastScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "sast-scan", "no-violations.sarif")
 
 	// Act
 	var err error
@@ -46,7 +46,7 @@ func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
 	defer cleanUp()
 	// Arrange
 	sastScanManager := newSastScanManager(scanner)
-	sastScanManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "sast-scan", "contains-sast-violations.sarif")
+	sastScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "sast-scan", "contains-sast-violations.sarif")
 
 	// Act
 	var err error

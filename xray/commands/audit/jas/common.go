@@ -176,3 +176,7 @@ func InitJasTest(t *testing.T, workingDirs ...string) (*JasScanner, func()) {
 		assert.NoError(t, scanner.ScannerDirCleanupFunc())
 	}
 }
+
+func GetTestDataPath() string {
+	return filepath.Join("..", "..", "commands", "testdata")
+}

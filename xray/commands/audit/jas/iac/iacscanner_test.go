@@ -54,7 +54,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 	// Arrange
 	iacScanManager := newIacScanManager(scanner)
-	iacScanManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "no-violations.sarif")
+	iacScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "iac-scan", "no-violations.sarif")
 
 	// Act
 	var err error
@@ -70,7 +70,7 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 	defer cleanUp()
 	// Arrange
 	iacScanManager := newIacScanManager(scanner)
-	iacScanManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "iac-scan", "contains-iac-violations.sarif")
+	iacScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "iac-scan", "contains-iac-violations.sarif")
 
 	// Act
 	var err error

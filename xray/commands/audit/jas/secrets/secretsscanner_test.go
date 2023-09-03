@@ -61,7 +61,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 	defer cleanUp()
 	// Arrange
 	secretScanManager := newSecretsScanManager(scanner)
-	secretScanManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "no-secrets.sarif")
+	secretScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "secrets-scan", "no-secrets.sarif")
 
 	// Act
 	var err error
@@ -78,7 +78,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	defer cleanUp()
 
 	secretScanManager := newSecretsScanManager(scanner)
-	secretScanManager.scanner.ResultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets.sarif")
+	secretScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "secrets-scan", "contain-secrets.sarif")
 
 	// Act
 	var err error

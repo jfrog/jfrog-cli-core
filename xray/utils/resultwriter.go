@@ -134,9 +134,6 @@ func printMessage(message string) {
 }
 
 func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool, scanningTool, toolURI string) (string, error) {
-	// TODO: Refactor, when AM return a scan result it is already in sarif format.
-	// We are doing double redundant work, converting from Sarif result to ExtendedScanResults and now back to Sarif
-	// Should only convert sca to new information or add additional attributes / change existing.
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return "", errorutils.CheckError(err)

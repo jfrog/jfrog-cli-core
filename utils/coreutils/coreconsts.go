@@ -34,7 +34,6 @@ const (
 	PluginsExecDirName                  = "bin"
 	PluginsResourcesDirName             = "resources"
 
-	//#nosec G101
 	ErrorHandling      = "JFROG_CLI_ERROR_HANDLING"
 	TempDir            = "JFROG_CLI_TEMP_DIR"
 	LogLevel           = "JFROG_CLI_LOG_LEVEL"
@@ -53,6 +52,5 @@ var (
 	BuildName   = "JFROG_CLI_BUILD_NAME"
 	BuildNumber = "JFROG_CLI_BUILD_NUMBER"
 	Project     = "JFROG_CLI_BUILD_PROJECT"
-	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
 )

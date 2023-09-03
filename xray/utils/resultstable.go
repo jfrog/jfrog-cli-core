@@ -400,7 +400,7 @@ func toSourceCodeCodeFlowRow(result SourceCodeScanResult, isTable bool) (flows [
 	}
 	for _, flowStack := range result.CodeFlow {
 		rowFlow := []formats.SourceCodeLocationRow{}
-		for _, location := range flowStack {
+		for _, location := range *flowStack {
 			rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
 				File:       location.File,
 				LineColumn: location.LineColumn,

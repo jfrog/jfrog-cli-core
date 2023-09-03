@@ -154,19 +154,16 @@ func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, wo
 		}
 		// Convert
 		currentResult := utils.GetResultIfExists(sarifResult, workingDir, &sourceCodeScanResults)
-		isNewEntry := currentResult == nil
-		if isNewEntry {
+		if currentResult == nil {
 			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
 			// Set specific Jas scan attributes
 			if scanType == utils.Secrets {
 				currentResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
 			}
+			sourceCodeScanResults = append(sourceCodeScanResults, *currentResult)
 		}
 		if scanType == utils.Sast {
 			currentResult.CodeFlow = append(currentResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
-		}
-		if isNewEntry {
-			sourceCodeScanResults = append(sourceCodeScanResults, *currentResult)
 		}
 	}
 	return sourceCodeScanResults

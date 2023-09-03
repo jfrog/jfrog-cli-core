@@ -41,7 +41,7 @@ func ScanJFrogPasswordFromConsole() (string, error) {
 
 func ScanPasswordFromConsole(message string) (string, error) {
 	fmt.Print(coreutils.PrintLink(message))
-	bytePassword, err := term.ReadPassword(int(syscall.Stdin)) //nolint:unconvert
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

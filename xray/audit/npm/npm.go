@@ -15,7 +15,7 @@ const (
 	ignoreScriptsFlag        = "--ignore-scripts"
 )
 
-func BuildDependencyTree(npmArgs []string) (dependencyTree []*xrayUtils.GraphNode, err error) {
+func BuildDependencyTree(npmArgs []string) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -40,9 +40,9 @@ func BuildDependencyTree(npmArgs []string) (dependencyTree []*xrayUtils.GraphNod
 	for _, dependency := range dependenciesMap {
 		dependenciesList = append(dependenciesList, dependency.Dependency)
 	}
-
 	// Parse the dependencies into Xray dependency tree format
-	dependencyTree = []*xrayUtils.GraphNode{parseNpmDependenciesList(dependenciesList, packageInfo)}
+	dependencyTree, uniqueDeps := parseNpmDependenciesList(dependenciesList, packageInfo)
+	dependencyTrees = []*xrayUtils.GraphNode{dependencyTree}
 	return
 }
 
@@ -55,7 +55,7 @@ func addIgnoreScriptsFlag(npmArgs []string) []string {
 }
 
 // Parse the dependencies into an Xray dependency tree format
-func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *biutils.PackageInfo) (xrDependencyTree *xrayUtils.GraphNode) {
+func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *biutils.PackageInfo) (*xrayUtils.GraphNode, []string) {
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		dependencyId := npmPackageTypeIdentifier + dependency.Id

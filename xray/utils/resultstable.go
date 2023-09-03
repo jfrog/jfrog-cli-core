@@ -67,16 +67,16 @@ func PrintViolationsTable(violations []services.Violation, extendedResults *Exte
 }
 
 // Prepare violations for all non-table formats (without style or emoji)
-func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseRow, []formats.OperationalRiskViolationRow, error) {
 	return prepareViolations(violations, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseRow, []formats.OperationalRiskViolationRow, error) {
 	if simplifiedOutput {
 		violations = simplifyViolations(violations, multipleRoots)
 	}
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
-	var licenseViolationsRows []formats.LicenseViolationRow
+	var licenseViolationsRows []formats.LicenseRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components)
@@ -92,21 +92,25 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
 					formats.VulnerabilityOrViolationRow{
-						Summary:                   violation.Summary,
-						Severity:                  currSeverity.printableTitle(isTable),
-						SeverityNumValue:          currSeverity.numValue,
-						ImpactedDependencyName:    impactedPackagesNames[compIndex],
-						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-						FixedVersions:             fixedVersions[compIndex],
-						Components:                components[compIndex],
-						Cves:                      cves,
-						IssueId:                   violation.IssueId,
-						References:                violation.References,
-						JfrogResearchInformation:  jfrogResearchInfo,
-						ImpactPaths:               impactPaths[compIndex],
-						Technology:                coreutils.Technology(violation.Technology),
-						Applicable:                printApplicableCveValue(applicableValue, isTable),
+						Summary: violation.Summary,
+						ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+							ImpactedDependencyName:    impactedPackagesNames[compIndex],
+							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+							Components:                components[compIndex],
+							SeverityDetails: formats.SeverityDetails{
+								Severity:         currSeverity.printableTitle(isTable),
+								SeverityNumValue: currSeverity.NumValue(),
+							},
+						},
+						FixedVersions:            fixedVersions[compIndex],
+						Cves:                     cves,
+						IssueId:                  violation.IssueId,
+						References:               violation.References,
+						JfrogResearchInformation: jfrogResearchInfo,
+						ImpactPaths:              impactPaths[compIndex],
+						Technology:               coreutils.Technology(violation.Technology),
+						Applicable:               printApplicableCveValue(applicableValue, isTable),
 					},
 				)
 			}
@@ -114,18 +118,15 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndeterminedStringValue)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
-					formats.LicenseViolationRow{
-						LicenseBaseWithKey: formats.LicenseBaseWithKey{
-							LicenseBase: formats.LicenseBase{
-								ImpactedDependencyName:    impactedPackagesNames[compIndex],
-								ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-								ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-								Components:                components[compIndex],
-							},
-							LicenseKey: violation.LicenseKey,
+					formats.LicenseRow{
+						LicenseKey: violation.LicenseKey,
+						ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+							SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+							ImpactedDependencyName:    impactedPackagesNames[compIndex],
+							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+							Components:                components[compIndex],
 						},
-						Severity:         currSeverity.printableTitle(isTable),
-						SeverityNumValue: currSeverity.numValue,
 					},
 				)
 			}
@@ -134,9 +135,8 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
-					Severity:         currSeverity.printableTitle(isTable),
-					SeverityNumValue: currSeverity.numValue,
-					LicenseBase: formats.LicenseBase{
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
 						ImpactedDependencyName:    impactedPackagesNames[compIndex],
 						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
 						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
@@ -215,21 +215,22 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				formats.VulnerabilityOrViolationRow{
-					Summary:                   vulnerability.Summary,
-					Severity:                  currSeverity.printableTitle(isTable),
-					SeverityNumValue:          currSeverity.numValue,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					FixedVersions:             fixedVersions[compIndex],
-					Components:                components[compIndex],
-					Cves:                      cves,
-					IssueId:                   vulnerability.IssueId,
-					References:                vulnerability.References,
-					JfrogResearchInformation:  jfrogResearchInfo,
-					ImpactPaths:               impactPaths[compIndex],
-					Technology:                coreutils.Technology(vulnerability.Technology),
-					Applicable:                printApplicableCveValue(applicableValue, isTable),
+					Summary: vulnerability.Summary,
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
+					FixedVersions:            fixedVersions[compIndex],
+					Cves:                     cves,
+					IssueId:                  vulnerability.IssueId,
+					References:               vulnerability.References,
+					JfrogResearchInformation: jfrogResearchInfo,
+					ImpactPaths:              impactPaths[compIndex],
+					Technology:               coreutils.Technology(vulnerability.Technology),
+					Applicable:               printApplicableCveValue(applicableValue, isTable),
 				},
 			)
 		}
@@ -274,14 +275,12 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				formats.LicenseRow{
-					LicenseBaseWithKey: formats.LicenseBaseWithKey{
-						LicenseBase: formats.LicenseBase{
-							ImpactedDependencyName:    impactedPackagesNames[compIndex],
-							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-							Components:                components[compIndex],
-						},
-						LicenseKey: license.Key,
+					LicenseKey: license.Key,
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
 					},
 					ImpactPaths: impactPaths[compIndex],
 				},
@@ -306,12 +305,11 @@ func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecr
 		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
 		secretsRows = append(secretsRows,
 			formats.IacSecretsRow{
-				Severity:         currSeverity.printableTitle(isTable),
-				SeverityNumValue: currSeverity.numValue,
-				File:             secret.File,
-				LineColumn:       secret.LineColumn,
-				Text:             secret.Text,
-				Type:             secret.Type,
+				SeverityDetails: formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+				File:            secret.File,
+				LineColumn:      secret.LineColumn,
+				Text:            secret.Text,
+				Type:            secret.Type,
 			},
 		)
 	}
@@ -344,12 +342,11 @@ func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow
 		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
 		iacRows = append(iacRows,
 			formats.IacSecretsRow{
-				Severity:         currSeverity.printableTitle(isTable),
-				SeverityNumValue: currSeverity.numValue,
-				File:             iac.File,
-				LineColumn:       iac.LineColumn,
-				Text:             iac.Text,
-				Type:             iac.Type,
+				SeverityDetails: formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+				File:            iac.File,
+				LineColumn:      iac.LineColumn,
+				Text:            iac.Text,
+				Type:            iac.Type,
 			},
 		)
 	}
@@ -394,7 +391,7 @@ func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation)
 	return &formats.JfrogResearchInformation{
 		Summary:         extendedInfo.ShortDescription,
 		Details:         extendedInfo.FullDescription,
-		Severity:        extendedInfo.JfrogResearchSeverity,
+		SeverityDetails: formats.SeverityDetails{Severity: extendedInfo.JfrogResearchSeverity},
 		SeverityReasons: severityReasons,
 		Remediation:     extendedInfo.Remediation,
 	}
@@ -533,48 +530,52 @@ func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode) 
 	return
 }
 
-type Severity struct {
-	title    string
-	numValue int
-	style    color.Style
-	emoji    string
+type TableSeverity struct {
+	formats.SeverityDetails
+	style color.Style
+	emoji string
 }
 
-func (s *Severity) printableTitle(isTable bool) string {
+func (s *TableSeverity) printableTitle(isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		return s.style.Render(s.emoji + s.title)
+		return s.style.Render(s.emoji + s.Severity)
 	}
-	return s.title
+	return s.Severity
 }
 
-var Severities = map[string]map[string]*Severity{
+var Severities = map[string]map[string]*TableSeverity{
 	"Critical": {
-		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 12, style: color.New(color.BgLightRed, color.LightWhite)},
-		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 11, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.Gray)},
+		ApplicableStringValue:                {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 15}, emoji: "💀", style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndeterminedStringValue: {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 14}, emoji: "💀", style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicableStringValue:             {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 5}, emoji: "💀", style: color.New(color.Gray)},
 	},
 	"High": {
-		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 10, style: color.New(color.Red)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Gray)},
+		ApplicableStringValue:                {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 13}, emoji: "🔥", style: color.New(color.Red)},
+		ApplicabilityUndeterminedStringValue: {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 12}, emoji: "🔥", style: color.New(color.Red)},
+		NotApplicableStringValue:             {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 4}, emoji: "🔥", style: color.New(color.Gray)},
 	},
 	"Medium": {
-		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 8, style: color.New(color.Yellow)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 7, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Gray)},
+		ApplicableStringValue:                {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 11}, emoji: "🎃", style: color.New(color.Yellow)},
+		ApplicabilityUndeterminedStringValue: {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 10}, emoji: "🎃", style: color.New(color.Yellow)},
+		NotApplicableStringValue:             {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 3}, emoji: "🎃", style: color.New(color.Gray)},
 	},
 	"Low": {
-		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 6},
-		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 5},
-		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 1, style: color.New(color.Gray)},
+		ApplicableStringValue:                {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 9}, emoji: "👻"},
+		ApplicabilityUndeterminedStringValue: {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 8}, emoji: "👻"},
+		NotApplicableStringValue:             {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 2}, emoji: "👻", style: color.New(color.Gray)},
+	},
+	"Unknown": {
+		ApplicableStringValue:                {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 7}, emoji: "😐"},
+		ApplicabilityUndeterminedStringValue: {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 6}, emoji: "😐"},
+		NotApplicableStringValue:             {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 1}, emoji: "😐", style: color.New(color.Gray)},
 	},
 }
 
-func (s *Severity) NumValue() int {
-	return s.numValue
+func (s *TableSeverity) NumValue() int {
+	return s.SeverityNumValue
 }
 
-func (s *Severity) Emoji() string {
+func (s *TableSeverity) Emoji() string {
 	return s.emoji
 }
 
@@ -587,9 +588,9 @@ func GetSeveritiesFormat(severity string) (string, error) {
 	return formattedSeverity, nil
 }
 
-func GetSeverity(severityTitle string, applicable string) *Severity {
+func GetSeverity(severityTitle string, applicable string) *TableSeverity {
 	if Severities[severityTitle] == nil {
-		return &Severity{title: severityTitle}
+		return &TableSeverity{SeverityDetails: formats.SeverityDetails{Severity: severityTitle}}
 	}
 
 	switch applicable {

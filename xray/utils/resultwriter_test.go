@@ -107,11 +107,11 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 		{
 			name: "Infrastructure as Code vulnerability without markdown output",
 			secretOrIac: formats.IacSecretsRow{
-				Severity:   "high",
-				File:       path.Join("path", "to", "file"),
-				LineColumn: "10:5",
-				Text:       "Vulnerable code",
-				Type:       "Terraform",
+				SeverityDetails: formats.SeverityDetails{Severity: "high"},
+				File:            path.Join("path", "to", "file"),
+				LineColumn:      "10:5",
+				Text:            "Vulnerable code",
+				Type:            "Terraform",
 			},
 			markdownOutput: false,
 			isSecret:       false,
@@ -131,11 +131,11 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 		{
 			name: "Potential secret exposed with markdown output",
 			secretOrIac: formats.IacSecretsRow{
-				Severity:   "medium",
-				File:       path.Join("path", "to", "file"),
-				LineColumn: "5:3",
-				Text:       "Potential secret",
-				Type:       "AWS Secret Manager",
+				SeverityDetails: formats.SeverityDetails{Severity: "medium"},
+				File:            path.Join("path", "to", "file"),
+				LineColumn:      "5:3",
+				Text:            "Potential secret",
+				Type:            "AWS Secret Manager",
 			},
 			markdownOutput: true,
 			isSecret:       true,
@@ -181,16 +181,20 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 		{
 			name: "Vulnerability with markdown output",
 			vulnerability: formats.VulnerabilityOrViolationRow{
-				Summary:                   "Vulnerable dependency",
-				Severity:                  "high",
-				Applicable:                "Applicable",
-				ImpactedDependencyName:    "example-package",
-				ImpactedDependencyVersion: "1.0.0",
-				ImpactedDependencyType:    "npm",
-				FixedVersions:             []string{"1.0.1", "1.0.2"},
-				Components: []formats.ComponentRow{
-					{Name: "example-package", Version: "1.0.0"},
+				Summary: "Vulnerable dependency",
+				ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+					SeverityDetails: formats.SeverityDetails{
+						Severity: "high",
+					},
+					ImpactedDependencyName:    "example-package",
+					ImpactedDependencyVersion: "1.0.0",
+					ImpactedDependencyType:    "npm",
+					Components: []formats.ComponentRow{
+						{Name: "example-package", Version: "1.0.0"},
+					},
 				},
+				Applicable:    "Applicable",
+				FixedVersions: []string{"1.0.1", "1.0.2"},
 				Cves: []formats.CveRow{
 					{Id: "CVE-2021-1234", CvssV3: "7.2"},
 					{Id: "CVE-2021-5678", CvssV3: "7.2"},
@@ -210,16 +214,20 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 		{
 			name: "Vulnerability without markdown output",
 			vulnerability: formats.VulnerabilityOrViolationRow{
-				Summary:                   "Vulnerable dependency",
-				Severity:                  "high",
-				Applicable:                "Applicable",
-				ImpactedDependencyName:    "example-package",
-				ImpactedDependencyVersion: "1.0.0",
-				ImpactedDependencyType:    "npm",
-				FixedVersions:             []string{"1.0.1", "1.0.2"},
-				Components: []formats.ComponentRow{
-					{Name: "example-package", Version: "1.0.0"},
+				Summary: "Vulnerable dependency",
+				ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+					SeverityDetails: formats.SeverityDetails{
+						Severity: "high",
+					},
+					ImpactedDependencyName:    "example-package",
+					ImpactedDependencyVersion: "1.0.0",
+					ImpactedDependencyType:    "npm",
+					Components: []formats.ComponentRow{
+						{Name: "example-package", Version: "1.0.0"},
+					},
 				},
+				Applicable:    "Applicable",
+				FixedVersions: []string{"1.0.1", "1.0.2"},
 				Cves: []formats.CveRow{
 					{Id: "CVE-2021-1234", CvssV3: "7.2"},
 					{Id: "CVE-2021-5678", CvssV3: "7.2"},

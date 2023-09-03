@@ -1,6 +1,7 @@
 package utils
 
 import (
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +29,6 @@ func initPoetryTest(t *testing.T) (string, func()) {
 	testAbs, err := filepath.Abs(filepath.Join("..", "..", "xray", "commands", "testdata", "poetry-project"))
 	assert.NoError(t, err)
 	poetryProjectPath, cleanUp := audit.CreateTestWorkspace(t, "poetry-project")
-	assert.NoError(t, fileutils.CopyDir(testAbs, poetryProjectPath, true, nil))
+	assert.NoError(t, biutils.CopyDir(testAbs, poetryProjectPath, true, nil))
 	return poetryProjectPath, cleanUp
 }

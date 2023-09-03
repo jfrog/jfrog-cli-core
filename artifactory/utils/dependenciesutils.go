@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -224,7 +225,7 @@ func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 	if err != nil {
 		return err
 	}
-	return fileutils.CopyDir(tempDirPath, localDir, true, nil)
+	return biutils.CopyDir(tempDirPath, localDir, true, nil)
 }
 
 func createHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttpclient.JfrogHttpClient, httpClientDetails httputils.HttpClientDetails, err error) {

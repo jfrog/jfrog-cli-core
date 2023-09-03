@@ -76,12 +76,11 @@ func TestParseNpmDependenciesList(t *testing.T) {
 				}},
 			{Id: "npm://next:12.0.10", Nodes: []*xrayUtils.GraphNode{
 				{Id: "npm://react-dom:18.2.0", Nodes: []*xrayUtils.GraphNode{
-					{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
-					{Id: "npm://loose-envify:1.4.0", Nodes: []*xrayUtils.GraphNode{{Id: "npm://js-tokens:4.0.0"}}},
-					{Id: "npm://scheduler:0.23.0", Nodes: looseEnvifyJsTokens}}},
+					{Id: "npm://react:18.2.0"},
+					{Id: "npm://scheduler:0.23.0"}}},
 				{Id: "npm://styled-jsx:5.0.0"},
 				{Id: "npm://@next/swc-darwin-arm64:12.0.10"},
-				{Id: "npm://react:18.2.0", Nodes: looseEnvifyJsTokens},
+				{Id: "npm://react:18.2.0"},
 				{Id: "npm://@next/env:12.0.10"},
 				{Id: "npm://caniuse-lite:1.0.30001486"},
 				{Id: "npm://postcss:8.4.5", Nodes: []*xrayUtils.GraphNode{
@@ -96,11 +95,16 @@ func TestParseNpmDependenciesList(t *testing.T) {
 		},
 	}
 
-	xrayDependenciesTree := parseNpmDependenciesList(dependencies, packageInfo)
+	xrayDependenciesTree, uniqueDeps := parseNpmDependenciesList(dependencies, packageInfo)
 	equals := tests.CompareTree(expectedTree, xrayDependenciesTree)
 	if !equals {
 		t.Error("expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 	}
+	expectedUniqueDeps := []string{xrayDependenciesTree.Id}
+	for _, dep := range dependencies {
+		expectedUniqueDeps = append(expectedUniqueDeps, npmPackageTypeIdentifier+dep.Id)
+	}
+	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 
 }
 
@@ -111,6 +115,6 @@ func TestIgnoreScripts(t *testing.T) {
 
 	// The package.json file contain a postinstall script running an "exit 1" command.
 	// Without the "--ignore-scripts" flag, the test will fail.
-	_, err := BuildDependencyTree([]string{})
+	_, _, err := BuildDependencyTree([]string{})
 	assert.NoError(t, err)
 }

@@ -9,7 +9,7 @@ import "github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 type SimpleJsonResults struct {
 	Vulnerabilities           []VulnerabilityOrViolationRow `json:"vulnerabilities"`
 	SecurityViolations        []VulnerabilityOrViolationRow `json:"securityViolations"`
-	LicensesViolations        []LicenseViolationRow         `json:"licensesViolations"`
+	LicensesViolations        []LicenseRow                  `json:"licensesViolations"`
 	Licenses                  []LicenseRow                  `json:"licenses"`
 	OperationalRiskViolations []OperationalRiskViolationRow `json:"operationalRiskViolations"`
 	Secrets                   []IacSecretsRow               `json:"secrets"`
@@ -17,53 +17,41 @@ type SimpleJsonResults struct {
 	Errors                    []SimpleJsonError             `json:"errors"`
 }
 
-// Used for vulnerabilities and security violations
-type VulnerabilityOrViolationRow struct {
-	Summary                   string                    `json:"summary"`
-	Severity                  string                    `json:"severity"`
-	Applicable                string                    `json:"applicable"`
-	SeverityNumValue          int                       `json:"-"` // For sorting
-	ImpactedDependencyName    string                    `json:"impactedPackageName"`
-	ImpactedDependencyVersion string                    `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string                    `json:"impactedPackageType"`
-	FixedVersions             []string                  `json:"fixedVersions"`
-	Components                []ComponentRow            `json:"components"`
-	Cves                      []CveRow                  `json:"cves"`
-	IssueId                   string                    `json:"issueId"`
-	References                []string                  `json:"references"`
-	ImpactPaths               [][]ComponentRow          `json:"impactPaths"`
-	JfrogResearchInformation  *JfrogResearchInformation `json:"jfrogResearchInformation"`
-	Technology                coreutils.Technology      `json:"-"`
+type SeverityDetails struct {
+	Severity         string `json:"severity"`
+	SeverityNumValue int    `json:"-"` // For sorting
 }
 
-type LicenseBase struct {
+type ImpactedDependencyDetails struct {
+	SeverityDetails
 	ImpactedDependencyName    string         `json:"impactedPackageName"`
 	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
 	ImpactedDependencyType    string         `json:"impactedPackageType"`
 	Components                []ComponentRow `json:"components"`
 }
 
-type LicenseBaseWithKey struct {
-	LicenseBase
-	LicenseKey string `json:"licenseKey"`
+// Used for vulnerabilities and security violations
+type VulnerabilityOrViolationRow struct {
+	ImpactedDependencyDetails
+	Summary                  string                    `json:"summary"`
+	Applicable               string                    `json:"applicable"`
+	FixedVersions            []string                  `json:"fixedVersions"`
+	Cves                     []CveRow                  `json:"cves"`
+	IssueId                  string                    `json:"issueId"`
+	References               []string                  `json:"references"`
+	ImpactPaths              [][]ComponentRow          `json:"impactPaths"`
+	JfrogResearchInformation *JfrogResearchInformation `json:"jfrogResearchInformation"`
+	Technology               coreutils.Technology      `json:"-"`
 }
 
 type LicenseRow struct {
-	LicenseBaseWithKey
+	ImpactedDependencyDetails
+	LicenseKey  string           `json:"licenseKey"`
 	ImpactPaths [][]ComponentRow `json:"impactPaths"`
 }
 
-type LicenseViolationRow struct {
-	Severity         string `json:"severity"`
-	Applicable       string `json:"applicable"`
-	SeverityNumValue int    `json:"-"` // For sorting
-	LicenseBaseWithKey
-}
-
 type OperationalRiskViolationRow struct {
-	Severity         string `json:"severity"`
-	SeverityNumValue int    `json:"-"` // For sorting
-	LicenseBase
+	ImpactedDependencyDetails
 	RiskReason    string `json:"riskReason"`
 	IsEol         string `json:"isEndOfLife"`
 	EolMessage    string `json:"endOfLifeMessage"`
@@ -75,12 +63,11 @@ type OperationalRiskViolationRow struct {
 }
 
 type IacSecretsRow struct {
-	Severity         string `json:"severity"`
-	SeverityNumValue int    `json:"-"` // For sorting
-	File             string `json:"file"`
-	LineColumn       string `json:"lineColumn"`
-	Text             string `json:"text"`
-	Type             string `json:"type"`
+	SeverityDetails
+	File       string `json:"file"`
+	LineColumn string `json:"lineColumn"`
+	Text       string `json:"text"`
+	Type       string `json:"type"`
 }
 
 type ComponentRow struct {
@@ -100,9 +87,9 @@ type SimpleJsonError struct {
 }
 
 type JfrogResearchInformation struct {
+	SeverityDetails
 	Summary         string                        `json:"summary,omitempty"`
 	Details         string                        `json:"details,omitempty"`
-	Severity        string                        `json:"severity,omitempty"`
 	SeverityReasons []JfrogResearchSeverityReason `json:"severityReasons,omitempty"`
 	Remediation     string                        `json:"remediation,omitempty"`
 }

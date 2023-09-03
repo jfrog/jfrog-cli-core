@@ -10,5 +10,5 @@
 GRADLE_DEP_TREE_VERSION="2.2.0"
 MAVEN_DEP_TREE_VERSION="1.0.0"
 
-curl -fL https://releases.jfrog.io/artifactory/oss-release-local/com/jfrog/gradle-dep-tree/${GRADLE_DEP_TREE_VERSION}/gradle-dep-tree-${GRADLE_DEP_TREE_VERSION}.jar -o xray/audit/java/gradle-dep-tree.jar
-# curl -fL https://releases.jfrog.io/artifactory/oss-release-local/com/jfrog/maven-dep-tree/${MAVEN_DEP_TREE_VERSION}/maven-dep-tree-${MAVEN_DEP_TREE_VERSION}.jar -o xray/audit/java/maven-dep-tree.jar
+curl -fL https://releases.jfrog.io/artifactory/oss-release-local/com/jfrog/gradle-dep-tree/${GRADLE_DEP_TREE_VERSION}/gradle-dep-tree-${GRADLE_DEP_TREE_VERSION}.jar -o xray/audit/sca/java/gradle-dep-tree.jar
+# curl -fL https://releases.jfrog.io/artifactory/oss-release-local/com/jfrog/maven-dep-tree/${MAVEN_DEP_TREE_VERSION}/maven-dep-tree-${MAVEN_DEP_TREE_VERSION}.jar -o xray/audit/sca/java/maven-dep-tree.jar

@@ -8,19 +8,19 @@ import (
 )
 
 // If exists SourceCodeScanResult with the same location as the provided SarifResult, return it
-func IsSarifResultExistsInSourceCodeScanResults(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) *SourceCodeScanResult {
+func GetResultIfExists(result *sarif.Result, workingDir string, results []*SourceCodeScanResult) *SourceCodeScanResult {
 	file := ExtractRelativePath(GetResultFileName(result), workingDir)
 	lineCol := GetResultLocationInFile(result)
 	text := *result.Message.Text
-	for _, result := range *results {
+	for _, result := range results {
 		if result.File == file && result.LineColumn == lineCol && result.Text == text {
-			return &result
+			return result
 		}
 	}
 	return nil
 }
 
-func ConvertSarifResultToSourceCodeScanResult(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) *SourceCodeScanResult {
+func ConvertSarifResultToSourceCodeScanResult(result *sarif.Result, workingDir string) *SourceCodeScanResult {
 	file := ExtractRelativePath(GetResultFileName(result), workingDir)
 	lineCol := GetResultLocationInFile(result)
 	text := *result.Message.Text
@@ -36,7 +36,7 @@ func ConvertSarifResultToSourceCodeScanResult(result *sarif.Result, workingDir s
 	}
 }
 
-func GetResultCodeFlows(result *sarif.Result, workingDir string) (flows [][]SourceCodeLocation) {
+func GetResultCodeFlows(result *sarif.Result, workingDir string) (flows []*[]SourceCodeLocation) {
 	if len(result.CodeFlows) == 0 {
 		return
 	}
@@ -49,14 +49,14 @@ func GetResultCodeFlows(result *sarif.Result, workingDir string) (flows [][]Sour
 	return
 }
 
-func extractThreadFlows(threadFlows []*sarif.ThreadFlow, workingDir string) (flows [][]SourceCodeLocation) {
+func extractThreadFlows(threadFlows []*sarif.ThreadFlow, workingDir string) (flows []*[]SourceCodeLocation) {
 	for _, threadFlow := range threadFlows {
 		if threadFlow == nil || len(threadFlow.Locations) == 0 {
 			continue
 		}
 		flow := extractStackTraceLocations(threadFlow.Locations, workingDir)
 		if len(flow) > 0 {
-			flows = append(flows, flow)
+			flows = append(flows, &flow)
 		}
 	}
 	return

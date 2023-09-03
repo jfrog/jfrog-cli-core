@@ -8,7 +8,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
-func (rbc *ReleaseBundleCreate) createFromReleaseBundles(servicesManager *lifecycle.LifecycleServicesManager,
+func (rbc *ReleaseBundleCreateCommand) createFromReleaseBundles(servicesManager *lifecycle.LifecycleServicesManager,
 	rbDetails services.ReleaseBundleDetails, params services.CreateOrPromoteReleaseBundleParams) error {
 
 	bundles := CreateFromReleaseBundlesSpec{}
@@ -28,7 +28,7 @@ func (rbc *ReleaseBundleCreate) createFromReleaseBundles(servicesManager *lifecy
 	return servicesManager.CreateReleaseBundleFromBundles(rbDetails, params, releaseBundlesSource)
 }
 
-func (rbc *ReleaseBundleCreate) convertToReleaseBundlesSource(bundles CreateFromReleaseBundlesSpec) services.CreateFromReleaseBundlesSource {
+func (rbc *ReleaseBundleCreateCommand) convertToReleaseBundlesSource(bundles CreateFromReleaseBundlesSpec) services.CreateFromReleaseBundlesSource {
 	releaseBundlesSource := services.CreateFromReleaseBundlesSource{}
 	for _, rb := range bundles.ReleaseBundles {
 		rbSource := services.ReleaseBundleSource{

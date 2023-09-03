@@ -549,24 +549,29 @@ func (s *Severity) printableTitle(isTable bool) string {
 
 var Severities = map[string]map[string]*Severity{
 	"Critical": {
-		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 12, style: color.New(color.BgLightRed, color.LightWhite)},
-		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 11, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 4, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
 	},
 	"High": {
-		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 10, style: color.New(color.Red)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 9, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 3, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
+		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
 	},
 	"Medium": {
-		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 8, style: color.New(color.Yellow)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 7, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 2, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
+		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
+		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
 	},
 	"Low": {
-		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 6},
-		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 5},
-		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 1, style: color.New(color.Gray)},
+		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 9},
+		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 8},
+		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
+	},
+	"Unknown": {
+		ApplicableStringValue:                {emoji: "😐", title: "Unknown", numValue: 7},
+		ApplicabilityUndeterminedStringValue: {emoji: "😐", title: "Unknown", numValue: 6},
+		NotApplicableStringValue:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
 	},
 }
 

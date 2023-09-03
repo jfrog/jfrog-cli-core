@@ -125,15 +125,15 @@ func compare(expected, actual []string) error {
 }
 
 // CompareTree returns true iff the two trees contain the same nodes (regardless of their order)
-func CompareTree(a, b *xrayUtils.GraphNode) bool {
-	if a.Id != b.Id {
+func CompareTree(expected, actual *xrayUtils.GraphNode) bool {
+	if expected.Id != actual.Id {
 		return false
 	}
 	// Make sure all children are equal, when order doesn't matter
-	for _, nodeA := range a.Nodes {
+	for _, expectedNode := range expected.Nodes {
 		found := false
-		for _, nodeB := range b.Nodes {
-			if CompareTree(nodeA, nodeB) {
+		for _, actualNode := range actual.Nodes {
+			if CompareTree(expectedNode, actualNode) {
 				found = true
 				break
 			}

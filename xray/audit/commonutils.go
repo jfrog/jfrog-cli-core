@@ -2,90 +2,80 @@ package audit
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/version"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-	"github.com/jfrog/jfrog-client-go/xray/services"
-	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slices"
 )
 
-func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) *xrayUtils.GraphNode {
-	exceededDepthCounter := 0
-	xrayDependencyTree := buildXrayDependencyTree(treeHelper, []string{nodeId}, &exceededDepthCounter)
-	if exceededDepthCounter > 0 {
-		log.Debug("buildXrayDependencyTree exceeded max tree depth", exceededDepthCounter, "times")
+const maxUniqueAppearances = 10
+
+func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) (*xrayUtils.GraphNode, []string) {
+	rootNode := &xrayUtils.GraphNode{
+		Id:    nodeId,
+		Nodes: []*xrayUtils.GraphNode{},
 	}
-	return xrayDependencyTree
+	dependencyAppearances := map[string]int8{}
+	populateXrayDependencyTree(rootNode, treeHelper, &dependencyAppearances)
+	return rootNode, maps.Keys(dependencyAppearances)
 }
 
-func buildXrayDependencyTree(treeHelper map[string][]string, impactPath []string, exceededDepthCounter *int) *xrayUtils.GraphNode {
-	nodeId := impactPath[len(impactPath)-1]
-	// Initialize the new node
-	xrDependencyTree := &xrayUtils.GraphNode{}
-	xrDependencyTree.Id = nodeId
-	xrDependencyTree.Nodes = []*xrayUtils.GraphNode{}
-	if len(impactPath) >= buildinfo.RequestedByMaxLength {
-		*exceededDepthCounter++
-		return xrDependencyTree
-	}
+func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[string][]string, dependencyAppearances *map[string]int8) {
+	(*dependencyAppearances)[currNode.Id]++
 	// Recursively create & append all node's dependencies.
-	for _, dependency := range treeHelper[nodeId] {
-		// Prevent circular dependencies parsing
-		if slices.Contains(impactPath, dependency) {
+	for _, childDepId := range treeHelper[currNode.Id] {
+		childNode := &xrayUtils.GraphNode{
+			Id:     childDepId,
+			Nodes:  []*xrayUtils.GraphNode{},
+			Parent: currNode,
+		}
+		if (*dependencyAppearances)[childDepId] >= maxUniqueAppearances || childNode.NodeHasLoop() {
 			continue
 		}
-		xrDependencyTree.Nodes = append(xrDependencyTree.Nodes, buildXrayDependencyTree(treeHelper, append(impactPath, dependency), exceededDepthCounter))
+		currNode.Nodes = append(currNode.Nodes, childNode)
+		populateXrayDependencyTree(childNode, treeHelper, dependencyAppearances)
 	}
-	return xrDependencyTree
 }
 
-func RunXrayDependenciesTreeScanGraph(modulesDependencyTrees []*xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
+func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
+	scanGraphParams.XrayGraphScanParams().DependenciesGraph = dependencyTree
+	scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(dependencyTree.Nodes), technology)
 	if progress != nil {
-		progress.SetHeadlineMsg("Scanning for vulnerabilities")
+		progress.SetHeadlineMsg(scanMessage)
 	}
-
-	for _, moduleDependencyTree := range modulesDependencyTrees {
-		scanGraphParams.XrayGraphScanParams().Graph = moduleDependencyTree
-		scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(scanGraphParams.XrayGraphScanParams().Graph.Nodes), technology)
-		if progress != nil {
-			progress.SetHeadlineMsg(scanMessage)
-		}
-		log.Info(scanMessage + "...")
-		var scanResults *services.ScanResponse
-		scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
-		if err != nil {
-			err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
-			return
-		}
-		for i := range scanResults.Vulnerabilities {
-			scanResults.Vulnerabilities[i].Technology = technology.ToString()
-		}
-		for i := range scanResults.Violations {
-			scanResults.Violations[i].Technology = technology.ToString()
-		}
-		results = append(results, *scanResults)
+	log.Info(scanMessage + "...")
+	var scanResults *services.ScanResponse
+	scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
+	if err != nil {
+		err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
+		return
 	}
+	for i := range scanResults.Vulnerabilities {
+		scanResults.Vulnerabilities[i].Technology = technology.ToString()
+	}
+	for i := range scanResults.Violations {
+		scanResults.Violations[i].Technology = technology.ToString()
+	}
+	results = append(results, *scanResults)
 	return
 }
 
 func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
-	assert.NoError(t, fileutils.CopyDir(filepath.Join("..", "..", "commands", "testdata", sourceDir), tempDirPath, true, nil))
+	assert.NoError(t, biutils.CopyDir(filepath.Join("..", "..", "commands", "testdata", sourceDir), tempDirPath, true, nil))
 	wd, err := os.Getwd()
 	assert.NoError(t, err, "Failed to get current dir")
 	chdirCallback := testsutils.ChangeDirWithCallback(t, wd, tempDirPath)
@@ -153,40 +143,8 @@ func fillImpactPathsMapWithIssues(issuesImpactPathsMap map[string]*services.Comp
 			FixedVersions: components[dependencyName].FixedVersions,
 			Cpes:          components[dependencyName].Cpes,
 		}
-		if _, exist := issuesImpactPathsMap[dependencyName]; !exist {
-			issuesImpactPathsMap[dependencyName] = emptyPathsComponent
-		} else {
-			sortedFixedVersions := mergeSortedVersions(issuesImpactPathsMap[dependencyName].FixedVersions, emptyPathsComponent.FixedVersions)
-			issuesImpactPathsMap[dependencyName].FixedVersions = sortedFixedVersions
-			issuesImpactPathsMap[dependencyName].Cpes =
-				append(issuesImpactPathsMap[dependencyName].Cpes, emptyPathsComponent.Cpes...)
-		}
+		issuesImpactPathsMap[dependencyName] = emptyPathsComponent
 	}
-}
-
-// This functions receives two sorted slices of versions and returns a merged slice which is sorted.
-// For example, firstVersions - ["[1.7.0]", "[2.3.1]"],  secondVersions - ["[1.8.1]"].
-// Result: ["[1.7.0]", "[1.8.1]", "[2.3.1]"]
-func mergeSortedVersions(firstVersions, secondVersions []string) []string {
-	mergedVersions := make([]string, 0, len(firstVersions)+len(secondVersions))
-	firstVersionsIndex, secondVersionsIndex := 0, 0
-
-	for firstVersionsIndex < len(firstVersions) && secondVersionsIndex < len(secondVersions) {
-		trimmedFirstVersion := version.NewVersion(strings.Trim(firstVersions[firstVersionsIndex], "[]"))
-		trimmedSecondVersion := strings.Trim(secondVersions[secondVersionsIndex], "[]")
-		if trimmedFirstVersion.Compare(trimmedSecondVersion) >= 0 {
-			mergedVersions = append(mergedVersions, firstVersions[firstVersionsIndex])
-			firstVersionsIndex++
-		} else {
-			mergedVersions = append(mergedVersions, secondVersions[secondVersionsIndex])
-			secondVersionsIndex++
-		}
-	}
-
-	// Append what's left
-	mergedVersions = append(mergedVersions, firstVersions[firstVersionsIndex:]...)
-	mergedVersions = append(mergedVersions, secondVersions[secondVersionsIndex:]...)
-	return mergedVersions
 }
 
 // Set the impact paths for each issue in the map
@@ -231,14 +189,22 @@ func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*xr
 
 func updateComponentsWithImpactPaths(components map[string]services.Component, issuesMap map[string]*services.Component) {
 	for dependencyName := range components {
-		components[dependencyName] = *issuesMap[dependencyName]
+		updatedComponent := services.Component{
+			FixedVersions: components[dependencyName].FixedVersions,
+			ImpactPaths:   issuesMap[dependencyName].ImpactPaths,
+			Cpes:          components[dependencyName].Cpes,
+		}
+		components[dependencyName] = updatedComponent
 	}
 }
 
 func setPathsForIssues(dependency *xrayUtils.GraphNode, issuesImpactPathsMap map[string]*services.Component, pathFromRoot []services.ImpactPathNode) {
 	pathFromRoot = append(pathFromRoot, services.ImpactPathNode{ComponentId: dependency.Id})
 	if _, exists := issuesImpactPathsMap[dependency.Id]; exists {
-		issuesImpactPathsMap[dependency.Id].ImpactPaths = append(issuesImpactPathsMap[dependency.Id].ImpactPaths, pathFromRoot)
+		// Create a copy of pathFromRoot to avoid modifying the original slice
+		pathCopy := make([]services.ImpactPathNode, len(pathFromRoot))
+		copy(pathCopy, pathFromRoot)
+		issuesImpactPathsMap[dependency.Id].ImpactPaths = append(issuesImpactPathsMap[dependency.Id].ImpactPaths, pathCopy)
 	}
 	for _, depChild := range dependency.Nodes {
 		setPathsForIssues(depChild, issuesImpactPathsMap, pathFromRoot)

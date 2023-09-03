@@ -13,7 +13,7 @@ const (
 	npmPackageTypeIdentifier = "npm://"
 )
 
-func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
+func BuildDependencyTree() (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -33,12 +33,13 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, err error) {
 		return
 	}
 	// Parse the dependencies into Xray dependency tree format
-	dependencyTree = []*xrayUtils.GraphNode{parseYarnDependenciesMap(dependenciesMap, getXrayDependencyId(root))}
+	dependencyTree, uniqueDeps := parseYarnDependenciesMap(dependenciesMap, getXrayDependencyId(root))
+	dependencyTrees = []*xrayUtils.GraphNode{dependencyTree}
 	return
 }
 
 // Parse the dependencies into a Xray dependency tree format
-func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, rootXrayId string) (xrDependencyTree *xrayUtils.GraphNode) {
+func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, rootXrayId string) (*xrayUtils.GraphNode, []string) {
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		xrayDepId := getXrayDependencyId(dependency)

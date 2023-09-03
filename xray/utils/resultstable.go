@@ -534,7 +534,7 @@ func (s *Severity) printableTitle(isTable bool) string {
 	return s.title
 }
 
-var Severities = map[string]map[string]*Severity{
+var Severities = map[string]map[ApplicabilityStatus]*Severity{
 	"Critical": {
 		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
 		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
@@ -579,7 +579,7 @@ func GetSeveritiesFormat(severity string) (string, error) {
 	return formattedSeverity, nil
 }
 
-func GetSeverity(severityTitle string, applicable string) *Severity {
+func GetSeverity(severityTitle string, applicable ApplicabilityStatus) *Severity {
 	if Severities[severityTitle] == nil {
 		return &Severity{title: severityTitle}
 	}
@@ -812,32 +812,32 @@ func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVer
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
-func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
-	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
-		return ""
-	}
-	if len(xrayCves) == 0 {
+func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) ApplicabilityStatus {
+	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 || len(xrayCves) == 0 {
 		return ApplicabilityUndeterminedStringValue
 	}
-	cveExistsInResult := false
-	finalApplicableValue := NotApplicableStringValue
+	atLeastOneUndetermined := false
 	for _, cve := range xrayCves {
-		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScanResults[cve.Id]; exists {
-			cveExistsInResult = true
-			if currentCveApplicableValue == ApplicableStringValue {
-				return currentCveApplicableValue
-			} else if currentCveApplicableValue == ApplicabilityUndeterminedStringValue {
-				finalApplicableValue = currentCveApplicableValue
-			}
+		applicabilityResult, exists := extendedResults.ApplicabilityScanResults[cve.Id]
+		if !exists {
+			continue
+		}
+		if applicabilityResult == ApplicableStringValue {
+			// If at least one cve is applicable - final value is applicable
+			return ApplicableStringValue
+		}
+		if applicabilityResult == ApplicabilityUndeterminedStringValue {
+			// If at least one cve is undetermined - final value is undetermined
+			atLeastOneUndetermined = true
 		}
 	}
-	if cveExistsInResult {
-		return finalApplicableValue
+	if atLeastOneUndetermined {
+		return ApplicabilityUndeterminedStringValue
 	}
-	return ApplicabilityUndeterminedStringValue
+	return NotApplicableStringValue
 }
 
-func printApplicableCveValue(applicableValue string, isTable bool) string {
+func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
 		if applicableValue == ApplicableStringValue {
 			return color.New(color.Red).Render(applicableValue)
@@ -845,5 +845,5 @@ func printApplicableCveValue(applicableValue string, isTable bool) string {
 			return color.New(color.Green).Render(applicableValue)
 		}
 	}
-	return applicableValue
+	return string(applicableValue)
 }

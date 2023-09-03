@@ -28,7 +28,7 @@ const (
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
 func getApplicabilityScanResults(xrayResults []services.ScanResponse, directDependencies []string,
-	scannedTechnologies []coreutils.Technology, scanner *AdvancedSecurityScanner) (results map[string]string, err error) {
+	scannedTechnologies []coreutils.Technology, scanner *AdvancedSecurityScanner) (results map[string]utils.ApplicabilityStatus, err error) {
 	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
@@ -43,8 +43,8 @@ func getApplicabilityScanResults(xrayResults []services.ScanResponse, directDepe
 }
 
 type ApplicabilityScanManager struct {
-	applicabilityScanResults map[string]string
-	directDependenciesCves   *datastructures.Set[string]
+	applicabilityScanResults map[string]utils.ApplicabilityStatus
+	directDependenciesCves   []string
 	xrayResults              []services.ScanResponse
 	scanner                  *AdvancedSecurityScanner
 }
@@ -52,7 +52,7 @@ type ApplicabilityScanManager struct {
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *AdvancedSecurityScanner) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
-		applicabilityScanResults: map[string]string{},
+		applicabilityScanResults: map[string]utils.ApplicabilityStatus{},
 		directDependenciesCves:   directDependenciesCves,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
@@ -61,7 +61,7 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 
 // This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
 // vulnerabilities of the scanned project, ignoring indirect vulnerabilities
-func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies []string) *datastructures.Set[string] {
+func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies []string) []string {
 	directsCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {
@@ -84,7 +84,7 @@ func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanRespon
 		}
 	}
 
-	return directsCves
+	return directsCves.ToSlice()
 }
 
 func isDirectComponents(components []string, directDependencies []string) bool {
@@ -108,16 +108,17 @@ func (a *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = a.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults map[string]string
-	workingDirResults, err = a.getScanResults()
-	for cve, result := range workingDirResults {
-		a.applicabilityScanResults[cve] = result
+	wdScanResults, err := a.getScanResults()
+	for cve := range wdScanResults {
+		if _, exists := a.applicabilityScanResults[cve]; !exists {
+			a.applicabilityScanResults[cve] = wdScanResults[cve]
+		}
 	}
 	return
 }
 
 func (a *ApplicabilityScanManager) directDependenciesExist() bool {
-	return a.directDependenciesCves.Size() > 0
+	return len(a.directDependenciesCves) > 0
 }
 
 func (a *ApplicabilityScanManager) shouldRunApplicabilityScan(technologies []coreutils.Technology) bool {
@@ -145,7 +146,7 @@ func (a *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 				Output:       a.scanner.resultsFileName,
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
-				CveWhitelist: a.directDependenciesCves.ToSlice(),
+				CveWhitelist: a.directDependenciesCves,
 				SkippedDirs:  skippedDirs,
 			},
 		},
@@ -159,37 +160,36 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 	return a.scanner.analyzerManager.Exec(a.scanner.configFileName, applicabilityScanCommand, a.scanner.serverDetails)
 }
 
-func (a *ApplicabilityScanManager) getScanResults() (map[string]string, error) {
+func (a *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {
+	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(a.directDependenciesCves))
+	for _, cve := range a.directDependenciesCves {
+		applicabilityResults[cve] = utils.ApplicabilityUndeterminedStringValue
+	}
+
 	report, err := sarif.Open(a.scanner.resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
+	if errorutils.CheckError(err) != nil || len(report.Runs) == 0 {
+		return
 	}
-	var fullVulnerabilitiesList []*sarif.Result
-	if len(report.Runs) > 0 {
-		fullVulnerabilitiesList = report.Runs[0].Results
-	}
-
-	applicabilityScanResults := make(map[string]string)
-	for _, cve := range a.directDependenciesCves.ToSlice() {
-		applicabilityScanResults[cve] = utils.ApplicabilityUndeterminedStringValue
-	}
-
-	for _, vulnerability := range fullVulnerabilitiesList {
-		applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
-		if isVulnerabilityApplicable(vulnerability) {
-			applicabilityScanResults[applicableVulnerabilityName] = utils.ApplicableStringValue
-		} else {
-			applicabilityScanResults[applicableVulnerabilityName] = utils.NotApplicableStringValue
+	// Applicability results contains one run only
+	for _, sarifResult := range report.Runs[0].Results {
+		cve := getCveFromRuleId(*sarifResult.RuleID)
+		if _, exists := applicabilityResults[cve]; !exists {
+			err = errorutils.CheckErrorf("received unexpected CVE: '%s' from RuleID: '%s' that does not exists on the requested CVEs list", cve, *sarifResult.RuleID)
+			return
 		}
+		applicabilityResults[cve] = resultKindToApplicabilityStatus(sarifResult.Kind)
 	}
-	return applicabilityScanResults, nil
+	return
 }
 
 // Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise
-func isVulnerabilityApplicable(result *sarif.Result) bool {
-	return !(result.Kind != nil && *result.Kind == "pass")
+func resultKindToApplicabilityStatus(kind *string) utils.ApplicabilityStatus {
+	if !(kind != nil && *kind == "pass") {
+		return utils.ApplicableStringValue
+	}
+	return utils.NotApplicableStringValue
 }
 
-func getVulnerabilityName(sarifRuleId string) string {
+func getCveFromRuleId(sarifRuleId string) string {
 	return strings.TrimPrefix(sarifRuleId, "applic_")
 }

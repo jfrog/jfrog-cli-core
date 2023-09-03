@@ -153,20 +153,20 @@ func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, wo
 			continue
 		}
 		// Convert
-		sourceCodeScanResult := utils.IsSarifResultExistsInSourceCodeScanResults(sarifResult, workingDir, &sourceCodeScanResults)
-		newEntry := sourceCodeScanResult == nil
-		if newEntry {
-			sourceCodeScanResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
+		currentResult := utils.IsSarifResultExistsInSourceCodeScanResults(sarifResult, workingDir, &sourceCodeScanResults)
+		isNewEntry := currentResult == nil
+		if isNewEntry {
+			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
 			// Set specific Jas scan attributes
 			if scanType == utils.Secrets {
-				sourceCodeScanResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
+				currentResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
 			}
 		}
 		if scanType == utils.Sast {
-			sourceCodeScanResult.CodeFlow = append(sourceCodeScanResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
+			currentResult.CodeFlow = append(currentResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
 		}
-		if newEntry {
-			sourceCodeScanResults = append(sourceCodeScanResults, *sourceCodeScanResult)
+		if isNewEntry {
+			sourceCodeScanResults = append(sourceCodeScanResults, *currentResult)
 		}
 	}
 	return sourceCodeScanResults

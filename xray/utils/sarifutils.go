@@ -20,7 +20,7 @@ func IsSarifResultExistsInSourceCodeScanResults(result *sarif.Result, workingDir
 	return nil
 }
 
-func ConvertSarifResultToSourceCodeScanResult(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) *SourceCodeScanResult {
+func ConvertSarifResultToSourceCodeScanResult(result *sarif.Result, workingDir string) *SourceCodeScanResult {
 	file := ExtractRelativePath(GetResultFileName(result), workingDir)
 	lineCol := GetResultLocationInFile(result)
 	text := *result.Message.Text

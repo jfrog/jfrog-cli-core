@@ -2,14 +2,15 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/datastructures"
-	"golang.org/x/exp/maps"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/maps"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 
@@ -296,22 +297,24 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
-func PrepareSecrets(secrets []IacOrSecretResult) []formats.IacSecretsRow {
+func PrepareSecrets(secrets []SourceCodeScanResult) []formats.SourceCodeRow {
 	return prepareSecrets(secrets, false)
 }
 
-func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
-	var secretsRows []formats.IacSecretsRow
+func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var secretsRows []formats.SourceCodeRow
 	for _, secret := range secrets {
 		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
 		secretsRows = append(secretsRows,
-			formats.IacSecretsRow{
+			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
-				File:             secret.File,
-				LineColumn:       secret.LineColumn,
-				Text:             secret.Text,
-				Type:             secret.Type,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       secret.File,
+					LineColumn: secret.LineColumn,
+					Text:       secret.Text,
+				},
+				Type: secret.Type,
 			},
 		)
 	}
@@ -323,7 +326,7 @@ func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecr
 	return secretsRows
 }
 
-func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
+func PrintSecretsTable(secrets []SourceCodeScanResult, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
 		log.Output()
@@ -334,22 +337,24 @@ func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool)
 }
 
 // Prepare iacs for all non-table formats (without style or emoji)
-func PrepareIacs(iacs []IacOrSecretResult) []formats.IacSecretsRow {
+func PrepareIacs(iacs []SourceCodeScanResult) []formats.SourceCodeRow {
 	return prepareIacs(iacs, false)
 }
 
-func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
-	var iacRows []formats.IacSecretsRow
+func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var iacRows []formats.SourceCodeRow
 	for _, iac := range iacs {
 		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
 		iacRows = append(iacRows,
-			formats.IacSecretsRow{
+			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
-				File:             iac.File,
-				LineColumn:       iac.LineColumn,
-				Text:             iac.Text,
-				Type:             iac.Type,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       iac.File,
+					LineColumn: iac.LineColumn,
+					Text:       iac.Text,
+				},
+				Type: iac.Type,
 			},
 		)
 	}
@@ -361,12 +366,71 @@ func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow
 	return iacRows
 }
 
-func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
+func PrintIacTable(iacs []SourceCodeScanResult, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
 		log.Output()
 		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
+	}
+	return nil
+}
+
+func PrepareSast(sasts []SourceCodeScanResult) []formats.SourceCodeRow {
+	return prepareSast(sasts, false)
+}
+
+func prepareSast(sasts []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var sastRows []formats.SourceCodeRow
+	for _, sast := range sasts {
+		currSeverity := GetSeverity(sast.Severity, ApplicableStringValue)
+		sastRows = append(sastRows,
+			formats.SourceCodeRow{
+				Severity:         currSeverity.printableTitle(isTable),
+				SeverityNumValue: currSeverity.numValue,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       sast.File,
+					LineColumn: sast.LineColumn,
+					Text:       sast.Text,
+				},
+				Type:     sast.Type,
+				CodeFlow: toSourceCodeCodeFlowRow(sast, isTable),
+			},
+		)
+	}
+
+	sort.Slice(sastRows, func(i, j int) bool {
+		return sastRows[i].SeverityNumValue > sastRows[j].SeverityNumValue
+	})
+
+	return sastRows
+}
+
+func toSourceCodeCodeFlowRow(result SourceCodeScanResult, isTable bool) (flows [][]formats.SourceCodeLocationRow) {
+	if isTable {
+		// Not displaying in table
+		return
+	}
+	for _, flowStack := range result.CodeFlow {
+		rowFlow := []formats.SourceCodeLocationRow{}
+		for _, location := range *flowStack {
+			rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
+				File:       location.File,
+				LineColumn: location.LineColumn,
+				Text:       location.Text,
+			})
+		}
+		flows = append(flows, rowFlow)
+	}
+	return
+}
+
+func PrintSastTable(sast []SourceCodeScanResult, entitledForSastScan bool) error {
+	if entitledForSastScan {
+		sastRows := prepareSast(sast, true)
+		log.Output()
+		return coreutils.PrintTable(formats.ConvertToSastTableRow(sastRows), "Static Application Security Testing (SAST)",
+			"✨ No Static Application Security Testing vulnerabilities were found ✨", false)
 	}
 	return nil
 }

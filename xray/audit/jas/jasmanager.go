@@ -2,6 +2,10 @@ package jas
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -10,8 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
 )
 
 var (
@@ -96,6 +98,16 @@ func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDepe
 		progress.SetHeadlineMsg("Running IaC scanning")
 	}
 	scanResults.IacScanResults, err = getIacScanResults(scanner)
+	if err != nil {
+		return
+	}
+	if !version.NewVersion(utils.AnalyzerManagerVersion).AtLeast(utils.MinAnalyzerManagerVersionForSast) {
+		return
+	}
+	if progress != nil {
+		progress.SetHeadlineMsg("Running SAST scanning")
+	}
+	scanResults.SastResults, err = getSastScanResults(scanner)
 	return
 }
 
@@ -119,36 +131,46 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func getIacOrSecretsScanResults(resultsFileName, workingDir string, isSecret bool) ([]utils.IacOrSecretResult, error) {
+func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) (results []utils.SourceCodeScanResult, err error) {
+	// Read Sarif format results generated from the Jas scanner
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	var results []*sarif.Result
+	var sarifResults []*sarif.Result
 	if len(report.Runs) > 0 {
-		results = report.Runs[0].Results
+		// Jas scanners returns results in a single run entry
+		sarifResults = report.Runs[0].Results
 	}
+	resultPointers := convertSarifResultsToSourceCodeScanResults(sarifResults, workingDir, scanType)
+	for _, res := range resultPointers {
+		results = append(results, *res)
+	}
+	return results, nil
+}
 
-	var iacOrSecretResults []utils.IacOrSecretResult
-	for _, result := range results {
+func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, workingDir string, scanType utils.JasScanType) []*utils.SourceCodeScanResult {
+	var sourceCodeScanResults []*utils.SourceCodeScanResult
+	for _, sarifResult := range sarifResults {
 		// Describes a request to “suppress” a result (to exclude it from result lists)
-		if len(result.Suppressions) > 0 {
+		if len(sarifResult.Suppressions) > 0 {
 			continue
 		}
-		text := *result.Message.Text
-		if isSecret {
-			text = hideSecret(*result.Locations[0].PhysicalLocation.Region.Snippet.Text)
+		// Convert
+		currentResult := utils.GetResultIfExists(sarifResult, workingDir, sourceCodeScanResults)
+		if currentResult == nil {
+			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
+			// Set specific Jas scan attributes
+			if scanType == utils.Secrets {
+				currentResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
+			}
+			sourceCodeScanResults = append(sourceCodeScanResults, currentResult)
 		}
-		newResult := utils.IacOrSecretResult{
-			Severity:   utils.GetResultSeverity(result),
-			File:       utils.ExtractRelativePath(utils.GetResultFileName(result), workingDir),
-			LineColumn: utils.GetResultLocationInFile(result),
-			Text:       text,
-			Type:       *result.RuleID,
+		if scanType == utils.Sast {
+			currentResult.CodeFlow = append(currentResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
 		}
-		iacOrSecretResults = append(iacOrSecretResults, newResult)
 	}
-	return iacOrSecretResults, nil
+	return sourceCodeScanResults
 }
 
 func createScannersConfigFile(fileName string, fileContent interface{}) error {

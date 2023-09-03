@@ -50,6 +50,31 @@ type sarifProperties struct {
 	CodeFlows           [][]formats.SourceCodeLocationRow
 }
 
+type ResultsWriter struct {
+	results                *ExtendedScanResults
+	simpleJsonError        []formats.SimpleJsonError
+	format                 OutputFormat
+	includeVulnerabilities bool
+	includeLicenses        bool
+	isMultipleRoots        bool
+	printExtended          bool
+	isBinaryScan           bool
+	messages               []string
+}
+
+func NewResultsWriter(extendedScanResults *ExtendedScanResults) *ResultsWriter {
+	return &ResultsWriter{results: extendedScanResults}
+}
+
+func (rw *ResultsWriter) name() {
+
+}
+
+func (rw *ResultsWriter) SetOutputFormat(format OutputFormat) *ResultsWriter {
+	rw.format = format
+	return rw
+}
+
 // PrintScanResults prints the scan results in the specified format.
 // Note that errors are printed only with SimpleJson format.
 //
@@ -62,20 +87,20 @@ type sarifProperties struct {
 // printExtended -If true, show extended results.
 // scan - If true, use an output layout suitable for `jf scan` or `jf docker scan` results. Otherwise, use a layout compatible for `jf audit` .
 // messages - Option array of messages, to be displayed if the format is Table
-func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, isBinaryScan bool, messages []string) error {
-	switch format {
+func (rw *ResultsWriter) PrintScanResults() error {
+	switch rw.format {
 	case Table:
-		return printScanResultsTables(results, isBinaryScan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, messages)
+		return rw.printScanResultsTables()
 	case SimpleJson:
-		jsonTable, err := convertScanToSimpleJson(results, simpleJsonError, isMultipleRoots, includeLicenses, false)
+		jsonTable, err := rw.convertScanToSimpleJson(false)
 		if err != nil {
 			return err
 		}
 		return PrintJson(jsonTable)
 	case Json:
-		return PrintJson(results.getXrayScanResults())
+		return PrintJson(rw.results.getXrayScanResults())
 	case Sarif:
-		sarifFile, err := GenerateSarifFileFromScan(results, isMultipleRoots, false, "JFrog Security", coreutils.JFrogComUrl+"xray/")
+		sarifFile, err := rw.generateSarifFileFromScan(false, "JFrog Security", coreutils.JFrogComUrl+"xray/")
 		if err != nil {
 			return err
 		}
@@ -84,40 +109,78 @@ func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.Si
 	return nil
 }
 
-func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool, messages []string) (err error) {
-	printMessages(messages)
-	violations, vulnerabilities, licenses := SplitScanResults(results.getXrayScanResults())
-	if len(results.getXrayScanResults()) > 0 {
+func (rw *ResultsWriter) SetSimpleJsonError(jsonErrors []formats.SimpleJsonError) *ResultsWriter {
+	rw.simpleJsonError = jsonErrors
+	return rw
+}
+
+func (rw *ResultsWriter) SetIncludeVulnerabilities(includeVulnerabilities bool) *ResultsWriter {
+	rw.includeVulnerabilities = includeVulnerabilities
+	return rw
+}
+
+func (rw *ResultsWriter) SetIncludeLicenses(licenses bool) *ResultsWriter {
+	rw.includeLicenses = licenses
+	return rw
+}
+
+func (rw *ResultsWriter) SetIsMultipleRootProject(IsMultipleRootProject bool) *ResultsWriter {
+	rw.isMultipleRoots = IsMultipleRootProject
+	return rw
+}
+
+func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWriter {
+	rw.printExtended = extendedTable
+	return rw
+}
+
+func (rw *ResultsWriter) SetScanType(dependency bool) *ResultsWriter {
+	// TODO fix this
+	rw.isBinaryScan = dependency
+	return rw
+
+}
+
+func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
+	rw.messages = messages
+	return rw
+
+}
+
+func (rw *ResultsWriter) printScanResultsTables() (err error) {
+	printMessages(rw.messages)
+	violations, vulnerabilities, licenses := SplitScanResults(rw.results.getXrayScanResults())
+	if len(rw.results.getXrayScanResults()) > 0 {
 		var resultsPath string
-		if resultsPath, err = writeJsonResults(results); err != nil {
+		if resultsPath, err = writeJsonResults(rw.results); err != nil {
 			return
 		}
 		printMessage(coreutils.PrintTitle("The full scan results are available here: ") + coreutils.PrintLink(resultsPath))
 	}
 	log.Output()
-	if includeVulnerabilities {
-		err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, isBinaryScan)
+	if rw.includeVulnerabilities {
+		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.isBinaryScan)
 	} else {
-		err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended, isBinaryScan)
+		err = PrintViolationsTable(violations, rw.results, rw.isMultipleRoots, rw.printExtended, rw.isBinaryScan)
 	}
 	if err != nil {
 		return
 	}
-	if includeLicenses {
-		if err = PrintLicensesTable(licenses, printExtended, isBinaryScan); err != nil {
+	if rw.includeLicenses {
+		if err = PrintLicensesTable(licenses, rw.printExtended, rw.isBinaryScan); err != nil {
 			return
 		}
 	}
-	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
+	if err = PrintSecretsTable(rw.results.SecretsScanResults, rw.results.EntitledForJas); err != nil {
 		return
 	}
-	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
+	if err = PrintIacTable(rw.results.IacScanResults, rw.results.EntitledForJas); err != nil {
 		return
 	}
 	if !version.NewVersion(AnalyzerManagerVersion).AtLeast(MinAnalyzerManagerVersionForSast) {
 		return
 	}
-	return PrintSastTable(results.SastResults, results.EntitledForJas)
+	return PrintSastTable(rw.results.SastResults, rw.results.EntitledForJas)
 }
 
 func printMessages(messages []string) {
@@ -133,13 +196,13 @@ func printMessage(message string) {
 	log.Output("💬" + message)
 }
 
-func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool, scanningTool, toolURI string) (string, error) {
+func (rw *ResultsWriter) generateSarifFileFromScan(markdownOutput bool, scanningTool, toolURI string) (string, error) {
 	report, err := sarif.New(sarif.Version210)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
 	run := sarif.NewRunWithInformationURI(scanningTool, toolURI)
-	if err = convertScanToSarif(run, extendedResults, isMultipleRoots, markdownOutput); err != nil {
+	if err = rw.convertScanToSarif(run, markdownOutput); err != nil {
 		return "", err
 	}
 	report.AddRun(run)
@@ -151,18 +214,19 @@ func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleR
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+func (rw *ResultsWriter) convertScanToSimpleJson(simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+	extendedResults := rw.results
 	violations, vulnerabilities, licenses := SplitScanResults(extendedResults.XrayResults)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
-		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, extendedResults, isMultipleRoots, simplifiedOutput)
+		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, extendedResults, rw.isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
 		jsonTable.Vulnerabilities = vulJsonTable
 	}
 	if len(violations) > 0 {
-		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, extendedResults, isMultipleRoots, simplifiedOutput)
+		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, extendedResults, rw.isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
@@ -182,21 +246,20 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		sastRows := PrepareSast(extendedResults.SastResults)
 		jsonTable.Sast = sastRows
 	}
-	if includeLicenses {
+	if rw.includeLicenses {
 		licJsonTable, err := PrepareLicenses(licenses)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
 		jsonTable.Licenses = licJsonTable
 	}
-	jsonTable.Errors = errors
+	jsonTable.Errors = rw.simpleJsonError
 
 	return jsonTable, nil
 }
 
-func convertScanToSarif(run *sarif.Run, extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool) error {
-	var errors []formats.SimpleJsonError
-	jsonTable, err := convertScanToSimpleJson(extendedResults, errors, isMultipleRoots, true, markdownOutput)
+func (rw *ResultsWriter) convertScanToSarif(run *sarif.Run, markdownOutput bool) error {
+	jsonTable, err := rw.convertScanToSimpleJson(markdownOutput)
 	if err != nil {
 		return err
 	}

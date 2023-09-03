@@ -80,7 +80,10 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			sarifOutput, err := GenerateSarifFileFromScan(testCase.extendedResults, testCase.isMultipleRoots, testCase.markdownOutput, "JFrog Security", "https://example.com/")
+			rw := NewResultsWriter(testCase.extendedResults).
+				SetIsMultipleRootProject(testCase.isMultipleRoots)
+
+			sarifOutput, err := rw.generateSarifFileFromScan(testCase.markdownOutput, "JFrog Security", "https://example.com/")
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expectedSarifOutput, sarifOutput)
 		})

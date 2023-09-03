@@ -273,7 +273,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	defer cleanUp()
 
 	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
-	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "commands", "testdata", "applicability-scan", "empty-results.sarif")
+	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "empty-results.sarif")
 
 	// Act
 	results, err := applicabilityManager.getScanResults()

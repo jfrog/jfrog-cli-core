@@ -178,5 +178,5 @@ func InitJasTest(t *testing.T, workingDirs ...string) (*JasScanner, func()) {
 }
 
 func GetTestDataPath() string {
-	return filepath.Join("..", "..", "commands", "testdata")
+	return filepath.Join("..", "..", "..", "testdata")
 }

@@ -179,12 +179,14 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (ent
 	}
 
 	entitlements = &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
+	log.Debug(fmt.Sprintf("entitlements results: JAS: %t XSC: %t", jasEntitle, xscEntitled))
 	// Handle actions needed in case of specific entitlement.
 	if entitlements.Jas {
 		// Download the analyzer manager in a background routine.
 		entitlements.errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
 	}
 	if entitlements.Xsc {
+		log.Info("XSC version:", serverDetails.XscVersion)
 		params.xscVersion = serverDetails.XscVersion
 	}
 	return entitlements, err

@@ -1,6 +1,9 @@
 package jas
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -10,7 +13,6 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"strings"
 )
 
 const (
@@ -108,11 +110,12 @@ func (a *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = a.runAnalyzerManager(); err != nil {
 		return
 	}
-	wdScanResults, err := a.getScanResults()
-	for cve := range wdScanResults {
-		if _, exists := a.applicabilityScanResults[cve]; !exists {
-			a.applicabilityScanResults[cve] = wdScanResults[cve]
-		}
+	var workingDirResults map[string]string
+	if workingDirResults, err = a.getScanResults(); err != nil {
+		return
+	}
+	for cve, result := range workingDirResults {
+		a.applicabilityScanResults[cve] = result
 	}
 	return
 }
@@ -157,7 +160,7 @@ func (a *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 // Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for
 // advance security feature
 func (a *ApplicabilityScanManager) runAnalyzerManager() error {
-	return a.scanner.analyzerManager.Exec(a.scanner.configFileName, applicabilityScanCommand, a.scanner.serverDetails)
+	return a.scanner.analyzerManager.Exec(a.scanner.configFileName, applicabilityScanCommand, filepath.Dir(a.scanner.analyzerManager.AnalyzerManagerFullPath), a.scanner.serverDetails)
 }
 
 func (a *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {

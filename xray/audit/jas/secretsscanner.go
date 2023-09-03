@@ -1,6 +1,7 @@
 package jas
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -13,7 +14,7 @@ const (
 )
 
 type SecretScanManager struct {
-	secretsScannerResults []utils.IacOrSecretResult
+	secretsScannerResults []utils.SourceCodeScanResult
 	scanner               *AdvancedSecurityScanner
 }
 
@@ -24,7 +25,7 @@ type SecretScanManager struct {
 // Return values:
 // []utils.IacOrSecretResult: a list of the secrets that were found.
 // error: An error object (if any).
-func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.IacOrSecretResult, err error) {
+func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.SourceCodeScanResult, err error) {
 	secretScanManager := newSecretsScanManager(scanner)
 	log.Info("Running secrets scanning...")
 	if err = secretScanManager.scanner.Run(secretScanManager); err != nil {
@@ -33,14 +34,14 @@ func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.Ia
 	}
 	results = secretScanManager.secretsScannerResults
 	if len(results) > 0 {
-		log.Info(len(results), "secrets were found")
+		log.Info("Found", len(results), "secrets")
 	}
 	return
 }
 
 func newSecretsScanManager(scanner *AdvancedSecurityScanner) (manager *SecretScanManager) {
 	return &SecretScanManager{
-		secretsScannerResults: []utils.IacOrSecretResult{},
+		secretsScannerResults: []utils.SourceCodeScanResult{},
 		scanner:               scanner,
 	}
 }
@@ -53,8 +54,10 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.IacOrSecretResult
-	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, wd, true)
+	var workingDirResults []utils.SourceCodeScanResult
+	if workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.Secrets); err != nil {
+		return
+	}
 	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
 	return
 }
@@ -85,7 +88,7 @@ func (s *SecretScanManager) createConfigFile(currentWd string) error {
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
-	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, s.scanner.serverDetails)
+	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, filepath.Dir(s.scanner.analyzerManager.AnalyzerManagerFullPath), s.scanner.serverDetails)
 }
 
 func hideSecret(secret string) string {

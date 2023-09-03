@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -16,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
-	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 type SarifLevel string
@@ -41,23 +38,24 @@ var (
 )
 
 const (
-	EntitlementsMinVersion        = "3.66.5"
-	ApplicabilityFeatureId        = "contextual_analysis"
-	AnalyzerManagerZipName        = "analyzerManager.zip"
-	analyzerManagerVersion        = "1.2.4.1953469"
-	analyzerManagerDownloadPath   = "xsc-gen-exe-analyzer-manager-local/v1"
-	analyzerManagerDirName        = "analyzerManager"
-	analyzerManagerExecutableName = "analyzerManager"
-	analyzerManagerLogDirName     = "analyzerManagerLogs"
-	jfUserEnvVariable             = "JF_USER"
-	jfPasswordEnvVariable         = "JF_PASS"
-	jfTokenEnvVariable            = "JF_TOKEN"
-	jfPlatformUrlEnvVariable      = "JF_PLATFORM_URL"
-	logDirEnvVariable             = "AM_LOG_DIRECTORY"
-	notEntitledExitCode           = 31
-	unsupportedCommandExitCode    = 13
-	unsupportedOsExitCode         = 55
-	ErrFailedScannerRun           = "failed to run %s scan. Exit code received: %s"
+	EntitlementsMinVersion           = "3.66.5"
+	ApplicabilityFeatureId           = "contextual_analysis"
+	AnalyzerManagerZipName           = "analyzerManager.zip"
+	AnalyzerManagerVersion           = "1.2.4.1953469"
+	MinAnalyzerManagerVersionForSast = "1.3"
+	analyzerManagerDownloadPath      = "xsc-gen-exe-analyzer-manager-local/v1"
+	analyzerManagerDirName           = "analyzerManager"
+	analyzerManagerExecutableName    = "analyzerManager"
+	analyzerManagerLogDirName        = "analyzerManagerLogs"
+	jfUserEnvVariable                = "JF_USER"
+	jfPasswordEnvVariable            = "JF_PASS"
+	jfTokenEnvVariable               = "JF_TOKEN"
+	jfPlatformUrlEnvVariable         = "JF_PLATFORM_URL"
+	logDirEnvVariable                = "AM_LOG_DIRECTORY"
+	notEntitledExitCode              = 31
+	unsupportedCommandExitCode       = 13
+	unsupportedOsExitCode            = 55
+	ErrFailedScannerRun              = "failed to run %s scan. Exit code received: %s"
 )
 
 type ApplicabilityStatus string
@@ -68,15 +66,16 @@ const (
 	ApplicabilityUndeterminedStringValue ApplicabilityStatus = "Undetermined"
 )
 
-type ScanType string
+type JasScanType string
 
 const (
-	Applicability ScanType = "Applicability"
-	Secrets       ScanType = "Secrets"
-	IaC           ScanType = "IaC"
+	Applicability JasScanType = "Applicability"
+	Secrets       JasScanType = "Secrets"
+	IaC           JasScanType = "IaC"
+	Sast          JasScanType = "Sast"
 )
 
-func (st ScanType) FormattedError(err error) error {
+func (st JasScanType) FormattedError(err error) error {
 	if err != nil {
 		return fmt.Errorf(ErrFailedScannerRun, st, err.Error())
 	}
@@ -89,20 +88,26 @@ var exitCodeErrorsMap = map[int]string{
 	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
 }
 
-type IacOrSecretResult struct {
-	Severity   string
+type SourceCodeLocation struct {
 	File       string
 	LineColumn string
-	Type       string
 	Text       string
+}
+
+type SourceCodeScanResult struct {
+	SourceCodeLocation
+	Severity string
+	Type     string
+	CodeFlow []*[]SourceCodeLocation
 }
 
 type ExtendedScanResults struct {
 	XrayResults              []services.ScanResponse
 	ScannedTechnologies      []coreutils.Technology
 	ApplicabilityScanResults map[string]ApplicabilityStatus
-	SecretsScanResults       []IacOrSecretResult
-	IacScanResults           []IacOrSecretResult
+	SecretsScanResults       []SourceCodeScanResult
+	IacScanResults           []SourceCodeScanResult
+	SastResults              []SourceCodeScanResult
 	EntitledForJas           bool
 }
 
@@ -114,7 +119,7 @@ type AnalyzerManager struct {
 	AnalyzerManagerFullPath string
 }
 
-func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *config.ServerDetails) (err error) {
+func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return err
 	}
@@ -126,7 +131,7 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand string, serverDetails *c
 			}
 		}
 	}()
-	cmd.Dir = filepath.Dir(am.AnalyzerManagerFullPath)
+	cmd.Dir = workingDir
 	err = cmd.Run()
 	return errorutils.CheckError(err)
 }
@@ -136,7 +141,7 @@ func GetAnalyzerManagerDownloadPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(analyzerManagerDownloadPath, analyzerManagerVersion, osAndArc, AnalyzerManagerZipName), nil
+	return path.Join(analyzerManagerDownloadPath, AnalyzerManagerVersion, osAndArc, AnalyzerManagerZipName), nil
 }
 
 func GetAnalyzerManagerDirAbsolutePath() (string, error) {
@@ -197,7 +202,7 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
 	return nil
 }
 
-func ParseAnalyzerManagerError(scanner ScanType, err error) error {
+func ParseAnalyzerManagerError(scanner JasScanType, err error) error {
 	var exitError *exec.ExitError
 	if errors.As(err, &exitError) {
 		exitCode := exitError.ExitCode()
@@ -219,42 +224,6 @@ func RemoveDuplicateValues(stringSlice []string) []string {
 		}
 	}
 	return finalSlice
-}
-
-func GetResultFileName(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		filePath := result.Locations[0].PhysicalLocation.ArtifactLocation.URI
-		if filePath != nil {
-			return *filePath
-		}
-	}
-	return ""
-}
-
-func GetResultLocationInFile(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		startLine := result.Locations[0].PhysicalLocation.Region.StartLine
-		startColumn := result.Locations[0].PhysicalLocation.Region.StartColumn
-		if startLine != nil && startColumn != nil {
-			return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
-		}
-	}
-	return ""
-}
-
-func ExtractRelativePath(resultPath string, projectRoot string) string {
-	filePrefix := "file://"
-	relativePath := strings.ReplaceAll(strings.ReplaceAll(resultPath, projectRoot, ""), filePrefix, "")
-	return relativePath
-}
-
-func GetResultSeverity(result *sarif.Result) string {
-	if result.Level != nil {
-		if severity, ok := levelToSeverity[SarifLevel(strings.ToLower(*result.Level))]; ok {
-			return severity
-		}
-	}
-	return SeverityDefaultValue
 }
 
 // Receives a list of relative path working dirs, returns a list of full paths working dirs

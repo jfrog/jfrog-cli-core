@@ -1,26 +1,20 @@
 package jas
 
 import (
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewSecretsScanManager(t *testing.T) {
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
 	secretScanManager := newSecretsScanManager(scanner)
 
-	assert.NoError(t, err)
 	assert.NotEmpty(t, secretScanManager)
 	assert.NotEmpty(t, secretScanManager.scanner.configFileName)
 	assert.NotEmpty(t, secretScanManager.scanner.resultsFileName)
@@ -28,14 +22,8 @@ func TestNewSecretsScanManager(t *testing.T) {
 }
 
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
 	secretScanManager := newSecretsScanManager(scanner)
 
 	currWd, err := coreutils.GetWorkingDirectory()
@@ -60,39 +48,23 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 		os.Clearenv()
 	}()
 
-	// Arrange
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
+
 	secretScanManager := newSecretsScanManager(scanner)
-
-	// Act
-	err = secretScanManager.runAnalyzerManager()
-
-	// Assert
-	assert.Error(t, err)
+	assert.Error(t, secretScanManager.runAnalyzerManager())
 }
 
 func TestParseResults_EmptyResults(t *testing.T) {
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
 	// Arrange
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
 	secretScanManager := newSecretsScanManager(scanner)
 	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "no-secrets.sarif")
 
 	// Act
-	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	var err error
+	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], utils.Secrets)
 
 	// Assert
 	assert.NoError(t, err)
@@ -101,19 +73,15 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	// Arrange
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
+
 	secretScanManager := newSecretsScanManager(scanner)
 	secretScanManager.scanner.resultsFileName = filepath.Join("..", "..", "commands", "testdata", "secrets-scan", "contain-secrets.sarif")
 
 	// Act
-	secretScanManager.secretsScannerResults, err = getIacOrSecretsScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], false)
+	var err error
+	secretScanManager.secretsScannerResults, err = getSourceCodeScanResults(secretScanManager.scanner.resultsFileName, scanner.workingDirs[0], utils.Secrets)
 
 	// Assert
 	assert.NoError(t, err)
@@ -122,14 +90,9 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 }
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewAdvancedSecurityScanner(nil, &fakeServerDetails)
-	assert.NoError(t, err)
-	defer func() {
-		if scanner.scannerDirCleanupFunc != nil {
-			assert.NoError(t, scanner.scannerDirCleanupFunc())
-		}
-	}()
+	scanner, cleanUp := initJasTest(t)
+	defer cleanUp()
+
 	secretsResults, err := getSecretsScanResults(scanner)
 
 	assert.Error(t, err)

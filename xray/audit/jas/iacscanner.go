@@ -1,6 +1,8 @@
 package jas
 
 import (
+	"path/filepath"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -11,7 +13,7 @@ const (
 )
 
 type IacScanManager struct {
-	iacScannerResults []utils.IacOrSecretResult
+	iacScannerResults []utils.SourceCodeScanResult
 	scanner           *AdvancedSecurityScanner
 }
 
@@ -20,10 +22,10 @@ type IacScanManager struct {
 // Running the analyzer manager executable.
 // Parsing the analyzer manager results.
 // Return values:
-// []utils.IacOrSecretResult: a list of the iac violations that were found.
+// []utils.SourceCodeScanResult: a list of the iac violations that were found.
 // bool: true if the user is entitled to iac scan, false otherwise.
 // error: An error object (if any).
-func getIacScanResults(scanner *AdvancedSecurityScanner) (results []utils.IacOrSecretResult, err error) {
+func getIacScanResults(scanner *AdvancedSecurityScanner) (results []utils.SourceCodeScanResult, err error) {
 	iacScanManager := newIacScanManager(scanner)
 	log.Info("Running IaC scanning...")
 	if err = iacScanManager.scanner.Run(iacScanManager); err != nil {
@@ -39,7 +41,7 @@ func getIacScanResults(scanner *AdvancedSecurityScanner) (results []utils.IacOrS
 
 func newIacScanManager(scanner *AdvancedSecurityScanner) (manager *IacScanManager) {
 	return &IacScanManager{
-		iacScannerResults: []utils.IacOrSecretResult{},
+		iacScannerResults: []utils.SourceCodeScanResult{},
 		scanner:           scanner,
 	}
 }
@@ -52,8 +54,10 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.IacOrSecretResult
-	workingDirResults, err = getIacOrSecretsScanResults(scanner.resultsFileName, wd, false)
+	var workingDirResults []utils.SourceCodeScanResult
+	if workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.IaC); err != nil {
+		return
+	}
 	iac.iacScannerResults = append(iac.iacScannerResults, workingDirResults...)
 	return
 }
@@ -84,5 +88,5 @@ func (iac *IacScanManager) createConfigFile(currentWd string) error {
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {
-	return iac.scanner.analyzerManager.Exec(iac.scanner.configFileName, iacScanCommand, iac.scanner.serverDetails)
+	return iac.scanner.analyzerManager.Exec(iac.scanner.configFileName, iacScanCommand, filepath.Dir(iac.scanner.analyzerManager.AnalyzerManagerFullPath), iac.scanner.serverDetails)
 }

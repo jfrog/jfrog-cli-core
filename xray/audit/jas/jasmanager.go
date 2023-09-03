@@ -131,7 +131,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) ([]utils.SourceCodeScanResult, error) {
+func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) (results []utils.SourceCodeScanResult, err error) {
 	// Read Sarif format results generated from the Jas scanner
 	report, err := sarif.Open(resultsFileName)
 	if errorutils.CheckError(err) != nil {
@@ -142,25 +142,29 @@ func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils
 		// Jas scanners returns results in a single run entry
 		sarifResults = report.Runs[0].Results
 	}
-	return convertSarifResultsToSourceCodeScanResults(sarifResults, workingDir, scanType), nil
+	resultPointers := convertSarifResultsToSourceCodeScanResults(sarifResults, workingDir, scanType)
+	for _, res := range resultPointers {
+		results = append(results, *res)
+	}
+	return results, nil
 }
 
-func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, workingDir string, scanType utils.JasScanType) []utils.SourceCodeScanResult {
-	var sourceCodeScanResults []utils.SourceCodeScanResult
+func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, workingDir string, scanType utils.JasScanType) []*utils.SourceCodeScanResult {
+	var sourceCodeScanResults []*utils.SourceCodeScanResult
 	for _, sarifResult := range sarifResults {
 		// Describes a request to “suppress” a result (to exclude it from result lists)
 		if len(sarifResult.Suppressions) > 0 {
 			continue
 		}
 		// Convert
-		currentResult := utils.GetResultIfExists(sarifResult, workingDir, &sourceCodeScanResults)
+		currentResult := utils.GetResultIfExists(sarifResult, workingDir, sourceCodeScanResults)
 		if currentResult == nil {
 			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
 			// Set specific Jas scan attributes
 			if scanType == utils.Secrets {
 				currentResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
 			}
-			sourceCodeScanResults = append(sourceCodeScanResults, *currentResult)
+			sourceCodeScanResults = append(sourceCodeScanResults, currentResult)
 		}
 		if scanType == utils.Sast {
 			currentResult.CodeFlow = append(currentResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)

@@ -8,13 +8,13 @@ import (
 )
 
 // If exists SourceCodeScanResult with the same location as the provided SarifResult, return it
-func GetResultIfExists(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) *SourceCodeScanResult {
+func GetResultIfExists(result *sarif.Result, workingDir string, results []*SourceCodeScanResult) *SourceCodeScanResult {
 	file := ExtractRelativePath(GetResultFileName(result), workingDir)
 	lineCol := GetResultLocationInFile(result)
 	text := *result.Message.Text
-	for _, result := range *results {
+	for _, result := range results {
 		if result.File == file && result.LineColumn == lineCol && result.Text == text {
-			return &result
+			return result
 		}
 	}
 	return nil
@@ -55,19 +55,19 @@ func extractThreadFlows(threadFlows []*sarif.ThreadFlow, workingDir string) (flo
 			continue
 		}
 		flow := extractStackTraceLocations(threadFlow.Locations, workingDir)
-		if len(*flow) > 0 {
-			flows = append(flows, flow)
+		if len(flow) > 0 {
+			flows = append(flows, &flow)
 		}
 	}
 	return
 }
 
-func extractStackTraceLocations(locations []*sarif.ThreadFlowLocation, workingDir string) (flow *[]SourceCodeLocation) {
+func extractStackTraceLocations(locations []*sarif.ThreadFlowLocation, workingDir string) (flow []SourceCodeLocation) {
 	for _, location := range locations {
 		if location == nil {
 			continue
 		}
-		*flow = append(*flow, SourceCodeLocation{
+		flow = append(flow, SourceCodeLocation{
 			File:       ExtractRelativePath(getResultFileName(location.Location), workingDir),
 			LineColumn: getResultLocationInFile(location.Location),
 			Text:       GetResultLocationSnippet(location.Location),

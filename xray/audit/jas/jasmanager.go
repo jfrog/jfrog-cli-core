@@ -153,7 +153,7 @@ func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, wo
 			continue
 		}
 		// Convert
-		currentResult := utils.IsSarifResultExistsInSourceCodeScanResults(sarifResult, workingDir, &sourceCodeScanResults)
+		currentResult := utils.GetResultIfExists(sarifResult, workingDir, &sourceCodeScanResults)
 		isNewEntry := currentResult == nil
 		if isNewEntry {
 			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)

@@ -8,7 +8,7 @@ import (
 )
 
 // If exists SourceCodeScanResult with the same location as the provided SarifResult, return it
-func IsSarifResultExistsInSourceCodeScanResults(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) *SourceCodeScanResult {
+func GetResultIfExists(result *sarif.Result, workingDir string, results *[]SourceCodeScanResult) *SourceCodeScanResult {
 	file := ExtractRelativePath(GetResultFileName(result), workingDir)
 	lineCol := GetResultLocationInFile(result)
 	text := *result.Message.Text

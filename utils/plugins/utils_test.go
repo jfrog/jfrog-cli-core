@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
@@ -88,7 +89,7 @@ func setupPluginsTestingEnv(t *testing.T, pluginsDirName string) string {
 	assert.NoError(t, err)
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
-	err = fileutils.CopyDir(filepath.Join(wd, "testdata", coreutils.JfrogPluginsDirName, pluginsDirName), filepath.Join(testHomeDir, coreutils.JfrogPluginsDirName), true, nil)
+	err = biutils.CopyDir(filepath.Join(wd, "testdata", coreutils.JfrogPluginsDirName, pluginsDirName), filepath.Join(testHomeDir, coreutils.JfrogPluginsDirName), true, nil)
 	assert.NoError(t, err)
 	err = coreutils.ChmodPluginsDirectoryContent()
 	assert.NoError(t, err)

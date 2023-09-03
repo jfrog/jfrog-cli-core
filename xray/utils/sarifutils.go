@@ -122,7 +122,7 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 
 func GetResultSeverity(result *sarif.Result) string {
 	if result.Level != nil {
-		if severity, ok := levelToSeverity[*result.Level]; ok {
+		if severity, ok := levelToSeverity[SarifLevel(strings.ToLower(*result.Level))]; ok {
 			return severity
 		}
 	}

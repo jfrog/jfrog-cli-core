@@ -219,7 +219,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	rootNode := fullDependenciesTree[0]
 	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, rootNode.Id, "", "")
 	if ca.Progress() != nil {
-		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph[0].Nodes)-1, projectName, projectVersion))
+		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph.Nodes)-1, projectName, projectVersion))
 	}
 	if projectScope != "" {
 		projectName = projectScope + "/" + projectName
@@ -240,7 +240,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	}
 	packagesStatusMap := sync.Map{}
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
-	err = analyzer.fetchNodesStatus(flattenGraph[0], &packagesStatusMap, rootNode.Id)
+	err = analyzer.fetchNodesStatus(flattenGraph, &packagesStatusMap, rootNode.Id)
 	analyzer.fillGraphRelations(rootNode, &packagesStatusMap,
 		&packagesStatus, "", "", datastructures.MakeSet[string](), true)
 	sort.Slice(packagesStatus, func(i, j int) bool {

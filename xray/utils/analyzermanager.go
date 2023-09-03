@@ -16,8 +16,25 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
+type SarifLevel string
+
+const (
+	Error   SarifLevel = "error"
+	Warning SarifLevel = "warning"
+	Info    SarifLevel = "info"
+	Note    SarifLevel = "note"
+	None    SarifLevel = "none"
+
+	SeverityDefaultValue = "Medium"
+)
+
 var (
-	levelToSeverity = map[string]string{"error": "High", "warning": "Medium", "info": "Low"}
+	// All other values (include default) mapped as 'Medium' severity
+	levelToSeverity = map[SarifLevel]string{
+		Error: "High",
+		Note:  "Low",
+		None:  "Unknown",
+	}
 )
 
 const (
@@ -35,7 +52,6 @@ const (
 	jfTokenEnvVariable               = "JF_TOKEN"
 	jfPlatformUrlEnvVariable         = "JF_PLATFORM_URL"
 	logDirEnvVariable                = "AM_LOG_DIRECTORY"
-	SeverityDefaultValue             = "Medium"
 	notEntitledExitCode              = 31
 	unsupportedCommandExitCode       = 13
 	unsupportedOsExitCode            = 55

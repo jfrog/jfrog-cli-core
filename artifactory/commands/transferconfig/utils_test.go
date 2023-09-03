@@ -3,6 +3,7 @@ package transferconfig
 import (
 	"archive/zip"
 	"bytes"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"golang.org/x/exp/slices"
 	"io"
@@ -43,7 +44,7 @@ func initHandleTypoInAccessBootstrapTest(t *testing.T) (exportDir string, cleanu
 	exportDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
 	testDataPath := filepath.Join("..", "testdata", "artifactory_export")
-	assert.NoError(t, fileutils.CopyDir(testDataPath, exportDir, true, nil))
+	assert.NoError(t, biutils.CopyDir(testDataPath, exportDir, true, nil))
 	cleanupFunc = func() {
 		assert.NoError(t, fileutils.RemoveTempDir(exportDir), "Couldn't remove temp dir")
 	}

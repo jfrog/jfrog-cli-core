@@ -1,6 +1,7 @@
 package utils
 
 import (
+	biutils "github.com/jfrog/build-info-go/utils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"path"
@@ -52,7 +53,7 @@ func createTempDeployableArtifactFile() (filePath string, err error) {
 	if err != nil {
 		return
 	}
-	err = fileutils.CopyFile(tmpDir, summary.Name())
+	err = biutils.CopyFile(tmpDir, summary.Name())
 	if err != nil {
 		return
 	}

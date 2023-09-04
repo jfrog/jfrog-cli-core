@@ -66,13 +66,46 @@ func NewResultsWriter(extendedScanResults *ExtendedScanResults) *ResultsWriter {
 	return &ResultsWriter{results: extendedScanResults}
 }
 
-func (rw *ResultsWriter) name() {
-
-}
-
 func (rw *ResultsWriter) SetOutputFormat(format OutputFormat) *ResultsWriter {
 	rw.format = format
 	return rw
+}
+
+func (rw *ResultsWriter) SetSimpleJsonError(jsonErrors []formats.SimpleJsonError) *ResultsWriter {
+	rw.simpleJsonError = jsonErrors
+	return rw
+}
+
+func (rw *ResultsWriter) SetIncludeVulnerabilities(includeVulnerabilities bool) *ResultsWriter {
+	rw.includeVulnerabilities = includeVulnerabilities
+	return rw
+}
+
+func (rw *ResultsWriter) SetIncludeLicenses(licenses bool) *ResultsWriter {
+	rw.includeLicenses = licenses
+	return rw
+}
+
+func (rw *ResultsWriter) SetIsMultipleRootProject(isMultipleRootProject bool) *ResultsWriter {
+	rw.isMultipleRoots = isMultipleRootProject
+	return rw
+}
+
+func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWriter {
+	rw.printExtended = extendedTable
+	return rw
+}
+
+func (rw *ResultsWriter) SetScanType(isBinaryScan bool) *ResultsWriter {
+	rw.isBinaryScan = isBinaryScan
+	return rw
+
+}
+
+func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
+	rw.messages = messages
+	return rw
+
 }
 
 // PrintScanResults prints the scan results in the specified format.
@@ -109,42 +142,22 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	return nil
 }
 
-func (rw *ResultsWriter) SetSimpleJsonError(jsonErrors []formats.SimpleJsonError) *ResultsWriter {
-	rw.simpleJsonError = jsonErrors
-	return rw
-}
+func (rw *ResultsWriter) generateSarifFileFromScan(markdownOutput bool, scanningTool, toolURI string) (string, error) {
+	report, err := sarif.New(sarif.Version210)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	run := sarif.NewRunWithInformationURI(scanningTool, toolURI)
+	if err = rw.convertScanToSarif(run, markdownOutput); err != nil {
+		return "", err
+	}
+	report.AddRun(run)
+	out, err := json.Marshal(report)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
 
-func (rw *ResultsWriter) SetIncludeVulnerabilities(includeVulnerabilities bool) *ResultsWriter {
-	rw.includeVulnerabilities = includeVulnerabilities
-	return rw
-}
-
-func (rw *ResultsWriter) SetIncludeLicenses(licenses bool) *ResultsWriter {
-	rw.includeLicenses = licenses
-	return rw
-}
-
-func (rw *ResultsWriter) SetIsMultipleRootProject(IsMultipleRootProject bool) *ResultsWriter {
-	rw.isMultipleRoots = IsMultipleRootProject
-	return rw
-}
-
-func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWriter {
-	rw.printExtended = extendedTable
-	return rw
-}
-
-func (rw *ResultsWriter) SetScanType(dependency bool) *ResultsWriter {
-	// TODO fix this
-	rw.isBinaryScan = dependency
-	return rw
-
-}
-
-func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
-	rw.messages = messages
-	return rw
-
+	return clientUtils.IndentJson(out), nil
 }
 
 func (rw *ResultsWriter) printScanResultsTables() (err error) {
@@ -181,37 +194,6 @@ func (rw *ResultsWriter) printScanResultsTables() (err error) {
 		return
 	}
 	return PrintSastTable(rw.results.SastResults, rw.results.EntitledForJas)
-}
-
-func printMessages(messages []string) {
-	if len(messages) > 0 {
-		log.Output()
-	}
-	for _, m := range messages {
-		printMessage(m)
-	}
-}
-
-func printMessage(message string) {
-	log.Output("💬" + message)
-}
-
-func (rw *ResultsWriter) generateSarifFileFromScan(markdownOutput bool, scanningTool, toolURI string) (string, error) {
-	report, err := sarif.New(sarif.Version210)
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	run := sarif.NewRunWithInformationURI(scanningTool, toolURI)
-	if err = rw.convertScanToSarif(run, markdownOutput); err != nil {
-		return "", err
-	}
-	report.AddRun(run)
-	out, err := json.Marshal(report)
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-
-	return clientUtils.IndentJson(out), nil
 }
 
 func (rw *ResultsWriter) convertScanToSimpleJson(simplifiedOutput bool) (formats.SimpleJsonResults, error) {
@@ -271,6 +253,18 @@ func (rw *ResultsWriter) convertScanToSarif(run *sarif.Run, markdownOutput bool)
 	return convertToSourceCodeResultSarif(run, &jsonTable, markdownOutput)
 }
 
+func printMessages(messages []string) {
+	if len(messages) > 0 {
+		log.Output()
+	}
+	for _, m := range messages {
+		printMessage(m)
+	}
+}
+
+func printMessage(message string) {
+	log.Output("💬" + message)
+}
 func convertToVulnerabilityOrViolationSarif(run *sarif.Run, jsonTable *formats.SimpleJsonResults, markdownOutput bool) error {
 	if len(jsonTable.SecurityViolations) > 0 {
 		return convertViolationsToSarif(jsonTable, run, markdownOutput)

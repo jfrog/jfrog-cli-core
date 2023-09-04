@@ -17,7 +17,7 @@ type AuditParams struct {
 
 func NewAuditParams() *AuditParams {
 	return &AuditParams{
-		xrayGraphScanParams: &services.XrayGraphScanParams{},
+		xrayGraphScanParams: &services.XrayGraphScanParams{ScanType: services.Dependency},
 		GraphBasicParams:    &xrayutils.GraphBasicParams{},
 	}
 }

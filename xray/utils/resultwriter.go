@@ -51,15 +51,24 @@ type sarifProperties struct {
 }
 
 type ResultsWriter struct {
-	results                *ExtendedScanResults
-	simpleJsonError        []formats.SimpleJsonError
-	format                 OutputFormat
+	// The scan results.
+	results *ExtendedScanResults
+	// simpleJsonError  Errors to be added to output of the SimpleJson format.
+	simpleJsonError []formats.SimpleJsonError
+	// format  The output format.
+	format OutputFormat
+	// includeVulnerabilities  If true, include all vulnerabilities as part of the output. Else, include violations only.
 	includeVulnerabilities bool
-	includeLicenses        bool
-	isMultipleRoots        bool
-	printExtended          bool
-	isBinaryScan           bool
-	messages               []string
+	// includeLicenses  If true, also include license violations as part of the output.
+	includeLicenses bool
+	// isMultipleRoots  multipleRoots is set to true, in case the given results array contains (or may contain) results of several projects (like in binary scan).
+	isMultipleRoots bool
+	// printExtended, If true, show extended results.
+	printExtended bool
+	// The scanType (binary,docker,dependency)
+	scanType services.ScanType
+	// messages - Option array of messages, to be displayed if the format is Table
+	messages []string
 }
 
 func NewResultsWriter(extendedScanResults *ExtendedScanResults) *ResultsWriter {
@@ -96,12 +105,6 @@ func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWrite
 	return rw
 }
 
-func (rw *ResultsWriter) SetScanType(isBinaryScan bool) *ResultsWriter {
-	rw.isBinaryScan = isBinaryScan
-	return rw
-
-}
-
 func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 	rw.messages = messages
 	return rw
@@ -110,16 +113,6 @@ func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 
 // PrintScanResults prints the scan results in the specified format.
 // Note that errors are printed only with SimpleJson format.
-//
-// results - The scan results.
-// simpleJsonError - Errors to be added to output of the SimpleJson format.
-// format - The output format.
-// includeVulnerabilities - If trie, include all vulnerabilities as part of the output. Else, include violations only.
-// includeLicenses - If true, also include license violations as part of the output.
-// isMultipleRoots - multipleRoots is set to true, in case the given results array contains (or may contain) results of several projects (like in binary scan).
-// printExtended -If true, show extended results.
-// scan - If true, use an output layout suitable for `jf scan` or `jf docker scan` results. Otherwise, use a layout compatible for `jf audit` .
-// messages - Option array of messages, to be displayed if the format is Table
 func (rw *ResultsWriter) PrintScanResults() error {
 	switch rw.format {
 	case Table:
@@ -172,15 +165,15 @@ func (rw *ResultsWriter) printScanResultsTables() (err error) {
 	}
 	log.Output()
 	if rw.includeVulnerabilities {
-		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.isBinaryScan)
+		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
 	} else {
-		err = PrintViolationsTable(violations, rw.results, rw.isMultipleRoots, rw.printExtended, rw.isBinaryScan)
+		err = PrintViolationsTable(violations, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
 	}
 	if err != nil {
 		return
 	}
 	if rw.includeLicenses {
-		if err = PrintLicensesTable(licenses, rw.printExtended, rw.isBinaryScan); err != nil {
+		if err = PrintLicensesTable(licenses, rw.printExtended, rw.scanType); err != nil {
 			return
 		}
 	}

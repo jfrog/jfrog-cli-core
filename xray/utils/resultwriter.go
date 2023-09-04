@@ -82,6 +82,11 @@ func (rw *ResultsWriter) SetOutputFormat(format OutputFormat) *ResultsWriter {
 	return rw
 }
 
+func (rw *ResultsWriter) SetScanType(scanType services.ScanType) *ResultsWriter {
+	rw.scanType = scanType
+	return rw
+}
+
 func (rw *ResultsWriter) SetSimpleJsonError(jsonErrors []formats.SimpleJsonError) *ResultsWriter {
 	rw.simpleJsonError = jsonErrors
 	return rw
@@ -113,7 +118,6 @@ func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 }
 
 func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]string) *ResultsWriter {
-	rw.scanType = services.Docker
 	rw.dockerCommandsMapping = mapping
 	return rw
 }

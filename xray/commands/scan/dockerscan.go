@@ -31,9 +31,7 @@ type DockerScanCommand struct {
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
-	dsc := &DockerScanCommand{ScanCommand: *NewScanCommand()}
-	dsc.scanType = services.Docker
-	return dsc
+	return &DockerScanCommand{ScanCommand: *NewScanCommand()}
 }
 
 func (dsc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {
@@ -134,6 +132,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
 		SetDockerCommandsMapping(dockerCommandsMapping).
+		SetScanType(services.Docker).
 		PrintScanResults(); err != nil {
 		return
 	}

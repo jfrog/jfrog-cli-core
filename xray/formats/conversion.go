@@ -39,6 +39,22 @@ func ConvertToVulnerabilityScanTableRow(rows []VulnerabilityOrViolationRow) (tab
 	return
 }
 
+func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow) (tableRows []vulnerabilityDockerScanTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, vulnerabilityDockerScanTableRow{
+			severity:               rows[i].Severity,
+			severityNumValue:       rows[i].SeverityNumValue,
+			impactedPackageName:    rows[i].ImpactedDependencyName,
+			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
+			ImpactedPackageType:    rows[i].ImpactedDependencyType,
+			fixedVersions:          strings.Join(rows[i].FixedVersions, "\n"),
+			cves:                   convertToCveTableRow(rows[i].Cves),
+			issueId:                rows[i].IssueId,
+		})
+	}
+	return
+}
+
 func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []licenseViolationTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseViolationTableRow{

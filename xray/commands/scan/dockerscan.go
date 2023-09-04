@@ -100,7 +100,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		return fmt.Errorf("failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String())
 	}
 
-	dockerCommandsMapping, err := getDockerCommandsMapping(dsc.imageTag)
+	dockerCommandsMapping, err := mapDockerLayerToCommand(dsc.imageTag)
 	if err != nil {
 		return
 	}
@@ -126,20 +126,6 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-
-	// Replace sha_256 with commands
-	// TODO this needs to be replaced just before printing...ad the impact path here are not generic for all scan
-	for _, res := range extendedScanResults.XrayResults {
-		for _, vul := range res.Vulnerabilities {
-			for _, cop := range vul.Components {
-				compos := &cop.ImpactPaths[0][1]
-				suffix := strings.TrimSuffix(strings.TrimPrefix(compos.FullPath, "sha256__"), ".tar")
-				asn := dockerCommandsMapping[suffix]
-				compos.FullPath = asn
-				compos.ComponentId = asn
-			}
-		}
-	}
 	// Print results
 	if err = xrutils.NewResultsWriter(extendedScanResults).
 		SetOutputFormat(dsc.outputFormat).
@@ -147,14 +133,16 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetIncludeLicenses(dsc.includeLicenses).
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
+		SetDockerCommandsMapping(dockerCommandsMapping).
 		PrintScanResults(); err != nil {
 		return
 	}
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
 }
 
-func getDockerCommandsMapping(imageTag string) (layers map[string]string, err error) {
-	resolver, err := dive.GetImageResolver(1)
+func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]string, err error) {
+	log.Debug("Mapping docker layers into commands ")
+	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
 		return
 	}
@@ -162,12 +150,12 @@ func getDockerCommandsMapping(imageTag string) (layers map[string]string, err er
 	if err != nil {
 		return
 	}
-	// sha256 digest -> command
-	commandsMapping := make(map[string]string)
+	// Create mapping between sha256 hash to dockerfile command.
+	commandsMapping = make(map[string]string)
 	for _, layer := range dockerImage.Layers {
-		commandsMapping[strings.TrimPrefix(layer.Digest, "sha256:")] = strings.TrimSuffix(layer.Command, "# buildkit")
+		commandsMapping[strings.TrimPrefix(layer.Digest, "sha256:")] = layer.Command
 	}
-	return commandsMapping, nil
+	return
 }
 
 // When indexing RPM files inside the docker container, the indexer-app needs to connect to the Xray Server.

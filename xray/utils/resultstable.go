@@ -175,17 +175,20 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extende
 	if err != nil {
 		return err
 	}
-
-	if scanType == services.Binary {
+	switch scanType {
+	case services.Binary:
 		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
+	case services.Docker:
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityDockerScanTableRow(vulnerabilitiesRows), "Vulnerable Dockerfile Commands", "✨ No vulnerable components were found ✨", printExtended)
+	default:
+		var emptyTableMessage string
+		if len(extendedResults.ScannedTechnologies) > 0 {
+			emptyTableMessage = "✨ No vulnerable dependencies were found ✨"
+		} else {
+			emptyTableMessage = coreutils.PrintYellow("🔧 Couldn't determine a package manager or build tool used by this project 🔧")
+		}
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerable Dependencies", emptyTableMessage, printExtended)
 	}
-	var emptyTableMessage string
-	if len(extendedResults.ScannedTechnologies) > 0 {
-		emptyTableMessage = "✨ No vulnerable dependencies were found ✨"
-	} else {
-		emptyTableMessage = coreutils.PrintYellow("🔧 Couldn't determine a package manager or build tool used by this project 🔧")
-	}
-	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerable Dependencies", emptyTableMessage, printExtended)
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)

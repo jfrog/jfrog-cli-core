@@ -1,7 +1,6 @@
 package audit
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -18,7 +17,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/audit/yarn"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
-	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -28,17 +26,20 @@ import (
 	"golang.org/x/sync/errgroup"
 	"os"
 	"time"
+
+	"encoding/json"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 )
 
-type Params struct {
-	xrayGraphScanParams *scan.XrayGraphScanParams
-	workingDirs         []string
-	installFunc         func(tech string) error
-	fixableOnly         bool
-	minSeverityFilter   string
-	*xrayutils.GraphBasicParams
-	xrayVersion string
-	xscVersion  string
+type AuditCommand struct {
+	watches                []string
+	projectKey             string
+	targetRepoPath         string
+	IncludeVulnerabilities bool
+	IncludeLicenses        bool
+	Fail                   bool
+	PrintExtendedTable     bool
+	AuditParams
 }
 
 type XrayEntitlements struct {
@@ -47,65 +48,113 @@ type XrayEntitlements struct {
 	Xsc      bool
 }
 
-func NewAuditParams() *Params {
-	return &Params{
-		xrayGraphScanParams: &scan.XrayGraphScanParams{},
-		GraphBasicParams:    &xrayutils.GraphBasicParams{},
+func NewGenericAuditCommand() *AuditCommand {
+	return &AuditCommand{AuditParams: *NewAuditParams()}
+}
+
+func (auditCmd *AuditCommand) SetWatches(watches []string) *AuditCommand {
+	auditCmd.watches = watches
+	return auditCmd
+}
+
+func (auditCmd *AuditCommand) SetProject(project string) *AuditCommand {
+	auditCmd.projectKey = project
+	return auditCmd
+}
+
+func (auditCmd *AuditCommand) SetTargetRepoPath(repoPath string) *AuditCommand {
+	auditCmd.targetRepoPath = repoPath
+	return auditCmd
+}
+
+func (auditCmd *AuditCommand) SetIncludeVulnerabilities(include bool) *AuditCommand {
+	auditCmd.IncludeVulnerabilities = include
+	return auditCmd
+}
+
+func (auditCmd *AuditCommand) SetIncludeLicenses(include bool) *AuditCommand {
+	auditCmd.IncludeLicenses = include
+	return auditCmd
+}
+
+func (auditCmd *AuditCommand) SetFail(fail bool) *AuditCommand {
+	auditCmd.Fail = fail
+	return auditCmd
+}
+
+func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *AuditCommand {
+	auditCmd.PrintExtendedTable = printExtendedTable
+	return auditCmd
+}
+
+func (auditCmd *AuditCommand) CreateXrayGraphScanParams() *scan.XrayGraphScanParams {
+	params := &scan.XrayGraphScanParams{
+		RepoPath: auditCmd.targetRepoPath,
+		Watches:  auditCmd.watches,
+		ScanType: scan.Dependency,
 	}
-}
-
-func (params *Params) InstallFunc() func(tech string) error {
-	return params.installFunc
-}
-
-func (params *Params) XrayGraphScanParams() *scan.XrayGraphScanParams {
-	return params.xrayGraphScanParams
-}
-
-func (params *Params) WorkingDirs() []string {
-	return params.workingDirs
-}
-
-func (params *Params) XrayVersion() string {
-	return params.xrayVersion
-}
-
-func (params *Params) SetXrayGraphScanParams(xrayGraphScanParams *scan.XrayGraphScanParams) *Params {
-	params.xrayGraphScanParams = xrayGraphScanParams
+	if auditCmd.projectKey == "" {
+		params.ProjectKey = os.Getenv(coreutils.Project)
+	} else {
+		params.ProjectKey = auditCmd.projectKey
+	}
+	params.IncludeVulnerabilities = auditCmd.IncludeVulnerabilities
+	params.IncludeLicenses = auditCmd.IncludeLicenses
 	return params
 }
 
-func (params *Params) SetGraphBasicParams(gbp *xrayutils.GraphBasicParams) *Params {
-	params.GraphBasicParams = gbp
-	return params
+func (auditCmd *AuditCommand) Run() (err error) {
+	workingDirs, err := xrayutils.GetFullPathsWorkingDirs(auditCmd.workingDirs)
+	if err != nil {
+		return
+	}
+	auditParams := NewAuditParams().
+		SetXrayGraphScanParams(auditCmd.CreateXrayGraphScanParams()).
+		SetWorkingDirs(workingDirs).
+		SetMinSeverityFilter(auditCmd.minSeverityFilter).
+		SetFixableOnly(auditCmd.fixableOnly).
+		SetGraphBasicParams(auditCmd.GraphBasicParams)
+	auditResults, err := RunAudit(auditParams)
+	if err != nil {
+		return
+	}
+	if auditCmd.Progress() != nil {
+		if err = auditCmd.Progress().Quit(); err != nil {
+			return
+		}
+	}
+	var messages []string
+	if !auditResults.ExtendedScanResults.EntitledForJas {
+		messages = []string{coreutils.PrintTitle("The ‘jf audit’ command also supports JFrog Advanced Security features, such as 'Contextual Analysis', 'Secret Detection', 'IaC Scan' and ‘SAST’.\nThis feature isn't enabled on your system. Read more - ") + coreutils.PrintLink("https://jfrog.com/xray/")}
+	}
+	// Print Scan results on all cases except if errors accrued on SCA scan and no security/license issues found.
+	printScanResults := !(auditResults.ScaError != nil && xrayutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
+	if printScanResults {
+		err = xrayutils.PrintScanResults(auditResults.ExtendedScanResults,
+			nil,
+			auditCmd.OutputFormat(),
+			auditCmd.IncludeVulnerabilities,
+			auditCmd.IncludeLicenses,
+			auditResults.IsMultipleRootProject,
+			auditCmd.PrintExtendedTable, false, messages,
+		)
+		if err != nil {
+			return
+		}
+	}
+	if err = errors.Join(auditResults.ScaError, auditResults.JasError); err != nil {
+		return
+	}
+
+	// Only in case Xray's context was given (!auditCmd.IncludeVulnerabilities), and the user asked to fail the build accordingly, do so.
+	if auditCmd.Fail && !auditCmd.IncludeVulnerabilities && xrayutils.CheckIfFailBuild(auditResults.ExtendedScanResults.XrayResults) {
+		err = xrayutils.NewFailBuildError()
+	}
+	return
 }
 
-func (params *Params) SetWorkingDirs(workingDirs []string) *Params {
-	params.workingDirs = workingDirs
-	return params
-}
-
-func (params *Params) SetInstallFunc(installFunc func(tech string) error) *Params {
-	params.installFunc = installFunc
-	return params
-}
-
-func (params *Params) FixableOnly() bool {
-	return params.fixableOnly
-}
-
-func (params *Params) SetFixableOnly(fixable bool) *Params {
-	params.fixableOnly = fixable
-	return params
-}
-
-func (params *Params) MinSeverityFilter() string {
-	return params.minSeverityFilter
-}
-
-func (params *Params) SetMinSeverityFilter(minSeverityFilter string) *Params {
-	params.minSeverityFilter = minSeverityFilter
-	return params
+func (auditCmd *AuditCommand) CommandName() string {
+	return "generic_audit"
 }
 
 type Results struct {
@@ -123,7 +172,7 @@ func NewAuditResults() *Results {
 // Runs an audit scan based on the provided auditParams.
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
-func RunAudit(auditParams *Params) (results *Results, err error) {
+func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 	var entitlements *XrayEntitlements
 	var serverDetails *config.ServerDetails
 
@@ -161,7 +210,7 @@ func isEntitledForJas(xrayManager manager.SecurityServiceManager, xrayVersion st
 }
 
 // checkEntitlements validates the entitlements for JAS and XSC.
-func checkEntitlements(serverDetails *config.ServerDetails, params *Params) (entitlements *XrayEntitlements, err error) {
+func checkEntitlements(serverDetails *config.ServerDetails, params *AuditParams) (entitlements *XrayEntitlements, err error) {
 	var xrayManager manager.SecurityServiceManager
 
 	xrayManager, params.xrayVersion, err = commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
@@ -201,7 +250,7 @@ func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails 
 	return
 }
 
-func runScaScan(params *Params, results *Results) (err error) {
+func runScaScan(params *AuditParams, results *Results) (err error) {
 	rootDir, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -222,7 +271,7 @@ func runScaScan(params *Params, results *Results) (err error) {
 }
 
 // Audits the project found in the current directory using Xray.
-func runScaScanOnWorkingDir(params *Params, results *Results, workingDir, rootDir string) (err error) {
+func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, rootDir string) (err error) {
 	err = os.Chdir(workingDir)
 	if err != nil {
 		return

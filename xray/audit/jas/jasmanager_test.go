@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -37,6 +38,15 @@ var fakeServerDetails = config.ServerDetails{
 	User:     "user",
 }
 
+func initJasTest(t *testing.T, workingDirs ...string) (*AdvancedSecurityScanner, func()) {
+	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
+	scanner, err := NewAdvancedSecurityScanner(workingDirs, &fakeServerDetails, "")
+	assert.NoError(t, err)
+	return scanner, func() {
+		assert.NoError(t, scanner.scannerDirCleanupFunc())
+	}
+}
+
 func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	tmpDir, err := fileutils.CreateTempDir()
 	defer func() {
@@ -48,13 +58,13 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
 	}()
 	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
-	err = RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, &fakeServerDetails, nil, nil,"")
+	err = RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, &fakeServerDetails, nil, nil, "")
 	// Expect error:
 	assert.Error(t, err)
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	scanResults := &utils.ExtendedScanResults{XrayResults: fakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Pip}}
-	err := RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, nil, nil, nil,"")
+	err := RunScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, nil, nil, nil, "")
 	assert.NoError(t, err)
 }

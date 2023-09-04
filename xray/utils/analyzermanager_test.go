@@ -147,7 +147,7 @@ func TestGetResultSeverity(t *testing.T) {
 
 func TestScanTypeErrorMsg(t *testing.T) {
 	tests := []struct {
-		scanner ScanType
+		scanner JasScanType
 		err     error
 		wantMsg string
 	}{

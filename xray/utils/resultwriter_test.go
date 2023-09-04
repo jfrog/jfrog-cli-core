@@ -2,12 +2,13 @@ package utils
 
 import (
 	"fmt"
+	"path"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"github.com/stretchr/testify/assert"
-	"path"
-	"testing"
 )
 
 func TestGenerateSarifFileFromScan(t *testing.T) {
@@ -27,22 +28,26 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 				},
 			},
 		},
-		SecretsScanResults: []IacOrSecretResult{
+		SecretsScanResults: []SourceCodeScanResult{
 			{
-				Severity:   "Medium",
-				File:       "found_secrets.js",
-				LineColumn: "1:18",
-				Type:       "entropy",
-				Text:       "AAA************",
+				Severity: "Medium",
+				SourceCodeLocation: SourceCodeLocation{
+					File:       "found_secrets.js",
+					LineColumn: "1:18",
+					Text:       "AAA************",
+				},
+				Type: "entropy",
 			},
 		},
-		IacScanResults: []IacOrSecretResult{
+		IacScanResults: []SourceCodeScanResult{
 			{
-				Severity:   "Medium",
-				File:       "plan/nonapplicable/req_sw_terraform_azure_compute_no_pass_auth.json",
-				LineColumn: "229:38",
-				Type:       "entropy",
-				Text:       "BBB************",
+				Severity: "Medium",
+				SourceCodeLocation: SourceCodeLocation{
+					File:       "plan/nonapplicable/req_sw_terraform_azure_compute_no_pass_auth.json",
+					LineColumn: "229:38",
+					Text:       "BBB************",
+				},
+				Type: "entropy",
 			},
 		},
 	}
@@ -99,22 +104,24 @@ func TestGetCves(t *testing.T) {
 func TestGetIacOrSecretsProperties(t *testing.T) {
 	testCases := []struct {
 		name           string
-		secretOrIac    formats.IacSecretsRow
+		row            formats.SourceCodeRow
 		markdownOutput bool
-		isSecret       bool
+		isSecret       JasScanType
 		expectedOutput sarifProperties
 	}{
 		{
 			name: "Infrastructure as Code vulnerability without markdown output",
-			secretOrIac: formats.IacSecretsRow{
-				Severity:   "high",
-				File:       path.Join("path", "to", "file"),
-				LineColumn: "10:5",
-				Text:       "Vulnerable code",
-				Type:       "Terraform",
+			row: formats.SourceCodeRow{
+				Severity: "high",
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       path.Join("path", "to", "file"),
+					LineColumn: "10:5",
+					Text:       "Vulnerable code",
+				},
+				Type: "Terraform",
 			},
 			markdownOutput: false,
-			isSecret:       false,
+			isSecret:       IaC,
 			expectedOutput: sarifProperties{
 				Applicable:          "",
 				Cves:                "",
@@ -125,20 +132,22 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 				XrayID:              "",
 				File:                path.Join("path", "to", "file"),
 				LineColumn:          "10:5",
-				SecretsOrIacType:    "Terraform",
+				Type:                "Terraform",
 			},
 		},
 		{
 			name: "Potential secret exposed with markdown output",
-			secretOrIac: formats.IacSecretsRow{
-				Severity:   "medium",
-				File:       path.Join("path", "to", "file"),
-				LineColumn: "5:3",
-				Text:       "Potential secret",
-				Type:       "AWS Secret Manager",
+			row: formats.SourceCodeRow{
+				Severity: "medium",
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       path.Join("path", "to", "file"),
+					LineColumn: "5:3",
+					Text:       "Potential secret",
+				},
+				Type: "AWS Secret Manager",
 			},
 			markdownOutput: true,
-			isSecret:       true,
+			isSecret:       Secrets,
 			expectedOutput: sarifProperties{
 				Applicable:          "",
 				Cves:                "",
@@ -149,14 +158,14 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 				XrayID:              "",
 				File:                path.Join("path", "to", "file"),
 				LineColumn:          "5:3",
-				SecretsOrIacType:    "AWS Secret Manager",
+				Type:                "AWS Secret Manager",
 			},
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			output := getIacOrSecretsProperties(testCase.secretOrIac, testCase.markdownOutput, testCase.isSecret)
+			output := getSourceCodeProperties(testCase.row, testCase.markdownOutput, testCase.isSecret)
 			assert.Equal(t, testCase.expectedOutput.Applicable, output.Applicable)
 			assert.Equal(t, testCase.expectedOutput.Cves, output.Cves)
 			assert.Equal(t, testCase.expectedOutput.Headline, output.Headline)
@@ -166,7 +175,7 @@ func TestGetIacOrSecretsProperties(t *testing.T) {
 			assert.Equal(t, testCase.expectedOutput.XrayID, output.XrayID)
 			assert.Equal(t, testCase.expectedOutput.File, output.File)
 			assert.Equal(t, testCase.expectedOutput.LineColumn, output.LineColumn)
-			assert.Equal(t, testCase.expectedOutput.SecretsOrIacType, output.SecretsOrIacType)
+			assert.Equal(t, testCase.expectedOutput.Type, output.Type)
 		})
 	}
 }
@@ -183,7 +192,7 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 			vulnerability: formats.VulnerabilityOrViolationRow{
 				Summary:                   "Vulnerable dependency",
 				Severity:                  "high",
-				Applicable:                "Applicable",
+				Applicable:                string(Applicable),
 				ImpactedDependencyName:    "example-package",
 				ImpactedDependencyVersion: "1.0.0",
 				ImpactedDependencyType:    "npm",
@@ -212,7 +221,7 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 			vulnerability: formats.VulnerabilityOrViolationRow{
 				Summary:                   "Vulnerable dependency",
 				Severity:                  "high",
-				Applicable:                "Applicable",
+				Applicable:                string(Applicable),
 				ImpactedDependencyName:    "example-package",
 				ImpactedDependencyVersion: "1.0.0",
 				ImpactedDependencyType:    "npm",

@@ -912,5 +912,5 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 			return color.New(color.Green).Render(applicableValue)
 		}
 	}
-	return string(applicableValue)
+	return Applicable.String()
 }

@@ -577,12 +577,12 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 						ImpactedDependencyVersion: "1.0.0",
 					},
 					Summary:       "Summary 1",
-					Applicable:    string(Applicable),
+					Applicable:    Applicable.String(),
 					FixedVersions: []string{"1.0.0"},
 				},
 				{
 					Summary:    "Summary 2",
-					Applicable: string(NotApplicable),
+					Applicable: NotApplicable.String(),
 					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
 						SeverityDetails: formats.SeverityDetails{
 							Severity:         "Critical",
@@ -594,7 +594,7 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 				},
 				{
 					Summary:    "Summary 3",
-					Applicable: string(ApplicabilityUndetermined),
+					Applicable: ApplicabilityUndetermined.String(),
 					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
 						SeverityDetails: formats.SeverityDetails{
 							Severity:         "Critical",

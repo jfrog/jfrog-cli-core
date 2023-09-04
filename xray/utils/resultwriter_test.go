@@ -192,7 +192,7 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 			vulnerability: formats.VulnerabilityOrViolationRow{
 				Summary:                   "Vulnerable dependency",
 				Severity:                  "high",
-				Applicable:                "Applicable",
+				Applicable:                string(Applicable),
 				ImpactedDependencyName:    "example-package",
 				ImpactedDependencyVersion: "1.0.0",
 				ImpactedDependencyType:    "npm",
@@ -221,7 +221,7 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 			vulnerability: formats.VulnerabilityOrViolationRow{
 				Summary:                   "Vulnerable dependency",
 				Severity:                  "high",
-				Applicable:                "Applicable",
+				Applicable:                string(Applicable),
 				ImpactedDependencyName:    "example-package",
 				ImpactedDependencyVersion: "1.0.0",
 				ImpactedDependencyType:    "npm",

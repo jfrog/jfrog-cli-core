@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -73,6 +74,9 @@ func TestBuildImpactPaths(t *testing.T) {
 							FixedVersions: []string{"1.2.3"},
 							Cpes:          []string{"cpe:/o:vendor:product:1.2.3"},
 						},
+						"dep2": {
+							FixedVersions: []string{"3.0.0"},
+						},
 					},
 				},
 			},
@@ -113,6 +117,28 @@ func TestBuildImpactPaths(t *testing.T) {
 				},
 			},
 		},
+		{
+			Id: "dep7",
+			Nodes: []*xrayUtils.GraphNode{
+				{
+					Id: "dep4",
+					Nodes: []*xrayUtils.GraphNode{
+						{
+							Id:    "dep2",
+							Nodes: []*xrayUtils.GraphNode{},
+						},
+						{
+							Id:    "dep5",
+							Nodes: []*xrayUtils.GraphNode{},
+						},
+						{
+							Id:    "dep6",
+							Nodes: []*xrayUtils.GraphNode{},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	scanResult = BuildImpactPathsForScanResponse(scanResult, dependencyTrees)
@@ -120,7 +146,17 @@ func TestBuildImpactPaths(t *testing.T) {
 	expectedImpactPaths := [][]services.ImpactPathNode{{{ComponentId: "dep1"}}}
 	assert.Equal(t, expectedImpactPaths, scanResult[0].Vulnerabilities[0].Components["dep1"].ImpactPaths)
 	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}, {ComponentId: "dep2"}}}
-	assert.Equal(t, expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths)
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Vulnerabilities[0].Components["dep2"].ImpactPaths[0])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep7"}, {ComponentId: "dep4"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Vulnerabilities[0].Components["dep2"].ImpactPaths[1])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep1"].ImpactPaths)
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths[0])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep7"}, {ComponentId: "dep4"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths[1])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep7"}, {ComponentId: "dep4"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths)
 	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}, {ComponentId: "dep2"}, {ComponentId: "dep3"}}}
-	assert.Equal(t, expectedImpactPaths, scanResult[0].Licenses[0].Components["dep3"].ImpactPaths)
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Licenses[0].Components["dep3"].ImpactPaths)
 }

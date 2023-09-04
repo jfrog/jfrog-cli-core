@@ -187,7 +187,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	log.Info("JFrog Xray version is:", xrayVersion)
 	// First download Xray Indexer if needed
-	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager, xrayVersion)
+	scanCmd.indexerPath, err = DownloadIndexerIfNeeded(xrayManager, xrayVersion)
 	if err != nil {
 		return err
 	}

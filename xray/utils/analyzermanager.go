@@ -58,10 +58,13 @@ const (
 	ErrFailedScannerRun              = "failed to run %s scan. Exit code received: %s"
 )
 
+type ApplicabilityStatus string
+
 const (
-	ApplicableStringValue                = "Applicable"
-	NotApplicableStringValue             = "Not Applicable"
-	ApplicabilityUndeterminedStringValue = "Undetermined"
+	Applicable                ApplicabilityStatus = "Applicable"
+	NotApplicable             ApplicabilityStatus = "Not Applicable"
+	ApplicabilityUndetermined ApplicabilityStatus = "Undetermined"
+	NotScanned                ApplicabilityStatus = ""
 )
 
 type JasScanType string
@@ -102,7 +105,7 @@ type SourceCodeScanResult struct {
 type ExtendedScanResults struct {
 	XrayResults              []services.ScanResponse
 	ScannedTechnologies      []coreutils.Technology
-	ApplicabilityScanResults map[string]string
+	ApplicabilityScanResults map[string]ApplicabilityStatus
 	SecretsScanResults       []SourceCodeScanResult
 	IacScanResults           []SourceCodeScanResult
 	SastResults              []SourceCodeScanResult

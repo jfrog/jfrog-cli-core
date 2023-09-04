@@ -64,10 +64,10 @@ func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progr
 		return
 	}
 	for i := range scanResults.Vulnerabilities {
-		scanResults.Vulnerabilities[i].Technology = technology.ToString()
+		scanResults.Vulnerabilities[i].Technology = technology.String()
 	}
 	for i := range scanResults.Violations {
-		scanResults.Violations[i].Technology = technology.ToString()
+		scanResults.Violations[i].Technology = technology.String()
 	}
 	results = append(results, *scanResults)
 	return

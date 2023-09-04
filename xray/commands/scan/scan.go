@@ -53,6 +53,7 @@ type ScanCommand struct {
 	bypassArchiveLimits    bool
 	fixableOnly            bool
 	progress               ioUtils.ProgressMgr
+	scanType               services.ScanType
 }
 
 func (scanCmd *ScanCommand) SetMinSeverityFilter(minSeverityFilter string) *ScanCommand {
@@ -164,14 +165,13 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		return
 	}
 	// Print results
-	if err = xrutils.PrintScanResults(extendedScanResults,
-		scanErrors,
-		scanCmd.outputFormat,
-		scanCmd.includeVulnerabilities,
-		scanCmd.includeLicenses,
-		true,
-		scanCmd.printExtendedTable, true, nil,
-	); err != nil {
+	if err = xrutils.NewResultsWriter(extendedScanResults).
+		SetOutputFormat(scanCmd.outputFormat).
+		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
+		SetIncludeLicenses(scanCmd.includeLicenses).
+		SetPrintExtendedTable(scanCmd.printExtendedTable).
+		SetIsMultipleRootProject(true).
+		PrintScanResults(); err != nil {
 		return
 	}
 	return scanCmd.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
@@ -199,7 +199,7 @@ func (scanCmd *ScanCommand) prepareScanCommand() (xrayVersion string, threads in
 	}
 	log.Info("JFrog Xray version is:", xrayVersion)
 	// First download Xray Indexer if needed
-	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager, xrayVersion)
+	scanCmd.indexerPath, err = DownloadIndexerIfNeeded(xrayManager, xrayVersion)
 	if err != nil {
 		return
 	}
@@ -281,14 +281,13 @@ func (scanCmd *ScanCommand) binaryScan() (extendedScanResults *xrutils.ExtendedS
 	if fileCollectingErr != nil {
 		scanErrors = append(scanErrors, formats.SimpleJsonError{ErrorMessage: fileCollectingErr.Error()})
 	}
-	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
-	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
+	scanErrors = appendErrorSlice(appendErrorSlice(scanErrors, fileProducerErrors), indexedFileProducerErrors)
 	extendedScanResults = &xrutils.ExtendedScanResults{XrayResults: flatResults}
 	return
 }
 
 func NewScanCommand() *ScanCommand {
-	return &ScanCommand{}
+	return &ScanCommand{scanType: services.Binary}
 }
 
 func (scanCmd *ScanCommand) CommandName() string {

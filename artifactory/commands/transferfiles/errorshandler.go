@@ -189,7 +189,7 @@ func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusRespon
 }
 
 func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatusResponse) error {
-	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
+	log.Debug(fmt.Sprintf("Writing '%s' to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
 	mng.errorWriterMng.skipped.writer.Write(e)
 	mng.errorWriterMng.skipped.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file
@@ -213,7 +213,7 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatu
 }
 
 func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadStatusResponse) error {
-	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
+	log.Debug(fmt.Sprintf("Writing '%s' to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
 	mng.errorWriterMng.retryable.writer.Write(e)
 	mng.errorWriterMng.retryable.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file

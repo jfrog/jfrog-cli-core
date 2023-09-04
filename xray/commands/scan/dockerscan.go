@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/wagoodman/dive/dive"
 	"os"
 	"os/exec"
@@ -30,7 +31,9 @@ type DockerScanCommand struct {
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
-	return &DockerScanCommand{ScanCommand: *NewScanCommand()}
+	dsc := &DockerScanCommand{ScanCommand: *NewScanCommand()}
+	dsc.scanType = services.Docker
+	return dsc
 }
 
 func (dsc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {
@@ -137,16 +140,14 @@ func (dsc *DockerScanCommand) Run() (err error) {
 			}
 		}
 	}
-
 	// Print results
-	if err = xrutils.PrintScanResults(extendedScanResults,
-		scanErrors,
-		dsc.ScanCommand.outputFormat,
-		dsc.ScanCommand.includeVulnerabilities,
-		dsc.ScanCommand.includeLicenses,
-		true,
-		dsc.ScanCommand.printExtendedTable, true, nil,
-	); err != nil {
+	if err = xrutils.NewResultsWriter(extendedScanResults).
+		SetOutputFormat(dsc.outputFormat).
+		SetIncludeVulnerabilities(dsc.includeVulnerabilities).
+		SetIncludeLicenses(dsc.includeLicenses).
+		SetPrintExtendedTable(dsc.printExtendedTable).
+		SetIsMultipleRootProject(true).
+		PrintScanResults(); err != nil {
 		return
 	}
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)

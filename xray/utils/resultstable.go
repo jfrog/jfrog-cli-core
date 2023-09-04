@@ -2,14 +2,15 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/datastructures"
-	"golang.org/x/exp/maps"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/maps"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 
@@ -32,13 +33,13 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
+func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended bool, scanType services.ScanType) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 	// Print tables, if scan is true; print the scan tables.
-	if isBinaryScan {
+	if scanType == services.Binary {
 		err = coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(securityViolationsRows), "Security Violations", "No security violations were found", printExtended)
 		if err != nil {
 			return err
@@ -111,7 +112,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 				)
 			}
 		case "license":
-			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndetermined)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
 					formats.LicenseViolationRow{
@@ -126,7 +127,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 				)
 			}
 		case "operational_risk":
-			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndeterminedStringValue)
+			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndetermined)
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
@@ -169,13 +170,13 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended bool, scanType services.ScanType) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 
-	if isBinaryScan {
+	if scanType == services.Binary {
 		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
 	}
 	var emptyTableMessage string
@@ -247,12 +248,12 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintLicensesTable(licenses []services.License, printExtended, isBinaryScan bool) error {
+func PrintLicensesTable(licenses []services.License, printExtended bool, scanType services.ScanType) error {
 	licensesRows, err := PrepareLicenses(licenses)
 	if err != nil {
 		return err
 	}
-	if isBinaryScan {
+	if scanType == services.Binary {
 		return coreutils.PrintTable(formats.ConvertToLicenseScanTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
 	}
 	return coreutils.PrintTable(formats.ConvertToLicenseTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
@@ -283,22 +284,24 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
-func PrepareSecrets(secrets []IacOrSecretResult) []formats.IacSecretsRow {
+func PrepareSecrets(secrets []SourceCodeScanResult) []formats.SourceCodeRow {
 	return prepareSecrets(secrets, false)
 }
 
-func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
-	var secretsRows []formats.IacSecretsRow
+func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var secretsRows []formats.SourceCodeRow
 	for _, secret := range secrets {
-		currSeverity := GetSeverity(secret.Severity, ApplicableStringValue)
+		currSeverity := GetSeverity(secret.Severity, Applicable)
 		secretsRows = append(secretsRows,
-			formats.IacSecretsRow{
+			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
-				File:             secret.File,
-				LineColumn:       secret.LineColumn,
-				Text:             secret.Text,
-				Type:             secret.Type,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       secret.File,
+					LineColumn: secret.LineColumn,
+					Text:       secret.Text,
+				},
+				Type: secret.Type,
 			},
 		)
 	}
@@ -310,7 +313,7 @@ func prepareSecrets(secrets []IacOrSecretResult, isTable bool) []formats.IacSecr
 	return secretsRows
 }
 
-func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool) error {
+func PrintSecretsTable(secrets []SourceCodeScanResult, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
 		log.Output()
@@ -321,22 +324,24 @@ func PrintSecretsTable(secrets []IacOrSecretResult, entitledForSecretsScan bool)
 }
 
 // Prepare iacs for all non-table formats (without style or emoji)
-func PrepareIacs(iacs []IacOrSecretResult) []formats.IacSecretsRow {
+func PrepareIacs(iacs []SourceCodeScanResult) []formats.SourceCodeRow {
 	return prepareIacs(iacs, false)
 }
 
-func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow {
-	var iacRows []formats.IacSecretsRow
+func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var iacRows []formats.SourceCodeRow
 	for _, iac := range iacs {
-		currSeverity := GetSeverity(iac.Severity, ApplicableStringValue)
+		currSeverity := GetSeverity(iac.Severity, Applicable)
 		iacRows = append(iacRows,
-			formats.IacSecretsRow{
+			formats.SourceCodeRow{
 				Severity:         currSeverity.printableTitle(isTable),
 				SeverityNumValue: currSeverity.numValue,
-				File:             iac.File,
-				LineColumn:       iac.LineColumn,
-				Text:             iac.Text,
-				Type:             iac.Type,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       iac.File,
+					LineColumn: iac.LineColumn,
+					Text:       iac.Text,
+				},
+				Type: iac.Type,
 			},
 		)
 	}
@@ -348,12 +353,71 @@ func prepareIacs(iacs []IacOrSecretResult, isTable bool) []formats.IacSecretsRow
 	return iacRows
 }
 
-func PrintIacTable(iacs []IacOrSecretResult, entitledForIacScan bool) error {
+func PrintIacTable(iacs []SourceCodeScanResult, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
 		log.Output()
 		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
+	}
+	return nil
+}
+
+func PrepareSast(sasts []SourceCodeScanResult) []formats.SourceCodeRow {
+	return prepareSast(sasts, false)
+}
+
+func prepareSast(sasts []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+	var sastRows []formats.SourceCodeRow
+	for _, sast := range sasts {
+		currSeverity := GetSeverity(sast.Severity, Applicable)
+		sastRows = append(sastRows,
+			formats.SourceCodeRow{
+				Severity:         currSeverity.printableTitle(isTable),
+				SeverityNumValue: currSeverity.numValue,
+				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+					File:       sast.File,
+					LineColumn: sast.LineColumn,
+					Text:       sast.Text,
+				},
+				Type:     sast.Type,
+				CodeFlow: toSourceCodeCodeFlowRow(sast, isTable),
+			},
+		)
+	}
+
+	sort.Slice(sastRows, func(i, j int) bool {
+		return sastRows[i].SeverityNumValue > sastRows[j].SeverityNumValue
+	})
+
+	return sastRows
+}
+
+func toSourceCodeCodeFlowRow(result SourceCodeScanResult, isTable bool) (flows [][]formats.SourceCodeLocationRow) {
+	if isTable {
+		// Not displaying in table
+		return
+	}
+	for _, flowStack := range result.CodeFlow {
+		rowFlow := []formats.SourceCodeLocationRow{}
+		for _, location := range *flowStack {
+			rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
+				File:       location.File,
+				LineColumn: location.LineColumn,
+				Text:       location.Text,
+			})
+		}
+		flows = append(flows, rowFlow)
+	}
+	return
+}
+
+func PrintSastTable(sast []SourceCodeScanResult, entitledForSastScan bool) error {
+	if entitledForSastScan {
+		sastRows := prepareSast(sast, true)
+		log.Output()
+		return coreutils.PrintTable(formats.ConvertToSastTableRow(sastRows), "Static Application Security Testing (SAST)",
+			"✨ No Static Application Security Testing vulnerabilities were found ✨", false)
 	}
 	return nil
 }
@@ -534,31 +598,31 @@ func (s *Severity) printableTitle(isTable bool) string {
 	return s.title
 }
 
-var Severities = map[string]map[string]*Severity{
+var Severities = map[string]map[ApplicabilityStatus]*Severity{
 	"Critical": {
-		ApplicableStringValue:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
-		ApplicabilityUndeterminedStringValue: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicableStringValue:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
+		Applicable:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndetermined: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicable:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
 	},
 	"High": {
-		ApplicableStringValue:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
-		NotApplicableStringValue:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
+		Applicable:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
+		ApplicabilityUndetermined: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
+		NotApplicable:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
 	},
 	"Medium": {
-		ApplicableStringValue:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
-		ApplicabilityUndeterminedStringValue: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
-		NotApplicableStringValue:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
+		Applicable:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
+		ApplicabilityUndetermined: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
+		NotApplicable:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
 	},
 	"Low": {
-		ApplicableStringValue:                {emoji: "👻", title: "Low", numValue: 9},
-		ApplicabilityUndeterminedStringValue: {emoji: "👻", title: "Low", numValue: 8},
-		NotApplicableStringValue:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
+		Applicable:                {emoji: "👻", title: "Low", numValue: 9},
+		ApplicabilityUndetermined: {emoji: "👻", title: "Low", numValue: 8},
+		NotApplicable:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
 	},
 	"Unknown": {
-		ApplicableStringValue:                {emoji: "😐", title: "Unknown", numValue: 7},
-		ApplicabilityUndeterminedStringValue: {emoji: "😐", title: "Unknown", numValue: 6},
-		NotApplicableStringValue:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
+		Applicable:                {emoji: "😐", title: "Unknown", numValue: 7},
+		ApplicabilityUndetermined: {emoji: "😐", title: "Unknown", numValue: 6},
+		NotApplicable:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
 	},
 }
 
@@ -572,25 +636,25 @@ func (s *Severity) Emoji() string {
 
 func GetSeveritiesFormat(severity string) (string, error) {
 	formattedSeverity := cases.Title(language.Und).String(severity)
-	if formattedSeverity != "" && Severities[formattedSeverity][ApplicableStringValue] == nil {
+	if formattedSeverity != "" && Severities[formattedSeverity][Applicable] == nil {
 		return "", errorutils.CheckErrorf("only the following severities are supported: " + coreutils.ListToText(maps.Keys(Severities)))
 	}
 
 	return formattedSeverity, nil
 }
 
-func GetSeverity(severityTitle string, applicable string) *Severity {
+func GetSeverity(severityTitle string, applicable ApplicabilityStatus) *Severity {
 	if Severities[severityTitle] == nil {
 		return &Severity{title: severityTitle}
 	}
 
 	switch applicable {
-	case NotApplicableStringValue:
-		return Severities[severityTitle][NotApplicableStringValue]
-	case ApplicableStringValue:
-		return Severities[severityTitle][ApplicableStringValue]
+	case NotApplicable:
+		return Severities[severityTitle][NotApplicable]
+	case Applicable:
+		return Severities[severityTitle][Applicable]
 	default:
-		return Severities[severityTitle][ApplicabilityUndeterminedStringValue]
+		return Severities[severityTitle][ApplicabilityUndetermined]
 	}
 }
 
@@ -812,21 +876,22 @@ func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVer
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
-func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) string {
+func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) ApplicabilityStatus {
 	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
-		return ""
+		return NotScanned
 	}
+
 	if len(xrayCves) == 0 {
-		return ApplicabilityUndeterminedStringValue
+		return ApplicabilityUndetermined
 	}
 	cveExistsInResult := false
-	finalApplicableValue := NotApplicableStringValue
+	finalApplicableValue := NotApplicable
 	for _, cve := range xrayCves {
 		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScanResults[cve.Id]; exists {
 			cveExistsInResult = true
-			if currentCveApplicableValue == ApplicableStringValue {
+			if currentCveApplicableValue == Applicable {
 				return currentCveApplicableValue
-			} else if currentCveApplicableValue == ApplicabilityUndeterminedStringValue {
+			} else if currentCveApplicableValue == ApplicabilityUndetermined {
 				finalApplicableValue = currentCveApplicableValue
 			}
 		}
@@ -834,16 +899,16 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	if cveExistsInResult {
 		return finalApplicableValue
 	}
-	return ApplicabilityUndeterminedStringValue
+	return ApplicabilityUndetermined
 }
 
-func printApplicableCveValue(applicableValue string, isTable bool) string {
+func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		if applicableValue == ApplicableStringValue {
+		if applicableValue == Applicable {
 			return color.New(color.Red).Render(applicableValue)
-		} else if applicableValue == NotApplicableStringValue {
+		} else if applicableValue == NotApplicable {
 			return color.New(color.Green).Render(applicableValue)
 		}
 	}
-	return applicableValue
+	return string(applicableValue)
 }

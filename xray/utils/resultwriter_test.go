@@ -200,7 +200,7 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 						{Name: "example-package", Version: "1.0.0"},
 					},
 				},
-				Applicable:    "Applicable",
+				Applicable:    string(Applicable),
 				FixedVersions: []string{"1.0.1", "1.0.2"},
 				Cves: []formats.CveRow{
 					{Id: "CVE-2021-1234", CvssV3: "7.2"},
@@ -233,7 +233,7 @@ func TestGetViolatedDepsSarifProps(t *testing.T) {
 						{Name: "example-package", Version: "1.0.0"},
 					},
 				},
-				Applicable:    "Applicable",
+				Applicable:    string(Applicable),
 				FixedVersions: []string{"1.0.1", "1.0.2"},
 				Cves: []formats.CveRow{
 					{Id: "CVE-2021-1234", CvssV3: "7.2"},

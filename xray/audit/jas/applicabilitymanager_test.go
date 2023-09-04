@@ -21,7 +21,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.configFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.resultsFileName)
-		assert.Equal(t, 5, applicabilityManager.directDependenciesCves.Size())
+		assert.Len(t, applicabilityManager.directDependenciesCves, 5)
 	}
 }
 
@@ -37,7 +37,7 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 		assert.Len(t, applicabilityManager.scanner.workingDirs, 1)
 		assert.NotEmpty(t, applicabilityManager.scanner.configFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.resultsFileName)
-		assert.Equal(t, applicabilityManager.directDependenciesCves.Size(), 0)
+		assert.Empty(t, applicabilityManager.directDependenciesCves)
 	}
 }
 
@@ -73,7 +73,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 		assert.NotEmpty(t, applicabilityManager.scanner.configFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.resultsFileName)
 		// Non-direct dependencies should not be added
-		assert.Equal(t, 0, applicabilityManager.directDependenciesCves.Size())
+		assert.Empty(t, applicabilityManager.directDependenciesCves)
 	}
 }
 
@@ -88,7 +88,7 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.configFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.resultsFileName)
-		assert.Equal(t, 5, applicabilityManager.directDependenciesCves.Size())
+		assert.Len(t, applicabilityManager.directDependenciesCves, 5)
 	}
 }
 
@@ -114,7 +114,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.configFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.resultsFileName)
-		assert.Equal(t, 3, applicabilityManager.directDependenciesCves.Size())
+		assert.Len(t, applicabilityManager.directDependenciesCves, 3)
 	}
 }
 
@@ -140,7 +140,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.configFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.resultsFileName)
-		assert.Equal(t, 2, applicabilityManager.directDependenciesCves.Size())
+		assert.Len(t, applicabilityManager.directDependenciesCves, 2)
 	}
 }
 
@@ -196,7 +196,7 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 
 	for _, test := range tests {
 		cves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, test.directDependencies)
-		assert.Equal(t, test.cvesCount, cves.Size())
+		assert.Len(t, cves, test.cvesCount)
 	}
 }
 
@@ -236,7 +236,7 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.cvesCount, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies).Size())
+		assert.Len(t, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies), test.cvesCount)
 	}
 }
 
@@ -279,7 +279,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(results))
 	for _, cveResult := range results {
-		assert.Equal(t, utils.ApplicabilityUndeterminedStringValue, cveResult)
+		assert.Equal(t, utils.ApplicabilityUndetermined, cveResult)
 	}
 }
 
@@ -296,8 +296,8 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Assert
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(results))
-	assert.Equal(t, utils.ApplicableStringValue, results["testCve1"])
-	assert.Equal(t, utils.NotApplicableStringValue, results["testCve3"])
+	assert.Equal(t, utils.Applicable, results["testCve1"])
+	assert.Equal(t, utils.NotApplicable, results["testCve3"])
 }
 
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
@@ -314,7 +314,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 5, len(results))
 	for _, cveResult := range results {
-		assert.Equal(t, utils.NotApplicableStringValue, cveResult)
+		assert.Equal(t, utils.NotApplicable, cveResult)
 	}
 }
 

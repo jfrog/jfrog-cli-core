@@ -427,33 +427,58 @@ func TestGetApplicableCveValue(t *testing.T) {
 	testCases := []struct {
 		scanResults    *ExtendedScanResults
 		cves           []formats.CveRow
-		expectedResult string
+		expectedResult ApplicabilityStatus
 	}{
-		{scanResults: &ExtendedScanResults{EntitledForJas: false}, expectedResult: ""},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": ApplicableStringValue, "testCve2": NotApplicableStringValue},
-			EntitledForJas:           true},
-			cves: nil, expectedResult: ApplicabilityUndeterminedStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve2"}}, expectedResult: ApplicableStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve3"}}, expectedResult: ApplicabilityUndeterminedStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": NotApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: NotApplicableStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicableStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicabilityUndeterminedStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicabilityUndeterminedStringValue},
+		{
+			scanResults:    &ExtendedScanResults{EntitledForJas: false},
+			expectedResult: NotScanned,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": Applicable, "testCve2": NotApplicable},
+				EntitledForJas:           true,
+			},
+			cves:           nil,
+			expectedResult: ApplicabilityUndetermined,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": Applicable},
+				EntitledForJas:           true,
+			},
+			cves:           []formats.CveRow{{Id: "testCve2"}},
+			expectedResult: Applicable,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": Applicable},
+				EntitledForJas:           true,
+			},
+			cves:           []formats.CveRow{{Id: "testCve3"}},
+			expectedResult: ApplicabilityUndetermined,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": NotApplicable},
+				EntitledForJas:           true},
+			cves:           []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: NotApplicable,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": Applicable},
+				EntitledForJas:           true,
+			},
+			cves:           []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: Applicable,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": ApplicabilityUndetermined},
+				EntitledForJas:           true},
+			cves:           []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: ApplicabilityUndetermined,
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -552,12 +577,12 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 						ImpactedDependencyVersion: "1.0.0",
 					},
 					Summary:       "Summary 1",
-					Applicable:    ApplicableStringValue,
+					Applicable:    string(Applicable),
 					FixedVersions: []string{"1.0.0"},
 				},
 				{
 					Summary:    "Summary 2",
-					Applicable: NotApplicableStringValue,
+					Applicable: string(NotApplicable),
 					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
 						SeverityDetails: formats.SeverityDetails{
 							Severity:         "Critical",
@@ -569,7 +594,7 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 				},
 				{
 					Summary:    "Summary 3",
-					Applicable: ApplicabilityUndeterminedStringValue,
+					Applicable: string(ApplicabilityUndetermined),
 					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
 						SeverityDetails: formats.SeverityDetails{
 							Severity:         "Critical",

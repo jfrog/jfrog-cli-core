@@ -9,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,9 +27,7 @@ type DockerScanCommand struct {
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
-	dsc := &DockerScanCommand{ScanCommand: *NewScanCommand()}
-	dsc.scanType = services.Docker
-	return dsc
+	return &DockerScanCommand{ScanCommand: *NewScanCommand()}
 }
 
 func (dsc *DockerScanCommand) SetImageTag(imageTag string) *DockerScanCommand {

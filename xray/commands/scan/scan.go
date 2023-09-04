@@ -53,7 +53,6 @@ type ScanCommand struct {
 	bypassArchiveLimits    bool
 	fixableOnly            bool
 	progress               ioUtils.ProgressMgr
-	scanType               services.ScanType
 }
 
 func (scanCmd *ScanCommand) SetMinSeverityFilter(minSeverityFilter string) *ScanCommand {
@@ -249,6 +248,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 		SetIncludeLicenses(scanCmd.includeLicenses).
 		SetPrintExtendedTable(scanCmd.printExtendedTable).
 		SetIsMultipleRootProject(true).
+		SetScanType(services.Binary).
 		PrintScanResults(); err != nil {
 		return
 	}
@@ -271,7 +271,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 }
 
 func NewScanCommand() *ScanCommand {
-	return &ScanCommand{scanType: services.Binary}
+	return &ScanCommand{}
 }
 
 func (scanCmd *ScanCommand) CommandName() string {

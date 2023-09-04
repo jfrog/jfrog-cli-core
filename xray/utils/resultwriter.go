@@ -80,6 +80,11 @@ func (rw *ResultsWriter) SetOutputFormat(format OutputFormat) *ResultsWriter {
 	return rw
 }
 
+func (rw *ResultsWriter) SetScanType(scanType services.ScanType) *ResultsWriter {
+	rw.scanType = scanType
+	return rw
+}
+
 func (rw *ResultsWriter) SetSimpleJsonError(jsonErrors []formats.SimpleJsonError) *ResultsWriter {
 	rw.simpleJsonError = jsonErrors
 	return rw

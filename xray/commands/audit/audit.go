@@ -89,9 +89,10 @@ func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *Au
 
 func (auditCmd *AuditCommand) CreateXrayGraphScanParams() *scan.XrayGraphScanParams {
 	params := &scan.XrayGraphScanParams{
-		RepoPath: auditCmd.targetRepoPath,
-		Watches:  auditCmd.watches,
-		ScanType: scan.Dependency,
+		RepoPath:    auditCmd.targetRepoPath,
+		Watches:     auditCmd.watches,
+		ScanType:    scan.Dependency,
+		MultiScanId: os.Getenv(coreutils.MultiScanId),
 	}
 	if auditCmd.projectKey == "" {
 		params.ProjectKey = os.Getenv(coreutils.Project)

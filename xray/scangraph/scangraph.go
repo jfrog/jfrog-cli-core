@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	ScanTypeMinXrayVersion  = "3.37.2"
 	GraphScanMinXrayVersion = "3.29.0"
+
+	ScanTypeMinXrayVersion = "3.37.2"
 )
 
 func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse, error) {

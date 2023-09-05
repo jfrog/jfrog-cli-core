@@ -73,8 +73,14 @@ func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableT
 	return details, nil
 }
 
-// Disables refreshable tokens if set in details.
+// Disables the refreshable tokens feature if set in details.
+// We identify the refreshable tokens feature by having both conditions:
+// 1. Non-empty username and password
+// 2. Non-empty access and refresh token OR token refresh interval enabled
 func excludeRefreshableTokensFromDetails(details *ServerDetails) {
+	if details.User == "" || details.Password == "" {
+		return
+	}
 	if details.AccessToken != "" && details.ArtifactoryRefreshToken != "" ||
 		details.AccessToken != "" && details.RefreshToken != "" {
 		details.AccessToken = ""

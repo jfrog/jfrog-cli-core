@@ -71,7 +71,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		//	return fmt.Errorf("didn't find Dockerfile in the provided path: %s", dsc.dockerFilePath)
 		//}
 		if dsc.progress != nil {
-			dsc.progress.SetHeadlineMsg("Building Docker image 🏗️...")
+			dsc.progress.SetHeadlineMsg(fmt.Sprintf("Building Docker image from: %s  🏗️...", dsc.dockerFilePath))
 		}
 		log.Info("Building docker image")
 		dsc.imageTag = "audittag"

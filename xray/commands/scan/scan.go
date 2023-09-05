@@ -243,7 +243,7 @@ func (scanCmd *ScanCommand) handlePossibleErrors(flatResults []services.ScanResp
 	}
 
 	log.Info("Scan completed successfully.")
-	return nil
+	return err
 }
 
 func (scanCmd *ScanCommand) binaryScan() (extendedScanResults *xrutils.ExtendedScanResults, cleanup func(), scanError []formats.SimpleJsonError, err error) {
@@ -281,7 +281,8 @@ func (scanCmd *ScanCommand) binaryScan() (extendedScanResults *xrutils.ExtendedS
 	if fileCollectingErr != nil {
 		scanErrors = append(scanErrors, formats.SimpleJsonError{ErrorMessage: fileCollectingErr.Error()})
 	}
-	scanErrors = appendErrorSlice(appendErrorSlice(scanErrors, fileProducerErrors), indexedFileProducerErrors)
+	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
+	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	extendedScanResults = &xrutils.ExtendedScanResults{XrayResults: flatResults}
 	return
 }

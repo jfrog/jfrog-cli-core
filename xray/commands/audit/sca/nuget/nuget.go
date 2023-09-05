@@ -61,8 +61,8 @@ func runDotnetRestore(wd string) (err error) {
 func runDotnetRestoreAndLoadSolution(originalWd string) (sol solution.Solution, err error) {
 	var tmpWd string
 	tmpWd, err = fileutils.CreateTempDir()
-	if errorutils.CheckError(err) != nil {
-		err = fmt.Errorf("failed creating tmporary dir: %w", err)
+	if err != nil {
+		err = fmt.Errorf("failed creating temporary dir: %w", err)
 		return
 	}
 	defer func() {

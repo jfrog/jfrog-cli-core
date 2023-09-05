@@ -39,24 +39,25 @@ var (
 )
 
 const (
-	EntitlementsMinVersion           = "3.66.5"
-	ApplicabilityFeatureId           = "contextual_analysis"
-	AnalyzerManagerZipName           = "analyzerManager.zip"
-	defaultAnalyzerManagerVersion    = "1.2.4.1953469"
-	minAnalyzerManagerVersionForSast = "1.3"
-	analyzerManagerDownloadPath      = "xsc-gen-exe-analyzer-manager-local/v1"
-	analyzerManagerDirName           = "analyzerManager"
-	analyzerManagerExecutableName    = "analyzerManager"
-	analyzerManagerLogDirName        = "analyzerManagerLogs"
-	jfUserEnvVariable                = "JF_USER"
-	jfPasswordEnvVariable            = "JF_PASS"
-	jfTokenEnvVariable               = "JF_TOKEN"
-	jfPlatformUrlEnvVariable         = "JF_PLATFORM_URL"
-	logDirEnvVariable                = "AM_LOG_DIRECTORY"
-	notEntitledExitCode              = 31
-	unsupportedCommandExitCode       = 13
-	unsupportedOsExitCode            = 55
-	ErrFailedScannerRun              = "failed to run %s scan. Exit code received: %s"
+	EntitlementsMinVersion                    = "3.66.5"
+	ApplicabilityFeatureId                    = "contextual_analysis"
+	AnalyzerManagerZipName                    = "analyzerManager.zip"
+	defaultAnalyzerManagerVersion             = "1.2.4.1953469"
+	minAnalyzerManagerVersionForSast          = "1.3"
+	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
+	analyzerManagerDirName                    = "analyzerManager"
+	analyzerManagerExecutableName             = "analyzerManager"
+	analyzerManagerLogDirName                 = "analyzerManagerLogs"
+	jfUserEnvVariable                         = "JF_USER"
+	jfPasswordEnvVariable                     = "JF_PASS"
+	jfTokenEnvVariable                        = "JF_TOKEN"
+	jfPlatformUrlEnvVariable                  = "JF_PLATFORM_URL"
+	logDirEnvVariable                         = "AM_LOG_DIRECTORY"
+	notEntitledExitCode                       = 31
+	unsupportedCommandExitCode                = 13
+	unsupportedOsExitCode                     = 55
+	ErrFailedScannerRun                       = "failed to run %s scan. Exit code received: %s"
+	JfrogCliAnalyzerManagerVersionEnvVariable = "JFROG_CLI_ANALYZER_MANAGER_VERSION"
 )
 
 type ApplicabilityStatus string
@@ -147,7 +148,7 @@ func GetAnalyzerManagerDownloadPath() (string, error) {
 }
 
 func GetAnalyzerManagerVersion() string {
-	if analyzerManagerVersion, exists := os.LookupEnv("JFROG_CLI_ANALYZER_MANAGER_VERSION"); exists {
+	if analyzerManagerVersion, exists := os.LookupEnv(JfrogCliAnalyzerManagerVersionEnvVariable); exists {
 		return analyzerManagerVersion
 	}
 	return defaultAnalyzerManagerVersion

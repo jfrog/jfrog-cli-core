@@ -14,7 +14,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/yarn"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -59,7 +59,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 	if len(requestedTechnologies) != 0 {
 		technologies = requestedTechnologies
 	} else {
-		technologies = commandsutils.DetectedTechnologies()
+		technologies = coreutils.DetectedTechnologiesList()
 	}
 	if len(technologies) == 0 {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
@@ -84,7 +84,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 			continue
 		}
 
-		scanGraphParams := commandsutils.NewScanGraphParams().
+		scanGraphParams := scangraph.NewScanGraphParams().
 			SetServerDetails(serverDetails).
 			SetXrayGraphScanParams(params.xrayGraphScanParams).
 			SetXrayVersion(params.xrayVersion).

@@ -1,4 +1,4 @@
-package utils
+package scangraph
 
 import (
 	"github.com/jfrog/jfrog-client-go/xray/services"

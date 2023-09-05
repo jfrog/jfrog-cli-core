@@ -9,7 +9,6 @@ import (
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -45,6 +44,8 @@ const (
 
 	errorTemplateUnsupportedTech = "It looks like this project uses '%s' to download its dependencies. " +
 		"This package manager however isn't supported by this command."
+
+	TotalConcurrentRequests = 10
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
@@ -178,7 +179,7 @@ func (ca *CurationAuditCommand) Run() (err error) {
 }
 
 func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatus) error {
-	techs := cmdUtils.DetectedTechnologies()
+	techs := coreutils.DetectedTechnologiesList()
 	for _, tech := range techs {
 		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
 			log.Info(fmt.Sprintf(errorTemplateUnsupportedTech, tech))
@@ -225,7 +226,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		projectName = projectScope + "/" + projectName
 	}
 	if ca.parallelRequests == 0 {
-		ca.parallelRequests = cmdUtils.TotalConcurrentRequests
+		ca.parallelRequests = TotalConcurrentRequests
 	}
 	var packagesStatus []*PackageStatus
 	analyzer := treeAnalyzer{
@@ -532,4 +533,11 @@ func buildNpmDownloadUrl(url, repo, name, scope, version string) string {
 		packageUrl = fmt.Sprintf("%s/api/npm/%s/%s/-/%s-%s.tgz", strings.TrimSuffix(url, "/"), repo, name, name, version)
 	}
 	return packageUrl
+}
+
+func DetectNumOfThreads(threadsCount int) (int, error) {
+	if threadsCount > TotalConcurrentRequests {
+		return 0, errorutils.CheckErrorf("number of threads crossed the maximum, the maximum threads allowed is %v", TotalConcurrentRequests)
+	}
+	return threadsCount, nil
 }

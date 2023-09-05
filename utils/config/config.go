@@ -74,7 +74,7 @@ func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableT
 }
 
 // Disables the refreshable tokens mechanism if set in details.
-// We identify the refreshable tokens mechanism by having all conditions:
+// We identify the refreshable tokens mechanism by having both conditions:
 // 1. Non-empty username and password
 // 2. Non-empty access and refresh token OR token refresh interval enabled
 func excludeRefreshableTokensFromDetails(details *ServerDetails) {

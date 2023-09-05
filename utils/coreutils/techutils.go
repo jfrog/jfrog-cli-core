@@ -1,6 +1,10 @@
 package coreutils
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -170,6 +174,23 @@ func (tech Technology) GetPackageInstallationCommand() string {
 
 func (tech Technology) ApplicabilityScannable() bool {
 	return technologiesData[tech].applicabilityScannable
+}
+
+func DetectedTechnologiesList() (technologies []string) {
+	wd, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	detectedTechnologies, err := DetectTechnologies(wd, false, false)
+	if err != nil {
+		return
+	}
+	if len(detectedTechnologies) == 0 {
+		return
+	}
+	techStringsList := DetectedTechnologiesToSlice(detectedTechnologies)
+	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ",")))
+	return techStringsList
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.

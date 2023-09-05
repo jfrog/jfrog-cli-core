@@ -70,7 +70,7 @@ type ResultsWriter struct {
 	// messages - Option array of messages, to be displayed if the format is Table
 	messages []string
 	// Maps layer hash to command,used for docker scan.
-	dockerCommandsMapping map[string]string
+	dockerCommandsMapping map[string]services.DockerCommandDetails
 }
 
 func NewResultsWriter(extendedScanResults *ExtendedScanResults) *ResultsWriter {
@@ -117,7 +117,7 @@ func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 	return rw
 }
 
-func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]string) *ResultsWriter {
+func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]services.DockerCommandDetails) *ResultsWriter {
 	rw.dockerCommandsMapping = mapping
 	return rw
 }
@@ -176,7 +176,7 @@ func (rw *ResultsWriter) printScanResultsTables() (err error) {
 	}
 	log.Output()
 	if rw.includeVulnerabilities {
-		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
+		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType, rw.dockerCommandsMapping)
 	} else {
 		err = PrintViolationsTable(violations, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
 	}

@@ -1,6 +1,7 @@
 package formats
 
 import (
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"strings"
 )
 
@@ -39,20 +40,29 @@ func ConvertToVulnerabilityScanTableRow(rows []VulnerabilityOrViolationRow) (tab
 	return
 }
 
-func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow) (tableRows []vulnerabilityDockerScanTableRow) {
+func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]services.DockerCommandDetails) (tableRows []vulnerabilityDockerScanTableRow) {
 	for i := range rows {
+		dockerCommand := dockerCommandsMapping[strings.TrimSuffix(strings.TrimPrefix(rows[i].Components[0].Name, "sha256__"), ".tar")]
 		tableRows = append(tableRows, vulnerabilityDockerScanTableRow{
 			severity:               rows[i].Severity,
 			severityNumValue:       rows[i].SeverityNumValue,
 			impactedPackageName:    rows[i].ImpactedDependencyName,
 			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
 			ImpactedPackageType:    rows[i].ImpactedDependencyType,
-			fixedVersions:          strings.Join(rows[i].FixedVersions, "\n"),
+			fixedVersions:          fixedVersionsFallback(rows[i].FixedVersions),
 			cves:                   convertToCveTableRow(rows[i].Cves),
-			issueId:                rows[i].IssueId,
+			dockerfileCommand:      dockerCommand.DockerfileCommand,
+			dockerfileLine:         dockerCommand.DockerfileLineRange,
 		})
 	}
 	return
+}
+
+func fixedVersionsFallback(fixVersions []string) string {
+	if len(fixVersions) == 0 {
+		return "N/A"
+	}
+	return strings.Join(fixVersions, "\n")
 }
 
 func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []licenseViolationTableRow) {

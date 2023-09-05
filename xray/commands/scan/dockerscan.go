@@ -125,7 +125,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		return
 	}
 	// Print results
-	if err = xrutils.NewResultsWriter(extendedScanResults).
+	err = xrutils.NewResultsWriter(extendedScanResults).
 		SetOutputFormat(dsc.outputFormat).
 		SetIncludeVulnerabilities(dsc.includeVulnerabilities).
 		SetIncludeLicenses(dsc.includeLicenses).
@@ -133,13 +133,12 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetIsMultipleRootProject(true).
 		SetDockerCommandsMapping(dockerCommandsMapping).
 		SetScanType(services.Docker).
-		PrintScanResults(); err != nil {
-		return
-	}
+		PrintScanResults()
+
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
 }
 
-func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]string, err error) {
+func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]services.DockerCommandDetails, err error) {
 	log.Debug("Mapping docker layers into commands ")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
@@ -149,10 +148,10 @@ func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]string
 	if err != nil {
 		return
 	}
-	// Create mapping between sha256 hash to dockerfile command.
-	commandsMapping = make(map[string]string)
+	// Create mapping between sha256 hash to dockerfile Command.
+	commandsMapping = make(map[string]services.DockerCommandDetails)
 	for _, layer := range dockerImage.Layers {
-		commandsMapping[strings.TrimPrefix(layer.Digest, "sha256:")] = layer.Command
+		commandsMapping[strings.TrimPrefix(layer.Digest, "sha256:")] = services.DockerCommandDetails{LayerHash: layer.Digest, DockerfileCommand: layer.Command, DockerfileLineRange: "3-5"}
 	}
 	return
 }

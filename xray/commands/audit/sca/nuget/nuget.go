@@ -14,7 +14,6 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 const (
@@ -53,7 +52,7 @@ func runDotnetRestore(wd string) (err error) {
 	command.Dir = wd
 	output, err := command.CombinedOutput()
 	if err != nil {
-		err = errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(command.Args, " "), err.Error(), output)
+		err = errorutils.CheckErrorf("'dotnet restore' command failed: %s - %s", err.Error(), output)
 	}
 	return
 }

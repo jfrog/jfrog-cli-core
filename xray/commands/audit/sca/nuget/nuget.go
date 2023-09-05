@@ -1,6 +1,7 @@
 package nuget
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build/utils/dotnet/solution"
 	"github.com/jfrog/build-info-go/entities"
@@ -13,6 +14,7 @@ import (
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 const (
@@ -29,22 +31,13 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []
 		return
 	}
 
-	// If the project's build files don't exist this extra step is required in order to get project's dependencies
-	if len(sol.GetDependenciesSources()) == 0 {
-		log.Info("Assets files were not detected. Running 'dotnet restore' command")
-		var tmpWd string
-		tmpWd, err = createDirWithAssets(wd)
+	// In case the project's dependencies sources can't be found we run 'dotnet restore' on a copy of the project in order to get its dependencies
+	if !sol.DependenciesSourcesExist() {
+		log.Info("Dependencies sources were not detected. Running 'dotnet restore' command")
+		sol, err = runDotnetRestoreAndLoadSolution(wd)
 		if err != nil {
 			return
 		}
-
-		defer func() {
-			err = fileutils.RemoveTempDir(tmpWd)
-			if err != nil {
-				return
-			}
-		}()
-		sol, err = solution.Load(tmpWd, "", log.Logger)
 	}
 
 	buildInfo, err := sol.BuildInfo("", log.Logger)
@@ -55,39 +48,39 @@ func BuildDependencyTree() (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []
 	return
 }
 
-func createDirWithAssets(originalWd string) (tmpWd string, err error) {
+func runDotnetRestore(wd string) (err error) {
+	command := exec.Command("dotnet", "restore")
+	command.Dir = wd
+	output, err := command.CombinedOutput()
+	if err != nil {
+		err = errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(command.Args, " "), err.Error(), output)
+	}
+	return
+}
+
+func runDotnetRestoreAndLoadSolution(originalWd string) (sol solution.Solution, err error) {
+	var tmpWd string
 	tmpWd, err = fileutils.CreateTempDir()
 	if errorutils.CheckError(err) != nil {
-		err = fmt.Errorf("failed during project build: %w", err)
+		err = fmt.Errorf("failed creating tmporary dir: %w", err)
 		return
 	}
+	defer func() {
+		err = errors.Join(err, fileutils.RemoveTempDir(tmpWd))
+	}()
 
 	err = biutils.CopyDir(originalWd, tmpWd, true, nil)
 	if err != nil {
-		innerErr := fileutils.RemoveTempDir(tmpWd)
-		if innerErr != nil {
-			err = fmt.Errorf("failed during project build: %w, %w", err, innerErr)
-		}
-		err = fmt.Errorf("failed during project build: %w", err)
-
+		err = fmt.Errorf("failed copying project to temp dir: %w", err)
 		return
 	}
 
 	err = runDotnetRestore(tmpWd)
 	if err != nil {
-		innerErr := fileutils.RemoveTempDir(tmpWd)
-		if innerErr != nil {
-			err = fmt.Errorf("failed during project build: %w, %w", err, innerErr)
-		}
-		err = fmt.Errorf("failed during project build: %w", err)
+		return
 	}
+	sol, err = solution.Load(tmpWd, "", log.Logger)
 	return
-}
-
-func runDotnetRestore(wd string) (err error) {
-	command := exec.Command("dotnet", "restore")
-	command.Dir = wd
-	return command.Run()
 }
 
 func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*xrayUtils.GraphNode, allUniqueDeps []string) {

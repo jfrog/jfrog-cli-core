@@ -2,13 +2,13 @@ package usage
 
 import (
 	"fmt"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	xray "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -127,7 +127,7 @@ func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
 		err = errorutils.CheckErrorf("Xray Url is not set.")
 		return
 	}
-	serviceManager, err := xray.CreateXrayServiceManager(ur.serverDetails)
+	serviceManager, err := xrayutils.CreateXrayServiceManager(ur.serverDetails)
 	if err != nil {
 		return
 	}

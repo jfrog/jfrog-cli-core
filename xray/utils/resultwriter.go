@@ -70,7 +70,7 @@ type ResultsWriter struct {
 	// messages - Option array of messages, to be displayed if the format is Table
 	messages []string
 	// Maps layer hash to command,used for docker scan.
-	dockerCommandsMapping map[string]services.DockerCommandDetails
+	dockerCommandsMapping map[string]services.DockerfileCommandDetails
 }
 
 func NewResultsWriter(extendedScanResults *ExtendedScanResults) *ResultsWriter {
@@ -117,7 +117,7 @@ func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 	return rw
 }
 
-func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]services.DockerCommandDetails) *ResultsWriter {
+func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]services.DockerfileCommandDetails) *ResultsWriter {
 	rw.dockerCommandsMapping = mapping
 	return rw
 }

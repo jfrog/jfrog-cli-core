@@ -138,7 +138,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
 }
 
-func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]services.DockerCommandDetails, err error) {
+func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]services.DockerfileCommandDetails, err error) {
 	log.Debug("Mapping docker layers into commands ")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
@@ -149,9 +149,9 @@ func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]servic
 		return
 	}
 	// Create mapping between sha256 hash to dockerfile Command.
-	commandsMapping = make(map[string]services.DockerCommandDetails)
+	commandsMapping = make(map[string]services.DockerfileCommandDetails)
 	for _, layer := range dockerImage.Layers {
-		commandsMapping[strings.TrimPrefix(layer.Digest, "sha256:")] = services.DockerCommandDetails{LayerHash: layer.Digest, DockerfileCommand: layer.Command, DockerfileLineRange: "3-5"}
+		commandsMapping[strings.TrimPrefix(layer.Digest, "sha256:")] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: layer.Command, Line: "3-5"}
 	}
 	return
 }

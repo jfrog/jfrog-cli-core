@@ -40,7 +40,7 @@ func ConvertToVulnerabilityScanTableRow(rows []VulnerabilityOrViolationRow) (tab
 	return
 }
 
-func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]services.DockerCommandDetails) (tableRows []vulnerabilityDockerScanTableRow) {
+func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]services.DockerfileCommandDetails) (tableRows []vulnerabilityDockerScanTableRow) {
 	for i := range rows {
 		dockerCommand := dockerCommandsMapping[strings.TrimSuffix(strings.TrimPrefix(rows[i].Components[0].Name, "sha256__"), ".tar")]
 		tableRows = append(tableRows, vulnerabilityDockerScanTableRow{
@@ -51,8 +51,8 @@ func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow
 			ImpactedPackageType:    rows[i].ImpactedDependencyType,
 			fixedVersions:          fixedVersionsFallback(rows[i].FixedVersions),
 			cves:                   convertToCveTableRow(rows[i].Cves),
-			dockerfileCommand:      dockerCommand.DockerfileCommand,
-			dockerfileLine:         dockerCommand.DockerfileLineRange,
+			dockerfileCommand:      dockerCommand.Command,
+			dockerfileLine:         dockerCommand.Line,
 		})
 	}
 	return

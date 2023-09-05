@@ -3,7 +3,7 @@ package scangraph
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -13,7 +13,7 @@ const (
 	ScanTypeMinXrayVersion  = "3.37.2"
 )
 
-func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse, error) {
+func RunScanGraphAndGetResults(params *ScanGraphParams) (*scan.ScanResponse, error) {
 	xrayManager, err := utils.CreateXrayServiceManager(params.serverDetails)
 	if err != nil {
 		return nil, err
@@ -24,7 +24,7 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 		// Remove scan type param if Xray version is under the minimum supported version
 		params.xrayGraphScanParams.ScanType = ""
 	}
-	scanId, err := xrayManager.ScanGraph(*params.xrayGraphScanParams)
+	scanId, err := xrayManager.ScanGraph(params.xrayGraphScanParams)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 	return filterResultIfNeeded(scanResult, params), nil
 }
 
-func filterResultIfNeeded(scanResult *services.ScanResponse, params *ScanGraphParams) *services.ScanResponse {
+func filterResultIfNeeded(scanResult *scan.ScanResponse, params *ScanGraphParams) *scan.ScanResponse {
 	if !shouldFilterResults(params) {
 		return scanResult
 	}
@@ -49,8 +49,8 @@ func shouldFilterResults(params *ScanGraphParams) bool {
 	return params.severityLevel > 0 || params.fixableOnly
 }
 
-func filterViolations(violations []services.Violation, params *ScanGraphParams) []services.Violation {
-	var filteredViolations []services.Violation
+func filterViolations(violations []scan.Violation, params *ScanGraphParams) []scan.Violation {
+	var filteredViolations []scan.Violation
 	for _, violation := range violations {
 		if params.fixableOnly {
 			violation.Components = getFixableComponents(violation.Components)
@@ -66,8 +66,8 @@ func filterViolations(violations []services.Violation, params *ScanGraphParams) 
 	return filteredViolations
 }
 
-func filterVulnerabilities(vulnerabilities []services.Vulnerability, params *ScanGraphParams) []services.Vulnerability {
-	var filteredVulnerabilities []services.Vulnerability
+func filterVulnerabilities(vulnerabilities []scan.Vulnerability, params *ScanGraphParams) []scan.Vulnerability {
+	var filteredVulnerabilities []scan.Vulnerability
 	for _, vulnerability := range vulnerabilities {
 		if params.fixableOnly {
 			vulnerability.Components = getFixableComponents(vulnerability.Components)
@@ -83,8 +83,8 @@ func filterVulnerabilities(vulnerabilities []services.Vulnerability, params *Sca
 	return filteredVulnerabilities
 }
 
-func getFixableComponents(components map[string]services.Component) map[string]services.Component {
-	fixableComponents := make(map[string]services.Component)
+func getFixableComponents(components map[string]scan.Component) map[string]scan.Component {
+	fixableComponents := make(map[string]scan.Component)
 	for vulnKey, vulnDetails := range components {
 		if len(vulnDetails.FixedVersions) > 0 {
 			fixableComponents[vulnKey] = vulnDetails

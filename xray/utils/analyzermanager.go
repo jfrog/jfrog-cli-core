@@ -57,7 +57,7 @@ const (
 	unsupportedCommandExitCode                = 13
 	unsupportedOsExitCode                     = 55
 	ErrFailedScannerRun                       = "failed to run %s scan. Exit code received: %s"
-	JfrogCliAnalyzerManagerVersionEnvVariable = "JFROG_CLI_ANALYZER_MANAGER_VERSION"
+	jfrogCliAnalyzerManagerVersionEnvVariable = "JFROG_CLI_ANALYZER_MANAGER_VERSION"
 )
 
 type ApplicabilityStatus string
@@ -148,7 +148,7 @@ func GetAnalyzerManagerDownloadPath() (string, error) {
 }
 
 func GetAnalyzerManagerVersion() string {
-	if analyzerManagerVersion, exists := os.LookupEnv(JfrogCliAnalyzerManagerVersionEnvVariable); exists {
+	if analyzerManagerVersion, exists := os.LookupEnv(jfrogCliAnalyzerManagerVersionEnvVariable); exists {
 		return analyzerManagerVersion
 	}
 	return defaultAnalyzerManagerVersion

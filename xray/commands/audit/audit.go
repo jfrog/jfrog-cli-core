@@ -4,7 +4,7 @@ import (
 	"errors"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray"
@@ -157,11 +157,11 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 		return
 	}
 	var xrayManager *xray.XrayServicesManager
-	xrayManager, auditParams.xrayVersion, err = commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
 	if err != nil {
 		return
 	}
-	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, scangraph.GraphScanMinXrayVersion); err != nil {
 		return
 	}
 	results.ExtendedScanResults.EntitledForJas, err = isEntitledForJas(xrayManager, auditParams.xrayVersion)

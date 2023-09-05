@@ -25,11 +25,10 @@ type BuildScanCommand struct {
 	failBuild              bool
 	printExtendedTable     bool
 	rescan                 bool
-	scanType               services.ScanType
 }
 
 func NewBuildScanCommand() *BuildScanCommand {
-	return &BuildScanCommand{scanType: services.Binary}
+	return &BuildScanCommand{}
 }
 
 func (bsc *BuildScanCommand) SetServerDetails(server *config.ServerDetails) *BuildScanCommand {
@@ -135,6 +134,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		SetIncludeLicenses(false).
 		SetIsMultipleRootProject(true).
 		SetPrintExtendedTable(bsc.printExtendedTable).
+		SetScanType(services.Binary).
 		SetExtraMessages(nil)
 
 	if bsc.outputFormat != xrutils.Table {

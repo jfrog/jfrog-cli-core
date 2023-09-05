@@ -67,7 +67,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}()
 
 	if dsc.imageTag == "" {
-		//if exists, _ := fileutils.IsFileExists(dsc.dockerFilePath, false); !exists {
+		// if exists, _ := fileutils.IsFileExists(dsc.dockerFilePath, false); !exists {
 		//	return fmt.Errorf("didn't find Dockerfile in the provided path: %s", dsc.dockerFilePath)
 		//}
 		if dsc.progress != nil {

@@ -123,10 +123,15 @@ type AnalyzerManager struct {
 }
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
+	return am.ExecWithOutputFile(configFile, scanCommand, workingDir, "", serverDetails)
+}
+
+func (am *AnalyzerManager) ExecWithOutputFile(configFile, scanCommand, workingDir, outputFile string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return err
 	}
-	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile)
+	log.Debug("Executing", am.AnalyzerManagerFullPath, scanCommand, outputFile, configFile)
+	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, outputFile, configFile)
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {

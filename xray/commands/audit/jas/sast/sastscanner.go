@@ -1,6 +1,7 @@
 package sast
 
 import (
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -36,19 +37,53 @@ func newSastScanManager(scanner *jas.JasScanner) (manager *SastScanManager) {
 	}
 }
 
-func (ssm *SastScanManager) Run(wd string) (err error) {
-	scanner := ssm.scanner
-	if err = ssm.runAnalyzerManager(wd); err != nil {
+func (ssm *SastScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Sast) {
+		return
+	}
+	if err = ssm.createConfigFile(module); err != nil {
+		return
+	}
+	if err = ssm.runAnalyzerManager(module.SourceRoot); err != nil {
 		return
 	}
 	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = jas.GetSourceCodeScanResults(scanner.ResultsFileName, wd, utils.Sast); err != nil {
+	if workingDirResults, err = jas.GetSourceCodeScanResults(ssm.scanner.ResultsFileName, module.SourceRoot, utils.Sast); err != nil {
 		return
 	}
 	ssm.sastScannerResults = append(ssm.sastScannerResults, workingDirResults...)
 	return
 }
 
+type sastScanConfig struct {
+	Scans []scanConfiguration `yaml:"scans,omitempty"`
+}
+
+type scanConfiguration struct {
+	Roots           []string `yaml:"roots,omitempty"`
+	Languages       []string `yaml:"language,omitempty"`
+	ExcludePatterns []string `yaml:"exclude_patterns,omitempty"`
+	ExcludedRules   []string `yaml:"excluded-rules,omitempty"`
+}
+
+func (ssm *SastScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	sastScanner := module.Scanners.Sast
+	if sastScanner == nil {
+		sastScanner = &jfrogappsconfig.SastScanner{}
+	}
+	configFileContent := sastScanConfig{
+		Scans: []scanConfiguration{
+			{
+				Roots:           jas.GetSourceRoots(module, &sastScanner.Scanner),
+				Languages:       []string{sastScanner.Language},
+				ExcludedRules:   sastScanner.ExcludedRules,
+				ExcludePatterns: jas.GetExcludePatterns(module, &sastScanner.Scanner),
+			},
+		},
+	}
+	return jas.CreateScannersConfigFile(ssm.scanner.ConfigFileName, configFileContent)
+}
+
 func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
-	return ssm.scanner.AnalyzerManager.Exec(ssm.scanner.ResultsFileName, sastScanCommand, wd, ssm.scanner.ServerDetails)
+	return ssm.scanner.AnalyzerManager.ExecWithOutputFile(ssm.scanner.ResultsFileName, sastScanCommand, wd, ssm.scanner.ResultsFileName, ssm.scanner.ServerDetails)
 }

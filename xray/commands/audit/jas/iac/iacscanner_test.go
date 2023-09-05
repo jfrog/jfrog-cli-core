@@ -1,10 +1,12 @@
 package iac
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"os"
 	"path/filepath"
 	"testing"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -21,7 +23,7 @@ func TestNewIacScanManager(t *testing.T) {
 	if assert.NotNil(t, iacScanManager) {
 		assert.NotEmpty(t, iacScanManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, iacScanManager.scanner.ResultsFileName)
-		assert.NotEmpty(t, iacScanManager.scanner.WorkingDirs)
+		assert.NotEmpty(t, iacScanManager.scanner.JFrogAppsConfig.Modules[0].SourceRoot)
 		assert.Equal(t, &jas.FakeServerDetails, iacScanManager.scanner.ServerDetails)
 	}
 }
@@ -34,7 +36,7 @@ func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)
-	err = iacScanManager.createConfigFile(currWd)
+	err = iacScanManager.createConfigFile(jfrogappsconfig.Module{SourceRoot: currWd})
 
 	defer func() {
 		err = os.Remove(iacScanManager.scanner.ConfigFileName)
@@ -58,7 +60,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.IaC)
+	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, utils.IaC)
 
 	// Assert
 	assert.NoError(t, err)
@@ -74,7 +76,7 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.IaC)
+	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, utils.IaC)
 
 	// Assert
 	assert.NoError(t, err)

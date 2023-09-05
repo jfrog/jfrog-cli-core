@@ -1,10 +1,12 @@
 package secrets
 
 import (
+	"path/filepath"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path/filepath"
 )
 
 const (
@@ -45,19 +47,21 @@ func newSecretsScanManager(scanner *jas.JasScanner) (manager *SecretScanManager)
 	}
 }
 
-func (s *SecretScanManager) Run(wd string) (err error) {
-	scanner := s.scanner
-	if err = s.createConfigFile(wd); err != nil {
+func (ssm *SecretScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Secrets) {
 		return
 	}
-	if err = s.runAnalyzerManager(); err != nil {
+	if err = ssm.createConfigFile(module); err != nil {
+		return
+	}
+	if err = ssm.runAnalyzerManager(); err != nil {
 		return
 	}
 	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = jas.GetSourceCodeScanResults(scanner.ResultsFileName, wd, utils.Secrets); err != nil {
+	if workingDirResults, err = jas.GetSourceCodeScanResults(ssm.scanner.ResultsFileName, module.SourceRoot, utils.Secrets); err != nil {
 		return
 	}
-	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
+	ssm.secretsScannerResults = append(ssm.secretsScannerResults, workingDirResults...)
 	return
 }
 
@@ -72,14 +76,14 @@ type secretsScanConfiguration struct {
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (s *SecretScanManager) createConfigFile(currentWd string) error {
+func (s *SecretScanManager) createConfigFile(module jfrogappsconfig.Module) error {
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:       []string{currentWd},
+				Roots:       jas.GetSourceRoots(module, module.Scanners.Iac),
 				Output:      s.scanner.ResultsFileName,
 				Type:        secretsScannerType,
-				SkippedDirs: jas.SkippedDirs,
+				SkippedDirs: jas.GetExcludePatterns(module, module.Scanners.Secrets),
 			},
 		},
 	}

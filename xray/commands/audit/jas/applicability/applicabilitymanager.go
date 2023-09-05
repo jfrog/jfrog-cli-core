@@ -1,9 +1,11 @@
 package applicability
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"path/filepath"
 	"strings"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -99,13 +101,16 @@ func isDirectComponents(components []string, directDependencies []string) bool {
 	return false
 }
 
-func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
-	if len(asm.scanner.WorkingDirs) > 1 {
-		log.Info("Running applicability scanning in the", wd, "directory...")
+func (asm *ApplicabilityScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Applicability) {
+		return
+	}
+	if len(asm.scanner.JFrogAppsConfig.Modules) > 1 {
+		log.Info("Running applicability scanning in the", module.SourceRoot, "directory...")
 	} else {
 		log.Info("Running applicability scanning...")
 	}
-	if err = asm.createConfigFile(wd); err != nil {
+	if err = asm.createConfigFile(module.SourceRoot); err != nil {
 		return
 	}
 	if err = asm.runAnalyzerManager(); err != nil {
@@ -151,7 +156,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
 				CveWhitelist: asm.directDependenciesCves,
-				SkippedDirs:  jas.SkippedDirs,
+				SkippedDirs:  jas.DefaultExcludePatterns,
 			},
 		},
 	}

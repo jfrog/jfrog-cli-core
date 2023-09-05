@@ -2,24 +2,29 @@ package jas
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
 )
 
 var (
-	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	DefaultExcludePatterns = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 )
 
 type JasScanner struct {
@@ -27,7 +32,7 @@ type JasScanner struct {
 	ResultsFileName       string
 	AnalyzerManager       utils.AnalyzerManager
 	ServerDetails         *config.ServerDetails
-	WorkingDirs           []string
+	JFrogAppsConfig       *jfrogappsconfig.JFrogAppsConfig
 	ScannerDirCleanupFunc func() error
 }
 
@@ -46,21 +51,41 @@ func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails) (s
 	scanner.ServerDetails = serverDetails
 	scanner.ConfigFileName = filepath.Join(tempDir, "config.yaml")
 	scanner.ResultsFileName = filepath.Join(tempDir, "results.sarif")
-	scanner.WorkingDirs, err = coreutils.GetFullPathsWorkingDirs(workingDirs)
+	scanner.JFrogAppsConfig, err = createJFrogAppsConfig(workingDirs)
 	return
 }
 
+func createJFrogAppsConfig(workingDirs []string) (*jfrogappsconfig.JFrogAppsConfig, error) {
+	if jfrogAppsConfig, err := jfrogappsconfig.LoadConfigIfExist(); err != nil {
+		return nil, errorutils.CheckError(err)
+	} else if jfrogAppsConfig != nil {
+		// jfrog-apps-config.yml exist in the workspace
+		return jfrogAppsConfig, nil
+	}
+
+	// jfrog-apps-config.yml does not exist in the workspace
+	fullPathsWorkingDirs, err := coreutils.GetFullPathsWorkingDirs(workingDirs)
+	if err != nil {
+		return nil, err
+	}
+	jfrogAppsConfig := new(jfrogappsconfig.JFrogAppsConfig)
+	for _, workingDir := range fullPathsWorkingDirs {
+		jfrogAppsConfig.Modules = append(jfrogAppsConfig.Modules, jfrogappsconfig.Module{SourceRoot: workingDir})
+	}
+	return jfrogAppsConfig, nil
+}
+
 type ScannerCmd interface {
-	Run(wd string) (err error)
+	Run(module jfrogappsconfig.Module) (err error)
 }
 
 func (a *JasScanner) Run(scannerCmd ScannerCmd) (err error) {
-	for _, workingDir := range a.WorkingDirs {
+	for _, module := range a.JFrogAppsConfig.Modules {
 		func() {
 			defer func() {
 				err = errors.Join(err, deleteJasProcessFiles(a.ConfigFileName, a.ResultsFileName))
 			}()
-			if err = scannerCmd.Run(workingDir); err != nil {
+			if err = scannerCmd.Run(module); err != nil {
 				return
 			}
 		}()
@@ -179,4 +204,35 @@ func InitJasTest(t *testing.T, workingDirs ...string) (*JasScanner, func()) {
 
 func GetTestDataPath() string {
 	return filepath.Join("..", "..", "..", "testdata")
+}
+
+func ShouldSkipScanner(module jfrogappsconfig.Module, scanType utils.JasScanType) bool {
+	lowerScanType := strings.ToLower(string(scanType))
+	if slices.Contains(module.ExcludeScanners, lowerScanType) {
+		log.Info(fmt.Sprintf("Skipping %s scanning", scanType))
+		return true
+	}
+	return false
+}
+
+func GetSourceRoots(module jfrogappsconfig.Module, scanner *jfrogappsconfig.Scanner) []string {
+	if scanner == nil || len(scanner.WorkingDirs) == 0 {
+		return []string{module.SourceRoot}
+	}
+	var roots []string
+	for _, workingDir := range scanner.WorkingDirs {
+		roots = append(roots, filepath.Join(module.SourceRoot, workingDir))
+	}
+	return roots
+}
+
+func GetExcludePatterns(module jfrogappsconfig.Module, scanner *jfrogappsconfig.Scanner) []string {
+	excludePatterns := module.ExcludePatterns
+	if scanner != nil {
+		excludePatterns = append(excludePatterns, scanner.ExcludePatterns...)
+	}
+	if len(excludePatterns) == 0 {
+		return DefaultExcludePatterns
+	}
+	return excludePatterns
 }

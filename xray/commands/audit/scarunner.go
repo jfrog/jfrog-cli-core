@@ -74,7 +74,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		if tech == coreutils.Dotnet {
 			continue
 		}
-		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.GraphBasicParams, tech)
+		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, tech)
 		if techErr != nil {
 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
 			continue
@@ -126,7 +126,7 @@ func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []
 	return directDependencies.ToSlice()
 }
 
-func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}

@@ -11,6 +11,7 @@ import (
 const (
 	GraphScanMinXrayVersion = "3.29.0"
 	ScanTypeMinXrayVersion  = "3.37.2"
+	XscMinVersion           = "0.1.0"
 )
 
 func RunScanGraphAndGetResults(params *ScanGraphParams) (*scan.ScanResponse, error) {

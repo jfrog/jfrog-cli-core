@@ -10,8 +10,6 @@ func getDummyRunWithOneResult(fileName string, startLine, startCol int, snippet,
 	}
 }
 
-func getDummyRunWithResults()
-
 func getDummyPassingResult(ruleId string) *sarif.Result {
 	kind := "pass"
 	return &sarif.Result{

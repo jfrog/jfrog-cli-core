@@ -52,7 +52,7 @@ func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow
 			fixedVersions:          fixedVersionsFallback(rows[i].FixedVersions),
 			cves:                   convertToCveTableRow(rows[i].Cves),
 			dockerfileCommand:      dockerCommand.Command,
-			dockerfileLine:         dockerCommand.Line,
+			dockerfileLine:         strings.Join(dockerCommand.Line, ","),
 		})
 	}
 	return

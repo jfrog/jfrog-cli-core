@@ -13,6 +13,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/wagoodman/dive/dive"
+	"github.com/wagoodman/dive/dive/image"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +24,8 @@ import (
 const (
 	indexerEnvPrefix         = "JFROG_INDEXER_"
 	DockerScanMinXrayVersion = "3.40.0"
+	maxDisplayCommandLength  = 60
+	layerDigestPrefix        = "sha256:"
 )
 
 type DockerScanCommand struct {
@@ -171,11 +174,24 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layerToDockerfileComman
 	// Create mapping between sha256 hash to dockerfile Command.
 	layerToDockerfileCommand = make(map[string]services.DockerfileCommandDetails)
 	for _, layer := range dockerImage.Layers {
-		layerHash := strings.TrimPrefix(layer.Digest, "sha256:")
-		layerToDockerfileCommand[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: layer.Command}
+		layerHash := strings.TrimPrefix(layer.Digest, layerDigestPrefix)
+		layerToDockerfileCommand[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: formatCommand(layer)}
 	}
 	layerToDockerfileCommand = dsc.enrichCommandWithLineNumbers(layerToDockerfileCommand)
 	return
+}
+
+func formatCommand(layer *image.Layer) string {
+	command := trimSpacesInMiddle(layer.Command)
+	if len(command) > maxDisplayCommandLength {
+		command = command[:maxDisplayCommandLength] + " ..."
+	}
+	return command
+}
+
+func trimSpacesInMiddle(input string) string {
+	parts := strings.Fields(input) // Split the string by spaces
+	return strings.Join(parts, " ")
 }
 
 // When indexing RPM files inside the docker container, the indexer-app needs to connect to the Xray Server.
@@ -241,39 +257,62 @@ func (dsc *DockerScanCommand) loadDockerfileToMemory() (cleanUp func(), err erro
 	return
 }
 
+const (
+	emptyDockerfileLine     = ""
+	dockerfileCommentPrefix = "#"
+	bashLinesomething       = "\\"
+	fromCommand             = "FROM"
+)
+
+// Scans the dockerfile line by line and match docker commands to their respective lines.
+// Lines which don't appear in dockerfile would get assigned to the corresponding FROM command.
 func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map[string]services.DockerfileCommandDetails) map[string]services.DockerfileCommandDetails {
+
+	if dsc.scanner == nil {
+		return dockerCommandsMap
+	}
 	lineNumber := 1
-	// TODO handle more then one FROM command
-	//fromLineNumber := 0
-	//fullFromCommand := ""
+	fromLineNumber := 1
+	firstAppearanceFrom := true
 	for dsc.scanner.Scan() {
 		scannedCommand := dsc.scanner.Text()
-		if strings.Contains(scannedCommand, "FROM") {
-			//fromLineNumber = lineNumber
-			//	fullFromCommand = scannedCommand
-		}
-		if strings.HasPrefix(scannedCommand, "#") || scannedCommand == "" {
-			// Skip comments in the dockerfile
+		// Skip comments in the dockerfile
+		if strings.HasPrefix(scannedCommand, dockerfileCommentPrefix) || scannedCommand == emptyDockerfileLine {
 			lineNumber++
 			continue
 		}
-		for strings.HasSuffix(scannedCommand, "\\") {
-			// Read the next line as it is the same command.
+		// Read the next line as it is the same command.
+		for strings.HasSuffix(scannedCommand, bashLinesomething) {
 			dsc.scanner.Scan()
 			lineNumber++
 			scannedCommand += dsc.scanner.Text()
+		}
+		// Assign all the unassigned commands to the FROM command before moving on.
+		if strings.Contains(scannedCommand, fromCommand) {
+			if firstAppearanceFrom == false {
+				for key, _ := range dockerCommandsMap {
+					current := dockerCommandsMap[key]
+					if len(current.Line) == 0 {
+						current.Line = append(current.Line, strconv.Itoa(fromLineNumber))
+					}
+					dockerCommandsMap[key] = current
+				}
+			}
+			fromLineNumber = lineNumber
+			firstAppearanceFrom = false
 		}
 
 		// TODO this needs to be optimized with a prefix tree or something
 		for key, cmd := range dockerCommandsMap {
 			current := dockerCommandsMap[key]
 			if CommandContains(cmd.Command, scannedCommand) {
-				current.Line = strconv.Itoa(lineNumber)
+				current.Line = append(current.Line, strconv.Itoa(lineNumber))
 				dockerCommandsMap[key] = current
 			}
 		}
 		lineNumber++
 	}
+
 	// Check for scanner errors
 	if err := dsc.scanner.Err(); err != nil {
 		fmt.Println("Error scanning file:", err)
@@ -281,18 +320,16 @@ func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map
 
 	return dockerCommandsMap
 }
-func CommandContains(command1, command2 string) bool {
+func CommandContains(commandFromLayer, scannedCommand string) bool {
 	// Normalize and split the commands into arguments
-	args1 := strings.Fields(command1)
-	args2 := strings.Fields(command2)
-
-	// Create a map to store the arguments of command1
+	args1 := strings.Fields(commandFromLayer)
+	args2 := strings.Fields(scannedCommand)
+	// Create a map to store the arguments of commandFromLayer
 	argMap1 := make(map[string]bool)
 	for _, arg := range args1 {
 		argMap1[arg] = true
 	}
-
-	// Check if all arguments of command2 are present in command1
+	// Check if all arguments of scannedCommand are present in commandFromLayer
 	for _, arg := range args2 {
 		if !argMap1[arg] {
 			return false

@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 type SarifLevel string
@@ -86,26 +87,14 @@ var exitCodeErrorsMap = map[int]string{
 	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
 }
 
-type SourceCodeLocation struct {
-	File       string
-	LineColumn string
-	Text       string
-}
-
-type SourceCodeScanResult struct {
-	SourceCodeLocation
-	Severity string
-	Type     string
-	CodeFlow []*[]SourceCodeLocation
-}
-
 type ExtendedScanResults struct {
 	XrayResults              []services.ScanResponse
 	ScannedTechnologies      []coreutils.Technology
-	ApplicabilityScanResults map[string]string
-	SecretsScanResults       []SourceCodeScanResult
-	IacScanResults           []SourceCodeScanResult
-	SastResults              []SourceCodeScanResult
+	
+	ApplicabilityScanResults []*sarif.Run
+	SecretsScanResults       []*sarif.Run
+	IacScanResults           []*sarif.Run
+	SastScanResults          []*sarif.Run
 	EntitledForJas           bool
 }
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 )
 
 type IacScanManager struct {
-	iacScannerResults []utils.SourceCodeScanResult
+	iacScannerResults []*sarif.Run
 	scanner           *AdvancedSecurityScanner
 }
 
@@ -25,7 +26,7 @@ type IacScanManager struct {
 // []utils.SourceCodeScanResult: a list of the iac violations that were found.
 // bool: true if the user is entitled to iac scan, false otherwise.
 // error: An error object (if any).
-func getIacScanResults(scanner *AdvancedSecurityScanner) (results []utils.SourceCodeScanResult, err error) {
+func getIacScanResults(scanner *AdvancedSecurityScanner) (results []*sarif.Run, err error) {
 	iacScanManager := newIacScanManager(scanner)
 	log.Info("Running IaC scanning...")
 	if err = iacScanManager.scanner.Run(iacScanManager); err != nil {
@@ -41,7 +42,7 @@ func getIacScanResults(scanner *AdvancedSecurityScanner) (results []utils.Source
 
 func newIacScanManager(scanner *AdvancedSecurityScanner) (manager *IacScanManager) {
 	return &IacScanManager{
-		iacScannerResults: []utils.SourceCodeScanResult{},
+		iacScannerResults: []*sarif.Run{},
 		scanner:           scanner,
 	}
 }
@@ -54,10 +55,11 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.IaC); err != nil {
+	workingDirResults, err := utils.ReadScanRunsFromFile(scanner.resultsFileName)
+	if err != nil {
 		return
 	}
+	processIacScanResults(workingDirResults, wd)
 	iac.iacScannerResults = append(iac.iacScannerResults, workingDirResults...)
 	return
 }
@@ -89,4 +91,10 @@ func (iac *IacScanManager) createConfigFile(currentWd string) error {
 
 func (iac *IacScanManager) runAnalyzerManager() error {
 	return iac.scanner.analyzerManager.Exec(iac.scanner.configFileName, iacScanCommand, filepath.Dir(iac.scanner.analyzerManager.AnalyzerManagerFullPath), iac.scanner.serverDetails)
+}
+
+func processIacScanResults(sarifRuns []*sarif.Run, wd string) {
+	for _, iacRun := range sarifRuns {
+		processJasScanRun(iacRun, wd)
+	}
 }

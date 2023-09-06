@@ -75,7 +75,7 @@ func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.Si
 	case Json:
 		return PrintJson(results.getXrayScanResults())
 	case Sarif:
-		sarifFile, err := GenerateSarifFileFromScan(results, isMultipleRoots, false, "JFrog Security", coreutils.JFrogComUrl+"xray/")
+		sarifFile, err := GenerateSarifContentFromResults(results, isMultipleRoots, false, "JFrog Security", coreutils.JFrogComUrl+"xray/")
 		if err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 	if !version.NewVersion(AnalyzerManagerVersion).AtLeast(MinAnalyzerManagerVersionForSast) {
 		return
 	}
-	return PrintSastTable(results.SastResults, results.EntitledForJas)
+	return PrintSastTable(results.SastScanResults, results.EntitledForJas)
 }
 
 func printMessages(messages []string) {
@@ -131,6 +131,39 @@ func printMessages(messages []string) {
 
 func printMessage(message string) {
 	log.Output("💬" + message)
+}
+
+func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool, scanningTool, toolURI string) (sarifStr string, err error) {
+	report, err := NewReport()
+	if err != nil {
+		return
+	}
+
+	report.Runs = append(report.Runs, convertXrayResponsesToSarifRun(extendedResults.XrayResults)...)
+	report.Runs = append(report.Runs, extendedResults.ApplicabilityScanResults...)
+	report.Runs = append(report.Runs, extendedResults.IacScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
+
+	out, err := json.Marshal(report)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	return clientUtils.IndentJson(out), nil
+}
+
+
+func convertXrayResponsesToSarifRun(responses []services.ScanResponse) (runs []*sarif.Run) {
+	for _, response := range responses {
+		xrayRun := sarif.NewRunWithInformationURI("JFrog Xray sca scanner", "https://jfrog.com/xray/")
+		xrayRun.Tool.Driver.Rules = append(xrayRun.Tool.Driver.Rules, sarif.NewRule(response.ScanId).
+			WithHelp(sarif.NewMarkdownMultiformatMessageString("")).
+			WithProperties(sarif.Properties{"": ""}),
+		)
+		runs = append(runs, xrayRun)
+	}
+	return
 }
 
 func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool, scanningTool, toolURI string) (string, error) {
@@ -178,8 +211,8 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		iacRows := PrepareIacs(extendedResults.IacScanResults)
 		jsonTable.Iacs = iacRows
 	}
-	if len(extendedResults.SastResults) > 0 {
-		sastRows := PrepareSast(extendedResults.SastResults)
+	if len(extendedResults.SastScanResults) > 0 {
+		sastRows := PrepareSast(extendedResults.SastScanResults)
 		jsonTable.Sast = sastRows
 	}
 	if includeLicenses {

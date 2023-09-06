@@ -90,7 +90,7 @@ func TestGetResultLocationInFile(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultLocationInFile(test.result))
+		assert.Equal(t, test.expectedOutput, GetResultStartLocationInFile(test.result))
 	}
 }
 

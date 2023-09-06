@@ -107,7 +107,7 @@ func RunScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDepe
 	if progress != nil {
 		progress.SetHeadlineMsg("Running SAST scanning")
 	}
-	scanResults.SastResults, err = getSastScanResults(scanner)
+	scanResults.SastScanResults, err = getSastScanResults(scanner)
 	return
 }
 
@@ -131,47 +131,70 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) (results []utils.SourceCodeScanResult, err error) {
-	// Read Sarif format results generated from the Jas scanner
-	report, err := sarif.Open(resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
-	var sarifResults []*sarif.Result
-	if len(report.Runs) > 0 {
-		// Jas scanners returns results in a single run entry
-		sarifResults = report.Runs[0].Results
-	}
-	resultPointers := convertSarifResultsToSourceCodeScanResults(sarifResults, workingDir, scanType)
-	for _, res := range resultPointers {
-		results = append(results, *res)
-	}
-	return results, nil
-}
-
-func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, workingDir string, scanType utils.JasScanType) []*utils.SourceCodeScanResult {
-	var sourceCodeScanResults []*utils.SourceCodeScanResult
-	for _, sarifResult := range sarifResults {
-		// Describes a request to “suppress” a result (to exclude it from result lists)
+func processJasScanRun(sarifRun *sarif.Run, workingDir string) {
+	for i := 0; i < len(sarifRun.Results); i++ {
+		sarifResult := sarifRun.Results[i]
 		if len(sarifResult.Suppressions) > 0 {
+			// Describes a request to “suppress” a result (to exclude it from result lists)
+			sarifRun.Results = append(sarifRun.Results[:i], sarifRun.Results[i+1:]...)
+			i--
 			continue
 		}
-		// Convert
-		currentResult := utils.GetResultIfExists(sarifResult, workingDir, sourceCodeScanResults)
-		if currentResult == nil {
-			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
-			// Set specific Jas scan attributes
-			if scanType == utils.Secrets {
-				currentResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
-			}
-			sourceCodeScanResults = append(sourceCodeScanResults, currentResult)
+		// Convert locations absolute paths to relative
+		for _, location := range sarifResult.Locations {
+			utils.SetLocationFileName(location, utils.ExtractRelativePath(utils.GetLocationFileName(location), workingDir))
 		}
-		if scanType == utils.Sast {
-			currentResult.CodeFlow = append(currentResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
+		for _, codeFlows := range sarifResult.CodeFlows {
+			for _, threadFlows := range codeFlows.ThreadFlows {
+				for _, location := range threadFlows.Locations {
+					utils.SetLocationFileName(location.Location, utils.ExtractRelativePath(utils.GetLocationFileName(location.Location), workingDir))
+				}
+			}
 		}
 	}
-	return sourceCodeScanResults
 }
+
+// func getSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) (results []utils.SourceCodeScanResult, err error) {
+// 	// Read Sarif format results generated from the Jas scanner
+// 	report, err := sarif.Open(resultsFileName)
+// 	if errorutils.CheckError(err) != nil {
+// 		return nil, err
+// 	}
+// 	var sarifResults []*sarif.Result
+// 	if len(report.Runs) > 0 {
+// 		// Jas scanners returns results in a single run entry
+// 		sarifResults = report.Runs[0].Results
+// 	}
+// 	resultPointers := convertSarifResultsToSourceCodeScanResults(sarifResults, workingDir, scanType)
+// 	for _, res := range resultPointers {
+// 		results = append(results, *res)
+// 	}
+// 	return results, nil
+// }
+
+// func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, workingDir string, scanType utils.JasScanType) []*utils.SourceCodeScanResult {
+// 	var sourceCodeScanResults []*utils.SourceCodeScanResult
+// 	for _, sarifResult := range sarifResults {
+// // Describes a request to “suppress” a result (to exclude it from result lists)
+// if len(sarifResult.Suppressions) > 0 {
+// 	continue
+// }
+// 		// Convert
+// 		currentResult := utils.GetResultIfExists(sarifResult, workingDir, sourceCodeScanResults)
+// 		if currentResult == nil {
+// 			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
+// 			// Set specific Jas scan attributes
+// 			if scanType == utils.Secrets {
+// 				currentResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
+// 			}
+// 			sourceCodeScanResults = append(sourceCodeScanResults, currentResult)
+// 		}
+// 		if scanType == utils.Sast {
+// 			currentResult.CodeFlow = append(currentResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
+// 		}
+// 	}
+// 	return sourceCodeScanResults
+// }
 
 func createScannersConfigFile(fileName string, fileContent interface{}) error {
 	yamlData, err := yaml.Marshal(&fileContent)

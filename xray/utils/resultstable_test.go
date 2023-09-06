@@ -3,8 +3,9 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
@@ -457,7 +458,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		assert.Equal(t, testCase.expectedResult, getApplicableCveValue(testCase.scanResults, testCase.cves))
+		assert.Equal(t, testCase.expectedResult, extractCveValues(testCase.scanResults, testCase.cves))
 	}
 }
 

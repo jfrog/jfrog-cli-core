@@ -2,12 +2,10 @@ package jas
 
 import (
 	"path/filepath"
-	"strings"
 
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -30,7 +28,7 @@ const (
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
 func getApplicabilityScanResults(xrayResults []services.ScanResponse, directDependencies []string,
-	scannedTechnologies []coreutils.Technology, scanner *AdvancedSecurityScanner) (results map[string]string, err error) {
+	scannedTechnologies []coreutils.Technology, scanner *AdvancedSecurityScanner) (results []*sarif.Run, err error) {
 	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
@@ -45,7 +43,8 @@ func getApplicabilityScanResults(xrayResults []services.ScanResponse, directDepe
 }
 
 type ApplicabilityScanManager struct {
-	applicabilityScanResults map[string]string
+	// applicabilityScanResults map[string]string
+	applicabilityScanResults []*sarif.Run
 	directDependenciesCves   *datastructures.Set[string]
 	xrayResults              []services.ScanResponse
 	scanner                  *AdvancedSecurityScanner
@@ -54,7 +53,7 @@ type ApplicabilityScanManager struct {
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *AdvancedSecurityScanner) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
-		applicabilityScanResults: map[string]string{},
+		applicabilityScanResults: []*sarif.Run{},
 		directDependenciesCves:   directDependenciesCves,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
@@ -110,13 +109,12 @@ func (a *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = a.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults map[string]string
-	if workingDirResults, err = a.getScanResults(); err != nil {
+	workingDirResults, err := utils.ReadScanRunsFromFile(a.scanner.resultsFileName)
+	if err != nil {
 		return
 	}
-	for cve, result := range workingDirResults {
-		a.applicabilityScanResults[cve] = result
-	}
+	processApplicabilityScanResults(workingDirResults, wd)
+	a.applicabilityScanResults = append(a.applicabilityScanResults, workingDirResults...)
 	return
 }
 
@@ -163,37 +161,36 @@ func (a *ApplicabilityScanManager) runAnalyzerManager() error {
 	return a.scanner.analyzerManager.Exec(a.scanner.configFileName, applicabilityScanCommand, filepath.Dir(a.scanner.analyzerManager.AnalyzerManagerFullPath), a.scanner.serverDetails)
 }
 
-func (a *ApplicabilityScanManager) getScanResults() (map[string]string, error) {
-	report, err := sarif.Open(a.scanner.resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
-	}
-	var fullVulnerabilitiesList []*sarif.Result
-	if len(report.Runs) > 0 {
-		fullVulnerabilitiesList = report.Runs[0].Results
-	}
+// func (a *ApplicabilityScanManager) getScanResults() (map[string]string, error) {
+// 	report, err := sarif.Open(a.scanner.resultsFileName)
+// 	if errorutils.CheckError(err) != nil {
+// 		return nil, err
+// 	}
+// 	var fullVulnerabilitiesList []*sarif.Result
+// 	if len(report.Runs) > 0 {
+// 		fullVulnerabilitiesList = report.Runs[0].Results
+// 	}
 
-	applicabilityScanResults := make(map[string]string)
-	for _, cve := range a.directDependenciesCves.ToSlice() {
-		applicabilityScanResults[cve] = utils.ApplicabilityUndeterminedStringValue
-	}
+// 	applicabilityScanResults := make(map[string]string)
+// 	for _, cve := range a.directDependenciesCves.ToSlice() {
+// 		applicabilityScanResults[cve] = utils.ApplicabilityUndeterminedStringValue
+// 	}
 
-	for _, vulnerability := range fullVulnerabilitiesList {
-		applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
-		if isVulnerabilityApplicable(vulnerability) {
-			applicabilityScanResults[applicableVulnerabilityName] = utils.ApplicableStringValue
-		} else {
-			applicabilityScanResults[applicableVulnerabilityName] = utils.NotApplicableStringValue
-		}
-	}
-	return applicabilityScanResults, nil
-}
+// 	for _, vulnerability := range fullVulnerabilitiesList {
+// 		applicableVulnerabilityName := getVulnerabilityName(*vulnerability.RuleID)
+// 		if isVulnerabilityApplicable(vulnerability) {
+// 			applicabilityScanResults[applicableVulnerabilityName] = utils.ApplicableStringValue
+// 		} else {
+// 			applicabilityScanResults[applicableVulnerabilityName] = utils.NotApplicableStringValue
+// 		}
+// 	}
+// 	return applicabilityScanResults, nil
+// }
 
 // Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise
-func isVulnerabilityApplicable(result *sarif.Result) bool {
-	return !(result.Kind != nil && *result.Kind == "pass")
-}
 
-func getVulnerabilityName(sarifRuleId string) string {
-	return strings.TrimPrefix(sarifRuleId, "applic_")
+func processApplicabilityScanResults(sarifRuns []*sarif.Run, wd string) {
+	for _, run := range sarifRuns {
+		processJasScanRun(run, wd)
+	}
 }

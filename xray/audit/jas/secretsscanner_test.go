@@ -113,6 +113,6 @@ func TestHideSecret(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, hideSecret(test.secret))
+		assert.Equal(t, test.expectedOutput, hideSecret(&test.secret))
 	}
 }

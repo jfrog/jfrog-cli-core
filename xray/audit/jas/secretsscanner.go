@@ -6,6 +6,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 )
 
 type SecretScanManager struct {
-	secretsScannerResults []utils.SourceCodeScanResult
+	secretsScannerResults []*sarif.Run
 	scanner               *AdvancedSecurityScanner
 }
 
@@ -25,7 +26,7 @@ type SecretScanManager struct {
 // Return values:
 // []utils.IacOrSecretResult: a list of the secrets that were found.
 // error: An error object (if any).
-func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.SourceCodeScanResult, err error) {
+func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []*sarif.Run, err error) {
 	secretScanManager := newSecretsScanManager(scanner)
 	log.Info("Running secrets scanning...")
 	if err = secretScanManager.scanner.Run(secretScanManager); err != nil {
@@ -41,7 +42,7 @@ func getSecretsScanResults(scanner *AdvancedSecurityScanner) (results []utils.So
 
 func newSecretsScanManager(scanner *AdvancedSecurityScanner) (manager *SecretScanManager) {
 	return &SecretScanManager{
-		secretsScannerResults: []utils.SourceCodeScanResult{},
+		secretsScannerResults: []*sarif.Run{},
 		scanner:               scanner,
 	}
 }
@@ -54,10 +55,11 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = getSourceCodeScanResults(scanner.resultsFileName, wd, utils.Secrets); err != nil {
+	workingDirResults, err := utils.ReadScanRunsFromFile(scanner.resultsFileName)
+	if err != nil {
 		return
 	}
+	processSecretScanRuns(workingDirResults, wd)
 	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
 	return
 }
@@ -91,9 +93,22 @@ func (s *SecretScanManager) runAnalyzerManager() error {
 	return s.scanner.analyzerManager.Exec(s.scanner.configFileName, secretsScanCommand, filepath.Dir(s.scanner.analyzerManager.AnalyzerManagerFullPath), s.scanner.serverDetails)
 }
 
-func hideSecret(secret string) string {
-	if len(secret) <= 3 {
+func processSecretScanRuns(sarifRuns []*sarif.Run, wd string) {
+	for _, secretRun := range sarifRuns {
+		// Change general attributes
+		processJasScanRun(secretRun, wd)
+		// Change specific scan attributes
+		for _, secretResult := range secretRun.Results {
+			for _, location := range secretResult.Locations {
+				utils.SetLocationSnippet(location, hideSecret(utils.GetLocationSnippetPointer(location)))
+			}
+		}
+	}
+}
+
+func hideSecret(secret *string) string {
+	if len(*secret) <= 3 {
 		return "***"
 	}
-	return secret[:3] + strings.Repeat("*", 12)
+	return (*secret)[:3] + strings.Repeat("*", 12)
 }

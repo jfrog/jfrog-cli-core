@@ -12,6 +12,7 @@ type SimpleJsonResults struct {
 	LicensesViolations        []LicenseViolationRow         `json:"licensesViolations"`
 	Licenses                  []LicenseRow                  `json:"licenses"`
 	OperationalRiskViolations []OperationalRiskViolationRow `json:"operationalRiskViolations"`
+	CveApplicableEvidences	  []SourceCodeRow				`json:"cveApplicableEvidences"`
 	Secrets                   []SourceCodeRow               `json:"secrets"`
 	Iacs                      []SourceCodeRow               `json:"iacViolations"`
 	Sast                      []SourceCodeRow               `json:"sastViolations"`
@@ -94,9 +95,21 @@ type ComponentRow struct {
 }
 
 type CveRow struct {
-	Id     string `json:"id"`
-	CvssV2 string `json:"cvssV2"`
-	CvssV3 string `json:"cvssV3"`
+	Id     				string `json:"id"`
+	CvssV2 				string `json:"cvssV2"`
+	CvssV3 				string `json:"cvssV3"`
+	ApplicableDetails *ApplicableDetails `json:"applicableDetails,omitempty"`
+}
+
+type ApplicableDetails struct {
+	IsApplicable bool `json:"isApplicable"`
+	SearchTarget string `json:"searchTarget,omitempty"`
+	Evidence []ApplicableEvidence `json:"evidence,omitempty"`
+}
+
+type ApplicableEvidence struct {
+	SourceCodeLocationRow
+	Reason string `json:"reason,omitempty"`
 }
 
 type SimpleJsonError struct {

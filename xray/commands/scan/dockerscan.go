@@ -1,6 +1,7 @@
 package scan
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -25,9 +27,12 @@ const (
 
 type DockerScanCommand struct {
 	ScanCommand
-	imageTag       string
-	targetRepoPath string
-	dockerFilePath string
+	imageTag         string
+	targetRepoPath   string
+	dockerFilePath   string
+	scanner          *bufio.Scanner
+	hashToCommandMap map[string]services.DockerfileCommandDetails
+	commandsMap      map[string]string
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -66,21 +71,17 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		}
 	}()
 
+	// No image tag provided, meaning we work with a dockerfile
 	if dsc.imageTag == "" {
-		// if exists, _ := fileutils.IsFileExists(dsc.dockerFilePath, false); !exists {
-		//	return fmt.Errorf("didn't find Dockerfile in the provided path: %s", dsc.dockerFilePath)
-		//}
-		if dsc.progress != nil {
-			dsc.progress.SetHeadlineMsg(fmt.Sprintf("Building Docker image from: %s  🏗️...", dsc.dockerFilePath))
+		if err = dsc.buildDockerImage(); err != nil {
+			return
 		}
-		log.Info("Building docker image")
-		dsc.imageTag = "audittag"
-
-		dockerBuildCommand := exec.Command("docker", "build", ".", "-f", ".dockerfile", "-t", dsc.imageTag)
-		if err = dockerBuildCommand.Run(); err != nil {
-			return fmt.Errorf("failed to build docker image,error: %s", err.Error())
+		// Load content of dockerfile to memory to allow search by file line.
+		cleanUp, err := dsc.loadDockerfileToMemory()
+		defer cleanUp()
+		if err != nil {
+			return err
 		}
-		log.Info("successfully build docker image from dockerfile")
 	}
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
@@ -98,7 +99,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		return fmt.Errorf("failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String())
 	}
 
-	dockerCommandsMapping, err := mapDockerLayerToCommand(dsc.imageTag)
+	dockerCommandsMapping, err := dsc.mapDockerLayerToCommand()
 	if err != nil {
 		return
 	}
@@ -138,21 +139,47 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
 }
 
-func mapDockerLayerToCommand(imageTag string) (commandsMapping map[string]services.DockerfileCommandDetails, err error) {
+func (dsc *DockerScanCommand) buildDockerImage() (err error) {
+	if exists, _ := fileutils.IsFileExists(".dockerfile", false); !exists {
+		return fmt.Errorf("didn't find Dockerfile in the provided path: %s", dsc.dockerFilePath)
+	}
+	if dsc.progress != nil {
+		dsc.progress.SetHeadlineMsg(fmt.Sprintf("Building Docker image from: %s  🏗️...", dsc.dockerFilePath))
+	}
+	log.Info("Building docker image")
+	dsc.imageTag = "audittag"
+	dockerBuildCommand := exec.Command("docker", "build", ".", "-f", ".dockerfile", "-t", dsc.imageTag)
+	if err = dockerBuildCommand.Run(); err != nil {
+		return fmt.Errorf("failed to build docker image,error: %s", err.Error())
+	}
+	log.Info("Successfully build image from dockerfile")
+	return
+}
+
+func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layerToDockerfileCommand map[string]services.DockerfileCommandDetails, err error) {
 	log.Debug("Mapping docker layers into commands ")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
 		return
 	}
-	dockerImage, err := resolver.Fetch(imageTag)
+	dockerImage, err := resolver.Fetch(dsc.imageTag)
 	if err != nil {
 		return
 	}
 	// Create mapping between sha256 hash to dockerfile Command.
-	commandsMapping = make(map[string]services.DockerfileCommandDetails)
+	layerToDockerfileCommand = make(map[string]services.DockerfileCommandDetails)
+	commandToHash := make(map[string]string)
 	for _, layer := range dockerImage.Layers {
-		commandsMapping[strings.TrimPrefix(layer.Digest, "sha256:")] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: layer.Command, Line: "3-5"}
+		layerHash := strings.TrimPrefix(layer.Digest, "sha256:")
+		command := layer.Command
+		if !strings.HasPrefix(layer.Command, "#") {
+			command = strings.Split(layer.Command, "#")[0]
+		}
+		command = strings.TrimSpace(command)
+		layerToDockerfileCommand[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: command}
+		commandToHash[command] = layerHash
 	}
+	layerToDockerfileCommand = dsc.enrichCommandWithLineNumbers(layerToDockerfileCommand, commandToHash)
 	return
 }
 
@@ -204,4 +231,48 @@ func (dsc *DockerScanCommand) unsetCredentialEnvsForIndexerApp() error {
 
 func (dsc *DockerScanCommand) CommandName() string {
 	return "xr_docker_scan"
+}
+
+func (dsc *DockerScanCommand) loadDockerfileToMemory() (cleanUp func(), err error) {
+	file, err := os.Open(".dockerfile")
+	if err != nil {
+		err = fmt.Errorf("failed while trying to load dockerfile")
+		return
+	}
+	cleanUp = func() {
+		err = file.Close()
+	}
+	dsc.scanner = bufio.NewScanner(file)
+	return
+}
+
+func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map[string]services.DockerfileCommandDetails, commandToHash map[string]string) map[string]services.DockerfileCommandDetails {
+	lineNumber := 0
+
+	// Loop through each line of the file
+	for dsc.scanner.Scan() {
+		scannedCommand := dsc.scanner.Text()
+		if strings.HasPrefix(scannedCommand, "#") || scannedCommand == "" {
+			// Skip comments in the dockerfile
+			lineNumber++
+			continue
+		}
+		// TODO -> Extact map matching is not a good solution, need to think of somethign else
+		// TODO RUN /bin/sh -c curl -sL https://deb.nodesource.com/setup_14.x | bash -
+		// tODO RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
+		// TODO for exmaple
+		commandHash := commandToHash[scannedCommand]
+		cmdDetails, exsists := dockerCommandsMap[commandHash]
+		if exsists {
+			cmdDetails.Line = strconv.Itoa(lineNumber)
+		}
+
+		lineNumber++
+	}
+	// Check for scanner errors
+	if err := dsc.scanner.Err(); err != nil {
+		fmt.Println("Error scanning file:", err)
+	}
+
+	return dockerCommandsMap
 }

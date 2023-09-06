@@ -71,7 +71,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		}
 	}()
 
-	// No image tag provided, meaning we work with a dockerfile
+	// No image tag provided, check for dockerfile in working dir.
 	if dsc.imageTag == "" {
 		if err = dsc.buildDockerImage(); err != nil {
 			return
@@ -86,7 +86,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
 	if dsc.progress != nil {
-		dsc.progress.SetHeadlineMsg("Creating image archive 📦...")
+		dsc.progress.SetHeadlineMsg("Creating image archive 📦")
 	}
 	log.Info("Creating image archive...")
 	imageTarPath := filepath.Join(tempDirPath, "image.tar")
@@ -94,8 +94,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	dockerSaveCmd := exec.Command("docker", "save", dsc.imageTag, "-o", imageTarPath)
 	var stderr bytes.Buffer
 	dockerSaveCmd.Stderr = &stderr
-	err = dockerSaveCmd.Run()
-	if err != nil {
+	if err = dockerSaveCmd.Run(); err != nil {
 		return fmt.Errorf("failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String())
 	}
 
@@ -144,11 +143,14 @@ func (dsc *DockerScanCommand) buildDockerImage() (err error) {
 		return fmt.Errorf("didn't find Dockerfile in the provided path: %s", dsc.dockerFilePath)
 	}
 	if dsc.progress != nil {
-		dsc.progress.SetHeadlineMsg(fmt.Sprintf("Building Docker image from: %s  🏗️...", dsc.dockerFilePath))
+		dsc.progress.SetHeadlineMsg(fmt.Sprintf("Building Docker image 🏗️"))
 	}
-	log.Info("Building docker image")
 	dsc.imageTag = "audittag"
+	// TODO this could take a while, need to update progress bar.
+	log.Info("Building docker image... ")
+	var stderr bytes.Buffer
 	dockerBuildCommand := exec.Command("docker", "build", ".", "-f", ".dockerfile", "-t", dsc.imageTag)
+	dockerBuildCommand.Stderr = &stderr
 	if err = dockerBuildCommand.Run(); err != nil {
 		return fmt.Errorf("failed to build docker image,error: %s", err.Error())
 	}
@@ -168,18 +170,11 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layerToDockerfileComman
 	}
 	// Create mapping between sha256 hash to dockerfile Command.
 	layerToDockerfileCommand = make(map[string]services.DockerfileCommandDetails)
-	commandToHash := make(map[string]string)
 	for _, layer := range dockerImage.Layers {
 		layerHash := strings.TrimPrefix(layer.Digest, "sha256:")
-		command := layer.Command
-		if !strings.HasPrefix(layer.Command, "#") {
-			command = strings.Split(layer.Command, "#")[0]
-		}
-		command = strings.TrimSpace(command)
-		layerToDockerfileCommand[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: command}
-		commandToHash[command] = layerHash
+		layerToDockerfileCommand[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: layer.Command}
 	}
-	layerToDockerfileCommand = dsc.enrichCommandWithLineNumbers(layerToDockerfileCommand, commandToHash)
+	layerToDockerfileCommand = dsc.enrichCommandWithLineNumbers(layerToDockerfileCommand)
 	return
 }
 
@@ -246,27 +241,37 @@ func (dsc *DockerScanCommand) loadDockerfileToMemory() (cleanUp func(), err erro
 	return
 }
 
-func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map[string]services.DockerfileCommandDetails, commandToHash map[string]string) map[string]services.DockerfileCommandDetails {
-	lineNumber := 0
-
-	// Loop through each line of the file
+func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map[string]services.DockerfileCommandDetails) map[string]services.DockerfileCommandDetails {
+	lineNumber := 1
+	// TODO handle more then one FROM command
+	//fromLineNumber := 0
+	//fullFromCommand := ""
 	for dsc.scanner.Scan() {
 		scannedCommand := dsc.scanner.Text()
+		if strings.Contains(scannedCommand, "FROM") {
+			//fromLineNumber = lineNumber
+			//	fullFromCommand = scannedCommand
+		}
 		if strings.HasPrefix(scannedCommand, "#") || scannedCommand == "" {
 			// Skip comments in the dockerfile
 			lineNumber++
 			continue
 		}
-		// TODO -> Extact map matching is not a good solution, need to think of somethign else
-		// TODO RUN /bin/sh -c curl -sL https://deb.nodesource.com/setup_14.x | bash -
-		// tODO RUN curl -sL https://deb.nodesource.com/setup_14.x | bash -
-		// TODO for exmaple
-		commandHash := commandToHash[scannedCommand]
-		cmdDetails, exsists := dockerCommandsMap[commandHash]
-		if exsists {
-			cmdDetails.Line = strconv.Itoa(lineNumber)
+		for strings.HasSuffix(scannedCommand, "\\") {
+			// Read the next line as it is the same command.
+			dsc.scanner.Scan()
+			lineNumber++
+			scannedCommand += dsc.scanner.Text()
 		}
 
+		// TODO this needs to be optimized with a prefix tree or something
+		for key, cmd := range dockerCommandsMap {
+			current := dockerCommandsMap[key]
+			if CommandContains(cmd.Command, scannedCommand) {
+				current.Line = strconv.Itoa(lineNumber)
+				dockerCommandsMap[key] = current
+			}
+		}
 		lineNumber++
 	}
 	// Check for scanner errors
@@ -275,4 +280,23 @@ func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map
 	}
 
 	return dockerCommandsMap
+}
+func CommandContains(command1, command2 string) bool {
+	// Normalize and split the commands into arguments
+	args1 := strings.Fields(command1)
+	args2 := strings.Fields(command2)
+
+	// Create a map to store the arguments of command1
+	argMap1 := make(map[string]bool)
+	for _, arg := range args1 {
+		argMap1[arg] = true
+	}
+
+	// Check if all arguments of command2 are present in command1
+	for _, arg := range args2 {
+		if !argMap1[arg] {
+			return false
+		}
+	}
+	return true
 }

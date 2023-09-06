@@ -34,11 +34,14 @@ func TestSastParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	sastScanManager.sastScannerResults, err = jas.GetSourceCodeScanResults(sastScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.Sast)
+	sastScanManager.sastScannerResults, err = utils.ReadScanRunsFromFile(sastScanManager.scanner.ResultsFileName)
 
 	// Assert
-	assert.NoError(t, err)
-	assert.Empty(t, sastScanManager.sastScannerResults)
+	if assert.NoError(t, err) {
+		assert.Empty(t, sastScanManager.sastScannerResults)
+		processSastScanResults(sastScanManager.sastScannerResults, scanner.WorkingDirs[0])
+		assert.Empty(t, sastScanManager.sastScannerResults)
+	}
 }
 
 func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
@@ -50,11 +53,13 @@ func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	sastScanManager.sastScannerResults, err = jas.GetSourceCodeScanResults(sastScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.Sast)
+	sastScanManager.sastScannerResults, err = utils.ReadScanRunsFromFile(sastScanManager.scanner.ResultsFileName)
 
 	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, sastScanManager.sastScannerResults)
-	// File has 4 results, 2 of them at the same location different codeFlow
-	assert.Equal(t, 3, len(sastScanManager.sastScannerResults))
+	if assert.NoError(t, err) {
+		assert.NotEmpty(t, sastScanManager.sastScannerResults)
+		processSastScanResults(sastScanManager.sastScannerResults, scanner.WorkingDirs[0])
+		// File has 4 results, 2 of them at the same location different codeFlow
+		assert.Equal(t, 3, len(sastScanManager.sastScannerResults))
+	}	
 }

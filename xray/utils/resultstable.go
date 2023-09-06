@@ -959,15 +959,15 @@ func convertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
-func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[string]*formats.ApplicableDetails) (value string, cveRows []formats.CveRow) {
-	value = ApplicabilityUndeterminedStringValue
+func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[string]*formats.ApplicableDetails) (value ApplicabilityStatus, cveRows []formats.CveRow) {
+	value = NotScanned
 	if len(xrayCves) == 0 {
 		return
 	}
 	if applicabilityScanResults != nil {
 		// Entitled for Jas and have at least one cve.
 		// Only if we don't find any undetermined or applicable it will stay the default 3rd priority Not applicable value
-		value = NotApplicableStringValue
+		value = NotApplicable
 	}
 	for _, cve := range xrayCves {
 		var applicableDetails *formats.ApplicableDetails
@@ -976,11 +976,11 @@ func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[str
 				applicableDetails = (*applicabilityScanResults)[cve.Id]
 				if applicableDetails.IsApplicable {
 					// Found at least one applicable - 1st priority
-					value = ApplicableStringValue
+					value = Applicable
 				}
-			} else if value != ApplicableStringValue {
+			} else if value != Applicable {
 				// Found at lest one undetermined and no applicable - 2nd priority
-				value = ApplicabilityUndeterminedStringValue
+				value = ApplicabilityUndetermined
 			}
 		}
 		cveRows = append(cveRows, formats.CveRow{Id: cve.Id, CvssV2: cve.CvssV2Score, CvssV3: cve.CvssV3Score, ApplicableDetails: applicableDetails})

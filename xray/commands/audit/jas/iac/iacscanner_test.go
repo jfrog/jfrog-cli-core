@@ -58,11 +58,12 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.IaC)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.Empty(t, iacScanManager.iacScannerResults)
+	iacScanManager.iacScannerResults, err = utils.ReadScanRunsFromFile(iacScanManager.scanner.ResultsFileName)
+	if assert.NoError(t, err) {
+		assert.Empty(t, iacScanManager.iacScannerResults)
+		processIacScanResults(iacScanManager.iacScannerResults, scanner.WorkingDirs[0])
+		assert.Empty(t, iacScanManager.iacScannerResults)
+	}
 }
 
 func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
@@ -74,10 +75,10 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.IaC)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, iacScanManager.iacScannerResults)
-	assert.Equal(t, 4, len(iacScanManager.iacScannerResults))
+	iacScanManager.iacScannerResults, err = utils.ReadScanRunsFromFile(iacScanManager.scanner.ResultsFileName)
+	if assert.NoError(t, err) {
+		assert.Empty(t, iacScanManager.iacScannerResults)
+		processIacScanResults(iacScanManager.iacScannerResults, scanner.WorkingDirs[0])
+		assert.Equal(t, 4, len(iacScanManager.iacScannerResults))
+	}
 }

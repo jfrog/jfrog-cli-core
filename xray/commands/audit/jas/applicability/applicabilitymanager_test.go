@@ -276,13 +276,14 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "empty-results.sarif")
 
 	// Act
-	results, err := applicabilityManager.getScanResults()
+	var err error
+	applicabilityManager.applicabilityScanResults, err = utils.ReadScanRunsFromFile(applicabilityManager.scanner.ResultsFileName)
 
-	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(results))
-	for _, cveResult := range results {
-		assert.Equal(t, utils.ApplicabilityUndetermined, cveResult)
+	if assert.NoError(t, err) {
+		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
+		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
+		processApplicabilityScanResults(applicabilityManager.applicabilityScanResults, scanner.WorkingDirs[0])
+		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
 	}
 }
 

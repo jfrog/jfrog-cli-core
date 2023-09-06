@@ -1,8 +1,9 @@
 package jas
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHideSecret(t *testing.T) {
@@ -18,6 +19,6 @@ func TestHideSecret(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, hideSecret(test.secret))
+		assert.Equal(t, test.expectedOutput, HideSecret(test.secret))
 	}
 }

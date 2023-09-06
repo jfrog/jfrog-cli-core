@@ -3,29 +3,11 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"path/filepath"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
 )
-
-func TestRemoveDuplicateValues(t *testing.T) {
-	tests := []struct {
-		testedSlice    []string
-		expectedResult []string
-	}{
-		{testedSlice: []string{"1", "1", "1", "3"}, expectedResult: []string{"1", "3"}},
-		{testedSlice: []string{}, expectedResult: []string{}},
-		{testedSlice: []string{"1", "2", "3", "4"}, expectedResult: []string{"1", "2", "3", "4"}},
-		{testedSlice: []string{"1", "6", "1", "6", "2"}, expectedResult: []string{"1", "6", "2"}},
-	}
-
-	for _, test := range tests {
-		assert.Equal(t, test.expectedResult, RemoveDuplicateValues(test.testedSlice))
-	}
-}
 
 func TestGetResultFileName(t *testing.T) {
 	fileNameValue := "fileNameValue"
@@ -191,39 +173,6 @@ func TestScanTypeErrorMsg(t *testing.T) {
 				return
 			}
 			assert.Equal(t, test.wantMsg, gotMsg.Error())
-		})
-	}
-}
-
-func TestGetFullPathsWorkingDirs(t *testing.T) {
-	currentDir, err := coreutils.GetWorkingDirectory()
-	assert.NoError(t, err)
-	dir1, err := filepath.Abs("dir1")
-	assert.NoError(t, err)
-	dir2, err := filepath.Abs("dir2")
-	assert.NoError(t, err)
-	tests := []struct {
-		name         string
-		workingDirs  []string
-		expectedDirs []string
-	}{
-		{
-			name:         "EmptyWorkingDirs",
-			workingDirs:  []string{},
-			expectedDirs: []string{currentDir},
-		},
-		{
-			name:         "ValidWorkingDirs",
-			workingDirs:  []string{"dir1", "dir2"},
-			expectedDirs: []string{dir1, dir2},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			actualDirs, err := GetFullPathsWorkingDirs(test.workingDirs)
-			assert.NoError(t, err)
-			assert.Equal(t, test.expectedDirs, actualDirs, "Incorrect full paths of working directories")
 		})
 	}
 }

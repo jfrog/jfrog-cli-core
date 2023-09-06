@@ -206,15 +206,15 @@ func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 		details := rows[i].ApplicableDetails
 		if details != nil {
 			row.applicableDetails = &applicableDetails{
-				isApplicable: details.IsApplicable,
+				isApplicable: details.Status,
 				searchTarget: details.SearchTarget,
 			}
 			for e := range details.Evidence {
 				row.applicableDetails.evidence = append(row.applicableDetails.evidence, applicableEvidence{
-					file: details.Evidence[e].File,
+					file:       details.Evidence[e].File,
 					lineColumn: details.Evidence[e].LineColumn,
-					text: details.Evidence[e].Text,
-					reason: details.Evidence[e].Reason,
+					text:       details.Evidence[e].Text,
+					reason:     details.Evidence[e].Reason,
 				})
 			}
 		}

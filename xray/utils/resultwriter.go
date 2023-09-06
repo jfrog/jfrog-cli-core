@@ -153,7 +153,6 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	return clientUtils.IndentJson(out), nil
 }
 
-
 func convertXrayResponsesToSarifRun(responses []services.ScanResponse) (runs []*sarif.Run) {
 	for _, response := range responses {
 		xrayRun := sarif.NewRunWithInformationURI("JFrog Xray sca scanner", "https://jfrog.com/xray/")

@@ -17,27 +17,6 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
-type SarifLevel string
-
-const (
-	Error   SarifLevel = "error"
-	Warning SarifLevel = "warning"
-	Info    SarifLevel = "info"
-	Note    SarifLevel = "note"
-	None    SarifLevel = "none"
-
-	SeverityDefaultValue = "Medium"
-)
-
-var (
-	// All other values (include default) mapped as 'Medium' severity
-	levelToSeverity = map[SarifLevel]string{
-		Error: "High",
-		Note:  "Low",
-		None:  "Unknown",
-	}
-)
-
 const (
 	EntitlementsMinVersion           = "3.66.5"
 	ApplicabilityFeatureId           = "contextual_analysis"
@@ -91,9 +70,9 @@ var exitCodeErrorsMap = map[int]string{
 }
 
 type ExtendedScanResults struct {
-	XrayResults              []services.ScanResponse
-	ScannedTechnologies      []coreutils.Technology
-	
+	XrayResults         []services.ScanResponse
+	ScannedTechnologies []coreutils.Technology
+
 	ApplicabilityScanResults []*sarif.Run
 	SecretsScanResults       []*sarif.Run
 	IacScanResults           []*sarif.Run

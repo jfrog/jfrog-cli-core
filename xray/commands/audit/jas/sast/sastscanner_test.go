@@ -61,5 +61,5 @@ func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
 		processSastScanResults(sastScanManager.sastScannerResults, scanner.WorkingDirs[0])
 		// File has 4 results, 2 of them at the same location different codeFlow
 		assert.Equal(t, 3, len(sastScanManager.sastScannerResults))
-	}	
+	}
 }

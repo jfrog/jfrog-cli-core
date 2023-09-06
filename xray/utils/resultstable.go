@@ -933,7 +933,7 @@ func convertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 				applicableDetails = details
 			} else {
 				applicableDetails = &formats.ApplicableDetails{
-					IsApplicable: isVulnerabilityResult(contexualAnalysisResult),
+					Status:       isVulnerabilityResult(contexualAnalysisResult),
 					SearchTarget: searchTargetData[relatedCve],
 				}
 				applicabilityMap[relatedCve] = applicableDetails
@@ -974,7 +974,7 @@ func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[str
 		if applicabilityScanResults != nil {
 			if _, exists := (*applicabilityScanResults)[cve.Id]; exists {
 				applicableDetails = (*applicabilityScanResults)[cve.Id]
-				if applicableDetails.IsApplicable {
+				if applicableDetails.Status {
 					// Found at least one applicable - 1st priority
 					value = Applicable
 				}

@@ -30,7 +30,7 @@ func TestGetResultFileName(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultFileName(test.result))
+		assert.Equal(t, test.expectedOutput, GetLocationFileName(test.result.Locations[0]))
 	}
 
 }
@@ -72,7 +72,7 @@ func TestGetResultLocationInFile(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultStartLocationInFile(test.result))
+		assert.Equal(t, test.expectedOutput, GetStartLocationInFile(test.result.Locations[0]))
 	}
 }
 

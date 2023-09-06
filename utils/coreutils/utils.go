@@ -274,6 +274,27 @@ func GetWorkingDirectory() (string, error) {
 	return currentDir, nil
 }
 
+// Receives a list of relative path working dirs, returns a list of full paths working dirs
+func GetFullPathsWorkingDirs(workingDirs []string) ([]string, error) {
+	if len(workingDirs) == 0 {
+		currentDir, err := GetWorkingDirectory()
+		if err != nil {
+			return nil, err
+		}
+		return []string{currentDir}, nil
+	}
+
+	var fullPathsWorkingDirs []string
+	for _, wd := range workingDirs {
+		fullPathWd, err := filepath.Abs(wd)
+		if err != nil {
+			return nil, err
+		}
+		fullPathsWorkingDirs = append(fullPathsWorkingDirs, fullPathWd)
+	}
+	return fullPathsWorkingDirs, nil
+}
+
 type Credentials interface {
 	SetUser(string)
 	SetPassword(string)

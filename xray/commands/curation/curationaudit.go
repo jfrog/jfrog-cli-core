@@ -111,13 +111,13 @@ type CurationAuditCommand struct {
 	workingDirs          []string
 	OriginPath           string
 	parallelRequests     int
-	*utils.GraphBasicParams
+	*utils.AuditBasicParams
 }
 
 func NewCurationAuditCommand() *CurationAuditCommand {
 	return &CurationAuditCommand{
 		extractPoliciesRegex: regexp.MustCompile(extractPoliciesRegexTemplate),
-		GraphBasicParams:     &utils.GraphBasicParams{},
+		AuditBasicParams:     &utils.AuditBasicParams{},
 	}
 }
 
@@ -193,7 +193,7 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 }
 
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
-	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.GraphBasicParams, tech)
+	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.AuditBasicParams, tech)
 	if err != nil {
 		return err
 	}

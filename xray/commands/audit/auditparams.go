@@ -11,7 +11,7 @@ type AuditParams struct {
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
-	*xrayutils.GraphBasicParams
+	*xrayutils.AuditBasicParams
 	xrayVersion string
 	xscVersion  string
 }
@@ -19,7 +19,7 @@ type AuditParams struct {
 func NewAuditParams() *AuditParams {
 	return &AuditParams{
 		xrayGraphScanParams: &scan.XrayGraphScanParams{},
-		GraphBasicParams:    &xrayutils.GraphBasicParams{},
+		AuditBasicParams:    &xrayutils.AuditBasicParams{},
 	}
 }
 
@@ -44,8 +44,8 @@ func (params *AuditParams) SetXrayGraphScanParams(xrayGraphScanParams *scan.Xray
 	return params
 }
 
-func (params *AuditParams) SetGraphBasicParams(gbp *xrayutils.GraphBasicParams) *AuditParams {
-	params.GraphBasicParams = gbp
+func (params *AuditParams) SetGraphBasicParams(gbp *xrayutils.AuditBasicParams) *AuditParams {
+	params.AuditBasicParams = gbp
 	return params
 }
 

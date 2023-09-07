@@ -284,31 +284,19 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
-func PrepareApplicableEvidence(applicableInfo []*sarif.Run) []formats.SourceCodeRow {
-	var applicableEvidenceRows []formats.SourceCodeRow
+func FilterNotApplicableResults(applicableInfo []*sarif.Run) []*sarif.Run {
+	var applicableEvidenceRows []*sarif.Run
 	for _, cveContextualAnalysisRun := range applicableInfo {
+		onlyApplicableRun := sarif.NewRun(cveContextualAnalysisRun.Tool)
 		for _, cveContextualAnalysis := range cveContextualAnalysisRun.Results {
 			if isVulnerabilityResult(cveContextualAnalysis) {
-				for _, location := range cveContextualAnalysis.Locations {
-					applicableEvidenceRows = append(applicableEvidenceRows,
-						formats.SourceCodeRow{
-							SourceCodeLocationRow: formats.SourceCodeLocationRow{
-								File:       GetLocationFileName(location),
-								LineColumn: GetStartLocationInFile(location),
-								Text:       GetLocationSnippet(location),
-							},
-							Type: GetCveNameFromRuleId(*cveContextualAnalysis.RuleID),
-						},
-					)
-				}
+				onlyApplicableRun.Results = append(onlyApplicableRun.Results, cveContextualAnalysis)
 			}
 		}
+		if len(onlyApplicableRun.Results) > 0 {
+			applicableEvidenceRows = append(applicableEvidenceRows, onlyApplicableRun)
+		}
 	}
-
-	sort.Slice(applicableEvidenceRows, func(i, j int) bool {
-		// group together evidences from the same Cve
-		return applicableEvidenceRows[i].Type > applicableEvidenceRows[j].Type
-	})
 
 	return applicableEvidenceRows
 }

@@ -78,74 +78,27 @@ func XrayResponsesToSarifRun(responses []services.ScanResponse) *sarif.Run {
 	return xrayRun
 }
 
-// If exists SourceCodeScanResult with the same location as the provided SarifResult, return it
-// func GetResultIfExists(result *sarif.Result, workingDir string, results []*SourceCodeScanResult) *SourceCodeScanResult {
-// 	file := ExtractRelativePath(GetResultFileName(result), workingDir)
-// 	lineCol := GetResultStartLocationInFile(result)
-// 	text := *result.Message.Text
-// 	for _, result := range results {
-// 		if result.File == file && result.LineColumn == lineCol && result.Text == text {
-// 			return result
-// 		}
-// 	}
-// 	return nil
-// }
+func CombineRuns(runs []*sarif.Run, overrideToolName, overrideUrl string) *sarif.Run {
+	combined := sarif.NewRunWithInformationURI(overrideToolName, overrideUrl)
+	
+	rules := map[string]*sarif.ReportingDescriptor{}
 
-// func ConvertSarifResultToSourceCodeScanResult(result *sarif.Result, workingDir string) *formats.SourceCodeScanResult {
-// 	file := ExtractRelativePath(GetResultFileName(result), workingDir)
-// 	lineCol := GetResultStartLocationInFile(result)
-// 	text := *result.Message.Text
+	for _, run := range runs {
+		for _, rule := range run.Tool.Driver.Rules {
+			rules[rule.ID] = rule
+		}
+		for _, result := range run.Results {
+			combined.Results = append(combined.Results, result)
+		}
+	}
+	combinedRules := []*sarif.ReportingDescriptor{}
+	for _, rule := range rules {
+		combinedRules = append(combinedRules, rule)
+	}
+	combined.Tool.Driver.WithRules(combinedRules)
+	return combined
+} 
 
-// 	return &SourceCodeScanResult{
-// 		Severity: GetResultSeverity(result),
-// 		SourceCodeLocation: SourceCodeLocation{
-// 			File:       file,
-// 			LineColumn: lineCol,
-// 			Text:       text,
-// 		},
-// 		Type: *result.RuleID,
-// 	}
-// }
-
-// func GetResultCodeFlows(result *sarif.Result, workingDir string) (flows []*[]SourceCodeLocation) {
-// 	if len(result.CodeFlows) == 0 {
-// 		return
-// 	}
-// 	for _, codeFlow := range result.CodeFlows {
-// 		if codeFlow == nil || len(codeFlow.ThreadFlows) == 0 {
-// 			continue
-// 		}
-// 		flows = append(flows, extractThreadFlows(codeFlow.ThreadFlows, workingDir)...)
-// 	}
-// 	return
-// }
-
-// func extractThreadFlows(threadFlows []*sarif.ThreadFlow, workingDir string) (flows []*[]SourceCodeLocation) {
-// 	for _, threadFlow := range threadFlows {
-// 		if threadFlow == nil || len(threadFlow.Locations) == 0 {
-// 			continue
-// 		}
-// 		flow := extractStackTraceLocations(threadFlow.Locations, workingDir)
-// 		if len(flow) > 0 {
-// 			flows = append(flows, &flow)
-// 		}
-// 	}
-// 	return
-// }
-
-// func extractStackTraceLocations(locations []*sarif.ThreadFlowLocation, workingDir string) (flow []SourceCodeLocation) {
-// 	for _, location := range locations {
-// 		if location == nil {
-// 			continue
-// 		}
-// 		flow = append(flow, SourceCodeLocation{
-// 			File:       ExtractRelativePath(GetLocationFileName(location.Location), workingDir),
-// 			LineColumn: GetStartLocationInFile(location.Location),
-// 			Text:       GetLocationSnippet(location.Location),
-// 		})
-// 	}
-// 	return
-// }
 
 func GetResultMsgText(result *sarif.Result) string {
 	return *result.Message.Text
@@ -186,6 +139,34 @@ func SetLocationFileName(location *sarif.Location, val string) {
 		location.PhysicalLocation.ArtifactLocation.URI = &val
 	}
 	return
+}
+
+func GetLocationStartLine(location *sarif.Location) int {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.StartLine != nil {
+		return *location.PhysicalLocation.Region.StartLine
+	}
+	return 0
+}
+
+func GetLocationStartColumn(location *sarif.Location) int {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.StartColumn != nil {
+		return *location.PhysicalLocation.Region.StartColumn
+	}
+	return 0
+}
+
+func GetLocationEndLine(location *sarif.Location) int {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.EndLine != nil {
+		return *location.PhysicalLocation.Region.EndLine
+	}
+	return 0
+}
+
+func GetLocationEndColumn(location *sarif.Location) int {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.EndColumn != nil {
+		return *location.PhysicalLocation.Region.EndColumn
+	}
+	return 0
 }
 
 func GetStartLocationInFile(location *sarif.Location) string {

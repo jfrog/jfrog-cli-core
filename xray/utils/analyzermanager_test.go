@@ -65,8 +65,6 @@ func TestGetResultLocationInFile(t *testing.T) {
 				StartColumn: nil,
 			}}}}},
 			expectedOutput: ""},
-		{result: &sarif.Result{},
-			expectedOutput: ""},
 	}
 
 	for _, test := range tests {

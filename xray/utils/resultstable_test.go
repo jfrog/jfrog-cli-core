@@ -429,6 +429,7 @@ func TestGetSeveritiesFormat(t *testing.T) {
 // 		scanResults    *ExtendedScanResults
 // 		cves           []formats.CveRow
 // 		expectedResult ApplicabilityStatus
+// 		expectedCves []formats.CveRow
 // 	}{
 // 		{
 // 			scanResults:    &ExtendedScanResults{EntitledForJas: false},
@@ -441,14 +442,16 @@ func TestGetSeveritiesFormat(t *testing.T) {
 // 			},
 // 			cves:           nil,
 // 			expectedResult: ApplicabilityUndetermined,
+// 			expectedCves: nil,
 // 		},
 // 		{
 // 			scanResults: &ExtendedScanResults{
 // 				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": Applicable},
 // 				EntitledForJas:           true,
 // 			},
-// 			cves:           []formats.CveRow{{Id: "testCve2"}},
+// 			cves:           []formats.CveRow,
 // 			expectedResult: Applicable,
+// 			expectedCves: []formats.CveRow{{Id: "testCve2"}},
 // 		},
 // 		{
 // 			scanResults: &ExtendedScanResults{
@@ -483,10 +486,11 @@ func TestGetSeveritiesFormat(t *testing.T) {
 // 	}
 
 // 	for _, testCase := range testCases {
-// 		appMap, err := convertToApplicabilityMap(testCase.scanResults)
-// 		assert.NoError(t, err)
-// 		// value, cves, := extractCveValues(testCase.cves, appMap)
+// 		appMap := ConvertToApplicabilityMap(testCase.scanResults)
+// 		assert.NotNil(t, appMap)
+// 		value, cves := extractCveValues(testCase.cves, appMap)
 // 		assert.Equal(t, testCase.expectedResult, value)
+// 		assert.Equal(t, testCase.expectedCves, cves)
 // 	}
 // }
 

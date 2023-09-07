@@ -77,10 +77,14 @@ type secretsScanConfiguration struct {
 }
 
 func (s *SecretScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	roots, err := jas.GetSourceRoots(module, module.Scanners.Secrets)
+	if err != nil {
+		return err
+	}
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:       jas.GetSourceRoots(module, module.Scanners.Iac),
+				Roots:       roots,
 				Output:      s.scanner.ResultsFileName,
 				Type:        secretsScannerType,
 				SkippedDirs: jas.GetExcludePatterns(module, module.Scanners.Secrets),

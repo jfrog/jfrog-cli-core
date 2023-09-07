@@ -71,10 +71,14 @@ func (ssm *SastScanManager) createConfigFile(module jfrogappsconfig.Module) erro
 	if sastScanner == nil {
 		sastScanner = &jfrogappsconfig.SastScanner{}
 	}
+	roots, err := jas.GetSourceRoots(module, &sastScanner.Scanner)
+	if err != nil {
+		return err
+	}
 	configFileContent := sastScanConfig{
 		Scans: []scanConfiguration{
 			{
-				Roots:           jas.GetSourceRoots(module, &sastScanner.Scanner),
+				Roots:           roots,
 				Languages:       []string{sastScanner.Language},
 				ExcludedRules:   sastScanner.ExcludedRules,
 				ExcludePatterns: jas.GetExcludePatterns(module, &sastScanner.Scanner),

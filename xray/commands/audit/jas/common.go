@@ -215,15 +215,19 @@ func ShouldSkipScanner(module jfrogappsconfig.Module, scanType utils.JasScanType
 	return false
 }
 
-func GetSourceRoots(module jfrogappsconfig.Module, scanner *jfrogappsconfig.Scanner) []string {
+func GetSourceRoots(module jfrogappsconfig.Module, scanner *jfrogappsconfig.Scanner) ([]string, error) {
+	root, err := filepath.Abs(module.SourceRoot)
+	if err != nil {
+		return []string{}, errorutils.CheckError(err)
+	}
 	if scanner == nil || len(scanner.WorkingDirs) == 0 {
-		return []string{module.SourceRoot}
+		return []string{root}, errorutils.CheckError(err)
 	}
 	var roots []string
 	for _, workingDir := range scanner.WorkingDirs {
-		roots = append(roots, filepath.Join(module.SourceRoot, workingDir))
+		roots = append(roots, filepath.Join(root, workingDir))
 	}
-	return roots
+	return roots, nil
 }
 
 func GetExcludePatterns(module jfrogappsconfig.Module, scanner *jfrogappsconfig.Scanner) []string {

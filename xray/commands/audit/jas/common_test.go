@@ -90,11 +90,22 @@ var getSourceRootsCases = []struct {
 }
 
 func TestGetSourceRoots(t *testing.T) {
-	module := jfrogappsconfig.Module{SourceRoot: "source-root"}
+	testGetSourceRoots(t, "source-root")
+}
+
+func TestGetSourceRootsEmptySourceRoot(t *testing.T) {
+	testGetSourceRoots(t, "")
+}
+
+func testGetSourceRoots(t *testing.T, sourceRoot string) {
+	sourceRoot, err := filepath.Abs(sourceRoot)
+	assert.NoError(t, err)
+	module := jfrogappsconfig.Module{SourceRoot: sourceRoot}
 	for _, testCase := range getSourceRootsCases {
 		t.Run("", func(t *testing.T) {
 			scanner := testCase.scanner
-			actualSourceRoots := GetSourceRoots(module, scanner)
+			actualSourceRoots, err := GetSourceRoots(module, scanner)
+			assert.NoError(t, err)
 			if scanner == nil {
 				assert.ElementsMatch(t, []string{module.SourceRoot}, actualSourceRoots)
 				return

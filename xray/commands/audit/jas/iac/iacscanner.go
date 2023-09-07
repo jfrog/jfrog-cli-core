@@ -79,10 +79,14 @@ type iacScanConfiguration struct {
 }
 
 func (iac *IacScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	roots, err := jas.GetSourceRoots(module, module.Scanners.Iac)
+	if err != nil {
+		return err
+	}
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
-				Roots:       jas.GetSourceRoots(module, module.Scanners.Iac),
+				Roots:       roots,
 				Output:      iac.scanner.ResultsFileName,
 				Type:        iacScannerType,
 				SkippedDirs: jas.GetExcludePatterns(module, module.Scanners.Iac),

@@ -37,14 +37,14 @@ var (
 		"Unknown": None,
 	}
 
-	mapSeverityToScore = map[string]string{
-		"":         "0.0",
-		"unknown":  "0.0",
-		"low":      "3.9",
-		"medium":   "6.9",
-		"high":     "8.9",
-		"critical": "10",
-	}
+	// mapSeverityToScore = map[string]string{
+	// 	"":         "0.0",
+	// 	"unknown":  "0.0",
+	// 	"low":      "3.9",
+	// 	"medium":   "6.9",
+	// 	"high":     "8.9",
+	// 	"critical": "10",
+	// }
 )
 
 func NewReport() (*sarif.Report, error) {
@@ -87,9 +87,7 @@ func CombineRuns(runs []*sarif.Run, overrideToolName, overrideUrl string) *sarif
 		for _, rule := range run.Tool.Driver.Rules {
 			rules[rule.ID] = rule
 		}
-		for _, result := range run.Results {
-			combined.Results = append(combined.Results, result)
-		}
+		combined.Results = append(combined.Results, run.Results...)
 	}
 	combinedRules := []*sarif.ReportingDescriptor{}
 	for _, rule := range rules {
@@ -123,7 +121,6 @@ func SetLocationSnippet(location *sarif.Location, val string) {
 	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
 		location.PhysicalLocation.Region.Snippet.Text = &val
 	}
-	return
 }
 
 func GetLocationFileName(location *sarif.Location) string {
@@ -138,7 +135,6 @@ func SetLocationFileName(location *sarif.Location, val string) {
 	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
 		location.PhysicalLocation.ArtifactLocation.URI = &val
 	}
-	return
 }
 
 func GetLocationStartLine(location *sarif.Location) int {

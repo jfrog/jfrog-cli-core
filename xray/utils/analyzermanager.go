@@ -73,7 +73,7 @@ var exitCodeErrorsMap = map[int]string{
 
 type ExtendedScanResults struct {
 	XrayResults         []services.ScanResponse
-	XrayVersion 		string
+	XrayVersion         string
 	ScannedTechnologies []coreutils.Technology
 
 	ApplicabilityScanResults []*sarif.Run

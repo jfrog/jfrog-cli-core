@@ -31,10 +31,10 @@ var (
 
 	severityToLevel = map[string]SarifLevel{
 		"critical": Error,
-		"high" : Error,
-		"medium": Warning,
-		"low": Note,
-		"Unknown": None,
+		"high":     Error,
+		"medium":   Warning,
+		"low":      Note,
+		"Unknown":  None,
 	}
 
 	// mapSeverityToScore = map[string]string{
@@ -80,7 +80,7 @@ func XrayResponsesToSarifRun(responses []services.ScanResponse) *sarif.Run {
 
 func CombineRuns(runs []*sarif.Run, overrideToolName, overrideUrl string) *sarif.Run {
 	combined := sarif.NewRunWithInformationURI(overrideToolName, overrideUrl)
-	
+
 	rules := map[string]*sarif.ReportingDescriptor{}
 
 	for _, run := range runs {
@@ -95,8 +95,7 @@ func CombineRuns(runs []*sarif.Run, overrideToolName, overrideUrl string) *sarif
 	}
 	combined.Tool.Driver.WithRules(combinedRules)
 	return combined
-} 
-
+}
 
 func GetResultMsgText(result *sarif.Result) string {
 	return *result.Message.Text

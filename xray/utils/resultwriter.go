@@ -173,7 +173,7 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 }
 
 func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults, markdownOutput bool) error {
-	for _, vulnerability := range xrayJson.Vulnerabilities {	
+	for _, vulnerability := range xrayJson.Vulnerabilities {
 		if err := addXrayCveIssueToSarifRun(
 			vulnerability.Cves,
 			vulnerability.IssueId,
@@ -251,7 +251,7 @@ func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location
 	if rule, _ = run.GetRuleById(issueId); rule == nil {
 		isNewRule = true
 		rule = run.AddRule(issueId)
-	}	
+	}
 	if result := run.CreateResultForRule(issueId).WithMessage(sarif.NewTextMessage(msg)).WithLevel(ConvertToSarifLevel(severity)); location != nil {
 		result.AddLocation(location)
 	}

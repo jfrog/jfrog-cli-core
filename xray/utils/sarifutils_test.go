@@ -30,7 +30,7 @@ func getDummyResultWithOneLocation(fileName string, startLine, startCol int, sni
 						Snippet:     &sarif.ArtifactContent{Text: &snippet}}},
 			},
 		},
-		Level: &level,
+		Level:  &level,
 		RuleID: &ruleId,
 	}
 }

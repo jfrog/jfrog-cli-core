@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
@@ -62,20 +61,6 @@ func ReadScanRunsFromFile(fileName string) (sarifRuns []*sarif.Run, err error) {
 	}
 	sarifRuns = report.Runs
 	return
-}
-
-func XrayResponsesToSarifRun(responses []services.ScanResponse) *sarif.Run {
-	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray sca scanner", "https://jfrog.com/xray/")
-
-	for _, response := range responses {
-
-		xrayRun.Tool.Driver.Rules = append(xrayRun.Tool.Driver.Rules, sarif.NewRule(response.ScanId).
-			WithHelp(sarif.NewMarkdownMultiformatMessageString("")).
-			WithProperties(sarif.Properties{"": ""}),
-		)
-	}
-
-	return xrayRun
 }
 
 func CombineRuns(runs []*sarif.Run, overrideToolName, overrideUrl string) *sarif.Run {

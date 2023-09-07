@@ -80,7 +80,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
 	var licenseViolationsRows []formats.LicenseViolationRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
-	applicableMap := convertToApplicabilityMap(extendedResults)
+	applicableMap := ConvertToApplicabilityMap(extendedResults)
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components)
 		if err != nil {
@@ -199,7 +199,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots)
 	}
 	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
-	applicableMap := convertToApplicabilityMap(extendedResults)
+	applicableMap := ConvertToApplicabilityMap(extendedResults)
 	for _, vulnerability := range vulnerabilities {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(vulnerability.Components)
 		if err != nil {
@@ -899,7 +899,7 @@ func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVer
 	return strings.Join([]string{vulnerableDependency, vulnerableVersion, xrayID, strconv.FormatBool(fixVersionExist)}, ":")
 }
 
-func convertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string]*formats.ApplicableDetails {
+func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string]*formats.ApplicableDetails {
 	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
 		return nil
 	}

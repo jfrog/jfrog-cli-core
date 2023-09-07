@@ -12,7 +12,8 @@ type AuditParams struct {
 	fixableOnly         bool
 	minSeverityFilter   string
 	*xrayutils.AuditBasicParams
-	xrayVersion string
+	xrayVersion                 string
+	includeEnvApplicabilityScan bool
 }
 
 func NewAuditParams() *AuditParams {
@@ -73,5 +74,10 @@ func (params *AuditParams) MinSeverityFilter() string {
 
 func (params *AuditParams) SetMinSeverityFilter(minSeverityFilter string) *AuditParams {
 	params.minSeverityFilter = minSeverityFilter
+	return params
+}
+
+func (params *AuditParams) SetIncludeEnvApplicabilityScan(include bool) *AuditParams {
+	params.includeEnvApplicabilityScan = include
 	return params
 }

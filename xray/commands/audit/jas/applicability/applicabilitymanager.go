@@ -23,9 +23,10 @@ const (
 
 type ApplicabilityScanManager struct {
 	applicabilityScanResults map[string]utils.ApplicabilityStatus
-	directDependenciesCves   []string
+	dependencyWhitelist      []string
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
+	scanEnvFolders           bool
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -37,9 +38,8 @@ type ApplicabilityScanManager struct {
 // map[string]string: A map containing the applicability result of each XRAY CVE.
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
-func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
-	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner) (results map[string]utils.ApplicabilityStatus, err error) {
-	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner)
+func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string, scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, scanEnvFolders bool) (results map[string]utils.ApplicabilityStatus, err error) {
+	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, scanEnvFolders)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return
@@ -52,42 +52,44 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner) (manager *ApplicabilityScanManager) {
-	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, scanEnvFolders bool) (manager *ApplicabilityScanManager) {
+	dependencyWhitelist := prepareDependenciesCvesWhitelist(xrayScanResults, directDependencies, scanEnvFolders)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: map[string]utils.ApplicabilityStatus{},
-		directDependenciesCves:   directDependenciesCves,
+		dependencyWhitelist:      dependencyWhitelist,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
+		scanEnvFolders:           scanEnvFolders,
 	}
 }
 
-// This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
-// vulnerabilities of the scanned project, ignoring indirect vulnerabilities
-func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies []string) []string {
-	directsCves := datastructures.MakeSet[string]()
+// Prepares a list of CVES for the scanner to scan.
+// In most cases, we will send only direct dependencies to the whitelist
+// Except when includeIndirect is set to true.
+func prepareDependenciesCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, includeIndirect bool) []string {
+	whitelistCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {
-			if isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
+			if includeIndirect || isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
 				for _, cve := range vulnerability.Cves {
 					if cve.Id != "" {
-						directsCves.Add(cve.Id)
+						whitelistCves.Add(cve.Id)
 					}
 				}
 			}
 		}
 		for _, violation := range scanResult.Violations {
-			if isDirectComponents(maps.Keys(violation.Components), directDependencies) {
+			if includeIndirect || isDirectComponents(maps.Keys(violation.Components), directDependencies) {
 				for _, cve := range violation.Cves {
 					if cve.Id != "" {
-						directsCves.Add(cve.Id)
+						whitelistCves.Add(cve.Id)
 					}
 				}
 			}
 		}
 	}
 
-	return directsCves.ToSlice()
+	return whitelistCves.ToSlice()
 }
 
 func isDirectComponents(components []string, directDependencies []string) bool {
@@ -105,7 +107,7 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	} else {
 		log.Info("Running applicability scanning...")
 	}
-	if err = asm.createConfigFile(wd); err != nil {
+	if err = asm.createConfigFile(wd, asm.scanEnvFolders); err != nil {
 		return
 	}
 	if err = asm.runAnalyzerManager(); err != nil {
@@ -122,7 +124,7 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 }
 
 func (asm *ApplicabilityScanManager) directDependenciesExist() bool {
-	return len(asm.directDependenciesCves) > 0
+	return len(asm.dependencyWhitelist) > 0
 }
 
 func (asm *ApplicabilityScanManager) shouldRunApplicabilityScan(technologies []coreutils.Technology) bool {
@@ -142,7 +144,11 @@ type scanConfiguration struct {
 	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
-func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
+func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, includeEnvFolders bool) error {
+	skipDirs := jas.SkippedDirs
+	if includeEnvFolders {
+		skipDirs = []string{}
+	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
@@ -150,8 +156,8 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 				Output:       asm.scanner.ResultsFileName,
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
-				CveWhitelist: asm.directDependenciesCves,
-				SkippedDirs:  jas.SkippedDirs,
+				CveWhitelist: asm.dependencyWhitelist,
+				SkippedDirs:  skipDirs,
 			},
 		},
 	}
@@ -165,8 +171,8 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 }
 
 func (asm *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {
-	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(asm.directDependenciesCves))
-	for _, cve := range asm.directDependenciesCves {
+	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(asm.dependencyWhitelist))
+	for _, cve := range asm.dependencyWhitelist {
 		applicabilityResults[cve] = utils.ApplicabilityUndetermined
 	}
 
@@ -181,7 +187,14 @@ func (asm *ApplicabilityScanManager) getScanResults() (applicabilityResults map[
 			err = errorutils.CheckErrorf("received unexpected CVE: '%s' from RuleID: '%s' that does not exists on the requested CVEs list", cve, *sarifResult.RuleID)
 			return
 		}
+		if strings.Contains(*sarifResult.Locations[0].PhysicalLocation.ArtifactLocation.URI, "node_modules/protobufjs/") {
+			if applicabilityResults[cve] == utils.ApplicabilityUndetermined {
+				applicabilityResults[cve] = utils.NotApplicable
+			}
+			continue
+		}
 		applicabilityResults[cve] = resultKindToApplicabilityStatus(sarifResult.Kind)
+
 	}
 	return
 }

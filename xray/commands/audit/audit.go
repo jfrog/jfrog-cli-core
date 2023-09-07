@@ -91,7 +91,8 @@ func (auditCmd *AuditCommand) Run() (err error) {
 		SetWorkingDirs(workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
 		SetFixableOnly(auditCmd.fixableOnly).
-		SetGraphBasicParams(auditCmd.AuditBasicParams)
+		SetGraphBasicParams(auditCmd.AuditBasicParams).
+		SetIncludeEnvApplicabilityScan(auditCmd.includeEnvApplicabilityScan)
 	auditResults, err := RunAudit(auditParams)
 	if err != nil {
 		return
@@ -186,7 +187,7 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 
 	// Run scanners only if the user is entitled for Advanced Security
 	if results.ExtendedScanResults.EntitledForJas {
-		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.Progress())
+		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams)
 	}
 	return
 }

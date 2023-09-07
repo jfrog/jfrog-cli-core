@@ -75,7 +75,7 @@ func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.Si
 	case Json:
 		return PrintJson(results.getXrayScanResults())
 	case Sarif:
-		sarifFile, err := GenerateSarifFileFromScan(results, isMultipleRoots, false, "JFrog Security", coreutils.JFrogComUrl+"xray/")
+		sarifFile, err := GenerateSarifContentFromResults(results, isMultipleRoots, includeLicenses, false)
 		if err != nil {
 			return err
 		}
@@ -117,7 +117,7 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 	if !version.NewVersion(AnalyzerManagerVersion).AtLeast(MinAnalyzerManagerVersionForSast) {
 		return
 	}
-	return PrintSastTable(results.SastResults, results.EntitledForJas)
+	return PrintSastTable(results.SastScanResults, results.EntitledForJas)
 }
 
 func printMessages(messages []string) {
@@ -131,6 +131,132 @@ func printMessages(messages []string) {
 
 func printMessage(message string) {
 	log.Output("💬" + message)
+}
+
+func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (sarifStr string, err error) {
+	report, err := NewReport()
+	if err != nil {
+		return
+	}
+	xrayRun, err := convertXrayResponsesToSarifRun(extendedResults, isMultipleRoots, includeLicenses, markdownOutput)
+	if err != nil {
+		return
+	}
+
+	report.Runs = append(report.Runs, xrayRun)
+	report.Runs = append(report.Runs, extendedResults.ApplicabilityScanResults...)
+	report.Runs = append(report.Runs, extendedResults.IacScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
+
+	out, err := json.Marshal(report)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	return clientUtils.IndentJson(out), nil
+}
+
+func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {
+	xrayJson, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, true)
+	if err != nil {
+		return
+	}
+	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray sca scanner", "https://jfrog.com/xray/")
+	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
+	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
+		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {
+			return
+		}
+	}
+	run = xrayRun
+	return
+}
+
+func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults, markdownOutput bool) error {
+	for _, vulnerability := range xrayJson.Vulnerabilities {
+		if err := addXrayCveIssueToSarifRun(
+			vulnerability.Cves,
+			vulnerability.IssueId,
+			vulnerability.Severity,
+			vulnerability.Technology.GetPackageDescriptor(),
+			vulnerability.Components,
+			vulnerability.Applicable,
+			vulnerability.ImpactedDependencyName,
+			vulnerability.ImpactedDependencyVersion,
+			vulnerability.Summary,
+			vulnerability.FixedVersions,
+			markdownOutput,
+			run,
+		); err != nil {
+			return err
+		}
+	}
+	for _, violation := range xrayJson.SecurityViolations {
+		if err := addXrayCveIssueToSarifRun(
+			violation.Cves,
+			violation.IssueId,
+			violation.Severity,
+			violation.Technology.GetPackageDescriptor(),
+			violation.Components,
+			violation.Applicable,
+			violation.ImpactedDependencyName,
+			violation.ImpactedDependencyVersion,
+			violation.Summary,
+			violation.FixedVersions,
+			markdownOutput,
+			run,
+		); err != nil {
+			return err
+		}
+	}
+	for _, license := range xrayJson.LicensesViolations {
+		msg := getVulnerabilityOrViolationSarifHeadline(license.LicenseKey, license.ImpactedDependencyName, license.ImpactedDependencyVersion)
+		if rule, isNewRule := addResultToSarifRun(license.LicenseKey, msg, license.Severity, nil, run); isNewRule {
+			rule.WithDescription("License watch violations")
+		}
+	}
+	return nil
+}
+
+func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file string, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, markdownOutput bool, run *sarif.Run) error {
+	maxCveScore, err := findMaxCVEScore(cves)
+	if err != nil {
+		return err
+	}
+	cveId := getCves(cves, issueId)
+	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
+	location := sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
+
+	if rule, isNewRule := addResultToSarifRun(cveId, msg, severity, location, run); isNewRule {
+		cveRuleProperties := sarif.NewPropertyBag()
+		if maxCveScore != missingCveScore {
+			cveRuleProperties.Add("security-severity", maxCveScore)
+		}
+		rule.WithProperties(cveRuleProperties.Properties)
+		if markdownOutput {
+			formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
+			if err != nil {
+				return err
+			}
+			markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
+			rule.WithMarkdownHelp(markdownDescription)
+		} else {
+			rule.WithDescription(summary)
+		}
+	}
+	return nil
+}
+
+func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {
+	if rule, _ = run.GetRuleById(issueId); rule == nil {
+		isNewRule = true
+		rule = run.AddRule(issueId)
+	}
+	if result := run.CreateResultForRule(issueId).WithMessage(sarif.NewTextMessage(msg)).WithLevel(ConvertToSarifLevel(severity)); location != nil {
+		result.AddLocation(location)
+	}
+	return
 }
 
 func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleRoots, markdownOutput bool, scanningTool, toolURI string) (string, error) {
@@ -151,7 +277,7 @@ func GenerateSarifFileFromScan(extendedResults *ExtendedScanResults, isMultipleR
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+func convertXrayScanToSimpleJson(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
 	violations, vulnerabilities, licenses := SplitScanResults(extendedResults.XrayResults)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
@@ -170,6 +296,22 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		jsonTable.LicensesViolations = licViolationsJsonTable
 		jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 	}
+	if includeLicenses {
+		licJsonTable, err := PrepareLicenses(licenses)
+		if err != nil {
+			return formats.SimpleJsonResults{}, err
+		}
+		jsonTable.Licenses = licJsonTable
+	}
+
+	return jsonTable, nil
+}
+
+func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+	jsonTable, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, simplifiedOutput)
+	if err != nil {
+		return formats.SimpleJsonResults{}, err
+	}
 	if len(extendedResults.SecretsScanResults) > 0 {
 		secretsRows := PrepareSecrets(extendedResults.SecretsScanResults)
 		jsonTable.Secrets = secretsRows
@@ -178,16 +320,9 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		iacRows := PrepareIacs(extendedResults.IacScanResults)
 		jsonTable.Iacs = iacRows
 	}
-	if len(extendedResults.SastResults) > 0 {
-		sastRows := PrepareSast(extendedResults.SastResults)
+	if len(extendedResults.SastScanResults) > 0 {
+		sastRows := PrepareSast(extendedResults.SastScanResults)
 		jsonTable.Sast = sastRows
-	}
-	if includeLicenses {
-		licJsonTable, err := PrepareLicenses(licenses)
-		if err != nil {
-			return formats.SimpleJsonResults{}, err
-		}
-		jsonTable.Licenses = licJsonTable
 	}
 	jsonTable.Errors = errors
 

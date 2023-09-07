@@ -65,11 +65,15 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = jas.GetSourceCodeScanResults(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.Secrets)
+	secretScanManager.secretsScannerResults, err = utils.ReadScanRunsFromFile(secretScanManager.scanner.ResultsFileName)
 
 	// Assert
-	assert.NoError(t, err)
-	assert.Empty(t, secretScanManager.secretsScannerResults)
+	if assert.NoError(t, err) {
+		assert.Empty(t, secretScanManager.secretsScannerResults)
+		processSecretScanRuns(secretScanManager.secretsScannerResults, scanner.WorkingDirs[0])
+		assert.Empty(t, secretScanManager.secretsScannerResults)
+	}
+
 }
 
 func TestParseResults_ResultsContainSecrets(t *testing.T) {
@@ -82,12 +86,16 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = jas.GetSourceCodeScanResults(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.Secrets)
+	secretScanManager.secretsScannerResults, err = utils.ReadScanRunsFromFile(secretScanManager.scanner.ResultsFileName)
 
 	// Assert
+	if assert.NoError(t, err) {
+		assert.NotEmpty(t, secretScanManager.secretsScannerResults)
+		processSecretScanRuns(secretScanManager.secretsScannerResults, scanner.WorkingDirs[0])
+		assert.Equal(t, 7, len(secretScanManager.secretsScannerResults))
+	}
 	assert.NoError(t, err)
-	assert.NotEmpty(t, secretScanManager.secretsScannerResults)
-	assert.Equal(t, 7, len(secretScanManager.secretsScannerResults))
+
 }
 
 func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {

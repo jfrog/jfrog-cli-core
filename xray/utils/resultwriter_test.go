@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,27 +29,11 @@ func TestGenerateSarifFileFromScan(t *testing.T) {
 				},
 			},
 		},
-		SecretsScanResults: []SourceCodeScanResult{
-			{
-				Severity: "Medium",
-				SourceCodeLocation: SourceCodeLocation{
-					File:       "found_secrets.js",
-					LineColumn: "1:18",
-					Text:       "AAA************",
-				},
-				Type: "entropy",
-			},
+		SecretsScanResults: []*sarif.Run{
+			getDummyRunWithOneResult("found_secrets.js", 1, 18, "AAA************", "entropy", None),
 		},
-		IacScanResults: []SourceCodeScanResult{
-			{
-				Severity: "Medium",
-				SourceCodeLocation: SourceCodeLocation{
-					File:       "plan/nonapplicable/req_sw_terraform_azure_compute_no_pass_auth.json",
-					LineColumn: "229:38",
-					Text:       "BBB************",
-				},
-				Type: "entropy",
-			},
+		IacScanResults: []*sarif.Run{
+			getDummyRunWithOneResult("plan/nonapplicable/req_sw_terraform_azure_compute_no_pass_auth.json", 229, 38, "BBB************", "entropy", Info),
 		},
 	}
 	testCases := []struct {

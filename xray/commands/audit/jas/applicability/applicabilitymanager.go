@@ -1,14 +1,13 @@
 package applicability
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"path/filepath"
-	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -22,7 +21,7 @@ const (
 )
 
 type ApplicabilityScanManager struct {
-	applicabilityScanResults map[string]utils.ApplicabilityStatus
+	applicabilityScanResults []*sarif.Run
 	dependencyWhitelist      []string
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
@@ -38,7 +37,8 @@ type ApplicabilityScanManager struct {
 // map[string]string: A map containing the applicability result of each XRAY CVE.
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
-func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string, scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, scanEnvFolders bool) (results map[string]utils.ApplicabilityStatus, err error) {
+func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
+	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, scanEnvFolders bool) (results []*sarif.Run, err error) {
 	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, scanEnvFolders)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
@@ -55,7 +55,7 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, scanEnvFolders bool) (manager *ApplicabilityScanManager) {
 	dependencyWhitelist := prepareDependenciesCvesWhitelist(xrayScanResults, directDependencies, scanEnvFolders)
 	return &ApplicabilityScanManager{
-		applicabilityScanResults: map[string]utils.ApplicabilityStatus{},
+		applicabilityScanResults: []*sarif.Run{},
 		dependencyWhitelist:      dependencyWhitelist,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
@@ -113,14 +113,17 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = asm.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults map[string]utils.ApplicabilityStatus
-	if workingDirResults, err = asm.getScanResults(); err != nil {
+	workingDirResults, err := utils.ReadScanRunsFromFile(asm.scanner.ResultsFileName)
+	if err != nil {
 		return
 	}
-	for cve, result := range workingDirResults {
-		asm.applicabilityScanResults[cve] = result
-	}
+	processApplicabilityScanResults(workingDirResults, wd)
+	asm.applicabilityScanResults = append(asm.applicabilityScanResults, workingDirResults...)
 	return
+}
+
+func filterWorkingDirResults(results []*sarif.Run) {
+	print("hello world")
 }
 
 func (asm *ApplicabilityScanManager) directDependenciesExist() bool {
@@ -170,43 +173,49 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
 }
 
-func (asm *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {
-	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(asm.dependencyWhitelist))
-	for _, cve := range asm.dependencyWhitelist {
-		applicabilityResults[cve] = utils.ApplicabilityUndetermined
-	}
-
-	report, err := sarif.Open(asm.scanner.ResultsFileName)
-	if errorutils.CheckError(err) != nil || len(report.Runs) == 0 {
-		return
-	}
-	// Applicability results contains one run only
-	for _, sarifResult := range report.Runs[0].Results {
-		cve := getCveFromRuleId(*sarifResult.RuleID)
-		if _, exists := applicabilityResults[cve]; !exists {
-			err = errorutils.CheckErrorf("received unexpected CVE: '%s' from RuleID: '%s' that does not exists on the requested CVEs list", cve, *sarifResult.RuleID)
-			return
-		}
-		if strings.Contains(*sarifResult.Locations[0].PhysicalLocation.ArtifactLocation.URI, "node_modules/protobufjs/") {
-			if applicabilityResults[cve] == utils.ApplicabilityUndetermined {
-				applicabilityResults[cve] = utils.NotApplicable
-			}
-			continue
-		}
-		applicabilityResults[cve] = resultKindToApplicabilityStatus(sarifResult.Kind)
-
-	}
-	return
-}
+//func (asm *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {
+//	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(asm.dependencyWhitelist))
+//	for _, cve := range asm.dependencyWhitelist {
+//		applicabilityResults[cve] = utils.ApplicabilityUndetermined
+//	}
+//
+//	report, err := sarif.Open(asm.scanner.ResultsFileName)
+//	if errorutils.CheckError(err) != nil || len(report.Runs) == 0 {
+//		return
+//	}
+//	// Applicability results contains one run only
+//	for _, sarifResult := range report.Runs[0].Results {
+//		cve := getCveFromRuleId(*sarifResult.RuleID)
+//		if _, exists := applicabilityResults[cve]; !exists {
+//			err = errorutils.CheckErrorf("received unexpected CVE: '%s' from RuleID: '%s' that does not exists on the requested CVEs list", cve, *sarifResult.RuleID)
+//			return
+//		}
+//		if strings.Contains(*sarifResult.Locations[0].PhysicalLocation.ArtifactLocation.URI, "node_modules/protobufjs/") {
+//			if applicabilityResults[cve] == utils.ApplicabilityUndetermined {
+//				applicabilityResults[cve] = utils.NotApplicable
+//			}
+//			continue
+//		}
+//		applicabilityResults[cve] = resultKindToApplicabilityStatus(sarifResult.Kind)
+//
+//	}
+//	return
+//}
 
 // Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise
-func resultKindToApplicabilityStatus(kind *string) utils.ApplicabilityStatus {
-	if !(kind != nil && *kind == "pass") {
-		return utils.Applicable
-	}
-	return utils.NotApplicable
-}
+// func resultKindToApplicabilityStatus(kind *string) utils.ApplicabilityStatus {
+// 	if !(kind != nil && *kind == "pass") {
+// 		return utils.Applicable
+// 	}
+// 	return utils.NotApplicable
+// }
 
-func getCveFromRuleId(sarifRuleId string) string {
-	return strings.TrimPrefix(sarifRuleId, "applic_")
+// func getCveFromRuleId(sarifRuleId string) string {
+// 	return strings.TrimPrefix(sarifRuleId, "applic_")
+// }
+
+func processApplicabilityScanResults(sarifRuns []*sarif.Run, wd string) {
+	for _, run := range sarifRuns {
+		jas.ProcessJasScanRun(run, wd)
+	}
 }

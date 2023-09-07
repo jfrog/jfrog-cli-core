@@ -198,11 +198,27 @@ func convertToComponentScanTableRow(rows []ComponentRow) (tableRows []directPack
 
 func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, cveTableRow{
+		row := cveTableRow{
 			id:     rows[i].Id,
 			cvssV2: rows[i].CvssV2,
 			cvssV3: rows[i].CvssV3,
-		})
+		}
+		details := rows[i].ApplicableDetails
+		if details != nil {
+			row.applicableDetails = &applicableDetails{
+				isApplicable: details.Status,
+				searchTarget: details.SearchTarget,
+			}
+			for e := range details.Evidence {
+				row.applicableDetails.evidence = append(row.applicableDetails.evidence, applicableEvidence{
+					file:       details.Evidence[e].File,
+					lineColumn: details.Evidence[e].LineColumn,
+					text:       details.Evidence[e].Text,
+					reason:     details.Evidence[e].Reason,
+				})
+			}
+		}
+		tableRows = append(tableRows, row)
 	}
 	return
 }

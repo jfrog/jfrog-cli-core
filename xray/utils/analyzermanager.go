@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path"
@@ -38,24 +39,25 @@ var (
 )
 
 const (
-	EntitlementsMinVersion           = "3.66.5"
-	ApplicabilityFeatureId           = "contextual_analysis"
-	AnalyzerManagerZipName           = "analyzerManager.zip"
-	AnalyzerManagerVersion           = "1.2.4.1953469"
-	MinAnalyzerManagerVersionForSast = "1.3"
-	analyzerManagerDownloadPath      = "xsc-gen-exe-analyzer-manager-local/v1"
-	analyzerManagerDirName           = "analyzerManager"
-	analyzerManagerExecutableName    = "analyzerManager"
-	analyzerManagerLogDirName        = "analyzerManagerLogs"
-	jfUserEnvVariable                = "JF_USER"
-	jfPasswordEnvVariable            = "JF_PASS"
-	jfTokenEnvVariable               = "JF_TOKEN"
-	jfPlatformUrlEnvVariable         = "JF_PLATFORM_URL"
-	logDirEnvVariable                = "AM_LOG_DIRECTORY"
-	notEntitledExitCode              = 31
-	unsupportedCommandExitCode       = 13
-	unsupportedOsExitCode            = 55
-	ErrFailedScannerRun              = "failed to run %s scan. Exit code received: %s"
+	EntitlementsMinVersion                    = "3.66.5"
+	ApplicabilityFeatureId                    = "contextual_analysis"
+	AnalyzerManagerZipName                    = "analyzerManager.zip"
+	defaultAnalyzerManagerVersion             = "1.2.4.1953469"
+	minAnalyzerManagerVersionForSast          = "1.3"
+	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
+	analyzerManagerDirName                    = "analyzerManager"
+	analyzerManagerExecutableName             = "analyzerManager"
+	analyzerManagerLogDirName                 = "analyzerManagerLogs"
+	jfUserEnvVariable                         = "JF_USER"
+	jfPasswordEnvVariable                     = "JF_PASS"
+	jfTokenEnvVariable                        = "JF_TOKEN"
+	jfPlatformUrlEnvVariable                  = "JF_PLATFORM_URL"
+	logDirEnvVariable                         = "AM_LOG_DIRECTORY"
+	notEntitledExitCode                       = 31
+	unsupportedCommandExitCode                = 13
+	unsupportedOsExitCode                     = 55
+	ErrFailedScannerRun                       = "failed to run %s scan. Exit code received: %s"
+	jfrogCliAnalyzerManagerVersionEnvVariable = "JFROG_CLI_ANALYZER_MANAGER_VERSION"
 )
 
 type ApplicabilityStatus string
@@ -142,7 +144,18 @@ func GetAnalyzerManagerDownloadPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return path.Join(analyzerManagerDownloadPath, AnalyzerManagerVersion, osAndArc, AnalyzerManagerZipName), nil
+	return path.Join(analyzerManagerDownloadPath, GetAnalyzerManagerVersion(), osAndArc, AnalyzerManagerZipName), nil
+}
+
+func GetAnalyzerManagerVersion() string {
+	if analyzerManagerVersion, exists := os.LookupEnv(jfrogCliAnalyzerManagerVersionEnvVariable); exists {
+		return analyzerManagerVersion
+	}
+	return defaultAnalyzerManagerVersion
+}
+
+func IsSastSupported() bool {
+	return version.NewVersion(GetAnalyzerManagerVersion()).AtLeast(minAnalyzerManagerVersionForSast)
 }
 
 func GetAnalyzerManagerDirAbsolutePath() (string, error) {

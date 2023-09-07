@@ -126,7 +126,6 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serv
 		return err
 	}
 	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
-	log.Debug("running AnalyzerManager with multi-scan-id:", am.MultiScanId) // TODO remove this
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {
@@ -136,10 +135,6 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serv
 	}()
 	cmd.Dir = workingDir
 	err = cmd.Run()
-
-	if err != nil {
-		log.Error("am error! ", err.Error())
-	}
 	return errorutils.CheckError(err)
 }
 

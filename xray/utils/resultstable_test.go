@@ -485,7 +485,7 @@ func TestGetSeveritiesFormat(t *testing.T) {
 // 	for _, testCase := range testCases {
 // 		appMap, err := convertToApplicabilityMap(testCase.scanResults)
 // 		assert.NoError(t, err)
-// 		value, cves, := extractCveValues(testCase.cves, appMap)
+// 		// value, cves, := extractCveValues(testCase.cves, appMap)
 // 		assert.Equal(t, testCase.expectedResult, value)
 // 	}
 // }

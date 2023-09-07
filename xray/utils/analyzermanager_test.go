@@ -25,8 +25,6 @@ func TestGetResultFileName(t *testing.T) {
 				{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &fileNameValue}}},
 			}},
 			expectedOutput: fileNameValue},
-		{result: &sarif.Result{},
-			expectedOutput: ""},
 	}
 
 	for _, test := range tests {

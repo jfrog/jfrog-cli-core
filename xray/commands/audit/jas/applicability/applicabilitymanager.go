@@ -162,40 +162,6 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
 }
 
-// func (asm *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {
-// 	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(asm.directDependenciesCves))
-// 	for _, cve := range asm.directDependenciesCves {
-// 		applicabilityResults[cve] = utils.ApplicabilityUndetermined
-// 	}
-
-// 	report, err := sarif.Open(asm.scanner.ResultsFileName)
-// 	if errorutils.CheckError(err) != nil || len(report.Runs) == 0 {
-// 		return
-// 	}
-// 	// Applicability results contains one run only
-// 	for _, sarifResult := range report.Runs[0].Results {
-// 		cve := getCveFromRuleId(*sarifResult.RuleID)
-// 		if _, exists := applicabilityResults[cve]; !exists {
-// 			err = errorutils.CheckErrorf("received unexpected CVE: '%s' from RuleID: '%s' that does not exists on the requested CVEs list", cve, *sarifResult.RuleID)
-// 			return
-// 		}
-// 		applicabilityResults[cve] = resultKindToApplicabilityStatus(sarifResult.Kind)
-// 	}
-// 	return
-// }
-
-// Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise
-// func resultKindToApplicabilityStatus(kind *string) utils.ApplicabilityStatus {
-// 	if !(kind != nil && *kind == "pass") {
-// 		return utils.Applicable
-// 	}
-// 	return utils.NotApplicable
-// }
-
-// func getCveFromRuleId(sarifRuleId string) string {
-// 	return strings.TrimPrefix(sarifRuleId, "applic_")
-// }
-
 func processApplicabilityScanResults(sarifRuns []*sarif.Run, wd string) {
 	for _, run := range sarifRuns {
 		jas.ProcessJasScanRun(run, wd)

@@ -196,25 +196,23 @@ func isEntitledForJas(xrayManager manager.SecurityServiceManager, xrayVersion st
 }
 
 // checkEntitlements validates the entitlements for JAS and XSC.
-func checkEntitlements(serverDetails *config.ServerDetails, params *AuditParams) (entitlements *XrayEntitlements, err error) {
+func checkEntitlements(serverDetails *config.ServerDetails, auditParams *AuditParams) (entitlements *XrayEntitlements, err error) {
 	var xrayManager manager.SecurityServiceManager
-
-	xrayManager, params.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
-	if err != nil {
+	if xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails); err != nil {
 		return
 	}
-
 	// Check entitlements
 	var jasEntitle, xscEntitled bool
-	if jasEntitle, err = isEntitledForJas(xrayManager, params.xrayVersion); err != nil {
+	if jasEntitle, err = isEntitledForJas(xrayManager, auditParams.xrayVersion); err != nil {
 		return
 	}
-	if xscEntitled, err = isEntitledForXsc(xrayManager, serverDetails); err != nil {
+	// Setting serverDetails.XscVersion is important as this is how we determined if XSC is enabled or not.
+	if xscEntitled, serverDetails.XscVersion, err = xrayManager.IsXscEnabled(); err != nil {
 		return
 	}
-
 	entitlements = &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
 	log.Debug(fmt.Sprintf("entitlements results: JAS: %t XSC: %t", jasEntitle, xscEntitled))
+
 	// Handle actions needed in case of specific entitlement.
 	if entitlements.Jas {
 		// Download the analyzer manager in a background routine.
@@ -222,16 +220,7 @@ func checkEntitlements(serverDetails *config.ServerDetails, params *AuditParams)
 	}
 	if entitlements.Xsc {
 		log.Info("XSC version:", serverDetails.XscVersion)
-		params.xscVersion = serverDetails.XscVersion
-	}
-	return entitlements, err
-}
-
-// Checks for the availability of XSC service, if true adjust XSC url
-func isEntitledForXsc(xrayManager manager.SecurityServiceManager, serverDetails *config.ServerDetails) (xscEnabled bool, err error) {
-	xscEnabled, serverDetails.XscVersion, err = xrayManager.IsXscEnabled()
-	if err != nil || !xscEnabled {
-		return
+		auditParams.xscVersion = serverDetails.XscVersion
 	}
 	return
 }

@@ -57,5 +57,5 @@ var (
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
 
 	// Provided XSC Multi Scan ID, used for testings.
-	MultiScanId = "JFROG_XSC_MULTI_SCAN_ID"
+	MultiScanId = "JFROG_CLI_XSC_MULTI_SCAN_ID"
 )

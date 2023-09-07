@@ -23,17 +23,6 @@ const (
 	JFrogHelpUrl           = JFrogComUrl + "help/r/"
 )
 
-type MinVersionProduct string
-
-const (
-	Artifactory  MinVersionProduct = "JFrog Artifactory"
-	Xray         MinVersionProduct = "JFrog Xray"
-	Xsc          MinVersionProduct = "JFrog Xsc"
-	DataTransfer MinVersionProduct = "Data Transfer"
-	DockerApi    MinVersionProduct = "Docker API"
-	Projects     MinVersionProduct = "JFrog Projects"
-)
-
 const (
 	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager etc.) through an Artifactory remote
 	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be

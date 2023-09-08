@@ -2,10 +2,9 @@ package audit
 
 import (
 	"errors"
-	"fmt"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -24,12 +23,6 @@ type AuditCommand struct {
 	Fail                   bool
 	PrintExtendedTable     bool
 	AuditParams
-}
-
-type XrayEntitlements struct {
-	errGroup *errgroup.Group
-	Jas      bool
-	Xsc      bool
 }
 
 func NewGenericAuditCommand() *AuditCommand {
@@ -73,9 +66,9 @@ func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *Au
 
 func (auditCmd *AuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
 	params := &services.XrayGraphScanParams{
-		RepoPath:    auditCmd.targetRepoPath,
-		Watches:     auditCmd.watches,
-		ScanType:    services.Dependency,
+		RepoPath: auditCmd.targetRepoPath,
+		Watches:  auditCmd.watches,
+		ScanType: services.Dependency,
 	}
 	if auditCmd.projectKey == "" {
 		params.ProjectKey = os.Getenv(coreutils.Project)
@@ -157,28 +150,46 @@ func NewAuditResults() *Results {
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
 func RunAudit(auditParams *AuditParams) (results *Results, err error) {
-	var entitlements *XrayEntitlements
-	var serverDetails *config.ServerDetails
-
 	// Initialize Results struct
 	results = NewAuditResults()
-	if serverDetails, err = auditParams.ServerDetails(); err != nil {
+
+	serverDetails, err := auditParams.ServerDetails()
+	if err != nil {
 		return
 	}
-	// Check entitlements for JAS and XSC and update auditParams with results.
-	if entitlements, err = checkEntitlements(serverDetails, auditParams); err != nil {
+	var xrayManager services.SecurityServiceManager
+	xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
+	if err != nil {
 		return
 	}
+	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, scangraph.GraphScanMinXrayVersion); err != nil {
+		return
+	}
+	if auditParams.xscVersion, err = xrayManager.IsXscEnabled(); err != nil {
+		return
+	}
+
+	results.ExtendedScanResults.EntitledForJas, err = isEntitledForJas(xrayManager, auditParams.xrayVersion)
+	if err != nil {
+		return
+	}
+
+	errGroup := new(errgroup.Group)
+	if results.ExtendedScanResults.EntitledForJas {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
+	}
+
 	// The sca scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
 	results.ScaError = runScaScan(auditParams, results)
 
 	// Wait for the Download of the AnalyzerManager to complete.
-	if err = entitlements.errGroup.Wait(); err != nil {
+	if err = errGroup.Wait(); err != nil {
 		return
 	}
+
 	// Run scanners only if the user is entitled for Advanced Security
-	if entitlements.Jas {
-		results.ExtendedScanResults.EntitledForJas = entitlements.Jas
+	if results.ExtendedScanResults.EntitledForJas {
 		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.Progress(), auditParams.xrayGraphScanParams.MultiScanId)
 	}
 	return
@@ -190,35 +201,5 @@ func isEntitledForJas(xrayManager services.SecurityServiceManager, xrayVersion s
 		return
 	}
 	entitled, err = xrayManager.IsEntitled(xrayutils.ApplicabilityFeatureId)
-	return
-}
-
-// checkEntitlements validates the entitlements for JAS and XSC.
-func checkEntitlements(serverDetails *config.ServerDetails, auditParams *AuditParams) (entitlements *XrayEntitlements, err error) {
-	var xrayManager services.SecurityServiceManager
-	if xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails); err != nil {
-		return
-	}
-	// Check entitlements
-	var jasEntitle, xscEntitled bool
-	if jasEntitle, err = isEntitledForJas(xrayManager, auditParams.xrayVersion); err != nil {
-		return
-	}
-	// Setting serverDetails.XscVersion is important as this is how we determined if XSC is enabled or not.
-	if xscEntitled, serverDetails.XscVersion, err = xrayManager.IsXscEnabled(); err != nil {
-		return
-	}
-	entitlements = &XrayEntitlements{Jas: jasEntitle, Xsc: xscEntitled, errGroup: new(errgroup.Group)}
-	log.Debug(fmt.Sprintf("entitlements results: JAS: %t XSC: %t", jasEntitle, xscEntitled))
-
-	// Handle actions needed in case of specific entitlement.
-	if entitlements.Jas {
-		// Download the analyzer manager in a background routine.
-		entitlements.errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
-	}
-	if entitlements.Xsc {
-		log.Info("XSC version:", serverDetails.XscVersion)
-		auditParams.xscVersion = serverDetails.XscVersion
-	}
 	return
 }

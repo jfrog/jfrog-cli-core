@@ -440,7 +440,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 			scanResults: &ExtendedScanResults{
 				ApplicabilityScanResults: []*sarif.Run {
 					getRunWithDummyResults(
-						getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve1", "info"),
+						getDummyResultWithOneLocation("fileName1", 0, 0, "snippet", "applic_testCve1", "info"),
 						getDummyPassingResult("applic_testCve2"),
 					),
 				},
@@ -455,7 +455,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run {
 					getRunWithDummyResults(
 							getDummyPassingResult("applic_testCve1"),
-							getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve2", "info"),
+							getDummyResultWithOneLocation("fileName2", 0, 0, "snippet", "applic_testCve2", "info"),
 					),
 				},
 				EntitledForJas:           true,
@@ -469,7 +469,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run {
 					getRunWithDummyResults(
 							getDummyPassingResult("applic_testCve1"),
-							getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve2", "info"),
+							getDummyResultWithOneLocation("fileName3", 0, 0, "snippet", "applic_testCve2", "info"),
 					),
 				},
 				EntitledForJas:           true,
@@ -497,7 +497,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run {
 					getRunWithDummyResults(
 							getDummyPassingResult("applic_testCve1"),
-							getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve2", "info"),
+							getDummyResultWithOneLocation("fileName4", 0, 0, "snippet", "applic_testCve2", "info"),
 					),
 				},
 				EntitledForJas:           true,
@@ -519,9 +519,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		appMap := ConvertToApplicabilityMap(testCase.scanResults)
-		assert.NotNil(t, appMap)
-		value, cves := extractCveValues(testCase.cves, appMap)
+		value, cves := extractCveValues(testCase.cves, ConvertToApplicabilityMap(testCase.scanResults))
 		assert.Equal(t, testCase.expectedResult, value)
 		assert.Equal(t, testCase.expectedCves, cves)
 	}

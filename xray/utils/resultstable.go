@@ -905,15 +905,13 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 	}
 	applicabilityMap := map[string]*formats.ApplicableDetails{}
 
-	for r := range extendedResults.ApplicabilityScanResults {
-		applicableRun := extendedResults.ApplicabilityScanResults[r]
+	for _, applicableRun := range extendedResults.ApplicabilityScanResults {
 		searchTargetData := map[string]string{}
 		for i := range applicableRun.Tool.Driver.Rules {
 			rule := applicableRun.Tool.Driver.Rules[i]
 			searchTargetData[GetCveNameFromRuleId(rule.ID)] = *rule.FullDescription.Text
 		}
-		for i := range applicableRun.Results {
-			contexualAnalysisResult := applicableRun.Results[i]
+		for _, contexualAnalysisResult := range applicableRun.Results {
 			relatedCve := GetCveNameFromRuleId(*contexualAnalysisResult.RuleID)
 			// Get applicable details for this cve
 			var applicableDetails *formats.ApplicableDetails

@@ -237,9 +237,9 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file st
 	}
 	cveId := getCves(cves, issueId)
 	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
-	// location := sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
+	location := sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
 
-	if rule, isNewRule := addResultToSarifRun(cveId, msg, severity, nil, run); isNewRule {
+	if rule, isNewRule := addResultToSarifRun(cveId, msg, severity, location, run); isNewRule {
 		cveRuleProperties := sarif.NewPropertyBag()
 		if maxCveScore != MissingCveScore {
 			cveRuleProperties.Add("security-severity", maxCveScore)

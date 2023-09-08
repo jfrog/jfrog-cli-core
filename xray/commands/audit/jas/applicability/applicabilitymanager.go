@@ -2,6 +2,7 @@ package applicability
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"path/filepath"
 	"strings"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -24,7 +24,7 @@ const (
 type ApplicabilityScanManager struct {
 	applicabilityScanResults map[string]utils.ApplicabilityStatus
 	directDependenciesCves   []string
-	xrayResults              []scan.ScanResponse
+	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
 }
 
@@ -37,7 +37,7 @@ type ApplicabilityScanManager struct {
 // map[string]string: A map containing the applicability result of each XRAY CVE.
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
-func RunApplicabilityScan(xrayResults []scan.ScanResponse, directDependencies []string,
+func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
 	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner) (results map[string]utils.ApplicabilityStatus, err error) {
 	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
@@ -52,7 +52,7 @@ func RunApplicabilityScan(xrayResults []scan.ScanResponse, directDependencies []
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []scan.ScanResponse, directDependencies []string, scanner *jas.JasScanner) (manager *ApplicabilityScanManager) {
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: map[string]utils.ApplicabilityStatus{},
@@ -64,7 +64,7 @@ func newApplicabilityScanManager(xrayScanResults []scan.ScanResponse, directDepe
 
 // This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
 // vulnerabilities of the scanned project, ignoring indirect vulnerabilities
-func extractDirectDependenciesCvesFromScan(xrayScanResults []scan.ScanResponse, directDependencies []string) []string {
+func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies []string) []string {
 	directsCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {

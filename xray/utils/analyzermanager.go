@@ -3,6 +3,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 	"os/exec"
 	"path"
@@ -13,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
 )
 
 type SarifLevel string
@@ -103,7 +103,7 @@ type SourceCodeScanResult struct {
 }
 
 type ExtendedScanResults struct {
-	XrayResults              []scan.ScanResponse
+	XrayResults              []services.ScanResponse
 	ScannedTechnologies      []coreutils.Technology
 	ApplicabilityScanResults map[string]ApplicabilityStatus
 	SecretsScanResults       []SourceCodeScanResult
@@ -112,7 +112,7 @@ type ExtendedScanResults struct {
 	EntitledForJas           bool
 }
 
-func (e *ExtendedScanResults) getXrayScanResults() []scan.ScanResponse {
+func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 	return e.XrayResults
 }
 

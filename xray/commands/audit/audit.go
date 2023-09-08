@@ -8,8 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/manager"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"golang.org/x/sync/errgroup"
 	"os"
 
@@ -72,12 +71,11 @@ func (auditCmd *AuditCommand) SetPrintExtendedTable(printExtendedTable bool) *Au
 	return auditCmd
 }
 
-func (auditCmd *AuditCommand) CreateXrayGraphScanParams() *scan.XrayGraphScanParams {
-	params := &scan.XrayGraphScanParams{
+func (auditCmd *AuditCommand) CreateXrayGraphScanParams() *services.XrayGraphScanParams {
+	params := &services.XrayGraphScanParams{
 		RepoPath:    auditCmd.targetRepoPath,
 		Watches:     auditCmd.watches,
-		ScanType:    scan.Dependency,
-		MultiScanId: os.Getenv(coreutils.MultiScanId),
+		ScanType:    services.Dependency,
 	}
 	if auditCmd.projectKey == "" {
 		params.ProjectKey = os.Getenv(coreutils.Project)
@@ -186,7 +184,7 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 	return
 }
 
-func isEntitledForJas(xrayManager manager.SecurityServiceManager, xrayVersion string) (entitled bool, err error) {
+func isEntitledForJas(xrayManager services.SecurityServiceManager, xrayVersion string) (entitled bool, err error) {
 	if e := clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
 		log.Debug(e)
 		return
@@ -197,7 +195,7 @@ func isEntitledForJas(xrayManager manager.SecurityServiceManager, xrayVersion st
 
 // checkEntitlements validates the entitlements for JAS and XSC.
 func checkEntitlements(serverDetails *config.ServerDetails, auditParams *AuditParams) (entitlements *XrayEntitlements, err error) {
-	var xrayManager manager.SecurityServiceManager
+	var xrayManager services.SecurityServiceManager
 	if xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails); err != nil {
 		return
 	}

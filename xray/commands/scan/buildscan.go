@@ -8,8 +8,6 @@ import (
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/manager"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -113,7 +111,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	return
 }
 
-func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager manager.SecurityServiceManager, params services.XrayBuildParams) (isFailBuildResponse bool, err error) {
+func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager services.SecurityServiceManager, params services.XrayBuildParams) (isFailBuildResponse bool, err error) {
 	buildScanResults, noFailBuildPolicy, err := xrayManager.BuildScan(params, bsc.includeVulnerabilities)
 	if err != nil {
 		return false, err
@@ -121,7 +119,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager manager.Sec
 	log.Info("The scan data is available at: " + buildScanResults.MoreDetailsUrl)
 	isFailBuildResponse = buildScanResults.FailBuild
 
-	scanResponse := []scan.ScanResponse{{
+	scanResponse := []services.ScanResponse{{
 		Violations:      buildScanResults.Violations,
 		Vulnerabilities: buildScanResults.Vulnerabilities,
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,

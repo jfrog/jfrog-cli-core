@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"os"
 	"strconv"
 	"strings"
@@ -499,10 +499,10 @@ func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 }
 
 // Splits scan responses into aggregated lists of violations, vulnerabilities and licenses.
-func SplitScanResults(results []scan.ScanResponse) ([]scan.Violation, []scan.Vulnerability, []scan.License) {
-	var violations []scan.Violation
-	var vulnerabilities []scan.Vulnerability
-	var licenses []scan.License
+func SplitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
+	var violations []services.Violation
+	var vulnerabilities []services.Vulnerability
+	var licenses []services.License
 	for _, result := range results {
 		violations = append(violations, result.Violations...)
 		vulnerabilities = append(vulnerabilities, result.Vulnerabilities...)
@@ -548,7 +548,7 @@ func PrintJson(output interface{}) error {
 	return nil
 }
 
-func CheckIfFailBuild(results []scan.ScanResponse) bool {
+func CheckIfFailBuild(results []services.ScanResponse) bool {
 	for _, result := range results {
 		for _, violation := range result.Violations {
 			if violation.FailBuild {
@@ -559,7 +559,7 @@ func CheckIfFailBuild(results []scan.ScanResponse) bool {
 	return false
 }
 
-func IsEmptyScanResponse(results []scan.ScanResponse) bool {
+func IsEmptyScanResponse(results []services.ScanResponse) bool {
 	for _, result := range results {
 		if len(result.Violations) > 0 || len(result.Vulnerabilities) > 0 || len(result.Licenses) > 0 {
 			return false

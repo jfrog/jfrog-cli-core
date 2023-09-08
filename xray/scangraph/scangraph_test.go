@@ -1,7 +1,7 @@
 package scangraph
 
 import (
-	"github.com/jfrog/jfrog-client-go/xray/scan"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
@@ -11,26 +11,26 @@ func TestFilterResultIfNeeded(t *testing.T) {
 	// Define test cases
 	tests := []struct {
 		name       string
-		scanResult scan.ScanResponse
+		scanResult services.ScanResponse
 		params     ScanGraphParams
-		expected   scan.ScanResponse
+		expected   services.ScanResponse
 	}{
 		{
 			name:       "Should not filter",
-			scanResult: scan.ScanResponse{},
+			scanResult: services.ScanResponse{},
 			params:     ScanGraphParams{},
-			expected:   scan.ScanResponse{},
+			expected:   services.ScanResponse{},
 		},
 		{
 			name: "No filter level specified",
-			scanResult: scan.ScanResponse{
-				Violations: []scan.Violation{
+			scanResult: services.ScanResponse{
+				Violations: []services.Violation{
 					{Severity: "Low"},
 					{Severity: "Medium"},
 					{Severity: "High"},
 					{Severity: "Critical"},
 				},
-				Vulnerabilities: []scan.Vulnerability{
+				Vulnerabilities: []services.Vulnerability{
 					{Severity: "Low"},
 					{Severity: "Medium"},
 					{Severity: "High"},
@@ -40,14 +40,14 @@ func TestFilterResultIfNeeded(t *testing.T) {
 			params: ScanGraphParams{
 				severityLevel: 0,
 			},
-			expected: scan.ScanResponse{
-				Violations: []scan.Violation{
+			expected: services.ScanResponse{
+				Violations: []services.Violation{
 					{Severity: "Low"},
 					{Severity: "Medium"},
 					{Severity: "High"},
 					{Severity: "Critical"},
 				},
-				Vulnerabilities: []scan.Vulnerability{
+				Vulnerabilities: []services.Vulnerability{
 					{Severity: "Low"},
 					{Severity: "Medium"},
 					{Severity: "High"},
@@ -57,14 +57,14 @@ func TestFilterResultIfNeeded(t *testing.T) {
 		},
 		{
 			name: "Filter violations and vulnerabilities by high severity",
-			scanResult: scan.ScanResponse{
-				Violations: []scan.Violation{
+			scanResult: services.ScanResponse{
+				Violations: []services.Violation{
 					{Severity: "Low"},
 					{Severity: "Medium"},
 					{Severity: "High"},
 					{Severity: "Critical"},
 				},
-				Vulnerabilities: []scan.Vulnerability{
+				Vulnerabilities: []services.Vulnerability{
 					{Severity: "Low"},
 					{Severity: "Medium"},
 					{Severity: "High"},
@@ -74,12 +74,12 @@ func TestFilterResultIfNeeded(t *testing.T) {
 			params: ScanGraphParams{
 				severityLevel: 11,
 			},
-			expected: scan.ScanResponse{
-				Violations: []scan.Violation{
+			expected: services.ScanResponse{
+				Violations: []services.Violation{
 					{Severity: "High"},
 					{Severity: "Critical"},
 				},
-				Vulnerabilities: []scan.Vulnerability{
+				Vulnerabilities: []services.Vulnerability{
 					{Severity: "High"},
 					{Severity: "Critical"},
 				},
@@ -102,12 +102,12 @@ func TestGetFixableComponents(t *testing.T) {
 	// create test cases
 	testCases := []struct {
 		name        string
-		components  map[string]scan.Component
-		expectedMap map[string]scan.Component
+		components  map[string]services.Component
+		expectedMap map[string]services.Component
 	}{
 		{
 			name: "Returns an empty map when all components have no fixed versions",
-			components: map[string]scan.Component{
+			components: map[string]services.Component{
 				"vuln1": {
 					FixedVersions: []string{},
 				},
@@ -115,11 +115,11 @@ func TestGetFixableComponents(t *testing.T) {
 					FixedVersions: []string{},
 				},
 			},
-			expectedMap: map[string]scan.Component{},
+			expectedMap: map[string]services.Component{},
 		},
 		{
 			name: "Returns a filtered map with only components that have fixed versions",
-			components: map[string]scan.Component{
+			components: map[string]services.Component{
 				"vuln1": {
 					FixedVersions: []string{},
 				},
@@ -133,7 +133,7 @@ func TestGetFixableComponents(t *testing.T) {
 					FixedVersions: []string{},
 				},
 			},
-			expectedMap: map[string]scan.Component{
+			expectedMap: map[string]services.Component{
 				"vuln2": {
 					FixedVersions: []string{"1.0.0"},
 				},

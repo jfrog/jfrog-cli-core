@@ -8,7 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -153,18 +153,18 @@ var FakeServerDetails = config.ServerDetails{
 	User:     "user",
 }
 
-var FakeBasicXrayResults = []scan.ScanResponse{
+var FakeBasicXrayResults = []services.ScanResponse{
 	{
 		ScanId: "scanId_1",
-		Vulnerabilities: []scan.Vulnerability{
+		Vulnerabilities: []services.Vulnerability{
 			{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []scan.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
-				Components: map[string]scan.Component{"issueId_1_direct_dependency": {}, "issueId_3_direct_dependency": {}}},
+				Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
+				Components: map[string]services.Component{"issueId_1_direct_dependency": {}, "issueId_3_direct_dependency": {}}},
 		},
-		Violations: []scan.Violation{
+		Violations: []services.Violation{
 			{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
-				Cves:       []scan.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
-				Components: map[string]scan.Component{"issueId_2_direct_dependency": {}, "issueId_4_direct_dependency": {}}},
+				Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
+				Components: map[string]services.Component{"issueId_2_direct_dependency": {}, "issueId_4_direct_dependency": {}}},
 		},
 	},
 }

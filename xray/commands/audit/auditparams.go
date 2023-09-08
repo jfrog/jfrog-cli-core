@@ -2,11 +2,11 @@ package audit
 
 import (
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type AuditParams struct {
-	xrayGraphScanParams *scan.XrayGraphScanParams
+	xrayGraphScanParams *services.XrayGraphScanParams
 	workingDirs         []string
 	installFunc         func(tech string) error
 	fixableOnly         bool
@@ -18,7 +18,7 @@ type AuditParams struct {
 
 func NewAuditParams() *AuditParams {
 	return &AuditParams{
-		xrayGraphScanParams: &scan.XrayGraphScanParams{},
+		xrayGraphScanParams: &services.XrayGraphScanParams{},
 		AuditBasicParams:    &xrayutils.AuditBasicParams{},
 	}
 }
@@ -27,7 +27,7 @@ func (params *AuditParams) InstallFunc() func(tech string) error {
 	return params.installFunc
 }
 
-func (params *AuditParams) XrayGraphScanParams() *scan.XrayGraphScanParams {
+func (params *AuditParams) XrayGraphScanParams() *services.XrayGraphScanParams {
 	return params.xrayGraphScanParams
 }
 
@@ -39,7 +39,7 @@ func (params *AuditParams) XrayVersion() string {
 	return params.xrayVersion
 }
 
-func (params *AuditParams) SetXrayGraphScanParams(xrayGraphScanParams *scan.XrayGraphScanParams) *AuditParams {
+func (params *AuditParams) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayGraphScanParams) *AuditParams {
 	params.xrayGraphScanParams = xrayGraphScanParams
 	return params
 }

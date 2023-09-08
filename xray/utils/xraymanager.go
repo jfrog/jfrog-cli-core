@@ -3,10 +3,10 @@ package utils
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientconfig "github.com/jfrog/jfrog-client-go/config"
-	"github.com/jfrog/jfrog-client-go/xray/manager"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
-func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (xrayManager manager.SecurityServiceManager, err error) {
+func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (xrayManager services.SecurityServiceManager, err error) {
 	xrayDetails, err := serviceDetails.CreateXrayAuthConfig()
 	if err != nil {
 		return
@@ -17,10 +17,10 @@ func CreateXrayServiceManager(serviceDetails *config.ServerDetails) (xrayManager
 	if err != nil {
 		return
 	}
-	return manager.New(serviceConfig)
+	return services.New(serviceConfig)
 }
 
-func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails) (xrayManager manager.SecurityServiceManager, xrayVersion string, err error) {
+func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails) (xrayManager services.SecurityServiceManager, xrayVersion string, err error) {
 	xrayManager, err = CreateXrayServiceManager(serviceDetails)
 	if err != nil {
 		return

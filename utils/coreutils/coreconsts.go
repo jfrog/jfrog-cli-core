@@ -55,7 +55,4 @@ var (
 	Project     = "JFROG_CLI_BUILD_PROJECT"
 	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
-
-	// Manually sets XSC Multi-Scan-ID for testing purposes.
-	MultiScanId = "JFROG_CLI_XSC_MULTI_SCAN_ID"
 )

@@ -248,12 +248,12 @@ func getConfigFile() (content []byte, err error) {
 }
 
 func (config *Config) Clone() (*Config, error) {
-	configBytes, err := json.Marshal(config)
+	bytes, err := json.Marshal(config)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
 	clone := &Config{}
-	if err = json.Unmarshal(configBytes, clone); err != nil {
+	if err = json.Unmarshal(bytes, clone); err != nil {
 		return nil, errorutils.CheckError(err)
 	}
 	return clone, nil

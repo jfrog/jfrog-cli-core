@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os/exec"
 	"path/filepath"
@@ -209,7 +209,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 
 	// resultsArr is a two-dimensional array. Each array in it contains a list of ScanResponses that were requested and collected by a specific thread.
-	resultsArr := make([][]*scan.ScanResponse, threads)
+	resultsArr := make([][]*services.ScanResponse, threads)
 	fileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
 	fileProducerErrors := make([][]formats.SimpleJsonError, threads)
 	indexedFileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
@@ -221,7 +221,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	scanCmd.performScanTasks(fileProducerConsumer, indexedFileProducerConsumer)
 
 	// Handle results
-	flatResults := []scan.ScanResponse{}
+	flatResults := []services.ScanResponse{}
 	for _, arr := range resultsArr {
 		for _, res := range arr {
 			flatResults = append(flatResults, *res)
@@ -275,7 +275,7 @@ func (scanCmd *ScanCommand) CommandName() string {
 	return "xr_scan"
 }
 
-func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer parallel.Runner, resultsArr [][]*scan.ScanResponse, fileErrors, indexedFileErrors [][]formats.SimpleJsonError, fileCollectingErrorsQueue *clientutils.ErrorsQueue, xrayVersion string) {
+func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, fileErrors, indexedFileErrors [][]formats.SimpleJsonError, fileCollectingErrorsQueue *clientutils.ErrorsQueue, xrayVersion string) {
 	go func() {
 		defer fileProducer.Done()
 		// Iterate over file-spec groups and produce indexing tasks.
@@ -294,7 +294,7 @@ func (scanCmd *ScanCommand) prepareScanTasks(fileProducer, indexedFileProducer p
 	}()
 }
 
-func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*scan.ScanResponse, fileErrors, indexedFileErrors [][]formats.SimpleJsonError, xrayVersion string) FileContext {
+func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFileProducer parallel.Runner, resultsArr [][]*services.ScanResponse, fileErrors, indexedFileErrors [][]formats.SimpleJsonError, xrayVersion string) FileContext {
 	return func(filePath string) parallel.TaskFunc {
 		return func(threadId int) (err error) {
 			logMsgPrefix := clientutils.GetLogMsgPrefix(threadId, false)
@@ -316,14 +316,14 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			// Add a new task to the second producer/consumer
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
-				params := &scan.XrayGraphScanParams{
+				params := &services.XrayGraphScanParams{
 					BinaryGraph:            graph,
 					RepoPath:               getXrayRepoPathFromTarget(file.Target),
 					Watches:                scanCmd.watches,
 					IncludeLicenses:        scanCmd.includeLicenses,
 					IncludeVulnerabilities: scanCmd.includeVulnerabilities,
 					ProjectKey:             scanCmd.projectKey,
-					ScanType:               scan.Binary,
+					ScanType:               services.Binary,
 				}
 				if scanCmd.progress != nil {
 					scanCmd.progress.SetHeadlineMsg("Scanning 🔍")

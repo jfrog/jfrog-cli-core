@@ -2,12 +2,12 @@ package scangraph
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/xray/scan"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type ScanGraphParams struct {
 	serverDetails       *config.ServerDetails
-	xrayGraphScanParams *scan.XrayGraphScanParams
+	xrayGraphScanParams *services.XrayGraphScanParams
 	fixableOnly         bool
 	xrayVersion         string
 	severityLevel       int
@@ -22,7 +22,7 @@ func (sgp *ScanGraphParams) SetServerDetails(serverDetails *config.ServerDetails
 	return sgp
 }
 
-func (sgp *ScanGraphParams) SetXrayGraphScanParams(params *scan.XrayGraphScanParams) *ScanGraphParams {
+func (sgp *ScanGraphParams) SetXrayGraphScanParams(params *services.XrayGraphScanParams) *ScanGraphParams {
 	sgp.xrayGraphScanParams = params
 	return sgp
 }
@@ -37,7 +37,7 @@ func (sgp *ScanGraphParams) SetSeverityLevel(severity string) *ScanGraphParams {
 	return sgp
 }
 
-func (sgp *ScanGraphParams) XrayGraphScanParams() *scan.XrayGraphScanParams {
+func (sgp *ScanGraphParams) XrayGraphScanParams() *services.XrayGraphScanParams {
 	return sgp.xrayGraphScanParams
 }
 

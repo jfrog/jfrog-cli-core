@@ -121,20 +121,6 @@ type cveTableRow struct {
 	id                string             `col-name:"CVE"`
 	cvssV2            string             `col-name:"CVSS\nv2" extended:"true"`
 	cvssV3            string             `col-name:"CVSS\nv3" extended:"true"`
-	applicableDetails *applicableDetails `col-name:"ApplicableDetails" extended:"true" omitempty:"true"`
-}
-
-type applicableDetails struct {
-	isApplicable bool                 `col-name:"IsApplicable"`
-	searchTarget string               `col-name:"SearchTarget" omitempty:"true"`
-	evidence     []applicableEvidence `embed-table:"true" omitempty:"true"`
-}
-
-type applicableEvidence struct {
-	file       string `col-name:"File"`
-	lineColumn string `col-name:"Line:Column"`
-	text       string `col-name:"Snippet"`
-	reason     string `col-name:"Reason"`
 }
 
 type secretsTableRow struct {

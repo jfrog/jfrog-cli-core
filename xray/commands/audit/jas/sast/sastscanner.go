@@ -42,12 +42,11 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	if err = ssm.runAnalyzerManager(wd); err != nil {
 		return
 	}
-	workingDirResults, err := utils.ReadScanRunsFromFile(scanner.ResultsFileName)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}
-	processSastScanResults(workingDirResults, wd)
-	ssm.sastScannerResults = append(ssm.sastScannerResults, workingDirResults...)
+	ssm.sastScannerResults = append(ssm.sastScannerResults, processSastScanResults(workingDirResults)...)
 	return
 }
 
@@ -55,27 +54,28 @@ func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
 	return ssm.scanner.AnalyzerManager.Exec(ssm.scanner.ResultsFileName, sastScanCommand, wd, ssm.scanner.ServerDetails)
 }
 
-func processSastScanResults(sarifRuns []*sarif.Run, wd string) {
+func processSastScanResults(sarifRuns []*sarif.Run) (processed []*sarif.Run) {
 	for _, sastRun := range sarifRuns {
-		// Change general attributes
-		jas.ProcessJasScanRun(sastRun, wd)
-
-		// Change specific scan attributes
 		processedResults := map[string]*sarif.Result{}
-		for index := 0; index < len(sastRun.Results); index++ {
-			sastResult := sastRun.Results[index]
+		// In the Sast scanner, there can be multiple results with the same location.
+		// The only difference is that their CodeFlow values are different.
+		// We combine those under the same result location value
+		for _, sastResult := range sastRun.Results {
 			resultID := GetResultId(sastResult)
 			if result, exists := processedResults[resultID]; exists {
-				// Combine this result with new code flow information to the already existing result
 				result.CodeFlows = append(result.CodeFlows, sastResult.CodeFlows...)
-				// Remove the duplicate result
-				sastRun.Results = append(sastRun.Results[:index], sastRun.Results[index+1:]...)
-				index--
 			} else {
 				processedResults[resultID] = sastResult
 			}
 		}
+		// Register processed results as run
+		resultSlice := []*sarif.Result{}
+		for _, result := range processedResults {
+			resultSlice = append(resultSlice, result)
+		}
+		processed = append(processed, sarif.NewRun(sastRun.Tool).WithResults(resultSlice))
 	}
+	return
 }
 
 // In Sast there is only one location for each result

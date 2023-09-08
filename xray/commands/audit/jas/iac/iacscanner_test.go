@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,11 +57,8 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = utils.ReadScanRunsFromFile(iacScanManager.scanner.ResultsFileName)
+	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 	if assert.NoError(t, err) && assert.NotNil(t, iacScanManager.iacScannerResults) {
-		assert.Len(t, iacScanManager.iacScannerResults, 1)
-		assert.Empty(t, iacScanManager.iacScannerResults[0].Results)
-		processIacScanResults(iacScanManager.iacScannerResults, scanner.WorkingDirs[0])
 		assert.Len(t, iacScanManager.iacScannerResults, 1)
 		assert.Empty(t, iacScanManager.iacScannerResults[0].Results)
 	}
@@ -77,11 +73,8 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = utils.ReadScanRunsFromFile(iacScanManager.scanner.ResultsFileName)
+	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 	if assert.NoError(t, err) && assert.NotNil(t, iacScanManager.iacScannerResults) {
-		assert.Len(t, iacScanManager.iacScannerResults, 1)
-		assert.NotEmpty(t, iacScanManager.iacScannerResults[0].Results)
-		processIacScanResults(iacScanManager.iacScannerResults, scanner.WorkingDirs[0])
 		assert.Len(t, iacScanManager.iacScannerResults, 1)
 		assert.Equal(t, 4, len(iacScanManager.iacScannerResults[0].Results))
 	}

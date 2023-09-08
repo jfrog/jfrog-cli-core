@@ -55,12 +55,11 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirRuns, err := utils.ReadScanRunsFromFile(scanner.ResultsFileName)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}
-	processSecretScanRuns(workingDirRuns, wd)
-	s.secretsScannerResults = append(s.secretsScannerResults, workingDirRuns...)
+	s.secretsScannerResults = append(s.secretsScannerResults, processSecretScanRuns(workingDirRuns)...)
 	return
 }
 
@@ -93,11 +92,9 @@ func (s *SecretScanManager) runAnalyzerManager() error {
 	return s.scanner.AnalyzerManager.Exec(s.scanner.ConfigFileName, secretsScanCommand, filepath.Dir(s.scanner.AnalyzerManager.AnalyzerManagerFullPath), s.scanner.ServerDetails)
 }
 
-func processSecretScanRuns(sarifRuns []*sarif.Run, wd string) {
+func processSecretScanRuns(sarifRuns []*sarif.Run) []*sarif.Run {
 	for _, secretRun := range sarifRuns {
-		// Change general attributes
-		jas.ProcessJasScanRun(secretRun, wd)
-		// Change specific scan attributes
+		// Hide discovered secrets value
 		for _, secretResult := range secretRun.Results {
 			for _, location := range secretResult.Locations {
 				secret := utils.GetLocationSnippetPointer(location)
@@ -105,4 +102,5 @@ func processSecretScanRuns(sarifRuns []*sarif.Run, wd string) {
 			}
 		}
 	}
+	return sarifRuns
 }

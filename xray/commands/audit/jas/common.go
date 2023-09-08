@@ -2,6 +2,7 @@ package jas
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,6 +22,15 @@ import (
 
 var (
 	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+
+	mapSeverityToScore = map[string]string{
+		"":         "0.0",
+		"unknown":  "0.0",
+		"low":      "3.9",
+		"medium":   "6.9",
+		"high":     "8.9",
+		"critical": "10",
+	}
 )
 
 type JasScanner struct {
@@ -89,27 +99,60 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func ProcessJasScanRun(sarifRun *sarif.Run, workingDir string) {
-	for i := 0; i < len(sarifRun.Results); i++ {
-		sarifResult := sarifRun.Results[i]
+func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err error) {
+	if sarifRuns, err = utils.ReadScanRunsFromFile(fileName); err != nil {
+		return
+	}
+	for i := 0; i < len(sarifRuns); i++ {
+		sarifRuns[i] = ProcessJasScanRun(sarifRuns[i], wd)
+	}
+	return
+}
+
+func ProcessJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
+	processed := sarif.NewRun(sarifRun.Tool)
+	// Jas reports has only one invocation
+	invocation := sarifRun.Invocations[0]
+	// Set the actual working directory to the invocation, not the analyzerManager directory
+	// Also used to calculate relative paths if needed with it
+	invocation.WorkingDirectory.WithUri(workingDir)
+	processed.Invocations = append(processed.Invocations, invocation)
+	// Process results
+	for _, sarifResult := range sarifRun.Results {
 		if len(sarifResult.Suppressions) > 0 {
 			// Describes a request to “suppress” a result (to exclude it from result lists)
-			sarifRun.Results = append(sarifRun.Results[:i], sarifRun.Results[i+1:]...)
-			i--
 			continue
 		}
-		// Convert locations absolute paths to relative
-		for _, location := range sarifResult.Locations {
-			utils.SetLocationFileName(location, utils.ExtractRelativePath(utils.GetLocationFileName(location), workingDir))
-		}
-		for _, codeFlows := range sarifResult.CodeFlows {
-			for _, threadFlows := range codeFlows.ThreadFlows {
-				for _, location := range threadFlows.Locations {
-					utils.SetLocationFileName(location.Location, utils.ExtractRelativePath(utils.GetLocationFileName(location.Location), workingDir))
-				}
+		processed.Results = append(processed.Results, sarifResult)
+		if rule, err := sarifRun.GetRuleById(*sarifResult.RuleID); err == nil {
+			// Add to the rule security-severity score base on results severity
+			score := ConvertToScore(utils.GetResultSeverity(sarifResult))
+			if score != utils.MissingCveScore && rule.Properties == nil {
+				properties := sarif.NewPropertyBag()
+				properties.Add("security-severity", score)
+				rule.WithProperties(properties.Properties)
 			}
 		}
 	}
+	return processed
+}
+
+func ConvertToScore(severity string) string {
+	if level, ok := mapSeverityToScore[strings.ToLower(severity)]; ok {
+		return level
+	}
+	return ""
+}
+
+func GetJasMarkdownDescription(scanType utils.JasScanType, location *sarif.Location, severity, content string) string {
+	dataColumnHeader := "Finding"
+	if scanType == utils.Secrets {
+		dataColumnHeader = "Secret"
+	}
+	headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s |\n", dataColumnHeader)
+	separatorRow := "| :---: | :---: | :---: | :---: |\n"
+	tableHeader := headerRow + separatorRow
+	return tableHeader + fmt.Sprintf("| %s | %s | %s | %s |", severity, utils.GetLocationFileName(location), utils.GetStartLocationInFile(location), content)
 }
 
 func CreateScannersConfigFile(fileName string, fileContent interface{}) error {

@@ -56,11 +56,10 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := utils.ReadScanRunsFromFile(scanner.ResultsFileName)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}
-	processIacScanResults(workingDirResults, wd)
 	iac.iacScannerResults = append(iac.iacScannerResults, workingDirResults...)
 	return
 }
@@ -92,10 +91,4 @@ func (iac *IacScanManager) createConfigFile(currentWd string) error {
 
 func (iac *IacScanManager) runAnalyzerManager() error {
 	return iac.scanner.AnalyzerManager.Exec(iac.scanner.ConfigFileName, iacScanCommand, filepath.Dir(iac.scanner.AnalyzerManager.AnalyzerManagerFullPath), iac.scanner.ServerDetails)
-}
-
-func processIacScanResults(sarifRuns []*sarif.Run, wd string) {
-	for _, iacRun := range sarifRuns {
-		jas.ProcessJasScanRun(iacRun, wd)
-	}
 }

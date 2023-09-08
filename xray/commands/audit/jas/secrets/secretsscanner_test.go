@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -65,13 +64,13 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = utils.ReadScanRunsFromFile(secretScanManager.scanner.ResultsFileName)
+	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, secretScanManager.secretsScannerResults) {
 		assert.Len(t, secretScanManager.secretsScannerResults, 1)
 		assert.Empty(t, secretScanManager.secretsScannerResults[0].Results)
-		processSecretScanRuns(secretScanManager.secretsScannerResults, scanner.WorkingDirs[0])
+		secretScanManager.secretsScannerResults = processSecretScanRuns(secretScanManager.secretsScannerResults)
 		assert.Len(t, secretScanManager.secretsScannerResults, 1)
 		assert.Empty(t, secretScanManager.secretsScannerResults[0].Results)
 	}
@@ -88,13 +87,13 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = utils.ReadScanRunsFromFile(secretScanManager.scanner.ResultsFileName)
+	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, secretScanManager.secretsScannerResults) {
 		assert.Len(t, secretScanManager.secretsScannerResults, 1)
 		assert.NotEmpty(t, secretScanManager.secretsScannerResults[0].Results)
-		processSecretScanRuns(secretScanManager.secretsScannerResults, scanner.WorkingDirs[0])
+		secretScanManager.secretsScannerResults = processSecretScanRuns(secretScanManager.secretsScannerResults)
 		assert.Len(t, secretScanManager.secretsScannerResults, 1)
 		assert.Equal(t, 7, len(secretScanManager.secretsScannerResults[0].Results))
 	}

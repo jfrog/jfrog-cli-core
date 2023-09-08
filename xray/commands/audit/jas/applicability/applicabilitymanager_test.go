@@ -277,12 +277,10 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = utils.ReadScanRunsFromFile(applicabilityManager.scanner.ResultsFileName)
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	if assert.NoError(t, err) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
-		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
-		processApplicabilityScanResults(applicabilityManager.applicabilityScanResults, scanner.WorkingDirs[0])
 		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
 	}
 }
@@ -296,17 +294,16 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = utils.ReadScanRunsFromFile(applicabilityManager.scanner.ResultsFileName)
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
 		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
-		processApplicabilityScanResults(applicabilityManager.applicabilityScanResults, scanner.WorkingDirs[0])
 
 		results := utils.ConvertToApplicabilityMap(&utils.ExtendedScanResults{EntitledForJas: true, ApplicabilityScanResults: applicabilityManager.applicabilityScanResults})
 		if assert.NotNil(t, results) {
 			applicabilityResults := *results
-			assert.Len(t, applicabilityResults, 5)
+			assert.Len(t, applicabilityResults, 2)
 			if assert.NotNil(t, applicabilityResults["testCve1"]) {
 				assert.True(t, applicabilityResults["testCve1"].Status)
 			}
@@ -327,13 +324,11 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = utils.ReadScanRunsFromFile(applicabilityManager.scanner.ResultsFileName)
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
 		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
-		processApplicabilityScanResults(applicabilityManager.applicabilityScanResults, scanner.WorkingDirs[0])
-
 		results := utils.ConvertToApplicabilityMap(&utils.ExtendedScanResults{EntitledForJas: true, ApplicabilityScanResults: applicabilityManager.applicabilityScanResults})
 		if assert.NotNil(t, results) {
 			applicabilityResults := *results

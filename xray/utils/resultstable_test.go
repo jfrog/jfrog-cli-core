@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
@@ -424,75 +425,107 @@ func TestGetSeveritiesFormat(t *testing.T) {
 	}
 }
 
-// func TestGetApplicableCveValue(t *testing.T) {
-// 	testCases := []struct {
-// 		scanResults    *ExtendedScanResults
-// 		cves           []formats.CveRow
-// 		expectedResult ApplicabilityStatus
-// 		expectedCves []formats.CveRow
-// 	}{
-// 		{
-// 			scanResults:    &ExtendedScanResults{EntitledForJas: false},
-// 			expectedResult: NotScanned,
-// 		},
-// 		{
-// 			scanResults: &ExtendedScanResults{
-// 				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": Applicable, "testCve2": NotApplicable},
-// 				EntitledForJas:           true,
-// 			},
-// 			cves:           nil,
-// 			expectedResult: ApplicabilityUndetermined,
-// 			expectedCves: nil,
-// 		},
-// 		{
-// 			scanResults: &ExtendedScanResults{
-// 				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": Applicable},
-// 				EntitledForJas:           true,
-// 			},
-// 			cves:           []formats.CveRow,
-// 			expectedResult: Applicable,
-// 			expectedCves: []formats.CveRow{{Id: "testCve2"}},
-// 		},
-// 		{
-// 			scanResults: &ExtendedScanResults{
-// 				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": Applicable},
-// 				EntitledForJas:           true,
-// 			},
-// 			cves:           []formats.CveRow{{Id: "testCve3"}},
-// 			expectedResult: ApplicabilityUndetermined,
-// 		},
-// 		{
-// 			scanResults: &ExtendedScanResults{
-// 				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": NotApplicable},
-// 				EntitledForJas:           true},
-// 			cves:           []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}},
-// 			expectedResult: NotApplicable,
-// 		},
-// 		{
-// 			scanResults: &ExtendedScanResults{
-// 				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": Applicable},
-// 				EntitledForJas:           true,
-// 			},
-// 			cves:           []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}},
-// 			expectedResult: Applicable,
-// 		},
-// 		{
-// 			scanResults: &ExtendedScanResults{
-// 				ApplicabilityScanResults: map[string]ApplicabilityStatus{"testCve1": NotApplicable, "testCve2": ApplicabilityUndetermined},
-// 				EntitledForJas:           true},
-// 			cves:           []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}},
-// 			expectedResult: ApplicabilityUndetermined,
-// 		},
-// 	}
+func TestGetApplicableCveValue(t *testing.T) {
+	testCases := []struct {
+		scanResults    *ExtendedScanResults
+		cves           []services.Cve
+		expectedResult ApplicabilityStatus
+		expectedCves []formats.CveRow
+	}{
+		{
+			scanResults:    &ExtendedScanResults{EntitledForJas: false},
+			expectedResult: NotScanned,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run {
+					getRunWithDummyResults(
+						getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve1", "info"),
+						getDummyPassingResult("applic_testCve2"),
+					),
+				},
+				EntitledForJas:           true,
+			},
+			cves:           nil,
+			expectedResult: ApplicabilityUndetermined,
+			expectedCves: nil,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run {
+					getRunWithDummyResults(
+							getDummyPassingResult("applic_testCve1"),
+							getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve2", "info"),
+					),
+				},
+				EntitledForJas:           true,
+			},
+			cves:           []services.Cve{{Id: "testCve2"}},
+			expectedResult: Applicable,
+			expectedCves: []formats.CveRow{{Id: "testCve2", ApplicableDetails: &formats.ApplicableDetails{Status: true}}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run {
+					getRunWithDummyResults(
+							getDummyPassingResult("applic_testCve1"),
+							getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve2", "info"),
+					),
+				},
+				EntitledForJas:           true,
+			},
+			cves:           []services.Cve{{Id: "testCve3"}},
+			expectedResult: ApplicabilityUndetermined,
+			expectedCves: []formats.CveRow{{Id: "testCve3"}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run {
+					getRunWithDummyResults(
+							getDummyPassingResult("applic_testCve1"),
+							getDummyPassingResult("applic_testCve2"),
+					),
+				},
+				EntitledForJas:           true,
+			},
+			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: NotApplicable,
+			expectedCves: []formats.CveRow{{Id: "testCve1", ApplicableDetails: &formats.ApplicableDetails{Status: false}}, {Id: "testCve2", ApplicableDetails: &formats.ApplicableDetails{Status: false}}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run {
+					getRunWithDummyResults(
+							getDummyPassingResult("applic_testCve1"),
+							getDummyResultWithOneLocation("fileName", 0, 0, "snippet", "applic_testCve2", "info"),
+					),
+				},
+				EntitledForJas:           true,
+			},
+			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: Applicable,
+			expectedCves: []formats.CveRow{{Id: "testCve1", ApplicableDetails: &formats.ApplicableDetails{Status: false}}, {Id: "testCve2", ApplicableDetails: &formats.ApplicableDetails{Status: true}}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run {
+					getRunWithDummyResults(getDummyPassingResult("applic_testCve1")),
+				},
+				EntitledForJas:           true},
+			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: ApplicabilityUndetermined,
+			expectedCves: []formats.CveRow{{Id: "testCve1", ApplicableDetails: &formats.ApplicableDetails{Status: false}}, {Id: "testCve2"}},
+		},
+	}
 
-// 	for _, testCase := range testCases {
-// 		appMap := ConvertToApplicabilityMap(testCase.scanResults)
-// 		assert.NotNil(t, appMap)
-// 		value, cves := extractCveValues(testCase.cves, appMap)
-// 		assert.Equal(t, testCase.expectedResult, value)
-// 		assert.Equal(t, testCase.expectedCves, cves)
-// 	}
-// }
+	for _, testCase := range testCases {
+		appMap := ConvertToApplicabilityMap(testCase.scanResults)
+		assert.NotNil(t, appMap)
+		value, cves := extractCveValues(testCase.cves, appMap)
+		assert.Equal(t, testCase.expectedResult, value)
+		assert.Equal(t, testCase.expectedCves, cves)
+	}
+}
 
 func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 	testCases := []struct {

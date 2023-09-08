@@ -35,15 +35,6 @@ var (
 		"low":      Note,
 		"Unknown":  None,
 	}
-
-	// mapSeverityToScore = map[string]string{
-	// 	"":         "0.0",
-	// 	"unknown":  "0.0",
-	// 	"low":      "3.9",
-	// 	"medium":   "6.9",
-	// 	"high":     "8.9",
-	// 	"critical": "10",
-	// }
 )
 
 func NewReport() (*sarif.Report, error) {
@@ -178,13 +169,6 @@ func ConvertToSarifLevel(severity string) string {
 		return string(level)
 	}
 	return string(None)
-}
-
-func ConvertScoreToSeverity(severity string) SarifLevel {
-	if level, ok := severityToLevel[strings.ToLower(severity)]; ok {
-		return level
-	}
-	return None
 }
 
 func isVulnerabilityResult(result *sarif.Result) bool {

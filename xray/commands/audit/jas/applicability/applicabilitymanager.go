@@ -110,11 +110,10 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = asm.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := utils.ReadScanRunsFromFile(asm.scanner.ResultsFileName)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}
-	processApplicabilityScanResults(workingDirResults, wd)
 	asm.applicabilityScanResults = append(asm.applicabilityScanResults, workingDirResults...)
 	return
 }
@@ -160,10 +159,4 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 // advance security feature
 func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
-}
-
-func processApplicabilityScanResults(sarifRuns []*sarif.Run, wd string) {
-	for _, run := range sarifRuns {
-		jas.ProcessJasScanRun(run, wd)
-	}
 }

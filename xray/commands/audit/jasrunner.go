@@ -2,7 +2,6 @@ package audit
 
 import (
 	"errors"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas/applicability"
@@ -49,7 +48,7 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if err != nil {
 		return
 	}
-	if !version.NewVersion(utils.AnalyzerManagerVersion).AtLeast(utils.MinAnalyzerManagerVersionForSast) {
+	if !utils.IsSastSupported() {
 		return
 	}
 	if progress != nil {

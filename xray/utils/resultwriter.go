@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -114,7 +113,7 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	if !version.NewVersion(AnalyzerManagerVersion).AtLeast(MinAnalyzerManagerVersionForSast) {
+	if !IsSastSupported() {
 		return
 	}
 	return PrintSastTable(results.SastResults, results.EntitledForJas)

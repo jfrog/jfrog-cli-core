@@ -76,6 +76,6 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 	if assert.NoError(t, err) && assert.NotNil(t, iacScanManager.iacScannerResults) {
 		assert.Len(t, iacScanManager.iacScannerResults, 1)
-		assert.Equal(t, 4, len(iacScanManager.iacScannerResults[0].Results))
+		assert.Len(t, iacScanManager.iacScannerResults[0].Results, 4)
 	}
 }

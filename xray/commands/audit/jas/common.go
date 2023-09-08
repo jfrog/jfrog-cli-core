@@ -164,13 +164,6 @@ func CreateScannersConfigFile(fileName string, fileContent interface{}) error {
 	return errorutils.CheckError(err)
 }
 
-func HideSecret(secret string) string {
-	if len(secret) <= 3 {
-		return "***"
-	}
-	return secret[:3] + strings.Repeat("*", 12)
-}
-
 var FakeServerDetails = config.ServerDetails{
 	Url:      "platformUrl",
 	Password: "password",

@@ -6,7 +6,7 @@ import (
 )
 
 func getRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
-	run := sarif.NewRunWithInformationURI("","")
+	run := sarif.NewRunWithInformationURI("", "")
 	ids := datastructures.MakeSet[string]()
 	for _, result := range results {
 		if !ids.Exists(*result.RuleID) {

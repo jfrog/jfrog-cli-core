@@ -62,6 +62,6 @@ func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
 		assert.NotEmpty(t, sastScanManager.sastScannerResults[0].Results)
 		sastScanManager.sastScannerResults = processSastScanResults(sastScanManager.sastScannerResults)
 		// File has 4 results, 2 of them at the same location different codeFlow
-		assert.Equal(t, 3, len(sastScanManager.sastScannerResults[0].Results))
+		assert.Len(t, sastScanManager.sastScannerResults[0].Results, 3)
 	}
 }

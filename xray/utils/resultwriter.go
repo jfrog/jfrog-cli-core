@@ -107,9 +107,11 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 	return PrintSastTable(results.SastScanResults, results.EntitledForJas)
 }
 
+// Te paths at Sarif runs are absolute.
+// Use this method if you need to translate the files path to relative
 func ConvertPathsToRelative(runs []*sarif.Run) {
 	for _, sarifRun := range runs {
-		// Get working directory
+		// Get working directory, the Jas scanners only have one invocation
 		wd := sarifRun.Invocations[0].WorkingDirectory.URI
 		if wd == nil {
 			return

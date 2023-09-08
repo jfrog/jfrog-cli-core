@@ -118,9 +118,9 @@ type directPackagesTableRow struct {
 }
 
 type cveTableRow struct {
-	id                string             `col-name:"CVE"`
-	cvssV2            string             `col-name:"CVSS\nv2" extended:"true"`
-	cvssV3            string             `col-name:"CVSS\nv3" extended:"true"`
+	id     string `col-name:"CVE"`
+	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
+	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
 }
 
 type secretsTableRow struct {

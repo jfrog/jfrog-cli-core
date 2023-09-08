@@ -95,7 +95,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 		assert.NotEmpty(t, secretScanManager.secretsScannerResults[0].Results)
 		secretScanManager.secretsScannerResults = processSecretScanRuns(secretScanManager.secretsScannerResults)
 		assert.Len(t, secretScanManager.secretsScannerResults, 1)
-		assert.Equal(t, 7, len(secretScanManager.secretsScannerResults[0].Results))
+		assert.Len(t, secretScanManager.secretsScannerResults[0].Results, 7)
 	}
 	assert.NoError(t, err)
 
@@ -110,4 +110,21 @@ func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "failed to run Secrets scan")
 	assert.Nil(t, secretsResults)
+}
+
+func TestHideSecret(t *testing.T) {
+	tests := []struct {
+		secret         string
+		expectedOutput string
+	}{
+		{secret: "", expectedOutput: "***"},
+		{secret: "12", expectedOutput: "***"},
+		{secret: "123", expectedOutput: "***"},
+		{secret: "123456789", expectedOutput: "123************"},
+		{secret: "3478hfnkjhvd848446gghgfh", expectedOutput: "347************"},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, hideSecret(test.secret))
+	}
 }

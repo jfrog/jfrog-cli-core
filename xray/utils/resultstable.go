@@ -319,7 +319,7 @@ func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow 
 						SourceCodeLocationRow: formats.SourceCodeLocationRow{
 							File:       GetLocationFileName(location),
 							LineColumn: GetStartLocationInFile(location),
-							Text:       GetLocationSnippet(location),
+							Snippet:    GetLocationSnippet(location),
 						},
 						Type: *secret.RuleID,
 					},
@@ -363,7 +363,7 @@ func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 						SourceCodeLocationRow: formats.SourceCodeLocationRow{
 							File:       GetLocationFileName(location),
 							LineColumn: GetStartLocationInFile(location),
-							Text:       GetResultMsgText(iac),
+							Snippet:    GetResultMsgText(iac),
 						},
 						Type: *iac.RuleID,
 					},
@@ -408,7 +408,7 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 						SourceCodeLocationRow: formats.SourceCodeLocationRow{
 							File:       GetLocationFileName(location),
 							LineColumn: GetStartLocationInFile(location),
-							Text:       GetResultMsgText(sast),
+							Snippet:    GetResultMsgText(sast),
 						},
 						Type:     *sast.RuleID,
 						CodeFlow: flows,
@@ -437,7 +437,7 @@ func toSourceCodeCodeFlowRow(flows []*sarif.CodeFlow, isTable bool) (flowRows []
 				rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
 					File:       GetLocationFileName(stackTraceEntry.Location),
 					LineColumn: GetStartLocationInFile(stackTraceEntry.Location),
-					Text:       GetLocationSnippet(stackTraceEntry.Location),
+					Snippet:    GetLocationSnippet(stackTraceEntry.Location),
 				})
 			}
 			flowRows = append(flowRows, rowFlow)
@@ -899,11 +899,11 @@ func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVer
 	return strings.Join([]string{vulnerableDependency, vulnerableVersion, xrayID, strconv.FormatBool(fixVersionExist)}, ":")
 }
 
-func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string]*formats.ApplicableDetails {
+func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string]*formats.Applicability {
 	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
 		return nil
 	}
-	applicabilityMap := map[string]*formats.ApplicableDetails{}
+	applicabilityMap := map[string]*formats.Applicability{}
 
 	for _, applicableRun := range extendedResults.ApplicabilityScanResults {
 		searchTargetData := map[string]string{}
@@ -914,13 +914,13 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 		for _, contexualAnalysisResult := range applicableRun.Results {
 			relatedCve := GetCveNameFromRuleId(*contexualAnalysisResult.RuleID)
 			// Get applicable details for this cve
-			var applicableDetails *formats.ApplicableDetails
+			var applicableDetails *formats.Applicability
 			if details, exists := applicabilityMap[relatedCve]; exists {
 				applicableDetails = details
 			} else {
-				applicableDetails = &formats.ApplicableDetails{
-					Status:       isVulnerabilityResult(contexualAnalysisResult),
-					SearchTarget: searchTargetData[relatedCve],
+				applicableDetails = &formats.Applicability{
+					Status:             isVulnerabilityResult(contexualAnalysisResult),
+					ScannerDescription: searchTargetData[relatedCve],
 				}
 				applicabilityMap[relatedCve] = applicableDetails
 			}
@@ -931,7 +931,7 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 					SourceCodeLocationRow: formats.SourceCodeLocationRow{
 						File:       GetLocationFileName(location),
 						LineColumn: GetStartLocationInFile(location),
-						Text:       GetLocationSnippet(location),
+						Snippet:    GetLocationSnippet(location),
 					},
 					Reason: GetResultMsgText(contexualAnalysisResult),
 				})
@@ -945,7 +945,7 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
-func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[string]*formats.ApplicableDetails) (value ApplicabilityStatus, cveRows []formats.CveRow) {
+func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[string]*formats.Applicability) (value ApplicabilityStatus, cveRows []formats.CveRow) {
 	value = NotScanned
 	if len(xrayCves) == 0 {
 		return
@@ -956,7 +956,7 @@ func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[str
 		value = NotApplicable
 	}
 	for _, cve := range xrayCves {
-		var applicableDetails *formats.ApplicableDetails
+		var applicableDetails *formats.Applicability
 		if applicabilityScanResults != nil {
 			if _, exists := (*applicabilityScanResults)[cve.Id]; exists {
 				applicableDetails = (*applicabilityScanResults)[cve.Id]
@@ -969,7 +969,7 @@ func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[str
 				value = ApplicabilityUndetermined
 			}
 		}
-		cveRows = append(cveRows, formats.CveRow{Id: cve.Id, CvssV2: cve.CvssV2Score, CvssV3: cve.CvssV3Score, ApplicableDetails: applicableDetails})
+		cveRows = append(cveRows, formats.CveRow{Id: cve.Id, CvssV2: cve.CvssV2Score, CvssV3: cve.CvssV3Score, Applicability: applicableDetails})
 	}
 	return
 }

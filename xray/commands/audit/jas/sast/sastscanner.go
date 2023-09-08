@@ -54,12 +54,12 @@ func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
 	return ssm.scanner.AnalyzerManager.Exec(ssm.scanner.ResultsFileName, sastScanCommand, wd, ssm.scanner.ServerDetails)
 }
 
+// In the Sast scanner, there can be multiple results with the same location.
+// The only difference is that their CodeFlow values are different.
+// We combine those under the same result location value
 func processSastScanResults(sarifRuns []*sarif.Run) (processed []*sarif.Run) {
 	for _, sastRun := range sarifRuns {
 		processedResults := map[string]*sarif.Result{}
-		// In the Sast scanner, there can be multiple results with the same location.
-		// The only difference is that their CodeFlow values are different.
-		// We combine those under the same result location value
 		for _, sastResult := range sastRun.Results {
 			resultID := GetResultId(sastResult)
 			if result, exists := processedResults[resultID]; exists {

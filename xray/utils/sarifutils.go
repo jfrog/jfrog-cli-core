@@ -74,7 +74,10 @@ func CombineRuns(runs []*sarif.Run, overrideToolName, overrideUrl string) *sarif
 }
 
 func GetResultMsgText(result *sarif.Result) string {
-	return *result.Message.Text
+	if result.Message.Text != nil {
+		return *result.Message.Text
+	}
+	return ""
 }
 
 func GetLocationSnippet(location *sarif.Location) string {
@@ -173,6 +176,13 @@ func ConvertToSarifLevel(severity string) string {
 
 func isVulnerabilityResult(result *sarif.Result) bool {
 	return !(result.Kind != nil && *result.Kind == "pass")
+}
+
+func GetRuleFullDescription(rule *sarif.ReportingDescriptor) string {
+	if rule.FullDescription != nil && rule.FullDescription.Text != nil {
+		return *rule.FullDescription.Text
+	}
+	return ""
 }
 
 func GetCveNameFromRuleId(sarifRuleId string) string {

@@ -178,7 +178,7 @@ func GetLocationRelatedCodeFlowsFromResult(location *sarif.Location, result *sar
 		for _, stackTrace := range codeFlow.ThreadFlows {
 			// The threadFlow is reverse stack trace.
 			// The last location is the location that it relates to.
-			if IsSameLocation(location, stackTrace.Locations[len(stackTrace.Locations) - 1].Location) {
+			if IsSameLocation(location, stackTrace.Locations[len(stackTrace.Locations)-1].Location) {
 				codeFlows = append(codeFlows, codeFlow)
 			}
 		}

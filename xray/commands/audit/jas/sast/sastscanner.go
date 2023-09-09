@@ -73,7 +73,7 @@ func processSastScanResults(sarifRuns []*sarif.Run) (processed []*sarif.Run) {
 		for _, result := range processedResults {
 			resultSlice = append(resultSlice, result)
 		}
-		processed = append(processed, sarif.NewRun(sastRun.Tool).WithResults(resultSlice))
+		processed = append(processed, sarif.NewRun(sastRun.Tool).WithInvocations(sastRun.Invocations).WithResults(resultSlice))
 	}
 	return
 }

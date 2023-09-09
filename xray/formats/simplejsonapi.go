@@ -101,12 +101,12 @@ type CveRow struct {
 }
 
 type Applicability struct {
-	Status             bool                 `json:"status"`
-	ScannerDescription string               `json:"scannerDescription,omitempty"`
-	Evidence           []ApplicableEvidence `json:"evidence,omitempty"`
+	Status             bool       `json:"status"`
+	ScannerDescription string     `json:"scannerDescription,omitempty"`
+	Evidence           []Evidence `json:"evidence,omitempty"`
 }
 
-type ApplicableEvidence struct {
+type Evidence struct {
 	SourceCodeLocationRow
 	Reason string `json:"reason,omitempty"`
 }

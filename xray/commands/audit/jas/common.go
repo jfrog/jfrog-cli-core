@@ -104,12 +104,12 @@ func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err e
 		return
 	}
 	for i := 0; i < len(sarifRuns); i++ {
-		sarifRuns[i] = ProcessJasScanRun(sarifRuns[i], wd)
+		sarifRuns[i] = processJasScanRun(sarifRuns[i], wd)
 	}
 	return
 }
 
-func ProcessJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
+func processJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
 	processed := sarif.NewRun(sarifRun.Tool)
 	// Jas reports has only one invocation
 	invocation := sarifRun.Invocations[0]
@@ -126,7 +126,7 @@ func ProcessJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
 		processed.Results = append(processed.Results, sarifResult)
 		if rule, err := sarifRun.GetRuleById(*sarifResult.RuleID); err == nil {
 			// Add to the rule security-severity score base on results severity
-			score := ConvertToScore(utils.GetResultSeverity(sarifResult))
+			score := convertToScore(utils.GetResultSeverity(sarifResult))
 			if score != utils.MissingCveScore && rule.Properties == nil {
 				properties := sarif.NewPropertyBag()
 				properties.Add("security-severity", score)
@@ -137,7 +137,7 @@ func ProcessJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
 	return processed
 }
 
-func ConvertToScore(severity string) string {
+func convertToScore(severity string) string {
 	if level, ok := mapSeverityToScore[strings.ToLower(severity)]; ok {
 		return level
 	}

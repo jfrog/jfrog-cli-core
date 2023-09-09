@@ -80,7 +80,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
 	var licenseViolationsRows []formats.LicenseViolationRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
-	applicableMap := ConvertToApplicabilityMap(extendedResults)
+	applicabilityMap := ConvertToApplicabilityMap(extendedResults)
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components)
 		if err != nil {
@@ -88,7 +88,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		}
 		switch violation.ViolationType {
 		case "security":
-			applicableValue, cves := extractCveValues(violation.Cves, applicableMap)
+			applicableValue, cves := extractCveValues(violation.Cves, applicabilityMap)
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -199,13 +199,13 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots)
 	}
 	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
-	applicableMap := ConvertToApplicabilityMap(extendedResults)
+	applicabilityMap := ConvertToApplicabilityMap(extendedResults)
 	for _, vulnerability := range vulnerabilities {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(vulnerability.Components)
 		if err != nil {
 			return nil, err
 		}
-		applicableValue, cves := extractCveValues(vulnerability.Cves, applicableMap)
+		applicableValue, cves := extractCveValues(vulnerability.Cves, applicabilityMap)
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -289,7 +289,7 @@ func FilterNotApplicableResults(applicableInfo []*sarif.Run) []*sarif.Run {
 	for _, cveContextualAnalysisRun := range applicableInfo {
 		onlyApplicableRun := sarif.NewRun(cveContextualAnalysisRun.Tool)
 		for _, cveContextualAnalysis := range cveContextualAnalysisRun.Results {
-			if isVulnerabilityResult(cveContextualAnalysis) {
+			if isApplicableResult(cveContextualAnalysis) {
 				onlyApplicableRun.Results = append(onlyApplicableRun.Results, cveContextualAnalysis)
 			}
 		}
@@ -908,17 +908,17 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 	for _, applicableRun := range extendedResults.ApplicabilityScanResults {
 		searchTargetData := map[string]string{}
 		for _, rule := range applicableRun.Tool.Driver.Rules {
-			searchTargetData[GetCveNameFromRuleId(rule.ID)] = GetRuleFullDescription(rule)
+			searchTargetData[GetCveIdFromRuleId(rule.ID)] = GetRuleFullDescription(rule)
 		}
 		for _, contexualAnalysisResult := range applicableRun.Results {
-			relatedCve := GetCveNameFromRuleId(*contexualAnalysisResult.RuleID)
+			relatedCve := GetCveIdFromRuleId(*contexualAnalysisResult.RuleID)
 			// Get applicable details for this cve
 			var applicableDetails *formats.Applicability
 			if details, exists := applicabilityMap[relatedCve]; exists {
 				applicableDetails = details
 			} else {
 				applicableDetails = &formats.Applicability{
-					Status:             isVulnerabilityResult(contexualAnalysisResult),
+					Status:             isApplicableResult(contexualAnalysisResult),
 					ScannerDescription: searchTargetData[relatedCve],
 				}
 				applicabilityMap[relatedCve] = applicableDetails
@@ -926,7 +926,7 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 			// Add new evidences
 			for l := range contexualAnalysisResult.Locations {
 				location := contexualAnalysisResult.Locations[l]
-				applicableDetails.Evidence = append(applicableDetails.Evidence, formats.ApplicableEvidence{
+				applicableDetails.Evidence = append(applicableDetails.Evidence, formats.Evidence{
 					SourceCodeLocationRow: formats.SourceCodeLocationRow{
 						File:       GetLocationFileName(location),
 						LineColumn: GetStartLocationInFile(location),

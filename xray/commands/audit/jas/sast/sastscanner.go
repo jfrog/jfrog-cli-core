@@ -42,11 +42,11 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	if err = ssm.runAnalyzerManager(wd); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}
-	ssm.sastScannerResults = append(ssm.sastScannerResults, processSastScanResults(workingDirResults)...)
+	ssm.sastScannerResults = append(ssm.sastScannerResults, processSastScanResults(workingDirRuns)...)
 	return
 }
 
@@ -61,7 +61,7 @@ func processSastScanResults(sarifRuns []*sarif.Run) (processed []*sarif.Run) {
 	for _, sastRun := range sarifRuns {
 		processedResults := map[string]*sarif.Result{}
 		for _, sastResult := range sastRun.Results {
-			resultID := GetResultId(sastResult)
+			resultID := getResultId(sastResult)
 			if result, exists := processedResults[resultID]; exists {
 				result.CodeFlows = append(result.CodeFlows, sastResult.CodeFlows...)
 			} else {
@@ -79,7 +79,7 @@ func processSastScanResults(sarifRuns []*sarif.Run) (processed []*sarif.Run) {
 }
 
 // In Sast there is only one location for each result
-func GetResultFileName(result *sarif.Result) string {
+func getResultFileName(result *sarif.Result) string {
 	if len(result.Locations) > 0 {
 		return utils.GetLocationFileName(result.Locations[0])
 	}
@@ -87,13 +87,13 @@ func GetResultFileName(result *sarif.Result) string {
 }
 
 // In Sast there is only one location for each result
-func GetResultStartLocationInFile(result *sarif.Result) string {
+func getResultStartLocationInFile(result *sarif.Result) string {
 	if len(result.Locations) > 0 {
 		return utils.GetStartLocationInFile(result.Locations[0])
 	}
 	return ""
 }
 
-func GetResultId(result *sarif.Result) string {
-	return GetResultFileName(result) + GetResultStartLocationInFile(result) + utils.GetResultSeverity(result) + *result.Message.Text
+func getResultId(result *sarif.Result) string {
+	return getResultFileName(result) + getResultStartLocationInFile(result) + utils.GetResultSeverity(result) + utils.GetResultMsgText(result)
 }

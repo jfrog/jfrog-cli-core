@@ -198,12 +198,11 @@ func convertToComponentScanTableRow(rows []ComponentRow) (tableRows []directPack
 
 func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 	for i := range rows {
-		row := cveTableRow{
+		tableRows = append(tableRows, cveTableRow{
 			id:     rows[i].Id,
 			cvssV2: rows[i].CvssV2,
 			cvssV3: rows[i].CvssV3,
-		}
-		tableRows = append(tableRows, row)
+		})
 	}
 	return
 }

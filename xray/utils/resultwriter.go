@@ -92,41 +92,44 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 			return
 		}
 	}
-	ConvertPathsToRelative(results.SecretsScanResults)
+	ConvertRunsPathsToRelative(results.SecretsScanResults)
 	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	ConvertPathsToRelative(results.IacScanResults)
+	ConvertRunsPathsToRelative(results.IacScanResults)
 	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
 		return
 	}
 	if !IsSastSupported() {
 		return
 	}
-	ConvertPathsToRelative(results.SastScanResults)
+	ConvertRunsPathsToRelative(results.SastScanResults)
 	return PrintSastTable(results.SastScanResults, results.EntitledForJas)
 }
 
-// Te paths at Sarif runs are absolute.
-// Use this method if you need to translate the files path to relative
-func ConvertPathsToRelative(runs []*sarif.Run) {
+// The paths at Sarif runs are absolute.
+// Use this method if you need to translate the file paths to relative
+func ConvertRunsPathsToRelative(runs []*sarif.Run) {
 	for _, sarifRun := range runs {
-		// Get working directory, the Jas scanners only have one invocation
-		wd := sarifRun.Invocations[0].WorkingDirectory.URI
-		if wd == nil {
-			return
-		}
-		for _, sarifResult := range sarifRun.Results {
-			// Convert paths in locations
-			for _, location := range sarifResult.Locations {
-				SetLocationFileName(location, ExtractRelativePath(GetLocationFileName(location), *wd))
+		for _, invocation := range sarifRun.Invocations {
+			if wd := GetInvocationWorkingDirectory(invocation); len(wd) > 0 {
+				ConvertRunPathsToRelative(sarifRun, wd)
 			}
-			// Convert paths in code flows
-			for _, codeFlows := range sarifResult.CodeFlows {
-				for _, threadFlows := range codeFlows.ThreadFlows {
-					for _, location := range threadFlows.Locations {
-						SetLocationFileName(location.Location, ExtractRelativePath(GetLocationFileName(location.Location), *wd))
-					}
+		}
+	}
+}
+
+func ConvertRunPathsToRelative(sarifRun *sarif.Run, wd string) {
+	for _, sarifResult := range sarifRun.Results {
+		// Convert paths in locations
+		for _, location := range sarifResult.Locations {
+			SetLocationFileName(location, ExtractRelativePath(GetLocationFileName(location), wd))
+		}
+		// Convert paths in code flows
+		for _, codeFlows := range sarifResult.CodeFlows {
+			for _, threadFlows := range codeFlows.ThreadFlows {
+				for _, location := range threadFlows.Locations {
+					SetLocationFileName(location.Location, ExtractRelativePath(GetLocationFileName(location.Location), wd))
 				}
 			}
 		}
@@ -308,16 +311,13 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 		return formats.SimpleJsonResults{}, err
 	}
 	if len(extendedResults.SecretsScanResults) > 0 {
-		secretsRows := PrepareSecrets(extendedResults.SecretsScanResults)
-		jsonTable.Secrets = secretsRows
+		jsonTable.Secrets = PrepareSecrets(extendedResults.SecretsScanResults)
 	}
 	if len(extendedResults.IacScanResults) > 0 {
-		iacRows := PrepareIacs(extendedResults.IacScanResults)
-		jsonTable.Iacs = iacRows
+		jsonTable.Iacs = PrepareIacs(extendedResults.IacScanResults)
 	}
 	if len(extendedResults.SastScanResults) > 0 {
-		sastRows := PrepareSast(extendedResults.SastScanResults)
-		jsonTable.Sast = sastRows
+		jsonTable.Sast = PrepareSast(extendedResults.SastScanResults)
 	}
 	jsonTable.Errors = errors
 

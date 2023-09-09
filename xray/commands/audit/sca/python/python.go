@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	utils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -184,11 +185,12 @@ func installPipDeps(auditPython *AuditPython) (restoreEnv func() error, err erro
 
 func executeCommand(executable string, args ...string) error {
 	installCmd := exec.Command(executable, args...)
-	log.Debug(fmt.Sprintf("Running %q", strings.Join(installCmd.Args, " ")))
+	maskedCmdString := coreutils.GetMaskedCommandString(installCmd)
+	log.Debug("Running", maskedCmdString)
 	output, err := installCmd.CombinedOutput()
 	if err != nil {
 		sca.LogExecutableVersion(executable)
-		return errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(installCmd.Args, " "), err.Error(), output)
+		return errorutils.CheckErrorf("%q command failed: %s - %s", maskedCmdString, err.Error(), output)
 	}
 	return nil
 }

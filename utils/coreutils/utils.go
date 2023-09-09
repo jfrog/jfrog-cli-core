@@ -33,7 +33,7 @@ const (
 	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
 	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 	// JFrog releases URL
-	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
+	JfrogReleasesUrl = "https://xscteamtrialprod.jfrog.io/artifactory/"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):

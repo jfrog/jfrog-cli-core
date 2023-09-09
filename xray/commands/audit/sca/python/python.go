@@ -1,6 +1,7 @@
 package python
 
 import (
+	"errors"
 	"fmt"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -72,15 +73,11 @@ func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]s
 	}
 
 	defer func() {
-		e := os.Chdir(wd)
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
-
-		e = fileutils.RemoveTempDir(tempDirPath)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(
+			err,
+			errorutils.CheckError(os.Chdir(wd)),
+			fileutils.RemoveTempDir(tempDirPath),
+		)
 	}()
 
 	err = biutils.CopyDir(wd, tempDirPath, true, nil)
@@ -90,10 +87,7 @@ func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]s
 
 	restoreEnv, err := runPythonInstall(auditPython)
 	defer func() {
-		e := restoreEnv()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, restoreEnv())
 	}()
 	if err != nil {
 		return
@@ -105,12 +99,8 @@ func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]s
 	}
 	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(auditPython.Tool, tempDirPath, localDependenciesPath)
 	if err != nil {
-		if _, innerErr := sca.GetExecutableVersion("python"); innerErr != nil {
-			log.Error(innerErr)
-		}
-		if _, innerErr := sca.GetExecutableVersion(string(auditPython.Tool)); innerErr != nil {
-			log.Error(innerErr)
-		}
+		sca.LogExecutableVersion("python")
+		sca.LogExecutableVersion(string(auditPython.Tool))
 	}
 	return
 }
@@ -192,9 +182,7 @@ func executeCommand(executable string, args ...string) error {
 	log.Debug(fmt.Sprintf("Running %q", strings.Join(installCmd.Args, " ")))
 	output, err := installCmd.CombinedOutput()
 	if err != nil {
-		if _, innerErr := sca.GetExecutableVersion(executable); innerErr != nil {
-			log.Error(innerErr)
-		}
+		sca.LogExecutableVersion(executable)
 		return errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(installCmd.Args, " "), err.Error(), output)
 	}
 	return nil

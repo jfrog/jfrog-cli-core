@@ -905,6 +905,10 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
+	if applicableValue == NotScanned {
+		return NotScanned.String()
+	}
+
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
 		if applicableValue == Applicable {
 			return color.New(color.Red).Render(applicableValue)

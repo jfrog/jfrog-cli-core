@@ -1,10 +1,11 @@
 package secrets
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
@@ -125,6 +126,6 @@ func TestHideSecret(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, hideSecret(test.secret))
+		assert.Equal(t, test.expectedOutput, maskSecret(test.secret))
 	}
 }

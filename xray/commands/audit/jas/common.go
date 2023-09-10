@@ -103,14 +103,14 @@ func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err e
 	if sarifRuns, err = utils.ReadScanRunsFromFile(fileName); err != nil {
 		return
 	}
-	for i := 0; i < len(sarifRuns); i++ {
+	for _, sarifRun := range sarifRuns {
 		// Jas reports has only one invocation
 		// Set the actual working directory to the invocation, not the analyzerManager directory
 		// Also used to calculate relative paths if needed with it
-		sarifRuns[i].Invocations[0].WorkingDirectory.WithUri(wd)
+		sarifRun.Invocations[0].WorkingDirectory.WithUri(wd)
 		// Process runs values
-		excludeSuppressResults(sarifRuns[i])
-		addPropertiesToRunRules(sarifRuns[i])
+		excludeSuppressResults(sarifRun)
+		addPropertiesToRunRules(sarifRun)
 	}
 	return
 }
@@ -130,12 +130,10 @@ func excludeSuppressResults(sarifRun *sarif.Run) {
 func addPropertiesToRunRules(sarifRun *sarif.Run) {
 	for _, sarifResult := range sarifRun.Results {
 		if rule, err := sarifRun.GetRuleById(*sarifResult.RuleID); err == nil {
-			// Add to the rule security-severity score base on results severity
+			// Add to the rule security-severity score based on results severity
 			score := convertToScore(utils.GetResultSeverity(sarifResult))
-			if score != utils.MissingCveScore && rule.Properties == nil {
-				properties := sarif.NewPropertyBag()
-				properties.Add("security-severity", score)
-				rule.WithProperties(properties.Properties)
+			if score != utils.MissingCveScore {
+				rule.Properties["security-severity"] = score
 			}
 		}
 	}
@@ -146,17 +144,6 @@ func convertToScore(severity string) string {
 		return level
 	}
 	return ""
-}
-
-func GetJasMarkdownDescription(scanType utils.JasScanType, location *sarif.Location, severity, content string) string {
-	dataColumnHeader := "Finding"
-	if scanType == utils.Secrets {
-		dataColumnHeader = "Secret"
-	}
-	headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s |\n", dataColumnHeader)
-	separatorRow := "| :---: | :---: | :---: | :---: |\n"
-	tableHeader := headerRow + separatorRow
-	return tableHeader + fmt.Sprintf("| %s | %s | %s | %s |", severity, utils.GetLocationFileName(location), utils.GetStartLocationInFile(location), content)
 }
 
 func CreateScannersConfigFile(fileName string, fileContent interface{}) error {

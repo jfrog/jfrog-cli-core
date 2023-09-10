@@ -3,8 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/xray/services"
-
 	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
@@ -16,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 type SarifLevel string

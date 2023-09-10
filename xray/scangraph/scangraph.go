@@ -11,7 +11,6 @@ import (
 const (
 	GraphScanMinXrayVersion = "3.29.0"
 	ScanTypeMinXrayVersion  = "3.37.2"
-	XscMinVersion           = "0.1.0"
 )
 
 func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse, error) {
@@ -25,9 +24,17 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 		// Remove scan type param if Xray version is under the minimum supported version
 		params.xrayGraphScanParams.ScanType = ""
 	}
-	scanId, err := xrayManager.ScanGraph(params.xrayGraphScanParams)
-	if err != nil {
-		return nil, err
+
+	var scanId string
+	params.xrayGraphScanParams.XscVersion, err = xrayManager.XscEnabled()
+	if params.xrayGraphScanParams.XscVersion == "" {
+		if scanId, err = xrayManager.ScanGraph(params.xrayGraphScanParams); err != nil {
+			return nil, err
+		}
+	} else {
+		if scanId, err = xrayManager.XscScanGraph(params.xrayGraphScanParams); err != nil {
+			return nil, err
+		}
 	}
 	scanResult, err := xrayManager.GetScanGraphResults(scanId, params.XrayGraphScanParams().IncludeVulnerabilities, params.XrayGraphScanParams().IncludeLicenses)
 	if err != nil {

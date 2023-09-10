@@ -567,8 +567,6 @@ func (o *ConfigV0) Convert() *ConfigV4 {
 
 type ServerDetails struct {
 	Url                             string `json:"url,omitempty"`
-	XscUrl                          string `json:"-"`
-	XscVersion                      string `json:"-"`
 	SshUrl                          string `json:"-"`
 	ArtifactoryUrl                  string `json:"artifactoryUrl,omitempty"`
 	DistributionUrl                 string `json:"distributionUrl,omitempty"`
@@ -705,8 +703,6 @@ func (serverDetails *ServerDetails) CreateDistAuthConfig() (auth.ServiceDetails,
 
 func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails, error) {
 	artAuth := xrayAuth.NewXrayDetails()
-	artAuth.SetXscUrl(serverDetails.XscUrl)
-	artAuth.SetXscVersion(serverDetails.XscVersion)
 	artAuth.SetUrl(serverDetails.XrayUrl)
 	return serverDetails.createAuthConfig(artAuth)
 }

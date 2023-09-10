@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"testing"
 
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 )
 

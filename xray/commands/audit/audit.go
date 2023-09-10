@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"golang.org/x/sync/errgroup"
 	"os"
@@ -156,18 +157,13 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 	if err != nil {
 		return
 	}
-	var xrayManager services.SecurityServiceManager
-	xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
-	if err != nil {
+	var xrayManager *xray.XrayServicesManager
+	if xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails);err!=nil{
 		return
 	}
 	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, scangraph.GraphScanMinXrayVersion); err != nil {
 		return
 	}
-	if auditParams.xscVersion, err = xrayManager.IsXscEnabled(); err != nil {
-		return
-	}
-
 	results.ExtendedScanResults.EntitledForJas, err = isEntitledForJas(xrayManager, auditParams.xrayVersion)
 	if err != nil {
 		return
@@ -194,7 +190,7 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 	return
 }
 
-func isEntitledForJas(xrayManager services.SecurityServiceManager, xrayVersion string) (entitled bool, err error) {
+func isEntitledForJas(xrayManager *xray.XrayServicesManager, xrayVersion string) (entitled bool, err error) {
 	if e := clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, xrayutils.EntitlementsMinVersion); e != nil {
 		log.Debug(e)
 		return

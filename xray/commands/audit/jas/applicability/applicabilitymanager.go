@@ -2,7 +2,6 @@ package applicability
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"path/filepath"
 	"strings"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"

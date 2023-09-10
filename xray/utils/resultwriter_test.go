@@ -2,12 +2,12 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"path"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 )
 

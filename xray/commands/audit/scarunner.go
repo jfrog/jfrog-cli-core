@@ -62,7 +62,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		technologies = coreutils.DetectedTechnologiesList()
 	}
 	if len(technologies) == 0 {
-		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA services...")
+		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
 		return
 	}
 	serverDetails, err := params.ServerDetails()

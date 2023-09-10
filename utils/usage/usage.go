@@ -136,7 +136,7 @@ func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
 		err = errorutils.CheckErrorf("Nothing to send.")
 		return
 	}
-	return xrayusage.SendXrayUsageEvents(serviceManager, events...)
+	return xrayusage.SendXrayUsageEvents(*serviceManager, events...)
 }
 
 func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err error) {

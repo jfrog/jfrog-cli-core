@@ -8,6 +8,7 @@ import (
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
@@ -111,7 +112,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	return
 }
 
-func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager services.SecurityServiceManager, params services.XrayBuildParams) (isFailBuildResponse bool, err error) {
+func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (isFailBuildResponse bool, err error) {
 	buildScanResults, noFailBuildPolicy, err := xrayManager.BuildScan(params, bsc.includeVulnerabilities)
 	if err != nil {
 		return false, err

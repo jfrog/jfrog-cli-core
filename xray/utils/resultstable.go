@@ -2,15 +2,15 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-client-go/xray/services"
-	"golang.org/x/exp/maps"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/maps"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray/services"
 )
 
 const (

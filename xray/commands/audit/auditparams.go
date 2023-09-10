@@ -13,7 +13,6 @@ type AuditParams struct {
 	minSeverityFilter   string
 	*xrayutils.AuditBasicParams
 	xrayVersion string
-	xscVersion  string
 }
 
 func NewAuditParams() *AuditParams {

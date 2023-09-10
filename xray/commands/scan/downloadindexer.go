@@ -3,7 +3,6 @@ package scan
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/xray"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 	tempIndexerDirName = "temp"
 )
 
-func DownloadIndexerIfNeeded(xrayManager services.SecurityServiceManager, xrayVersionStr string) (indexerPath string, err error) {
+func DownloadIndexerIfNeeded(xrayManager *xray.XrayServicesManager, xrayVersionStr string) (indexerPath string, err error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
 		return
@@ -64,7 +64,7 @@ func DownloadIndexerIfNeeded(xrayManager services.SecurityServiceManager, xrayVe
 	return
 }
 
-func downloadIndexer(xrayManager services.SecurityServiceManager, indexerDirPath, indexerBinaryName string) (string, error) {
+func downloadIndexer(xrayManager *xray.XrayServicesManager, indexerDirPath, indexerBinaryName string) (string, error) {
 	tempDirPath := filepath.Join(indexerDirPath, tempIndexerDirName)
 
 	// Delete the temporary directory if it exists

@@ -232,9 +232,18 @@ func IsSameLocation(location *sarif.Location, other *sarif.Location) bool {
 		GetLocationEndColumn(location) == GetLocationEndColumn(other)
 }
 
-func GetLocationCount(run *sarif.Run) (count int) {
+func GetResultsLocationCount(run *sarif.Run) (count int) {
 	for _, result := range run.Results {
 		count += len(result.Locations)
+	}
+	return
+}
+
+func GetLevelResultsLocationCount(run *sarif.Run, level SarifLevel) (count int) {
+	for _, result := range run.Results {
+		if level == SarifLevel(*result.Level) {
+			count += len(result.Locations)
+		}
 	}
 	return
 }

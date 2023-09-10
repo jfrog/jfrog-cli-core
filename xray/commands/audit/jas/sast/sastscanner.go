@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"golang.org/x/exp/maps"
 )
 
 const (
@@ -68,12 +69,7 @@ func processSastScanResults(sarifRuns []*sarif.Run) (processed []*sarif.Run) {
 				processedResults[resultID] = sastResult
 			}
 		}
-		// Register processed results as run
-		resultSlice := []*sarif.Result{}
-		for _, result := range processedResults {
-			resultSlice = append(resultSlice, result)
-		}
-		processed = append(processed, sarif.NewRun(sastRun.Tool).WithInvocations(sastRun.Invocations).WithResults(resultSlice))
+		processed = append(processed, sarif.NewRun(sastRun.Tool).WithInvocations(sastRun.Invocations).WithResults(maps.Values(processedResults)))
 	}
 	return
 }

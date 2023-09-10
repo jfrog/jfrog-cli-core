@@ -1,9 +1,10 @@
 package sast
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/stretchr/testify/assert"
 )

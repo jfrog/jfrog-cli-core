@@ -90,7 +90,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves)
 			for _, cve := range cves {
-				cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+				cve.Applicability, _ = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, nil)
 			}
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
@@ -209,8 +209,12 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		}
 		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves)
+		var ignoreApplicability bool
 		for _, cve := range cves {
-			cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+			cve.Applicability, ignoreApplicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, vulnerability.Components)
+		}
+		if ignoreApplicability {
+			applicableValue = NotApplicable
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -288,23 +292,6 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	}
 
 	return licensesRows, nil
-}
-
-func FilterNotApplicableResults(applicableInfo []*sarif.Run) []*sarif.Run {
-	var applicableEvidenceRows []*sarif.Run
-	for _, cveContextualAnalysisRun := range applicableInfo {
-		onlyApplicableRun := sarif.NewRun(cveContextualAnalysisRun.Tool)
-		for _, cveContextualAnalysis := range cveContextualAnalysisRun.Results {
-			if isApplicableResult(cveContextualAnalysis) {
-				onlyApplicableRun.Results = append(onlyApplicableRun.Results, cveContextualAnalysis)
-			}
-		}
-		if len(onlyApplicableRun.Results) > 0 {
-			applicableEvidenceRows = append(applicableEvidenceRows, onlyApplicableRun)
-		}
-	}
-
-	return applicableEvidenceRows
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
@@ -945,10 +932,9 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndetermined
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, applicableValue *formats.Applicability, components map[string]services.Component) (applicability *formats.Applicability) {
+func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) (applicability *formats.Applicability, shouldIgnore bool) {
 	if len(applicabilityScanResults) == 0 {
-		// nothing change return same
-		return applicableValue
+		return
 	}
 	for _, applicabilityRun := range applicabilityScanResults {
 		description := ""
@@ -967,7 +953,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		// Add new evidences from locations
 		for _, location := range relatedResult.Locations {
 			fileName := GetLocationFileName(location)
-			if shouldSkipEvidance(components, fileName) {
+			if shouldSkipEvidence(components, fileName) {
 				continue
 			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
@@ -980,16 +966,18 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 			})
 		}
 		if len(applicability.Evidence) == 0 {
-			return NotApplicable
+			return nil, true
 		}
 	}
 	return
 }
 
-func shouldSkipEvidance(components map[string]services.Component, filePath string) bool {
+// When a certain package is reported applicable by using itself, we should skip it.
+// This is only when the flag "scan-env-applicability" is one that will also scan the node modules folder.
+func shouldSkipEvidence(components map[string]services.Component, infectedFilePath string) bool {
 	for key, _ := range components {
 		dependencyName := strings.Split(strings.TrimPrefix(key, "npm://"), ":")[0]
-		if strings.Contains(filePath, "node_modules/"+dependencyName) {
+		if strings.Contains(infectedFilePath, "node_modules/"+dependencyName) {
 			return true
 		}
 	}

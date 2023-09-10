@@ -113,7 +113,7 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = asm.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, wd,asm.scanEnvFolders)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}

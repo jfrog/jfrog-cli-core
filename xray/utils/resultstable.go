@@ -973,8 +973,10 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 	return
 }
 
-// When a certain package is reported applicable by using itself, we should skip it.
-// This is only when the flag "scan-env-applicability" is one that will also scan the node modules folder.
+// Relevant only when "scan-env-applicability" flag is on,
+// which will run the scanner on the environment folders as well (node_modules etc...)
+// When a certain package is reported applicable, and the evidence found
+// is inside the source code of the same package, we should disqualify it.
 func shouldDisqualifyEvidence(components map[string]services.Component, infectedFilePath string) bool {
 	for key := range components {
 		dependencyName := strings.Split(strings.TrimPrefix(key, "npm://"), ":")[0]

@@ -25,7 +25,7 @@ func RunSastScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 		return
 	}
 	if len(sastScanManager.sastScannerResults) > 0 {
-		log.Info("Found", len(sastScanManager.sastScannerResults), "SAST vulnerabilities")
+		log.Info("Found", utils.GetResultsLocationCount(sastScanManager.sastScannerResults...), "SAST vulnerabilities")
 	}
 	results = sastScanManager.sastScannerResults
 	return

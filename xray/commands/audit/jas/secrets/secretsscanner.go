@@ -36,7 +36,7 @@ func RunSecretsScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 	}
 	results = secretScanManager.secretsScannerResults
 	if len(results) > 0 {
-		log.Info("Found", len(results), "secrets")
+		log.Info("Found", utils.GetResultsLocationCount(results...), "secrets")
 	}
 	return
 }

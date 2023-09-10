@@ -66,7 +66,9 @@ func AggregateMultipleRunsIntoSingle(runs []*sarif.Run, destination *sarif.Run) 
 			continue
 		}
 		for _, rule := range GetRunRules(run) {
-			destination.Tool.Driver.AddRule(rule)
+			if destination.Tool.Driver != nil {
+				destination.Tool.Driver.AddRule(rule)
+			}
 		}
 		for _, result := range run.Results {
 			destination.AddResult(result)
@@ -77,12 +79,27 @@ func AggregateMultipleRunsIntoSingle(runs []*sarif.Run, destination *sarif.Run) 
 	}
 }
 
+func getRunInformationUri(run *sarif.Run) string {
+	if run != nil && run.Tool.Driver != nil && run.Tool.Driver.InformationURI != nil {
+		return *run.Tool.Driver.InformationURI
+	}
+	return ""
+}
+
 // Calculate new information that exists at the run and not at the source
 func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (runWithNewOnly *sarif.Run) {
-	var combinedRun, combinedSource *sarif.Run
+	// Combine 
+	combinedRun := sarif.NewRunWithInformationURI(runs[0].Tool.Driver.Name, getRunInformationUri(runs[0]))
 	AggregateMultipleRunsIntoSingle(runs, combinedRun)
+	if combinedRun == nil {
+		return
+	}
+	combinedSource := sarif.NewRunWithInformationURI(sources[0].Tool.Driver.Name, getRunInformationUri(sources[0]))
 	AggregateMultipleRunsIntoSingle(sources, combinedSource)
-
+	if combinedSource == nil {
+		return combinedRun
+	}
+	
 	runWithNewOnly = sarif.NewRun(combinedRun.Tool).WithInvocations(combinedRun.Invocations)
 
 	for _, targetRule := range GetRunRules(combinedRun) {
@@ -105,8 +122,9 @@ func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (runWithNewOnly *sa
 			}
 			// Result exists at source, compare locations info
 			for _, matchingSourceResult := range matchingSourceResults {
-				if newInformationResult := GetDiffFromResult(targetRuleResult, matchingSourceResult); len(newInformationResult.Locations) > 0 {
-					runWithNewOnly.AddResult(newInformationResult)
+				if len(targetRuleResult.Locations) > len(matchingSourceResult.Locations) &&
+					len(targetRuleResult.CodeFlows) > len(matchingSourceResult.CodeFlows) {
+					runWithNewOnly.AddResult(targetRuleResult)
 					runWithNewOnly.Tool.Driver.AddRule(targetRule)
 				}
 			}

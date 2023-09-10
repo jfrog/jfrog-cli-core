@@ -290,23 +290,6 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 	return licensesRows, nil
 }
 
-func FilterNotApplicableResults(applicableInfo []*sarif.Run) []*sarif.Run {
-	var applicableEvidenceRows []*sarif.Run
-	for _, cveContextualAnalysisRun := range applicableInfo {
-		onlyApplicableRun := sarif.NewRun(cveContextualAnalysisRun.Tool)
-		for _, cveContextualAnalysis := range cveContextualAnalysisRun.Results {
-			if isApplicableResult(cveContextualAnalysis) {
-				onlyApplicableRun.Results = append(onlyApplicableRun.Results, cveContextualAnalysis)
-			}
-		}
-		if len(onlyApplicableRun.Results) > 0 {
-			applicableEvidenceRows = append(applicableEvidenceRows, onlyApplicableRun)
-		}
-	}
-
-	return applicableEvidenceRows
-}
-
 // Prepare secrets for all non-table formats (without style or emoji)
 func PrepareSecrets(secrets []*sarif.Run) []formats.SourceCodeRow {
 	return prepareSecrets(secrets, false)

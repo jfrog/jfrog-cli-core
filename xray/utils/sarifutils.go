@@ -103,7 +103,7 @@ func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly 
 	runWithNewOnly = sarif.NewRun(combinedSource.Tool).WithInvocations(combinedSource.Invocations)
 	for _, sourceResult := range combinedSource.Results {
 		for _, targetMatchingResults := range GetResultsByRuleId(combinedTarget, *sourceResult.RuleID) {
-			if len(sourceResult.Locations) > len(targetMatchingResults.Locations) &&
+			if len(sourceResult.Locations) > len(targetMatchingResults.Locations) ||
 				len(sourceResult.CodeFlows) > len(targetMatchingResults.CodeFlows) {
 				runWithNewOnly.AddResult(sourceResult)
 				if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {

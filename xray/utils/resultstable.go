@@ -80,7 +80,6 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
 	var licenseViolationsRows []formats.LicenseViolationRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
-	applicabilityMap := ConvertToApplicabilityMap(extendedResults)
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components)
 		if err != nil {
@@ -88,7 +87,8 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		}
 		switch violation.ViolationType {
 		case "security":
-			applicableValue, cves := extractCveValues(violation.Cves, applicabilityMap)
+			cves := convertCves(violation.Cves)
+			applicableValue := extractApplicabilityValues(extendedResults, cves)
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -199,13 +199,13 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		vulnerabilities = simplifyVulnerabilities(vulnerabilities, multipleRoots)
 	}
 	var vulnerabilitiesRows []formats.VulnerabilityOrViolationRow
-	applicabilityMap := ConvertToApplicabilityMap(extendedResults)
 	for _, vulnerability := range vulnerabilities {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(vulnerability.Components)
 		if err != nil {
 			return nil, err
 		}
-		applicableValue, cves := extractCveValues(vulnerability.Cves, applicabilityMap)
+		cves := convertCves(vulnerability.Cves)
+		applicableValue := extractApplicabilityValues(extendedResults, cves)
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
@@ -907,7 +907,7 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 
 	for _, applicableRun := range extendedResults.ApplicabilityScanResults {
 		searchTargetData := map[string]string{}
-		for _, rule := range applicableRun.Tool.Driver.Rules {
+		for _, rule := range GetRunRules(applicableRun) {
 			searchTargetData[GetCveIdFromRuleId(rule.ID)] = GetRuleFullDescription(rule)
 		}
 		for _, contexualAnalysisResult := range applicableRun.Results {
@@ -941,36 +941,83 @@ func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string
 	return &applicabilityMap
 }
 
+func convertCves(cves []services.Cve) []formats.CveRow {
+	var cveRows []formats.CveRow
+	for _, cveObj := range cves {
+		cveRows = append(cveRows, formats.CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
+	}
+	return cveRows
+}
+
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
-func extractCveValues(xrayCves []services.Cve, applicabilityScanResults *map[string]*formats.Applicability) (value ApplicabilityStatus, cveRows []formats.CveRow) {
-	value = NotScanned
-	if len(xrayCves) == 0 {
-		return
+func extractApplicabilityValues(extendedResults *ExtendedScanResults, cveRows []formats.CveRow) (value ApplicabilityStatus) {
+	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
+		return NotScanned
 	}
-	if applicabilityScanResults != nil {
-		// Entitled for Jas and have at least one cve.
-		// Only if we don't find any undetermined or applicable it will stay the default 3rd priority Not applicable value
-		value = NotApplicable
+	if len(cveRows) == 0 {
+		return ApplicabilityUndetermined
 	}
-	for _, cve := range xrayCves {
-		var applicableDetails *formats.Applicability
-		if applicabilityScanResults != nil {
-			if _, exists := (*applicabilityScanResults)[cve.Id]; exists {
-				applicableDetails = (*applicabilityScanResults)[cve.Id]
-				if applicableDetails.Status {
-					// Found at least one applicable - 1st priority
-					value = Applicable
-				}
-			} else if value != Applicable {
-				// Found at lest one undetermined and no applicable - 2nd priority
-				value = ApplicabilityUndetermined
-			}
+	// Entitled for Jas and have at least one cve.
+	// Only if we don't find any undetermined or applicable it will stay the default 3rd priority Not applicable value
+	value = NotApplicable
+	for _, cve := range cveRows {
+		applicabilityStatus := attachCveApplicabilityDetails(cve, extendedResults.ApplicabilityScanResults)
+		if applicabilityStatus == Applicable {
+			// Found at least one applicable - 1st priority
+			value = Applicable
+		} else if applicabilityStatus == ApplicabilityUndetermined && value == NotApplicable {
+			// Found at lest one undetermined and no applicable - 2nd priority
+			value = ApplicabilityUndetermined
 		}
-		cveRows = append(cveRows, formats.CveRow{Id: cve.Id, CvssV2: cve.CvssV2Score, CvssV3: cve.CvssV3Score, Applicability: applicableDetails})
 	}
 	return
+}
+
+func attachCveApplicabilityDetails(cve formats.CveRow, applicabilityScanResults []*sarif.Run) (status ApplicabilityStatus) {
+	if len(applicabilityScanResults) == 0 {
+		return NotScanned
+	}
+	foundCveDetails := false
+	status = NotApplicable
+	for _, applicableRun := range applicabilityScanResults {
+		for _, rule := range GetRunRules(applicableRun) {
+			for _, contexualAnalysisResult := range GetResultsByRuleId(applicableRun, rule.ID) {
+				relatedCve := GetCveIdFromRuleId(*contexualAnalysisResult.RuleID)
+				if cve.Id != relatedCve {
+					continue
+				}
+				foundCveDetails = true
+				// Add applicability details if not exists yet
+				if cve.Applicability == nil {
+					cve.Applicability = &formats.Applicability{
+						Status:             isApplicableResult(contexualAnalysisResult),
+						ScannerDescription: GetRuleFullDescription(rule),
+					}
+				}
+				// Update status
+				if cve.Applicability.Status {
+					status = Applicable
+				}
+				// Add new evidences from locations
+				for _, location := range contexualAnalysisResult.Locations {
+					cve.Applicability.Evidence = append(cve.Applicability.Evidence, formats.Evidence{
+						SourceCodeLocationRow: formats.SourceCodeLocationRow{
+							File:       GetLocationFileName(location),
+							LineColumn: GetStartLocationInFile(location),
+							Snippet:    GetLocationSnippet(location),
+						},
+						Reason: GetResultMsgText(contexualAnalysisResult),
+					})
+				}
+			}
+		}
+	}
+	if foundCveDetails {
+		return
+	}
+	return ApplicabilityUndetermined
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {

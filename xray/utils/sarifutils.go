@@ -89,21 +89,33 @@ func AggregateRunsInformationIntoTarget(runs []*sarif.Run, target *sarif.Run) {
 		return
 	}
 	for _, run := range runs {
-		for _, rule := range run.Tool.Driver.Rules {
+		if run == nil || len(run.Results) == 0 {
+			continue
+		}
+		for _, rule := range GetRunRules(run) {
 			if targetRule, _ := target.GetRuleById(rule.ID); targetRule == nil {
 				target.Tool.Driver.Rules = append(target.Tool.Driver.Rules, rule)
 			}
 		}
+		if target.Results == nil {
+			target.Results = []*sarif.Result{}
+		}
 		target.Results = append(target.Results, run.Results...)
+		if target.Invocations == nil {
+			target.Invocations = []*sarif.Invocation{}
+		}
 		target.Invocations = append(target.Invocations, run.Invocations...)
 	}
 }
 
 // Calculate new information that exists at the run and not at the source
 func ExcludeSourceInformationFromRun(run *sarif.Run, source *sarif.Run) *sarif.Run {
+	if run == nil {
+		return nil
+	}
 	newResults := []*sarif.Result{}
 	newRules := map[string]*sarif.ReportingDescriptor{}
-	for _, targetRule := range run.Tool.Driver.Rules {
+	for _, targetRule := range GetRunRules(run) {
 		// Check if target rule exists at source if it doesn't, all its related results are new
 		if sourceRule, _ := source.GetRuleById(targetRule.ID); sourceRule == nil {
 			newResults = append(newResults, GetResultsByRuleId(run, targetRule.ID)...)
@@ -273,8 +285,9 @@ func GetLocationSnippet(location *sarif.Location) string {
 }
 
 func GetLocationSnippetPointer(location *sarif.Location) *string {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
-		return location.PhysicalLocation.Region.Snippet.Text
+	region := getLocationRegion(location)
+	if region != nil && region.Snippet != nil {
+		return region.Snippet.Text
 	}
 	return nil
 }
@@ -299,30 +312,41 @@ func SetLocationFileName(location *sarif.Location, fileName string) {
 	}
 }
 
+func getLocationRegion(location *sarif.Location) *sarif.Region {
+	if location != nil && location.PhysicalLocation != nil {
+		return location.PhysicalLocation.Region
+	}
+	return nil
+}
+
 func GetLocationStartLine(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.StartLine != nil {
-		return *location.PhysicalLocation.Region.StartLine
+	region := getLocationRegion(location)
+	if region != nil && region.StartLine != nil {
+		return *region.StartLine
 	}
 	return 0
 }
 
 func GetLocationStartColumn(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.StartColumn != nil {
-		return *location.PhysicalLocation.Region.StartColumn
+	region := getLocationRegion(location)
+	if region != nil && region.StartColumn != nil {
+		return *region.StartColumn
 	}
 	return 0
 }
 
 func GetLocationEndLine(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.EndLine != nil {
-		return *location.PhysicalLocation.Region.EndLine
+	region := getLocationRegion(location)
+	if region != nil && region.EndLine != nil {
+		return *region.EndLine
 	}
 	return 0
 }
 
 func GetLocationEndColumn(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.EndColumn != nil {
-		return *location.PhysicalLocation.Region.EndColumn
+	region := getLocationRegion(location)
+	if region != nil && region.EndColumn != nil {
+		return *region.EndColumn
 	}
 	return 0
 }
@@ -371,6 +395,13 @@ func GetRuleFullDescription(rule *sarif.ReportingDescriptor) string {
 
 func GetCveIdFromRuleId(sarifRuleId string) string {
 	return strings.TrimPrefix(sarifRuleId, "applic_")
+}
+
+func GetRunRules(run *sarif.Run) []*sarif.ReportingDescriptor {
+	if run != nil && run.Tool.Driver != nil {
+		return run.Tool.Driver.Rules
+	}
+	return []*sarif.ReportingDescriptor{}
 }
 
 func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {

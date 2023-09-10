@@ -197,7 +197,7 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		cves := prepareDependenciesCvesWhitelist(xrayResponseForDirectViolationsTest, test.directDependencies)
+		cves := prepareDependenciesCvesWhitelist(xrayResponseForDirectViolationsTest, test.directDependencies,false)
 		assert.Len(t, cves, test.cvesCount)
 	}
 }
@@ -238,7 +238,7 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Len(t, prepareDependenciesCvesWhitelist(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies), test.cvesCount)
+		assert.Len(t, prepareDependenciesCvesWhitelist(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies,false), test.cvesCount)
 	}
 }
 
@@ -276,12 +276,10 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = utils.ReadScanRunsFromFile(applicabilityManager.scanner.ResultsFileName)
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	if assert.NoError(t, err) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
-		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
-		processApplicabilityScanResults(applicabilityManager.applicabilityScanResults, scanner.WorkingDirs[0], false)
 		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
 	}
 }
@@ -295,19 +293,25 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = utils.ReadScanRunsFromFile(applicabilityManager.scanner.ResultsFileName)
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	if assert.NoError(t, err) {
+	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
-		processApplicabilityScanResults(applicabilityManager.applicabilityScanResults, scanner.WorkingDirs[0], false)
-		assert.Len(t, applicabilityManager.applicabilityScanResults[0].Results, 5)
-	}
+		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
 
-	// // Assert
-	// assert.NoError(t, err)
-	// assert.Equal(t, 5, len(results))
-	// assert.Equal(t, utils.Applicable, results["testCve1"])
-	// assert.Equal(t, utils.NotApplicable, results["testCve3"])
+		results := utils.ConvertToApplicabilityMap(&utils.ExtendedScanResults{EntitledForJas: true, ApplicabilityScanResults: applicabilityManager.applicabilityScanResults})
+		if assert.NotNil(t, results) {
+			applicabilityResults := *results
+			assert.Len(t, applicabilityResults, 2)
+			if assert.NotNil(t, applicabilityResults["testCve1"]) {
+				assert.True(t, applicabilityResults["testCve1"].Status)
+			}
+			if assert.NotNil(t, applicabilityResults["testCve3"]) {
+				assert.False(t, applicabilityResults["testCve3"].Status)
+			}
+		}
+
+	}
 }
 
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
@@ -319,18 +323,19 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = utils.ReadScanRunsFromFile(applicabilityManager.scanner.ResultsFileName)
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	if assert.NoError(t, err) {
+	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
-		processApplicabilityScanResults(applicabilityManager.applicabilityScanResults, scanner.WorkingDirs[0], false)
-		assert.Len(t, applicabilityManager.applicabilityScanResults[0].Results, 5)
-	}
+		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
+		results := utils.ConvertToApplicabilityMap(&utils.ExtendedScanResults{EntitledForJas: true, ApplicabilityScanResults: applicabilityManager.applicabilityScanResults})
+		if assert.NotNil(t, results) {
+			applicabilityResults := *results
+			assert.Len(t, applicabilityResults, 5)
+			for _, details := range applicabilityResults {
+				assert.False(t, details.Status)
+			}
+		}
 
-	// // Assert
-	// assert.NoError(t, err)
-	// assert.Equal(t, 5, len(results))
-	// for _, cveResult := range results {
-	// 	assert.Equal(t, utils.NotApplicable, cveResult)
-	// }
+	}
 }

@@ -1,13 +1,20 @@
 package utils
 
-import "github.com/owenrumney/go-sarif/v2/sarif"
+import (
+	"github.com/jfrog/gofrog/datastructures"
+	"github.com/owenrumney/go-sarif/v2/sarif"
+)
 
-func getDummyRunWithOneResult(fileName string, startLine, startCol int, snippet, ruleId string, level SarifLevel) *sarif.Run {
-	return &sarif.Run{
-		Results: []*sarif.Result{
-			getDummyResultWithOneLocation(fileName, startLine, startCol, snippet, ruleId, level),
-		},
+func getRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
+	run := sarif.NewRunWithInformationURI("", "")
+	ids := datastructures.MakeSet[string]()
+	for _, result := range results {
+		if !ids.Exists(*result.RuleID) {
+			run.Tool.Driver.Rules = append(run.Tool.Driver.Rules, sarif.NewRule(*result.RuleID))
+			ids.Add(*result.RuleID)
+		}
 	}
+	return run.WithResults(results)
 }
 
 func getDummyPassingResult(ruleId string) *sarif.Result {
@@ -18,7 +25,7 @@ func getDummyPassingResult(ruleId string) *sarif.Result {
 	}
 }
 
-func getDummyResultWithOneLocation(fileName string, startLine, startCol int, snippet, ruleId string, level SarifLevel) *sarif.Result {
+func getDummyResultWithOneLocation(fileName string, startLine, startCol int, snippet, ruleId string, level string) *sarif.Result {
 	return &sarif.Result{
 		Locations: []*sarif.Location{
 			{
@@ -30,6 +37,7 @@ func getDummyResultWithOneLocation(fileName string, startLine, startCol int, sni
 						Snippet:     &sarif.ArtifactContent{Text: &snippet}}},
 			},
 		},
+		Level:  &level,
 		RuleID: &ruleId,
 	}
 }

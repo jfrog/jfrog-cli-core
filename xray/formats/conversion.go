@@ -146,7 +146,7 @@ func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			text:       rows[i].Snippet,
 		})
 	}
 	return
@@ -158,7 +158,7 @@ func ConvertToIacTableRow(rows []SourceCodeRow) (tableRows []iacTableRow) {
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			text:       rows[i].Snippet,
 		})
 	}
 	return
@@ -170,7 +170,7 @@ func ConvertToSastTableRow(rows []SourceCodeRow) (tableRows []sastTableRow) {
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			text:       rows[i].Snippet,
 		})
 	}
 	return
@@ -198,27 +198,11 @@ func convertToComponentScanTableRow(rows []ComponentRow) (tableRows []directPack
 
 func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 	for i := range rows {
-		row := cveTableRow{
+		tableRows = append(tableRows, cveTableRow{
 			id:     rows[i].Id,
 			cvssV2: rows[i].CvssV2,
 			cvssV3: rows[i].CvssV3,
-		}
-		details := rows[i].ApplicableDetails
-		if details != nil {
-			row.applicableDetails = &applicableDetails{
-				isApplicable: details.Status,
-				searchTarget: details.SearchTarget,
-			}
-			for e := range details.Evidence {
-				row.applicableDetails.evidence = append(row.applicableDetails.evidence, applicableEvidence{
-					file:       details.Evidence[e].File,
-					lineColumn: details.Evidence[e].LineColumn,
-					text:       details.Evidence[e].Text,
-					reason:     details.Evidence[e].Reason,
-				})
-			}
-		}
-		tableRows = append(tableRows, row)
+		})
 	}
 	return
 }

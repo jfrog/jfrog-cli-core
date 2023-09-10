@@ -113,11 +113,10 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	if err = asm.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := utils.ReadScanRunsFromFile(asm.scanner.ResultsFileName)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}
-	processApplicabilityScanResults(workingDirResults, wd)
 	asm.applicabilityScanResults = append(asm.applicabilityScanResults, workingDirResults...)
 	return
 }
@@ -171,51 +170,4 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, include
 // advance security feature
 func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
-}
-
-//func (asm *ApplicabilityScanManager) getScanResults() (applicabilityResults map[string]utils.ApplicabilityStatus, err error) {
-//	applicabilityResults = make(map[string]utils.ApplicabilityStatus, len(asm.dependencyWhitelist))
-//	for _, cve := range asm.dependencyWhitelist {
-//		applicabilityResults[cve] = utils.ApplicabilityUndetermined
-//	}
-//
-//	report, err := sarif.Open(asm.scanner.ResultsFileName)
-//	if errorutils.CheckError(err) != nil || len(report.Runs) == 0 {
-//		return
-//	}
-//	// Applicability results contains one run only
-//	for _, sarifResult := range report.Runs[0].Results {
-//		cve := getCveFromRuleId(*sarifResult.RuleID)
-//		if _, exists := applicabilityResults[cve]; !exists {
-//			err = errorutils.CheckErrorf("received unexpected CVE: '%s' from RuleID: '%s' that does not exists on the requested CVEs list", cve, *sarifResult.RuleID)
-//			return
-//		}
-//		if strings.Contains(*sarifResult.Locations[0].PhysicalLocation.ArtifactLocation.URI, "node_modules/protobufjs/") {
-//			if applicabilityResults[cve] == utils.ApplicabilityUndetermined {
-//				applicabilityResults[cve] = utils.NotApplicable
-//			}
-//			continue
-//		}
-//		applicabilityResults[cve] = resultKindToApplicabilityStatus(sarifResult.Kind)
-//
-//	}
-//	return
-//}
-
-// Gets a result of one CVE from the scanner, and returns true if the CVE is applicable, false otherwise
-// func resultKindToApplicabilityStatus(kind *string) utils.ApplicabilityStatus {
-// 	if !(kind != nil && *kind == "pass") {
-// 		return utils.Applicable
-// 	}
-// 	return utils.NotApplicable
-// }
-
-// func getCveFromRuleId(sarifRuleId string) string {
-// 	return strings.TrimPrefix(sarifRuleId, "applic_")
-// }
-
-func processApplicabilityScanResults(sarifRuns []*sarif.Run, wd string) {
-	for _, run := range sarifRuns {
-		jas.ProcessJasScanRun(run, wd)
-	}
 }

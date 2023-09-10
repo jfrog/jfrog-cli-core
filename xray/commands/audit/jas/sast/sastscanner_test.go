@@ -1,11 +1,11 @@
 package sast
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"path/filepath"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -34,13 +34,15 @@ func TestSastParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	sastScanManager.sastScannerResults, err = utils.ReadScanRunsFromFile(sastScanManager.scanner.ResultsFileName)
+	sastScanManager.sastScannerResults, err = jas.ReadJasScanRunsFromFile(sastScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	// Assert
-	if assert.NoError(t, err) {
-		assert.Empty(t, sastScanManager.sastScannerResults)
-		processSastScanResults(sastScanManager.sastScannerResults, scanner.WorkingDirs[0])
-		assert.Empty(t, sastScanManager.sastScannerResults)
+	if assert.NoError(t, err) && assert.NotNil(t, sastScanManager.sastScannerResults) {
+		assert.Len(t, sastScanManager.sastScannerResults, 1)
+		assert.Empty(t, sastScanManager.sastScannerResults[0].Results)
+		sastScanManager.sastScannerResults = processSastScanResults(sastScanManager.sastScannerResults)
+		assert.Len(t, sastScanManager.sastScannerResults, 1)
+		assert.Empty(t, sastScanManager.sastScannerResults[0].Results)
 	}
 }
 
@@ -53,13 +55,14 @@ func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	sastScanManager.sastScannerResults, err = utils.ReadScanRunsFromFile(sastScanManager.scanner.ResultsFileName)
+	sastScanManager.sastScannerResults, err = jas.ReadJasScanRunsFromFile(sastScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
 	// Assert
-	if assert.NoError(t, err) {
-		assert.NotEmpty(t, sastScanManager.sastScannerResults)
-		processSastScanResults(sastScanManager.sastScannerResults, scanner.WorkingDirs[0])
+	if assert.NoError(t, err) && assert.NotNil(t, sastScanManager.sastScannerResults) {
+		assert.Len(t, sastScanManager.sastScannerResults, 1)
+		assert.NotEmpty(t, sastScanManager.sastScannerResults[0].Results)
+		sastScanManager.sastScannerResults = processSastScanResults(sastScanManager.sastScannerResults)
 		// File has 4 results, 2 of them at the same location different codeFlow
-		assert.Equal(t, 3, len(sastScanManager.sastScannerResults))
+		assert.Len(t, sastScanManager.sastScannerResults[0].Results, 3)
 	}
 }

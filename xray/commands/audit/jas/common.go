@@ -138,6 +138,9 @@ func addPropertiesToRunRules(sarifRun *sarif.Run) {
 			// Add to the rule security-severity score based on results severity
 			score := convertToScore(utils.GetResultSeverity(sarifResult))
 			if score != utils.MissingCveScore {
+				if rule.Properties == nil {
+					rule.WithProperties(sarif.NewPropertyBag().Properties)
+				}
 				rule.Properties["security-severity"] = score
 			}
 		}

@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	"golang.org/x/exp/maps"
 )
 
 type SarifLevel string
@@ -58,33 +57,7 @@ func ReadScanRunsFromFile(fileName string) (sarifRuns []*sarif.Run, err error) {
 	return
 }
 
-// Use to combine under a new tool name
-func CombineRunsUnderNewTool(runs []*sarif.Run, overrideToolName, overrideUrl string) (combined *sarif.Run) {
-	combined = sarif.NewRunWithInformationURI(overrideToolName, overrideUrl)
-	AggregateRunsInformationIntoTarget(runs, combined)
-	return
-}
-
-// Use to combine runs from similar tool
-func combineRuns(runs []*sarif.Run) (combined *sarif.Run, err error) {
-	if len(runs) == 0 {
-		return
-	}
-	// Make sure the runs are from the same tool
-	sampleRun := runs[0]
-	for _, run := range runs {
-		if sampleRun.Tool.Driver.Name != run.Tool.Driver.Name {
-			err = fmt.Errorf("can't combine runs from different tools")
-			return
-		}
-	}
-	// Combine
-	combined = sarif.NewRun(sampleRun.Tool)
-	AggregateRunsInformationIntoTarget(runs, combined)
-	return
-}
-
-func AggregateRunsInformationIntoTarget(runs []*sarif.Run, target *sarif.Run) {
+func AggregateMultipleRunsIntoSingle(runs []*sarif.Run, destination *sarif.Run) {
 	if len(runs) == 0 {
 		return
 	}
@@ -93,63 +66,61 @@ func AggregateRunsInformationIntoTarget(runs []*sarif.Run, target *sarif.Run) {
 			continue
 		}
 		for _, rule := range GetRunRules(run) {
-			if targetRule, _ := target.GetRuleById(rule.ID); targetRule == nil {
-				target.Tool.Driver.Rules = append(target.Tool.Driver.Rules, rule)
+			if destination.Tool.Driver != nil {
+				destination.Tool.Driver.AddRule(rule)
 			}
 		}
-		if target.Results == nil {
-			target.Results = []*sarif.Result{}
+		for _, result := range run.Results {
+			destination.AddResult(result)
 		}
-		target.Results = append(target.Results, run.Results...)
-		if target.Invocations == nil {
-			target.Invocations = []*sarif.Invocation{}
+		for _, invocation := range run.Invocations {
+			destination.AddInvocations(invocation)
 		}
-		target.Invocations = append(target.Invocations, run.Invocations...)
 	}
 }
 
+func getRunInformationUri(run *sarif.Run) string {
+	if run != nil && run.Tool.Driver != nil && run.Tool.Driver.InformationURI != nil {
+		return *run.Tool.Driver.InformationURI
+	}
+	return ""
+}
+
 // Calculate new information that exists at the run and not at the source
-func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (excluded *sarif.Run, err error) {
-	combinedRun, err := combineRuns(runs)
-	if err != nil {
+func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly *sarif.Run) {
+	// Combine
+	combinedSource := sarif.NewRunWithInformationURI(sources[0].Tool.Driver.Name, getRunInformationUri(sources[0]))
+	AggregateMultipleRunsIntoSingle(sources, combinedSource)
+	if combinedSource == nil {
 		return
 	}
-	combinedSource, err := combineRuns(sources)
-	if err != nil {
-		return
+	combinedTarget := sarif.NewRunWithInformationURI(targets[0].Tool.Driver.Name, getRunInformationUri(targets[0]))
+	AggregateMultipleRunsIntoSingle(targets, combinedTarget)
+	if combinedTarget == nil {
+		return combinedSource
 	}
-	newResults := []*sarif.Result{}
-	newRules := map[string]*sarif.ReportingDescriptor{}
-	for _, targetRule := range GetRunRules(combinedRun) {
-		// Check if target rule exists at source if it doesn't, all its related results are new
-		if sourceRule, _ := combinedSource.GetRuleById(targetRule.ID); sourceRule == nil {
-			newResults = append(newResults, GetResultsByRuleId(combinedRun, targetRule.ID)...)
-			newRules[targetRule.ID] = targetRule
+	// Get diff
+	runWithNewOnly = sarif.NewRun(combinedSource.Tool).WithInvocations(combinedSource.Invocations)
+	for _, sourceResult := range combinedSource.Results {
+		targetMatchingResults := GetResultsByRuleId(combinedTarget, *sourceResult.RuleID)
+		if len(targetMatchingResults) == 0 {
+			runWithNewOnly.AddResult(sourceResult)
+			if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
+				runWithNewOnly.Tool.Driver.AddRule(rule)
+			}
 			continue
 		}
-		// Rule exists at source, compare results
-		for _, targetRuleResult := range GetResultsByRuleId(combinedRun, targetRule.ID) {
-			matchingSourceResults := FilterResultsByRuleIdAndMsgText(combinedSource.Results, targetRule.ID, GetResultMsgText(targetRuleResult))
-			if len(matchingSourceResults) == 0 {
-				// Target result does not exists at source
-				newResults = append(newResults, targetRuleResult)
-				newRules[targetRule.ID] = targetRule
-				continue
-			}
-			// Result exists at source, compare locations info
-			for _, matchingSourceResult := range matchingSourceResults {
-				if newInformationResult := GetDiffFromResult(targetRuleResult, matchingSourceResult); len(newInformationResult.Locations) > 0 {
-					newResults = append(newResults, newInformationResult)
-					newRules[targetRule.ID] = targetRule
+		for _, targetMatchingResult := range targetMatchingResults {
+			if len(sourceResult.Locations) > len(targetMatchingResult.Locations) ||
+				len(sourceResult.CodeFlows) > len(targetMatchingResult.CodeFlows) {
+				runWithNewOnly.AddResult(sourceResult)
+				if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
+					runWithNewOnly.Tool.Driver.AddRule(rule)
 				}
 			}
 		}
 	}
-	// Create the run only with new information
-	runWithNewOnly := sarif.NewRun(combinedRun.Tool).WithInvocations(combinedRun.Invocations)
-	runWithNewOnly.Tool.Driver.WithRules(maps.Values(newRules))
-	runWithNewOnly.Results = newResults
-	return runWithNewOnly, nil
+	return
 }
 
 // Calculate new information that exists at the result and not at the source
@@ -397,6 +368,10 @@ func GetRuleFullDescription(rule *sarif.ReportingDescriptor) string {
 		return *rule.FullDescription.Text
 	}
 	return ""
+}
+
+func GetRuleIdFromCveId(cveId string) string {
+	return "applic_" + cveId
 }
 
 func GetCveIdFromRuleId(sarifRuleId string) string {

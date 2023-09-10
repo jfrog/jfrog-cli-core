@@ -14,7 +14,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/yarn"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -59,7 +59,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 	if len(requestedTechnologies) != 0 {
 		technologies = requestedTechnologies
 	} else {
-		technologies = commandsutils.DetectedTechnologies()
+		technologies = coreutils.DetectedTechnologiesList()
 	}
 	if len(technologies) == 0 {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
@@ -74,7 +74,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		if tech == coreutils.Dotnet {
 			continue
 		}
-		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.GraphBasicParams, tech)
+		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, tech)
 		if techErr != nil {
 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
 			continue
@@ -84,7 +84,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 			continue
 		}
 
-		scanGraphParams := commandsutils.NewScanGraphParams().
+		scanGraphParams := scangraph.NewScanGraphParams().
 			SetServerDetails(serverDetails).
 			SetXrayGraphScanParams(params.xrayGraphScanParams).
 			SetXrayVersion(params.xrayVersion).
@@ -126,7 +126,7 @@ func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []
 	return directDependencies.ToSlice()
 }
 
-func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
+func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
 	}

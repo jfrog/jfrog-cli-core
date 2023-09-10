@@ -5,7 +5,7 @@ import (
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -50,7 +50,7 @@ func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[st
 	}
 }
 
-func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *xraycommands.ScanGraphParams) (results []services.ScanResponse, err error) {
+func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *scangraph.ScanGraphParams) (results []services.ScanResponse, err error) {
 	scanGraphParams.XrayGraphScanParams().DependenciesGraph = dependencyTree
 	scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(dependencyTree.Nodes), technology)
 	if progress != nil {
@@ -58,7 +58,7 @@ func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progr
 	}
 	log.Info(scanMessage + "...")
 	var scanResults *services.ScanResponse
-	scanResults, err = xraycommands.RunScanGraphAndGetResults(scanGraphParams)
+	scanResults, err = scangraph.RunScanGraphAndGetResults(scanGraphParams)
 	if err != nil {
 		err = errorutils.CheckErrorf("scanning %s dependencies failed with error: %s", string(technology), err.Error())
 		return

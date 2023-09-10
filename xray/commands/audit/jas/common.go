@@ -46,7 +46,7 @@ func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails) (s
 	scanner.ServerDetails = serverDetails
 	scanner.ConfigFileName = filepath.Join(tempDir, "config.yaml")
 	scanner.ResultsFileName = filepath.Join(tempDir, "results.sarif")
-	scanner.WorkingDirs, err = utils.GetFullPathsWorkingDirs(workingDirs)
+	scanner.WorkingDirs, err = coreutils.GetFullPathsWorkingDirs(workingDirs)
 	return
 }
 

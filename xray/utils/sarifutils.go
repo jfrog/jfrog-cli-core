@@ -36,7 +36,7 @@ var (
 		"high":     errorLevel,
 		"medium":   warningLevel,
 		"low":      noteLevel,
-		"Unknown":  noneLevel,
+		"unknown":  noneLevel,
 	}
 )
 
@@ -66,7 +66,7 @@ func CombineRunsUnderNewTool(runs []*sarif.Run, overrideToolName, overrideUrl st
 }
 
 // Use to combine runs from similar tool
-func CombineRuns(runs []*sarif.Run) (combined *sarif.Run, err error) {
+func combineRuns(runs []*sarif.Run) (combined *sarif.Run, err error) {
 	if len(runs) == 0 {
 		return
 	}
@@ -109,22 +109,27 @@ func AggregateRunsInformationIntoTarget(runs []*sarif.Run, target *sarif.Run) {
 }
 
 // Calculate new information that exists at the run and not at the source
-func ExcludeSourceInformationFromRun(run *sarif.Run, source *sarif.Run) *sarif.Run {
-	if run == nil {
-		return nil
+func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (excluded *sarif.Run, err error) {
+	combinedRun, err := combineRuns(runs)
+	if err != nil {
+		return
+	}
+	combinedSource, err := combineRuns(sources)
+	if err != nil {
+		return
 	}
 	newResults := []*sarif.Result{}
 	newRules := map[string]*sarif.ReportingDescriptor{}
-	for _, targetRule := range GetRunRules(run) {
+	for _, targetRule := range GetRunRules(combinedRun) {
 		// Check if target rule exists at source if it doesn't, all its related results are new
-		if sourceRule, _ := source.GetRuleById(targetRule.ID); sourceRule == nil {
-			newResults = append(newResults, GetResultsByRuleId(run, targetRule.ID)...)
+		if sourceRule, _ := combinedSource.GetRuleById(targetRule.ID); sourceRule == nil {
+			newResults = append(newResults, GetResultsByRuleId(combinedRun, targetRule.ID)...)
 			newRules[targetRule.ID] = targetRule
 			continue
 		}
 		// Rule exists at source, compare results
-		for _, targetRuleResult := range GetResultsByRuleId(run, targetRule.ID) {
-			matchingSourceResults := FilterResultsByRuleIdAndMsgText(source.Results, targetRule.ID, GetResultMsgText(targetRuleResult))
+		for _, targetRuleResult := range GetResultsByRuleId(combinedRun, targetRule.ID) {
+			matchingSourceResults := FilterResultsByRuleIdAndMsgText(combinedSource.Results, targetRule.ID, GetResultMsgText(targetRuleResult))
 			if len(matchingSourceResults) == 0 {
 				// Target result does not exists at source
 				newResults = append(newResults, targetRuleResult)
@@ -133,7 +138,7 @@ func ExcludeSourceInformationFromRun(run *sarif.Run, source *sarif.Run) *sarif.R
 			}
 			// Result exists at source, compare locations info
 			for _, matchingSourceResult := range matchingSourceResults {
-				if newInformationResult := ExcludeSourceInformationFromResult(targetRuleResult, matchingSourceResult); len(newInformationResult.Locations) > 0 {
+				if newInformationResult := GetDiffFromResult(targetRuleResult, matchingSourceResult); len(newInformationResult.Locations) > 0 {
 					newResults = append(newResults, newInformationResult)
 					newRules[targetRule.ID] = targetRule
 				}
@@ -141,13 +146,13 @@ func ExcludeSourceInformationFromRun(run *sarif.Run, source *sarif.Run) *sarif.R
 		}
 	}
 	// Create the run only with new information
-	runWithNewOnly := sarif.NewRun(run.Tool).WithInvocations(run.Invocations)
+	runWithNewOnly := sarif.NewRun(combinedRun.Tool).WithInvocations(combinedRun.Invocations)
 	runWithNewOnly.Tool.Driver.WithRules(maps.Values(newRules))
-	return runWithNewOnly.WithResults(newResults)
+	return runWithNewOnly.WithResults(newResults), nil
 }
 
 // Calculate new information that exists at the result and not at the source
-func ExcludeSourceInformationFromResult(result *sarif.Result, source *sarif.Result) *sarif.Result {
+func GetDiffFromResult(result *sarif.Result, source *sarif.Result) *sarif.Result {
 	newLocations := datastructures.MakeSet[*sarif.Location]()
 	newCodeFlows := []*sarif.CodeFlow{}
 	for _, targetLocation := range result.Locations {

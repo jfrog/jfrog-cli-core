@@ -104,26 +104,31 @@ func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err e
 		return
 	}
 	for i := 0; i < len(sarifRuns); i++ {
-		sarifRuns[i] = processJasScanRun(sarifRuns[i], wd)
+		// Jas reports has only one invocation
+		// Set the actual working directory to the invocation, not the analyzerManager directory
+		// Also used to calculate relative paths if needed with it
+		sarifRuns[i].Invocations[0].WorkingDirectory.WithUri(wd)
+		// Process runs values
+		excludeSuppressResults(sarifRuns[i])
+		addPropertiesToRunRules(sarifRuns[i])
 	}
 	return
 }
 
-func processJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
-	processed := sarif.NewRun(sarifRun.Tool)
-	// Jas reports has only one invocation
-	invocation := sarifRun.Invocations[0]
-	// Set the actual working directory to the invocation, not the analyzerManager directory
-	// Also used to calculate relative paths if needed with it
-	invocation.WorkingDirectory.WithUri(workingDir)
-	processed.Invocations = append(processed.Invocations, invocation)
-	// Process results
+func excludeSuppressResults(sarifRun *sarif.Run) {
+	results := []*sarif.Result{}
 	for _, sarifResult := range sarifRun.Results {
 		if len(sarifResult.Suppressions) > 0 {
 			// Describes a request to “suppress” a result (to exclude it from result lists)
 			continue
 		}
-		processed.Results = append(processed.Results, sarifResult)
+		results = append(results, sarifResult)
+	}
+	sarifRun.WithResults(results)
+}
+
+func addPropertiesToRunRules(sarifRun *sarif.Run) {
+	for _, sarifResult := range sarifRun.Results {
 		if rule, err := sarifRun.GetRuleById(*sarifResult.RuleID); err == nil {
 			// Add to the rule security-severity score base on results severity
 			score := convertToScore(utils.GetResultSeverity(sarifResult))
@@ -134,7 +139,6 @@ func processJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
 			}
 		}
 	}
-	return processed
 }
 
 func convertToScore(severity string) string {

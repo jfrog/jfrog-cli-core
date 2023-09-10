@@ -139,7 +139,6 @@ type Results struct {
 	ScaError              error
 	JasError              error
 	ExtendedScanResults   *xrayutils.ExtendedScanResults
-	ScannedTechnologies   []coreutils.Technology
 }
 
 func NewAuditResults() *Results {

@@ -88,7 +88,7 @@ func getRunInformationUri(run *sarif.Run) string {
 
 // Calculate new information that exists at the run and not at the source
 func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (runWithNewOnly *sarif.Run) {
-	// Combine 
+	// Combine
 	combinedRun := sarif.NewRunWithInformationURI(runs[0].Tool.Driver.Name, getRunInformationUri(runs[0]))
 	AggregateMultipleRunsIntoSingle(runs, combinedRun)
 	if combinedRun == nil {
@@ -99,7 +99,7 @@ func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (runWithNewOnly *sa
 	if combinedSource == nil {
 		return combinedRun
 	}
-	
+
 	runWithNewOnly = sarif.NewRun(combinedRun.Tool).WithInvocations(combinedRun.Invocations)
 
 	for _, targetRule := range GetRunRules(combinedRun) {

@@ -211,10 +211,10 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		applicableValue := getApplicableCveValue(extendedResults, cves)
 		var ignoreApplicability bool
 		for _, cve := range cves {
-			cve.Applicability, ignoreApplicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, vulnerability.Components)
-		}
-		if ignoreApplicability {
-			applicableValue = NotApplicable
+			if cve.Applicability, ignoreApplicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, vulnerability.Components); ignoreApplicability {
+				// Set as not applicable as we disqualified all the evidences
+				applicableValue = NotApplicable
+			}
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -953,7 +953,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		// Add new evidences from locations
 		for _, location := range relatedResult.Locations {
 			fileName := GetLocationFileName(location)
-			if shouldSkipEvidence(components, fileName) {
+			if shouldDisqualifyEvidence(components, fileName) {
 				continue
 			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
@@ -965,8 +965,9 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 				Reason: GetResultMsgText(relatedResult),
 			})
 		}
+		// When there are no evidences left, it means we disqualified some of the original evidences.
 		if len(applicability.Evidence) == 0 {
-			return nil, true
+			return applicability, true
 		}
 	}
 	return
@@ -974,7 +975,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 
 // When a certain package is reported applicable by using itself, we should skip it.
 // This is only when the flag "scan-env-applicability" is one that will also scan the node modules folder.
-func shouldSkipEvidence(components map[string]services.Component, infectedFilePath string) bool {
+func shouldDisqualifyEvidence(components map[string]services.Component, infectedFilePath string) bool {
 	for key := range components {
 		dependencyName := strings.Split(strings.TrimPrefix(key, "npm://"), ":")[0]
 		if strings.Contains(infectedFilePath, "node_modules/"+dependencyName) {

@@ -124,7 +124,7 @@ func excludeSuppressResults(sarifRun *sarif.Run) {
 		}
 		results = append(results, sarifResult)
 	}
-	sarifRun.WithResults(results)
+	sarifRun.Results = results
 }
 
 func addPropertiesToRunRules(sarifRun *sarif.Run) {

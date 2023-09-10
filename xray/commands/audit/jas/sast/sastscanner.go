@@ -69,7 +69,7 @@ func processSastScanResults(sarifRuns []*sarif.Run) []*sarif.Run {
 				processedResults[resultID] = sastResult
 			}
 		}
-		sastRun.WithResults(maps.Values(processedResults))
+		sastRun.Results = maps.Values(processedResults)
 	}
 	return sarifRuns
 }

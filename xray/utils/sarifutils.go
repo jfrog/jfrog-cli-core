@@ -148,7 +148,8 @@ func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (excluded *sarif.Ru
 	// Create the run only with new information
 	runWithNewOnly := sarif.NewRun(combinedRun.Tool).WithInvocations(combinedRun.Invocations)
 	runWithNewOnly.Tool.Driver.WithRules(maps.Values(newRules))
-	return runWithNewOnly.WithResults(newResults), nil
+	runWithNewOnly.Results = newResults
+	return runWithNewOnly, nil
 }
 
 // Calculate new information that exists at the result and not at the source

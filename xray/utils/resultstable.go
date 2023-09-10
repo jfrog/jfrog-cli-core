@@ -90,7 +90,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves)
 			for _, cve := range cves {
-				cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+				cve.Applicability, applicableValue = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, applicableValue, nil)
 			}
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
@@ -210,7 +210,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves)
 		for _, cve := range cves {
-			cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+			cve.Applicability, applicableValue = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, "", vulnerability.Components)
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -945,9 +945,10 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndetermined
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run) (applicability *formats.Applicability) {
+func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, applicableValue ApplicabilityStatus, components map[string]services.Component) (applicability *formats.Applicability, value ApplicabilityStatus) {
 	if len(applicabilityScanResults) == 0 {
-		return nil
+		// nothing change return same
+		return nil, applicableValue
 	}
 	for _, applicabilityRun := range applicabilityScanResults {
 		description := ""
@@ -965,17 +966,34 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		}
 		// Add new evidences from locations
 		for _, location := range relatedResult.Locations {
+			fileName := GetLocationFileName(location)
+			if shouldSkipEvidance(components, fileName) {
+				continue
+			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				SourceCodeLocationRow: formats.SourceCodeLocationRow{
-					File:       GetLocationFileName(location),
+					File:       fileName,
 					LineColumn: GetStartLocationInFile(location),
 					Snippet:    GetLocationSnippet(location),
 				},
 				Reason: GetResultMsgText(relatedResult),
 			})
 		}
+		if len(applicability.Evidence) == 0 {
+			return nil, NotApplicable
+		}
 	}
 	return
+}
+
+func shouldSkipEvidance(components map[string]services.Component, filePath string) bool {
+	for key, _ := range components {
+		dependencyName := strings.Split(strings.TrimPrefix(key, "npm://"), ":")[0]
+		if strings.Contains(filePath, "node_modules/"+dependencyName) {
+			return true
+		}
+	}
+	return false
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {

@@ -115,13 +115,10 @@ func ReadJasScanRunsFromFile(fileName, wd string, scanEnvFolder bool) (sarifRuns
 
 func excludeSuppressResults(sarifRun *sarif.Run) {
 	results := []*sarif.Result{}
-	for resultIndex, sarifResult := range sarifRun.Results {
+	for _, sarifResult := range sarifRun.Results {
 		if len(sarifResult.Suppressions) > 0 {
 			// Describes a request to “suppress” a result (to exclude it from result lists)
 			continue
-		}
-		if sarifRun.Results[resultIndex].Locations != nil {
-			sarifRun.Results[resultIndex].Locations = removeLocationIfNeeded(sarifRun.Results[resultIndex].Locations)
 		}
 		results = append(results, sarifResult)
 	}

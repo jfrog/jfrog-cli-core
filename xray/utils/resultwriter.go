@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -188,7 +187,7 @@ func (rw *ResultsWriter) printScanResultsTables() (err error) {
 	if err = PrintIacTable(rw.results.IacScanResults, rw.results.EntitledForJas); err != nil {
 		return
 	}
-	if !version.NewVersion(AnalyzerManagerVersion).AtLeast(MinAnalyzerManagerVersionForSast) {
+	if !IsSastSupported() {
 		return
 	}
 	return PrintSastTable(rw.results.SastResults, rw.results.EntitledForJas)

@@ -105,9 +105,9 @@ func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly 
 		targetMatchingResults := GetResultsByRuleId(combinedTarget, *sourceResult.RuleID)
 		if len(targetMatchingResults) == 0 {
 			runWithNewOnly.AddResult(sourceResult)
-				if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
-					runWithNewOnly.Tool.Driver.AddRule(rule)
-				}
+			if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
+				runWithNewOnly.Tool.Driver.AddRule(rule)
+			}
 			continue
 		}
 		for _, targetMatchingResult := range targetMatchingResults {

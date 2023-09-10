@@ -979,7 +979,12 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 // is inside the source code of the same package, we should disqualify it.
 func shouldDisqualifyEvidence(components map[string]services.Component, infectedFilePath string) bool {
 	for key := range components {
-		dependencyName := strings.Split(strings.TrimPrefix(key, "npm://"), ":")[0]
+		// Only npm supported, break the loop if not handling npm.
+		trimNpm := strings.TrimPrefix(key, "npm://")
+		if trimNpm == key {
+			return false
+		}
+		dependencyName := strings.Split(trimNpm, ":")[0]
 		if strings.Contains(infectedFilePath, "node_modules/"+dependencyName) {
 			return true
 		}

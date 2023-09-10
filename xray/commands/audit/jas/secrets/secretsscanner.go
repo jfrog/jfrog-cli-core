@@ -93,7 +93,7 @@ func (s *SecretScanManager) runAnalyzerManager() error {
 	return s.scanner.AnalyzerManager.Exec(s.scanner.ConfigFileName, secretsScanCommand, filepath.Dir(s.scanner.AnalyzerManager.AnalyzerManagerFullPath), s.scanner.ServerDetails)
 }
 
-func hideSecret(secret string) string {
+func maskSecret(secret string) string {
 	if len(secret) <= 3 {
 		return "***"
 	}
@@ -106,7 +106,7 @@ func processSecretScanRuns(sarifRuns []*sarif.Run) []*sarif.Run {
 		for _, secretResult := range secretRun.Results {
 			for _, location := range secretResult.Locations {
 				secret := utils.GetLocationSnippetPointer(location)
-				utils.SetLocationSnippet(location, hideSecret(*secret))
+				utils.SetLocationSnippet(location, maskSecret(*secret))
 			}
 		}
 	}

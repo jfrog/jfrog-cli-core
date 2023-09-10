@@ -519,8 +519,12 @@ func TestGetApplicableCveValue(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		value, cves := extractCveValues(testCase.cves, ConvertToApplicabilityMap(testCase.scanResults))
-		assert.Equal(t, testCase.expectedResult, value)
+		cves := convertCves(testCase.cves)
+		applicableValue := getApplicableCveValue(testCase.scanResults, cves)
+		for _, cve := range cves {
+			cve.Applicability = getCveApplicability(cve, testCase.scanResults.ApplicabilityScanResults)
+		}
+		assert.Equal(t, testCase.expectedResult, applicableValue)
 		if assert.True(t, len(testCase.expectedCves) == len(cves)) {
 			for i := range cves {
 				if testCase.expectedCves[i].Applicability != nil && assert.NotNil(t, cves[i].Applicability) {

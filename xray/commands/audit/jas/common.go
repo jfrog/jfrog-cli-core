@@ -2,7 +2,6 @@ package jas
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +20,7 @@ import (
 )
 
 var (
-	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	SkippedDirs        = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
 	mapSeverityToScore = map[string]string{
 		"":         "0.0",
 		"unknown":  "0.0",
@@ -98,46 +97,51 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func ReadJasScanRunsFromFile(fileName, wd string,scanEnvFolder bool) (sarifRuns []*sarif.Run, err error) {
+func ReadJasScanRunsFromFile(fileName, wd string, scanEnvFolder bool) (sarifRuns []*sarif.Run, err error) {
 	if sarifRuns, err = utils.ReadScanRunsFromFile(fileName); err != nil {
 		return
 	}
-	for i := 0; i < len(sarifRuns); i++ {
-		sarifRuns[i] = processJasScanRun(sarifRuns[i], wd,scanEnvFolder)
+	for _, sarifRun := range sarifRuns {
+		// Jas reports has only one invocation
+		// Set the actual working directory to the invocation, not the analyzerManager directory
+		// Also used to calculate relative paths if needed with it
+		sarifRun.Invocations[0].WorkingDirectory.WithUri(wd)
+		// Process runs values
+		excludeSuppressResults(sarifRun)
+		addPropertiesToRunRules(sarifRun)
 	}
 	return
 }
 
-func processJasScanRun(sarifRun *sarif.Run, workingDir string, scanEnvFolder bool) *sarif.Run {
-	processed := sarif.NewRun(sarifRun.Tool)
-	// Jas reports has only one invocation
-	invocation := sarifRun.Invocations[0]
-	// Set the actual working directory to the invocation, not the analyzerManager directory
-	// Also used to calculate relative paths if needed with it
-	invocation.WorkingDirectory.WithUri(workingDir)
-	processed.Invocations = append(processed.Invocations, invocation)
-	// Process results
-	for _, sarifResult := range sarifRun.Results {
+func excludeSuppressResults(sarifRun *sarif.Run) {
+	results := []*sarif.Result{}
+	for resultIndex, sarifResult := range sarifRun.Results {
 		if len(sarifResult.Suppressions) > 0 {
 			// Describes a request to “suppress” a result (to exclude it from result lists)
 			continue
 		}
-		processed.Results = append(processed.Results, sarifResult)
+		if sarifRun.Results[resultIndex].Locations != nil {
+			sarifRun.Results[resultIndex].Locations = removeLocationIfNeeded(sarifRun.Results[resultIndex].Locations)
+		}
+		results = append(results, sarifResult)
+	}
+	sarifRun.Results = results
+}
+
+func removeLocationIfNeeded(locations []*sarif.Location) []*sarif.Location {
+	return []*sarif.Location{}
+}
+
+func addPropertiesToRunRules(sarifRun *sarif.Run) {
+	for _, sarifResult := range sarifRun.Results {
 		if rule, err := sarifRun.GetRuleById(*sarifResult.RuleID); err == nil {
-			// Add to the rule security-severity score base on results severity
+			// Add to the rule security-severity score based on results severity
 			score := convertToScore(utils.GetResultSeverity(sarifResult))
-			if score != utils.MissingCveScore && rule.Properties == nil {
-				properties := sarif.NewPropertyBag()
-				properties.Add("security-severity", score)
-				rule.WithProperties(properties.Properties)
-			}
-			if scanEnvFolder{
-				// Rmove the speical case where impated package use itsefl.
-					sarifResult.Locations = []*sarif.Location{}
+			if score != utils.MissingCveScore {
+				rule.Properties["security-severity"] = score
 			}
 		}
 	}
-	return processed
 }
 
 func convertToScore(severity string) string {
@@ -145,17 +149,6 @@ func convertToScore(severity string) string {
 		return level
 	}
 	return ""
-}
-
-func GetJasMarkdownDescription(scanType utils.JasScanType, location *sarif.Location, severity, content string) string {
-	dataColumnHeader := "Finding"
-	if scanType == utils.Secrets {
-		dataColumnHeader = "Secret"
-	}
-	headerRow := fmt.Sprintf("| Severity | File | Line:Column | %s |\n", dataColumnHeader)
-	separatorRow := "| :---: | :---: | :---: | :---: |\n"
-	tableHeader := headerRow + separatorRow
-	return tableHeader + fmt.Sprintf("| %s | %s | %s | %s |", severity, utils.GetLocationFileName(location), utils.GetStartLocationInFile(location), content)
 }
 
 func CreateScannersConfigFile(fileName string, fileContent interface{}) error {

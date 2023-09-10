@@ -47,7 +47,7 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	if err != nil {
 		return
 	}
-	ssm.sastScannerResults = append(ssm.sastScannerResults, processSastScanResults(workingDirRuns)...)
+	ssm.sastScannerResults = append(ssm.sastScannerResults, groupResultsByLocation(workingDirRuns)...)
 	return
 }
 
@@ -58,20 +58,20 @@ func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
 // In the Sast scanner, there can be multiple results with the same location.
 // The only difference is that their CodeFlow values are different.
 // We combine those under the same result location value
-func processSastScanResults(sarifRuns []*sarif.Run) (processed []*sarif.Run) {
+func groupResultsByLocation(sarifRuns []*sarif.Run) []*sarif.Run {
 	for _, sastRun := range sarifRuns {
-		processedResults := map[string]*sarif.Result{}
+		locationToResult := map[string]*sarif.Result{}
 		for _, sastResult := range sastRun.Results {
 			resultID := getResultId(sastResult)
-			if result, exists := processedResults[resultID]; exists {
+			if result, exists := locationToResult[resultID]; exists {
 				result.CodeFlows = append(result.CodeFlows, sastResult.CodeFlows...)
 			} else {
-				processedResults[resultID] = sastResult
+				locationToResult[resultID] = sastResult
 			}
 		}
-		processed = append(processed, sarif.NewRun(sastRun.Tool).WithInvocations(sastRun.Invocations).WithResults(maps.Values(processedResults)))
+		sastRun.Results = maps.Values(locationToResult)
 	}
-	return
+	return sarifRuns
 }
 
 // In Sast there is only one location for each result

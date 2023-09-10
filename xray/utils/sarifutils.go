@@ -36,7 +36,7 @@ var (
 		"high":     errorLevel,
 		"medium":   warningLevel,
 		"low":      noteLevel,
-		"Unknown":  noneLevel,
+		"unknown":  noneLevel,
 	}
 )
 
@@ -66,7 +66,7 @@ func CombineRunsUnderNewTool(runs []*sarif.Run, overrideToolName, overrideUrl st
 }
 
 // Use to combine runs from similar tool
-func CombineRuns(runs []*sarif.Run) (combined *sarif.Run, err error) {
+func combineRuns(runs []*sarif.Run) (combined *sarif.Run, err error) {
 	if len(runs) == 0 {
 		return
 	}
@@ -89,30 +89,47 @@ func AggregateRunsInformationIntoTarget(runs []*sarif.Run, target *sarif.Run) {
 		return
 	}
 	for _, run := range runs {
-		for _, rule := range run.Tool.Driver.Rules {
+		if run == nil || len(run.Results) == 0 {
+			continue
+		}
+		for _, rule := range GetRunRules(run) {
 			if targetRule, _ := target.GetRuleById(rule.ID); targetRule == nil {
 				target.Tool.Driver.Rules = append(target.Tool.Driver.Rules, rule)
 			}
 		}
+		if target.Results == nil {
+			target.Results = []*sarif.Result{}
+		}
 		target.Results = append(target.Results, run.Results...)
+		if target.Invocations == nil {
+			target.Invocations = []*sarif.Invocation{}
+		}
 		target.Invocations = append(target.Invocations, run.Invocations...)
 	}
 }
 
 // Calculate new information that exists at the run and not at the source
-func ExcludeSourceInformationFromRun(run *sarif.Run, source *sarif.Run) *sarif.Run {
+func GetDiffFromRun(runs []*sarif.Run, sources []*sarif.Run) (excluded *sarif.Run, err error) {
+	combinedRun, err := combineRuns(runs)
+	if err != nil {
+		return
+	}
+	combinedSource, err := combineRuns(sources)
+	if err != nil {
+		return
+	}
 	newResults := []*sarif.Result{}
 	newRules := map[string]*sarif.ReportingDescriptor{}
-	for _, targetRule := range run.Tool.Driver.Rules {
+	for _, targetRule := range GetRunRules(combinedRun) {
 		// Check if target rule exists at source if it doesn't, all its related results are new
-		if sourceRule, _ := source.GetRuleById(targetRule.ID); sourceRule == nil {
-			newResults = append(newResults, GetResultsByRuleId(run, targetRule.ID)...)
+		if sourceRule, _ := combinedSource.GetRuleById(targetRule.ID); sourceRule == nil {
+			newResults = append(newResults, GetResultsByRuleId(combinedRun, targetRule.ID)...)
 			newRules[targetRule.ID] = targetRule
 			continue
 		}
 		// Rule exists at source, compare results
-		for _, targetRuleResult := range GetResultsByRuleId(run, targetRule.ID) {
-			matchingSourceResults := FilterResultsByRuleIdAndMsgText(source.Results, targetRule.ID, GetResultMsgText(targetRuleResult))
+		for _, targetRuleResult := range GetResultsByRuleId(combinedRun, targetRule.ID) {
+			matchingSourceResults := FilterResultsByRuleIdAndMsgText(combinedSource.Results, targetRule.ID, GetResultMsgText(targetRuleResult))
 			if len(matchingSourceResults) == 0 {
 				// Target result does not exists at source
 				newResults = append(newResults, targetRuleResult)
@@ -121,7 +138,7 @@ func ExcludeSourceInformationFromRun(run *sarif.Run, source *sarif.Run) *sarif.R
 			}
 			// Result exists at source, compare locations info
 			for _, matchingSourceResult := range matchingSourceResults {
-				if newInformationResult := ExcludeSourceInformationFromResult(targetRuleResult, matchingSourceResult); len(newInformationResult.Locations) > 0 {
+				if newInformationResult := GetDiffFromResult(targetRuleResult, matchingSourceResult); len(newInformationResult.Locations) > 0 {
 					newResults = append(newResults, newInformationResult)
 					newRules[targetRule.ID] = targetRule
 				}
@@ -129,13 +146,14 @@ func ExcludeSourceInformationFromRun(run *sarif.Run, source *sarif.Run) *sarif.R
 		}
 	}
 	// Create the run only with new information
-	runWithNewOnly := sarif.NewRun(run.Tool).WithInvocations(run.Invocations)
+	runWithNewOnly := sarif.NewRun(combinedRun.Tool).WithInvocations(combinedRun.Invocations)
 	runWithNewOnly.Tool.Driver.WithRules(maps.Values(newRules))
-	return runWithNewOnly.WithResults(newResults)
+	runWithNewOnly.Results = newResults
+	return runWithNewOnly, nil
 }
 
 // Calculate new information that exists at the result and not at the source
-func ExcludeSourceInformationFromResult(result *sarif.Result, source *sarif.Result) *sarif.Result {
+func GetDiffFromResult(result *sarif.Result, source *sarif.Result) *sarif.Result {
 	newLocations := datastructures.MakeSet[*sarif.Location]()
 	newCodeFlows := []*sarif.CodeFlow{}
 	for _, targetLocation := range result.Locations {
@@ -273,8 +291,9 @@ func GetLocationSnippet(location *sarif.Location) string {
 }
 
 func GetLocationSnippetPointer(location *sarif.Location) *string {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
-		return location.PhysicalLocation.Region.Snippet.Text
+	region := getLocationRegion(location)
+	if region != nil && region.Snippet != nil {
+		return region.Snippet.Text
 	}
 	return nil
 }
@@ -299,30 +318,41 @@ func SetLocationFileName(location *sarif.Location, fileName string) {
 	}
 }
 
+func getLocationRegion(location *sarif.Location) *sarif.Region {
+	if location != nil && location.PhysicalLocation != nil {
+		return location.PhysicalLocation.Region
+	}
+	return nil
+}
+
 func GetLocationStartLine(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.StartLine != nil {
-		return *location.PhysicalLocation.Region.StartLine
+	region := getLocationRegion(location)
+	if region != nil && region.StartLine != nil {
+		return *region.StartLine
 	}
 	return 0
 }
 
 func GetLocationStartColumn(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.StartColumn != nil {
-		return *location.PhysicalLocation.Region.StartColumn
+	region := getLocationRegion(location)
+	if region != nil && region.StartColumn != nil {
+		return *region.StartColumn
 	}
 	return 0
 }
 
 func GetLocationEndLine(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.EndLine != nil {
-		return *location.PhysicalLocation.Region.EndLine
+	region := getLocationRegion(location)
+	if region != nil && region.EndLine != nil {
+		return *region.EndLine
 	}
 	return 0
 }
 
 func GetLocationEndColumn(location *sarif.Location) int {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.EndColumn != nil {
-		return *location.PhysicalLocation.Region.EndColumn
+	region := getLocationRegion(location)
+	if region != nil && region.EndColumn != nil {
+		return *region.EndColumn
 	}
 	return 0
 }
@@ -371,6 +401,13 @@ func GetRuleFullDescription(rule *sarif.ReportingDescriptor) string {
 
 func GetCveIdFromRuleId(sarifRuleId string) string {
 	return strings.TrimPrefix(sarifRuleId, "applic_")
+}
+
+func GetRunRules(run *sarif.Run) []*sarif.ReportingDescriptor {
+	if run != nil && run.Tool.Driver != nil {
+		return run.Tool.Driver.Rules
+	}
+	return []*sarif.ReportingDescriptor{}
 }
 
 func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {

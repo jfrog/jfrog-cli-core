@@ -121,10 +121,6 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	return
 }
 
-func filterWorkingDirResults(results []*sarif.Run) {
-	print("hello world")
-}
-
 func (asm *ApplicabilityScanManager) directDependenciesExist() bool {
 	return len(asm.dependencyWhitelist) > 0
 }
@@ -149,7 +145,8 @@ type scanConfiguration struct {
 func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, includeEnvFolders bool) error {
 	skipDirs := jas.SkippedDirs
 	if includeEnvFolders {
-		skipDirs = []string{}
+		// including node modules TODO change this
+		skipDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*target*/**"}
 	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{

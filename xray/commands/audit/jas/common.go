@@ -22,7 +22,6 @@ import (
 
 var (
 	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
-
 	mapSeverityToScore = map[string]string{
 		"":         "0.0",
 		"unknown":  "0.0",

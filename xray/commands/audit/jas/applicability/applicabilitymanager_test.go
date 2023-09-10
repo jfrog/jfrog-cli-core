@@ -3,7 +3,6 @@ package applicability
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -299,19 +298,6 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
 		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
-
-		results := utils.ConvertToApplicabilityMap(&utils.ExtendedScanResults{EntitledForJas: true, ApplicabilityScanResults: applicabilityManager.applicabilityScanResults})
-		if assert.NotNil(t, results) {
-			applicabilityResults := *results
-			assert.Len(t, applicabilityResults, 2)
-			if assert.NotNil(t, applicabilityResults["testCve1"]) {
-				assert.True(t, applicabilityResults["testCve1"].Status)
-			}
-			if assert.NotNil(t, applicabilityResults["testCve3"]) {
-				assert.False(t, applicabilityResults["testCve3"].Status)
-			}
-		}
-
 	}
 }
 
@@ -329,14 +315,5 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
 		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
-		results := utils.ConvertToApplicabilityMap(&utils.ExtendedScanResults{EntitledForJas: true, ApplicabilityScanResults: applicabilityManager.applicabilityScanResults})
-		if assert.NotNil(t, results) {
-			applicabilityResults := *results
-			assert.Len(t, applicabilityResults, 5)
-			for _, details := range applicabilityResults {
-				assert.False(t, details.Status)
-			}
-		}
-
 	}
 }

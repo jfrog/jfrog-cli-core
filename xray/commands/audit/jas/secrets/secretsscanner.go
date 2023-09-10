@@ -56,7 +56,7 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd,false)
 	if err != nil {
 		return
 	}

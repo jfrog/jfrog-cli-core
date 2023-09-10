@@ -98,17 +98,17 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err error) {
+func ReadJasScanRunsFromFile(fileName, wd string,scanEnvFolder bool) (sarifRuns []*sarif.Run, err error) {
 	if sarifRuns, err = utils.ReadScanRunsFromFile(fileName); err != nil {
 		return
 	}
 	for i := 0; i < len(sarifRuns); i++ {
-		sarifRuns[i] = processJasScanRun(sarifRuns[i], wd)
+		sarifRuns[i] = processJasScanRun(sarifRuns[i], wd,scanEnvFolder)
 	}
 	return
 }
 
-func processJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
+func processJasScanRun(sarifRun *sarif.Run, workingDir string, scanEnvFolder bool) *sarif.Run {
 	processed := sarif.NewRun(sarifRun.Tool)
 	// Jas reports has only one invocation
 	invocation := sarifRun.Invocations[0]
@@ -130,6 +130,10 @@ func processJasScanRun(sarifRun *sarif.Run, workingDir string) *sarif.Run {
 				properties := sarif.NewPropertyBag()
 				properties.Add("security-severity", score)
 				rule.WithProperties(properties.Properties)
+			}
+			if scanEnvFolder{
+				// Rmove the speical case where impated package use itsefl.
+					sarifResult.Locations = []*sarif.Location{}
 			}
 		}
 	}

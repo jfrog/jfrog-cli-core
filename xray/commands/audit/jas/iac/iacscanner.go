@@ -56,7 +56,7 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd,false)
 	if err != nil {
 		return
 	}

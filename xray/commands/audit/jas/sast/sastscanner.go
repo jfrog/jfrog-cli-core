@@ -43,7 +43,7 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	if err = ssm.runAnalyzerManager(wd); err != nil {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd,false)
 	if err != nil {
 		return
 	}

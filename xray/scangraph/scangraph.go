@@ -25,17 +25,19 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 		params.xrayGraphScanParams.ScanType = ""
 	}
 
-	var scanId string
-	params.xrayGraphScanParams.XscVersion, err = xrayManager.XscEnabled()
-	if params.xrayGraphScanParams.XscVersion == "" {
-		if scanId, err = xrayManager.ScanGraph(params.xrayGraphScanParams); err != nil {
-			return nil, err
-		}
-	} else {
-		if scanId, err = xrayManager.XscScanGraph(params.xrayGraphScanParams); err != nil {
-			return nil, err
-		}
+	if params.xrayGraphScanParams.XscVersion, err = xrayManager.XscEnabled(); err != nil {
+		return nil, err
 	}
+	var scanId string
+	if params.xrayGraphScanParams.XscVersion == "" {
+		scanId, err = xrayManager.ScanGraph(params.xrayGraphScanParams)
+	} else {
+		scanId, err = xrayManager.XscScanGraph(params.xrayGraphScanParams)
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	scanResult, err := xrayManager.GetScanGraphResults(scanId, params.XrayGraphScanParams().IncludeVulnerabilities, params.XrayGraphScanParams().IncludeLicenses)
 	if err != nil {
 		return nil, err

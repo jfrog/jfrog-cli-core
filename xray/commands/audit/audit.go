@@ -188,7 +188,7 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 
 	// Run scanners only if the user is entitled for Advanced Security
 	if results.ExtendedScanResults.EntitledForJas {
-		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams)
+		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.includeEnvApplicabilityScan,auditParams.Progress())
 	}
 	return
 }

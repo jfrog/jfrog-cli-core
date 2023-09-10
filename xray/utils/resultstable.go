@@ -975,7 +975,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 // When a certain package is reported applicable by using itself, we should skip it.
 // This is only when the flag "scan-env-applicability" is one that will also scan the node modules folder.
 func shouldSkipEvidence(components map[string]services.Component, infectedFilePath string) bool {
-	for key, _ := range components {
+	for key := range components {
 		dependencyName := strings.Split(strings.TrimPrefix(key, "npm://"), ":")[0]
 		if strings.Contains(infectedFilePath, "node_modules/"+dependencyName) {
 			return true

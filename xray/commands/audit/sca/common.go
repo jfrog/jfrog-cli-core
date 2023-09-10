@@ -120,7 +120,6 @@ func LogExecutableVersion(executable string) {
 	}
 	version := strings.TrimSpace(string(verBytes))
 	log.Debug(fmt.Sprintf("Used %q version: %s", executable, version))
-	return
 }
 
 // BuildImpactPathsForScanResponse builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.

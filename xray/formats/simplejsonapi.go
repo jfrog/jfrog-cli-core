@@ -85,7 +85,7 @@ type SourceCodeRow struct {
 type SourceCodeLocationRow struct {
 	File       string `json:"file"`
 	LineColumn string `json:"lineColumn"`
-	Text       string `json:"text"`
+	Snippet    string `json:"snippet"`
 }
 
 type ComponentRow struct {
@@ -94,9 +94,21 @@ type ComponentRow struct {
 }
 
 type CveRow struct {
-	Id     string `json:"id"`
-	CvssV2 string `json:"cvssV2"`
-	CvssV3 string `json:"cvssV3"`
+	Id            string         `json:"id"`
+	CvssV2        string         `json:"cvssV2"`
+	CvssV3        string         `json:"cvssV3"`
+	Applicability *Applicability `json:"applicability,omitempty"`
+}
+
+type Applicability struct {
+	Status             bool       `json:"status"`
+	ScannerDescription string     `json:"scannerDescription,omitempty"`
+	Evidence           []Evidence `json:"evidence,omitempty"`
+}
+
+type Evidence struct {
+	SourceCodeLocationRow
+	Reason string `json:"reason,omitempty"`
 }
 
 type SimpleJsonError struct {

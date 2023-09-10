@@ -6,6 +6,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 )
 
 type IacScanManager struct {
-	iacScannerResults []utils.SourceCodeScanResult
+	iacScannerResults []*sarif.Run
 	scanner           *jas.JasScanner
 }
 
@@ -26,7 +27,7 @@ type IacScanManager struct {
 // []utils.SourceCodeScanResult: a list of the iac violations that were found.
 // bool: true if the user is entitled to iac scan, false otherwise.
 // error: An error object (if any).
-func RunIacScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, err error) {
+func RunIacScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 	iacScanManager := newIacScanManager(scanner)
 	log.Info("Running IaC scanning...")
 	if err = iacScanManager.scanner.Run(iacScanManager); err != nil {
@@ -34,7 +35,7 @@ func RunIacScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, 
 		return
 	}
 	if len(iacScanManager.iacScannerResults) > 0 {
-		log.Info("Found", len(iacScanManager.iacScannerResults), "IaC vulnerabilities")
+		log.Info("Found", utils.GetResultsLocationCount(iacScanManager.iacScannerResults...), "IaC vulnerabilities")
 	}
 	results = iacScanManager.iacScannerResults
 	return
@@ -42,7 +43,7 @@ func RunIacScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, 
 
 func newIacScanManager(scanner *jas.JasScanner) (manager *IacScanManager) {
 	return &IacScanManager{
-		iacScannerResults: []utils.SourceCodeScanResult{},
+		iacScannerResults: []*sarif.Run{},
 		scanner:           scanner,
 	}
 }
@@ -55,8 +56,8 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = jas.GetSourceCodeScanResults(scanner.ResultsFileName, wd, utils.IaC); err != nil {
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	if err != nil {
 		return
 	}
 	iac.iacScannerResults = append(iac.iacScannerResults, workingDirResults...)

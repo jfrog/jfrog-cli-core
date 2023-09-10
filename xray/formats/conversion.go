@@ -146,7 +146,7 @@ func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			text:       rows[i].Snippet,
 		})
 	}
 	return
@@ -158,7 +158,7 @@ func ConvertToIacTableRow(rows []SourceCodeRow) (tableRows []iacTableRow) {
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			text:       rows[i].Snippet,
 		})
 	}
 	return
@@ -170,7 +170,7 @@ func ConvertToSastTableRow(rows []SourceCodeRow) (tableRows []sastTableRow) {
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			text:       rows[i].Snippet,
 		})
 	}
 	return

@@ -3,7 +3,6 @@ package applicability
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -276,13 +275,12 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "empty-results.sarif")
 
 	// Act
-	results, err := applicabilityManager.getScanResults()
+	var err error
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(results))
-	for _, cveResult := range results {
-		assert.Equal(t, utils.ApplicabilityUndetermined, cveResult)
+	if assert.NoError(t, err) {
+		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
+		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
 	}
 }
 
@@ -294,13 +292,13 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "applicable-cve-results.sarif")
 
 	// Act
-	results, err := applicabilityManager.getScanResults()
+	var err error
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(results))
-	assert.Equal(t, utils.Applicable, results["testCve1"])
-	assert.Equal(t, utils.NotApplicable, results["testCve3"])
+	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
+		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
+		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
+	}
 }
 
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
@@ -311,12 +309,11 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "no-applicable-cves-results.sarif")
 
 	// Act
-	results, err := applicabilityManager.getScanResults()
+	var err error
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(results))
-	for _, cveResult := range results {
-		assert.Equal(t, utils.NotApplicable, cveResult)
+	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
+		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
+		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
 	}
 }

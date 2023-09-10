@@ -905,48 +905,6 @@ func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVer
 	return strings.Join([]string{vulnerableDependency, vulnerableVersion, xrayID, strconv.FormatBool(fixVersionExist)}, ":")
 }
 
-func ConvertToApplicabilityMap(extendedResults *ExtendedScanResults) *map[string]*formats.Applicability {
-	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
-		return nil
-	}
-	applicabilityMap := map[string]*formats.Applicability{}
-
-	for _, applicableRun := range extendedResults.ApplicabilityScanResults {
-		searchTargetData := map[string]string{}
-		for _, rule := range GetRunRules(applicableRun) {
-			searchTargetData[GetCveIdFromRuleId(rule.ID)] = GetRuleFullDescription(rule)
-		}
-		for _, contexualAnalysisResult := range applicableRun.Results {
-			relatedCve := GetCveIdFromRuleId(*contexualAnalysisResult.RuleID)
-			// Get applicable details for this cve
-			var applicableDetails *formats.Applicability
-			if details, exists := applicabilityMap[relatedCve]; exists {
-				applicableDetails = details
-			} else {
-				applicableDetails = &formats.Applicability{
-					Status:             isApplicableResult(contexualAnalysisResult),
-					ScannerDescription: searchTargetData[relatedCve],
-				}
-				applicabilityMap[relatedCve] = applicableDetails
-			}
-			// Add new evidences
-			for l := range contexualAnalysisResult.Locations {
-				location := contexualAnalysisResult.Locations[l]
-				applicableDetails.Evidence = append(applicableDetails.Evidence, formats.Evidence{
-					SourceCodeLocationRow: formats.SourceCodeLocationRow{
-						File:       GetLocationFileName(location),
-						LineColumn: GetStartLocationInFile(location),
-						Snippet:    GetLocationSnippet(location),
-					},
-					Reason: GetResultMsgText(contexualAnalysisResult),
-				})
-			}
-		}
-	}
-
-	return &applicabilityMap
-}
-
 func convertCves(cves []services.Cve) []formats.CveRow {
 	var cveRows []formats.CveRow
 	for _, cveObj := range cves {
@@ -969,7 +927,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	finalApplicableValue := NotApplicable
 	for _, applicabilityRun := range extendedResults.ApplicabilityScanResults {
 		for _, cve := range xrayCves {
-			relatedResults := GetResultsByRuleId(applicabilityRun, "applic_"+cve.Id)
+			relatedResults := GetResultsByRuleId(applicabilityRun, GetRuleIdFromCveId(cve.Id))
 			if len(relatedResults) == 0 {
 				finalApplicableValue = ApplicabilityUndetermined
 			}
@@ -993,10 +951,10 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 	}
 	for _, applicabilityRun := range applicabilityScanResults {
 		description := ""
-		if relatedRule, _ := applicabilityRun.GetRuleById("applic_" + cve.Id); relatedRule != nil {
+		if relatedRule, _ := applicabilityRun.GetRuleById(GetRuleIdFromCveId(cve.Id)); relatedRule != nil {
 			description = GetRuleFullDescription(relatedRule)
 		}
-		relatedResult, _ := applicabilityRun.GetResultByRuleId("applic_" + cve.Id)
+		relatedResult, _ := applicabilityRun.GetResultByRuleId(GetRuleIdFromCveId(cve.Id))
 		if relatedResult == nil {
 			continue
 		}
@@ -1007,7 +965,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		}
 		// Add new evidences from locations
 		for _, location := range relatedResult.Locations {
-			cve.Applicability.Evidence = append(cve.Applicability.Evidence, formats.Evidence{
+			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				SourceCodeLocationRow: formats.SourceCodeLocationRow{
 					File:       GetLocationFileName(location),
 					LineColumn: GetStartLocationInFile(location),

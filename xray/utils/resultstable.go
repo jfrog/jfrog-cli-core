@@ -90,7 +90,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves)
 			for _, cve := range cves {
-				cve.Applicability, applicableValue = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, applicableValue, nil)
+				cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
 			}
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
@@ -210,7 +210,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves)
 		for _, cve := range cves {
-			cve.Applicability, applicableValue = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, "", vulnerability.Components)
+			cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -945,10 +945,10 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndetermined
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, applicableValue ApplicabilityStatus, components map[string]services.Component) (applicability *formats.Applicability, value ApplicabilityStatus) {
+func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, applicableValue *formats.Applicability, components map[string]services.Component) (applicability *formats.Applicability) {
 	if len(applicabilityScanResults) == 0 {
 		// nothing change return same
-		return nil, applicableValue
+		return applicableValue
 	}
 	for _, applicabilityRun := range applicabilityScanResults {
 		description := ""
@@ -972,7 +972,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				SourceCodeLocationRow: formats.SourceCodeLocationRow{
-					File:       fileName,
+					File:       GetLocationFileName(location),
 					LineColumn: GetStartLocationInFile(location),
 					Snippet:    GetLocationSnippet(location),
 				},
@@ -980,7 +980,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 			})
 		}
 		if len(applicability.Evidence) == 0 {
-			return nil, NotApplicable
+			return NotApplicable
 		}
 	}
 	return

@@ -22,7 +22,7 @@ const (
 
 type ApplicabilityScanManager struct {
 	applicabilityScanResults []*sarif.Run
-	dependencyWhitelist      []string
+	dependencyWhitelist   []string
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
 	scanEnvFolders           bool
@@ -38,7 +38,7 @@ type ApplicabilityScanManager struct {
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
 func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
-	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, scanEnvFolders bool) (results []*sarif.Run, err error) {
+	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner,scanEnvFolders bool) (results []*sarif.Run, err error) {
 	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, scanEnvFolders)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
@@ -56,7 +56,7 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 	dependencyWhitelist := prepareDependenciesCvesWhitelist(xrayScanResults, directDependencies, scanEnvFolders)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
-		dependencyWhitelist:      dependencyWhitelist,
+		dependencyWhitelist:   dependencyWhitelist,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
 		scanEnvFolders:           scanEnvFolders,

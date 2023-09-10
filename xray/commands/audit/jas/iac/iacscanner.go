@@ -35,7 +35,7 @@ func RunIacScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 		return
 	}
 	if len(iacScanManager.iacScannerResults) > 0 {
-		log.Info("Found", len(iacScanManager.iacScannerResults), "IaC vulnerabilities")
+		log.Info("Found", utils.GetResultsLocationCount(iacScanManager.iacScannerResults...), "IaC vulnerabilities")
 	}
 	results = iacScanManager.iacScannerResults
 	return
@@ -56,7 +56,7 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd,false)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}

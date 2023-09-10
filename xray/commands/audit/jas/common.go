@@ -20,7 +20,8 @@ import (
 )
 
 var (
-	SkippedDirs        = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+
 	mapSeverityToScore = map[string]string{
 		"":         "0.0",
 		"unknown":  "0.0",
@@ -97,7 +98,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func ReadJasScanRunsFromFile(fileName, wd string, scanEnvFolder bool) (sarifRuns []*sarif.Run, err error) {
+func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err error) {
 	if sarifRuns, err = utils.ReadScanRunsFromFile(fileName); err != nil {
 		return
 	}
@@ -107,29 +108,25 @@ func ReadJasScanRunsFromFile(fileName, wd string, scanEnvFolder bool) (sarifRuns
 		// Also used to calculate relative paths if needed with it
 		sarifRun.Invocations[0].WorkingDirectory.WithUri(wd)
 		// Process runs values
-		excludeSuppressResults(sarifRun)
-		addPropertiesToRunRules(sarifRun)
+		sarifRun.Results = excludeSuppressResults(sarifRun.Results)
+		addScoreToRunRules(sarifRun)
 	}
 	return
 }
 
-func excludeSuppressResults(sarifRun *sarif.Run) {
+func excludeSuppressResults(sarifResults []*sarif.Result) []*sarif.Result {
 	results := []*sarif.Result{}
-	for _, sarifResult := range sarifRun.Results {
+	for _, sarifResult := range sarifResults {
 		if len(sarifResult.Suppressions) > 0 {
 			// Describes a request to “suppress” a result (to exclude it from result lists)
 			continue
 		}
 		results = append(results, sarifResult)
 	}
-	sarifRun.Results = results
+	return results
 }
 
-func removeLocationIfNeeded(locations []*sarif.Location) []*sarif.Location {
-	return []*sarif.Location{}
-}
-
-func addPropertiesToRunRules(sarifRun *sarif.Run) {
+func addScoreToRunRules(sarifRun *sarif.Run) {
 	for _, sarifResult := range sarifRun.Results {
 		if rule, err := sarifRun.GetRuleById(*sarifResult.RuleID); err == nil {
 			// Add to the rule security-severity score based on results severity

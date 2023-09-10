@@ -25,7 +25,7 @@ func RunSastScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 		return
 	}
 	if len(sastScanManager.sastScannerResults) > 0 {
-		log.Info("Found", len(sastScanManager.sastScannerResults), "SAST vulnerabilities")
+		log.Info("Found", utils.GetResultsLocationCount(sastScanManager.sastScannerResults...), "SAST vulnerabilities")
 	}
 	results = sastScanManager.sastScannerResults
 	return
@@ -43,7 +43,7 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	if err = ssm.runAnalyzerManager(wd); err != nil {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd,false)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
 	if err != nil {
 		return
 	}

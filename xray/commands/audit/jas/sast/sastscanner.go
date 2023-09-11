@@ -1,6 +1,8 @@
 package sast
 
 import (
+	"path/filepath"
+
 	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -8,6 +10,7 @@ import (
 )
 
 const (
+	sastScannerType = "sast"
 	sastScanCommand = "zd"
 )
 
@@ -44,7 +47,7 @@ func (ssm *SastScanManager) Run(module jfrogappsconfig.Module) (err error) {
 	if err = ssm.createConfigFile(module); err != nil {
 		return
 	}
-	if err = ssm.runAnalyzerManager(module.SourceRoot); err != nil {
+	if err = ssm.runAnalyzerManager(filepath.Dir(ssm.scanner.AnalyzerManager.AnalyzerManagerFullPath)); err != nil {
 		return
 	}
 	var workingDirResults []utils.SourceCodeScanResult
@@ -60,6 +63,7 @@ type sastScanConfig struct {
 }
 
 type scanConfiguration struct {
+	Type            string   `yaml:"type"`
 	Roots           []string `yaml:"roots,omitempty"`
 	Languages       []string `yaml:"language,omitempty"`
 	ExcludePatterns []string `yaml:"exclude_patterns,omitempty"`
@@ -78,6 +82,7 @@ func (ssm *SastScanManager) createConfigFile(module jfrogappsconfig.Module) erro
 	configFileContent := sastScanConfig{
 		Scans: []scanConfiguration{
 			{
+				Type:            sastScannerType,
 				Roots:           roots,
 				Languages:       []string{sastScanner.Language},
 				ExcludedRules:   sastScanner.ExcludedRules,
@@ -89,5 +94,5 @@ func (ssm *SastScanManager) createConfigFile(module jfrogappsconfig.Module) erro
 }
 
 func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
-	return ssm.scanner.AnalyzerManager.ExecWithOutputFile(ssm.scanner.ResultsFileName, sastScanCommand, wd, ssm.scanner.ResultsFileName, ssm.scanner.ServerDetails)
+	return ssm.scanner.AnalyzerManager.ExecWithOutputFile(ssm.scanner.ConfigFileName, sastScanCommand, wd, ssm.scanner.ResultsFileName, ssm.scanner.ServerDetails)
 }

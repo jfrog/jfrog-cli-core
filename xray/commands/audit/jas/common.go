@@ -161,6 +161,7 @@ func CreateScannersConfigFile(fileName string, fileContent interface{}) error {
 		return err
 	}
 	err = os.WriteFile(fileName, yamlData, 0644)
+	log.Debug("Input YAML:\n" + string(yamlData))
 	return errorutils.CheckError(err)
 }
 

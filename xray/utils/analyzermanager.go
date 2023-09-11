@@ -130,8 +130,14 @@ func (am *AnalyzerManager) ExecWithOutputFile(configFile, scanCommand, workingDi
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return err
 	}
-	log.Debug("Executing", am.AnalyzerManagerFullPath, scanCommand, outputFile, configFile)
-	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, outputFile, configFile)
+	var cmd *exec.Cmd
+	if len(outputFile) > 0 {
+		log.Debug("Executing", am.AnalyzerManagerFullPath, scanCommand, configFile, outputFile)
+		cmd = exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, outputFile)
+	} else {
+		log.Debug("Executing", am.AnalyzerManagerFullPath, scanCommand, configFile)
+		cmd = exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile)
+	}
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {

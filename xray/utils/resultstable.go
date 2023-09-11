@@ -973,7 +973,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 	return
 }
 
-// Relevant only when "scan-env-applicability" flag is on,
+// Relevant only when "dependency-code-contextual-analysis" flag is on,
 // which will run the scanner on the environment folders as well (node_modules etc...)
 // When a certain package is reported applicable, and the evidence found
 // is inside the source code of the same package, we should disqualify it.

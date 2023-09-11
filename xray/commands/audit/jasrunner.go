@@ -14,7 +14,7 @@ import (
 )
 
 func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDependencies []string,
-	serverDetails *config.ServerDetails, workingDirs []string, includeEnvApplicabilityScan bool, progress io.ProgressMgr) (err error) {
+	serverDetails *config.ServerDetails, workingDirs []string, thirdPartyContextualAnalysis bool, progress io.ProgressMgr) (err error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
 		return
@@ -30,7 +30,7 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if progress != nil {
 		progress.SetHeadlineMsg("Running applicability scanning")
 	}
-	scanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.XrayResults, directDependencies, scanResults.ScannedTechnologies, scanner, includeEnvApplicabilityScan)
+	scanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.XrayResults, directDependencies, scanResults.ScannedTechnologies, scanner, thirdPartyContextualAnalysis)
 	if err != nil {
 		return
 	}

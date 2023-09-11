@@ -22,10 +22,11 @@ const (
 
 type ApplicabilityScanManager struct {
 	applicabilityScanResults []*sarif.Run
-	dependencyWhitelist   []string
+	dependencyWhitelist      []string
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
-	scanEnvFolders           bool
+	// Include third party dependencies source code in the scan
+	thirdPartyContextualAnalysis bool
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -38,8 +39,8 @@ type ApplicabilityScanManager struct {
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
 func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
-	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner,scanEnvFolders bool) (results []*sarif.Run, err error) {
-	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, scanEnvFolders)
+	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (results []*sarif.Run, err error) {
+	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, thirdPartyContextualAnalysis)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return
@@ -52,25 +53,25 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, scanEnvFolders bool) (manager *ApplicabilityScanManager) {
-	dependencyWhitelist := prepareDependenciesCvesWhitelist(xrayScanResults, directDependencies, scanEnvFolders)
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (manager *ApplicabilityScanManager) {
+	dependencyWhitelist := prepareDependenciesCvesWhitelist(xrayScanResults, directDependencies, thirdPartyContextualAnalysis)
 	return &ApplicabilityScanManager{
-		applicabilityScanResults: []*sarif.Run{},
-		dependencyWhitelist:   dependencyWhitelist,
-		xrayResults:              xrayScanResults,
-		scanner:                  scanner,
-		scanEnvFolders:           scanEnvFolders,
+		applicabilityScanResults:     []*sarif.Run{},
+		dependencyWhitelist:          dependencyWhitelist,
+		xrayResults:                  xrayScanResults,
+		scanner:                      scanner,
+		thirdPartyContextualAnalysis: thirdPartyContextualAnalysis,
 	}
 }
 
 // Prepares a list of CVES for the scanner to scan.
 // In most cases, we will send only direct dependencies to the whitelist
-// Except when includeIndirect is set to true.
-func prepareDependenciesCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, includeIndirect bool) []string {
+// Except when ThirdPartyContextualAnalysis is set to true.
+func prepareDependenciesCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, thirdPartyContextualAnalysis bool) []string {
 	whitelistCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {
-			if includeIndirect || isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
+			if thirdPartyContextualAnalysis || isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
 				for _, cve := range vulnerability.Cves {
 					if cve.Id != "" {
 						whitelistCves.Add(cve.Id)
@@ -79,7 +80,7 @@ func prepareDependenciesCvesWhitelist(xrayScanResults []services.ScanResponse, d
 			}
 		}
 		for _, violation := range scanResult.Violations {
-			if includeIndirect || isDirectComponents(maps.Keys(violation.Components), directDependencies) {
+			if thirdPartyContextualAnalysis || isDirectComponents(maps.Keys(violation.Components), directDependencies) {
 				for _, cve := range violation.Cves {
 					if cve.Id != "" {
 						whitelistCves.Add(cve.Id)
@@ -107,7 +108,7 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	} else {
 		log.Info("Running applicability scanning...")
 	}
-	if err = asm.createConfigFile(wd, asm.scanEnvFolders); err != nil {
+	if err = asm.createConfigFile(wd, asm.thirdPartyContextualAnalysis); err != nil {
 		return
 	}
 	if err = asm.runAnalyzerManager(); err != nil {
@@ -142,11 +143,11 @@ type scanConfiguration struct {
 	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
-func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, includeEnvFolders bool) error {
+func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, thirdPartyContextualAnalysis bool) error {
 	skipDirs := jas.SkippedDirs
-	if includeEnvFolders {
-		// including node modules TODO change this
-		skipDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*target*/**"}
+	// If set to true, include third party dependencies code and ignore only test folders.
+	if thirdPartyContextualAnalysis {
+		skipDirs = []string{"**/*test*/**"}
 	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{

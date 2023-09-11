@@ -136,3 +136,10 @@ type iacTableRow struct {
 	lineColumn string `col-name:"Line:Column"`
 	text       string `col-name:"Finding"`
 }
+
+type sastTableRow struct {
+	severity   string `col-name:"Severity"`
+	file       string `col-name:"File"`
+	lineColumn string `col-name:"Line:Column"`
+	text       string `col-name:"Finding"`
+}

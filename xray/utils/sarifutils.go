@@ -344,14 +344,15 @@ func GetStartLocationInFile(location *sarif.Location) string {
 }
 
 func ExtractRelativePath(resultPath string, projectRoot string) string {
-	osFilePrefix := "file:///private"
+	osFilePrefix := "file:///private/"
 	filePrefix := "file://"
-	resultPath = strings.ReplaceAll(resultPath,osFilePrefix,"")
-	resultPath = strings.TrimSuffix(strings.ReplaceAll(resultPath,filePrefix,""), string(os.PathSeparator))
+	resultPath = strings.ReplaceAll(resultPath, osFilePrefix, "")
+	resultPath = strings.TrimSuffix(strings.ReplaceAll(resultPath, filePrefix, ""), string(os.PathSeparator))
 	if resultPath == projectRoot {
 		return ""
 	}
-	return strings.TrimPrefix(resultPath, projectRoot)
+	s := strings.ReplaceAll(resultPath, projectRoot, "")
+	return s
 }
 
 func GetResultSeverity(result *sarif.Result) string {

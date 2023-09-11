@@ -53,7 +53,7 @@ func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[st
 func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *scangraph.ScanGraphParams) (results []services.ScanResponse, err error) {
 	scanGraphParams.XrayGraphScanParams().DependenciesGraph = dependencyTree
 	xscGitInfoContext := scanGraphParams.XrayGraphScanParams().XscGitInfoContext
-	if xscGitInfoContext !=nil{
+	if xscGitInfoContext != nil {
 		xscGitInfoContext.Technologies = []string{technology.ToString()}
 	}
 	scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(dependencyTree.Nodes), technology)

@@ -90,13 +90,14 @@ func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
 
 type AnalyzerManager struct {
 	AnalyzerManagerFullPath string
+	MultiScanId             string
 }
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return
 	}
-	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile)
+	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {

@@ -77,14 +77,14 @@ type OperationalRiskViolationRow struct {
 type SourceCodeRow struct {
 	Severity         string `json:"severity"`
 	SeverityNumValue int    `json:"-"` // For sorting
-	SourceCodeLocationRow
-	Type               string                    `json:"type"`
-	Finding            string                    `json:"finding,omitempty"`
-	ScannerDescription string                    `json:"scannerDescription,omitempty"`
-	CodeFlow           [][]SourceCodeLocationRow `json:"codeFlow,omitempty"`
+	Location
+	Type               string       `json:"type"`
+	Finding            string       `json:"finding,omitempty"`
+	ScannerDescription string       `json:"scannerDescription,omitempty"`
+	CodeFlow           [][]Location `json:"codeFlow,omitempty"`
 }
 
-type SourceCodeLocationRow struct {
+type Location struct {
 	File        string `json:"file"`
 	StartLine   int    `json:"startLine,omitempty"`
 	StartColumn int    `json:"startColumn,omitempty"`
@@ -112,7 +112,7 @@ type Applicability struct {
 }
 
 type Evidence struct {
-	SourceCodeLocationRow
+	Location
 	Reason string `json:"reason,omitempty"`
 }
 

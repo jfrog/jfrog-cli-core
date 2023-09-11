@@ -910,7 +910,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	finalApplicableValue := NotApplicable
 	for _, applicabilityRun := range extendedResults.ApplicabilityScanResults {
 		for _, cve := range xrayCves {
-			relatedResults := GetResultsByRuleId(applicabilityRun, GetRuleIdFromCveId(cve.Id))
+			relatedResults := GetResultsByRuleId(applicabilityRun, CveToApplicabilityRuleId(cve.Id))
 			if len(relatedResults) == 0 {
 				finalApplicableValue = ApplicabilityUndetermined
 			}
@@ -934,10 +934,10 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 	}
 	for _, applicabilityRun := range applicabilityScanResults {
 		description := ""
-		if relatedRule, _ := applicabilityRun.GetRuleById(GetRuleIdFromCveId(cve.Id)); relatedRule != nil {
+		if relatedRule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id)); relatedRule != nil {
 			description = GetRuleFullDescription(relatedRule)
 		}
-		relatedResult, _ := applicabilityRun.GetResultByRuleId(GetRuleIdFromCveId(cve.Id))
+		relatedResult, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
 		if relatedResult == nil {
 			continue
 		}

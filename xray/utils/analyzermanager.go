@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -22,7 +23,7 @@ const (
 	EntitlementsMinVersion                    = "3.66.5"
 	ApplicabilityFeatureId                    = "contextual_analysis"
 	AnalyzerManagerZipName                    = "analyzerManager.zip"
-	defaultAnalyzerManagerVersion             = "1.2.4.1953469"
+	defaultAnalyzerManagerVersion             = "1.2.4.1995796"
 	minAnalyzerManagerVersionForSast          = "1.3"
 	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName                    = "analyzerManager"
@@ -93,7 +94,7 @@ type AnalyzerManager struct {
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
-		return err
+		return
 	}
 	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile)
 	defer func() {
@@ -104,8 +105,11 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serv
 		}
 	}()
 	cmd.Dir = workingDir
-	err = cmd.Run()
-	return errorutils.CheckError(err)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		err = errorutils.CheckErrorf("running %s in directory: %s failed: \n%s", strings.Join(cmd.Args, " "), workingDir, string(output))
+	}
+	return
 }
 
 func GetAnalyzerManagerDownloadPath() (string, error) {

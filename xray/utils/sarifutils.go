@@ -91,12 +91,15 @@ func getRunInformationUri(run *sarif.Run) string {
 // Calculate new information that exists at the run and not at the source
 func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly *sarif.Run) {
 	// Combine
-	combinedSource := sarif.NewRunWithInformationURI(sources[0].Tool.Driver.Name, getRunInformationUri(sources[0]))
+	combinedSource := sarif.NewRunWithInformationURI(sources[0].Tool.Driver.Name, getRunInformationUri(sources[0])).WithInvocations([]*sarif.Invocation{})
 	AggregateMultipleRunsIntoSingle(sources, combinedSource)
 	if combinedSource == nil {
 		return
 	}
-	combinedTarget := sarif.NewRunWithInformationURI(targets[0].Tool.Driver.Name, getRunInformationUri(targets[0]))
+	if len(targets) == 0 {
+		return combinedSource
+	}
+	combinedTarget := sarif.NewRunWithInformationURI(targets[0].Tool.Driver.Name, getRunInformationUri(targets[0])).WithInvocations([]*sarif.Invocation{})
 	AggregateMultipleRunsIntoSingle(targets, combinedTarget)
 	if combinedTarget == nil {
 		return combinedSource
@@ -342,9 +345,12 @@ func GetStartLocationInFile(location *sarif.Location) string {
 }
 
 func ExtractRelativePath(resultPath string, projectRoot string) string {
-	filePrefix := "file://"
-	relativePath := strings.ReplaceAll(strings.ReplaceAll(resultPath, projectRoot, ""), filePrefix, "")
-	return relativePath
+	// Remove OS-specific file prefix
+	resultPath = strings.TrimPrefix(resultPath, "file:///private")
+	resultPath = strings.TrimPrefix(resultPath, "file://")
+
+	// Get relative path
+	return strings.ReplaceAll(resultPath, projectRoot, "")
 }
 
 func GetResultSeverity(result *sarif.Result) string {
@@ -363,7 +369,7 @@ func ConvertToSarifLevel(severity string) string {
 	return string(noneLevel)
 }
 
-func isApplicableResult(result *sarif.Result) bool {
+func IsApplicableResult(result *sarif.Result) bool {
 	return !(result.Kind != nil && *result.Kind == "pass")
 }
 

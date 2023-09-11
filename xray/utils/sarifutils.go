@@ -59,40 +59,69 @@ func ReadScanRunsFromFile(fileName string) (sarifRuns []*sarif.Run, err error) {
 	return
 }
 
-func AggregateMultipleRunsIntoSingle(multipleRuns []*sarif.Run) (singleRun *sarif.Run) {
-	singleRun = multipleRuns[0]
-	if len(multipleRuns) == 1 {
+func AggregateMultipleRunsIntoSingle(runs []*sarif.Run, destination *sarif.Run) {
+	if len(runs) == 0 {
 		return
 	}
-	for _, currRun := range multipleRuns[1:] {
-		singleRun.Tool.Driver.WithRules(currRun.Tool.Driver.Rules)
-		singleRun.WithResults(currRun.Results)
-		singleRun.Invocations = append(singleRun.Invocations, currRun.Invocations...)
+	for _, run := range runs {
+		if run == nil || len(run.Results) == 0 {
+			continue
+		}
+		for _, rule := range GetRunRules(run) {
+			if destination.Tool.Driver != nil {
+				destination.Tool.Driver.AddRule(rule)
+			}
+		}
+		for _, result := range run.Results {
+			destination.AddResult(result)
+		}
+		for _, invocation := range run.Invocations {
+			destination.AddInvocations(invocation)
+		}
 	}
-	return
+}
+
+func getRunInformationUri(run *sarif.Run) string {
+	if run != nil && run.Tool.Driver != nil && run.Tool.Driver.InformationURI != nil {
+		return *run.Tool.Driver.InformationURI
+	}
+	return ""
 }
 
 // Calculate new information that exists at the run and not at the source
-func FilterExistingResultsFromSource(sources []*sarif.Run, targets []*sarif.Run) {
-	sourceRun := AggregateMultipleRunsIntoSingle(sources)
-	targetRun := AggregateMultipleRunsIntoSingle(targets)
-
-	var diffRules []*sarif.ReportingDescriptor
-	var diffResults []*sarif.Result
-
-	for _, sourceResult := range sourceRun.Results {
-		targetResults := GetResultsByRuleId(targetRun, *sourceResult.RuleID)
-		if len(targetResults) == 0 || // Exists on source only
-			len(sourceResult.Locations) > len(targetResults[0].Locations) || // Locations changed
-			len(sourceResult.CodeFlows) > len(targetResults[0].CodeFlows) { // CodeFlows changed
-			diffResults = append(diffResults, sourceResult)
-			if rule, _ := sourceRun.GetRuleById(*sourceResult.RuleID); rule != nil {
-				diffRules = append(diffRules, rule)
+func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly *sarif.Run) {
+	// Combine
+	combinedSource := sarif.NewRunWithInformationURI(sources[0].Tool.Driver.Name, getRunInformationUri(sources[0]))
+	AggregateMultipleRunsIntoSingle(sources, combinedSource)
+	if combinedSource == nil {
+		return
+	}
+	combinedTarget := sarif.NewRunWithInformationURI(targets[0].Tool.Driver.Name, getRunInformationUri(targets[0]))
+	AggregateMultipleRunsIntoSingle(targets, combinedTarget)
+	if combinedTarget == nil {
+		return combinedSource
+	}
+	// Get diff
+	runWithNewOnly = sarif.NewRun(combinedSource.Tool).WithInvocations(combinedSource.Invocations)
+	for _, sourceResult := range combinedSource.Results {
+		targetMatchingResults := GetResultsByRuleId(combinedTarget, *sourceResult.RuleID)
+		if len(targetMatchingResults) == 0 {
+			runWithNewOnly.AddResult(sourceResult)
+			if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
+				runWithNewOnly.Tool.Driver.AddRule(rule)
+			}
+			continue
+		}
+		for _, targetMatchingResult := range targetMatchingResults {
+			if len(sourceResult.Locations) > len(targetMatchingResult.Locations) ||
+				len(sourceResult.CodeFlows) > len(targetMatchingResult.CodeFlows) {
+				runWithNewOnly.AddResult(sourceResult)
+				if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
+					runWithNewOnly.Tool.Driver.AddRule(rule)
+				}
 			}
 		}
 	}
-	sourceRun.Results = diffResults
-	sourceRun.Tool.Driver.Rules = diffRules
 	return
 }
 

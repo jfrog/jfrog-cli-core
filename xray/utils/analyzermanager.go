@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -94,7 +95,7 @@ type AnalyzerManager struct {
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
-		return err
+		return
 	}
 	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
 	defer func() {
@@ -105,8 +106,11 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serv
 		}
 	}()
 	cmd.Dir = workingDir
-	err = cmd.Run()
-	return errorutils.CheckError(err)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		err = errorutils.CheckErrorf("running %q in directory: %q failed: %s - %s", strings.Join(cmd.Args, " "), workingDir, err.Error(), string(output))
+	}
+	return
 }
 
 func GetAnalyzerManagerDownloadPath() (string, error) {

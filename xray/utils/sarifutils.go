@@ -21,6 +21,8 @@ const (
 	noneLevel    SarifLevel = "none"
 
 	SeverityDefaultValue = "Medium"
+
+	applicabilityRuleIdPrefix = "applic_"
 )
 
 var (
@@ -141,7 +143,7 @@ func GetDiffFromResult(result *sarif.Result, source *sarif.Result) *sarif.Result
 		for _, targetCodeFlow := range GetLocationRelatedCodeFlowsFromResult(targetLocation, result) {
 			for _, sourceCodeFlow := range GetLocationRelatedCodeFlowsFromResult(targetLocation, source) {
 				if !IsSameCodeFlow(targetCodeFlow, sourceCodeFlow) {
-					// Code flow does not exists at source, add it and it's related location
+					// Code flow does not exist at source, add it and it's related location
 					newLocations.Add(targetLocation)
 					newCodeFlows = append(newCodeFlows, targetCodeFlow)
 				}
@@ -380,12 +382,12 @@ func GetRuleFullDescription(rule *sarif.ReportingDescriptor) string {
 	return ""
 }
 
-func GetRuleIdFromCveId(cveId string) string {
-	return "applic_" + cveId
+func CveToApplicabilityRuleId(cveId string) string {
+	return applicabilityRuleIdPrefix + cveId
 }
 
-func GetCveIdFromRuleId(sarifRuleId string) string {
-	return strings.TrimPrefix(sarifRuleId, "applic_")
+func ApplicabilityRuleIdToCve(sarifRuleId string) string {
+	return strings.TrimPrefix(sarifRuleId, applicabilityRuleIdPrefix)
 }
 
 func GetRunRules(run *sarif.Run) []*sarif.ReportingDescriptor {

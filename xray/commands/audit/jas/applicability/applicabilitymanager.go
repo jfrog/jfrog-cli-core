@@ -22,11 +22,11 @@ const (
 
 type ApplicabilityScanManager struct {
 	applicabilityScanResults []*sarif.Run
-	dependencyWhitelist      []string
+	cvesWhitelist            []string
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
 	// Include third party dependencies source code in the scan
-	thirdPartyContextualAnalysis bool
+	thirdPartyApplicablityScan bool
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -54,20 +54,20 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 }
 
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (manager *ApplicabilityScanManager) {
-	dependencyWhitelist := prepareDependenciesCvesWhitelist(xrayScanResults, directDependencies, thirdPartyContextualAnalysis)
+	dependencyWhitelist := prepareCvesWhitelist(xrayScanResults, directDependencies, thirdPartyContextualAnalysis)
 	return &ApplicabilityScanManager{
-		applicabilityScanResults:     []*sarif.Run{},
-		dependencyWhitelist:          dependencyWhitelist,
-		xrayResults:                  xrayScanResults,
-		scanner:                      scanner,
-		thirdPartyContextualAnalysis: thirdPartyContextualAnalysis,
+		applicabilityScanResults:   []*sarif.Run{},
+		cvesWhitelist:              dependencyWhitelist,
+		xrayResults:                xrayScanResults,
+		scanner:                    scanner,
+		thirdPartyApplicablityScan: thirdPartyContextualAnalysis,
 	}
 }
 
 // Prepares a list of CVES for the scanner to scan.
-// In most cases, we will send only direct dependencies to the whitelist
+// In most cases, we will send only direct dependencies to the cve whitelist
 // Except when ThirdPartyContextualAnalysis is set to true.
-func prepareDependenciesCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, thirdPartyContextualAnalysis bool) []string {
+func prepareCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, thirdPartyContextualAnalysis bool) []string {
 	whitelistCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {
@@ -89,7 +89,6 @@ func prepareDependenciesCvesWhitelist(xrayScanResults []services.ScanResponse, d
 			}
 		}
 	}
-
 	return whitelistCves.ToSlice()
 }
 
@@ -108,7 +107,7 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	} else {
 		log.Info("Running applicability scanning...")
 	}
-	if err = asm.createConfigFile(wd, asm.thirdPartyContextualAnalysis); err != nil {
+	if err = asm.createConfigFile(wd, asm.thirdPartyApplicablityScan); err != nil {
 		return
 	}
 	if err = asm.runAnalyzerManager(); err != nil {
@@ -123,7 +122,7 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 }
 
 func (asm *ApplicabilityScanManager) directDependenciesExist() bool {
-	return len(asm.dependencyWhitelist) > 0
+	return len(asm.cvesWhitelist) > 0
 }
 
 func (asm *ApplicabilityScanManager) shouldRunApplicabilityScan(technologies []coreutils.Technology) bool {
@@ -156,7 +155,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, thirdPa
 				Output:       asm.scanner.ResultsFileName,
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
-				CveWhitelist: asm.dependencyWhitelist,
+				CveWhitelist: asm.cvesWhitelist,
 				SkippedDirs:  skipDirs,
 			},
 		},

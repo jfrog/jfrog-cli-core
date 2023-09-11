@@ -12,9 +12,9 @@ type AuditParams struct {
 	fixableOnly         bool
 	minSeverityFilter   string
 	*xrayutils.AuditBasicParams
-	xrayVersion                 string
-	// Third party dependencies source code is included in the applicability scanner
-	thirdPartyContextualAnalysis bool
+	xrayVersion string
+	// Include third party dependencies source code in the applicability scan.
+	thirdPartyApplicabilityScan bool
 }
 
 func NewAuditParams() *AuditParams {
@@ -78,7 +78,7 @@ func (params *AuditParams) SetMinSeverityFilter(minSeverityFilter string) *Audit
 	return params
 }
 
-func (params *AuditParams) SetThirdPartyContextualAnalysis(include bool) *AuditParams {
-	params.thirdPartyContextualAnalysis = include
+func (params *AuditParams) SetThirdPartyApplicabilityScan(includeThirdPartyDeps bool) *AuditParams {
+	params.thirdPartyApplicabilityScan = includeThirdPartyDeps
 	return params
 }

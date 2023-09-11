@@ -23,7 +23,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
-		assert.Len(t, applicabilityManager.dependencyWhitelist, 5)
+		assert.Len(t, applicabilityManager.cvesWhitelist, 5)
 	}
 }
 
@@ -39,7 +39,7 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 		assert.Len(t, applicabilityManager.scanner.WorkingDirs, 1)
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
-		assert.Empty(t, applicabilityManager.dependencyWhitelist)
+		assert.Empty(t, applicabilityManager.cvesWhitelist)
 	}
 }
 
@@ -75,7 +75,7 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
 		// Non-direct dependencies should not be added
-		assert.Empty(t, applicabilityManager.dependencyWhitelist)
+		assert.Empty(t, applicabilityManager.cvesWhitelist)
 	}
 }
 
@@ -90,7 +90,7 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
-		assert.Len(t, applicabilityManager.dependencyWhitelist, 5)
+		assert.Len(t, applicabilityManager.cvesWhitelist, 5)
 	}
 }
 
@@ -116,7 +116,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
-		assert.Len(t, applicabilityManager.dependencyWhitelist, 3)
+		assert.Len(t, applicabilityManager.cvesWhitelist, 3)
 	}
 }
 
@@ -142,7 +142,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
-		assert.Len(t, applicabilityManager.dependencyWhitelist, 2)
+		assert.Len(t, applicabilityManager.cvesWhitelist, 2)
 	}
 }
 
@@ -196,7 +196,7 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		cves := prepareDependenciesCvesWhitelist(xrayResponseForDirectViolationsTest, test.directDependencies,false)
+		cves := prepareCvesWhitelist(xrayResponseForDirectViolationsTest, test.directDependencies, false)
 		assert.Len(t, cves, test.cvesCount)
 	}
 }
@@ -237,7 +237,7 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		assert.Len(t, prepareDependenciesCvesWhitelist(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies,false), test.cvesCount)
+		assert.Len(t, prepareCvesWhitelist(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies, false), test.cvesCount)
 	}
 }
 

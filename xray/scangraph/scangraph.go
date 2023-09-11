@@ -25,8 +25,10 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 		params.xrayGraphScanParams.ScanType = ""
 	}
 
-	if params.xrayGraphScanParams.XscVersion, err = xrayManager.XscEnabled(); err != nil {
-		return nil, err
+	if params.xrayGraphScanParams.XscGitInfoContext != nil {
+		if params.xrayGraphScanParams.XscVersion, err = xrayManager.XscEnabled(); err != nil {
+			return nil, err
+		}
 	}
 
 	scanId, err := xrayManager.ScanGraph(*params.xrayGraphScanParams)

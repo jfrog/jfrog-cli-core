@@ -22,9 +22,10 @@ const (
 
 type ApplicabilityScanManager struct {
 	applicabilityScanResults []*sarif.Run
-	cvesWhitelist            []string
-	xrayResults              []services.ScanResponse
-	scanner                  *jas.JasScanner
+	// List of Cves to determinant applicability status
+	cvesWhitelist []string
+	xrayResults   []services.ScanResponse
+	scanner       *jas.JasScanner
 	// Include third party dependencies source code in the scan
 	thirdPartyApplicablityScan bool
 }
@@ -64,9 +65,9 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 	}
 }
 
-// Prepares a list of CVES for the scanner to scan.
-// In most cases, we will send only direct dependencies to the cve whitelist
-// Except when ThirdPartyContextualAnalysis is set to true.
+// Prepares a list of Cves for the applicability scanner.
+// In most cases, we will send only direct components to the cve whitelist.
+// Except when ThirdPartyContextualAnalysis is set to true, we want every component.
 func prepareCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, thirdPartyContextualAnalysis bool) []string {
 	whitelistCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {

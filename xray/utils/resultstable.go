@@ -973,8 +973,8 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 	return
 }
 
-// Relevant only when "dependency-code-contextual-analysis" flag is on,
-// which will run the scanner on the environment folders as well (node_modules etc...)
+// Relevant only when "third-party-contextual-analysis" flag is on,
+// which mean we scan the environment folders as well (node_modules for example...)
 // When a certain package is reported applicable, and the evidence found
 // is inside the source code of the same package, we should disqualify it.
 func shouldDisqualifyEvidence(components map[string]services.Component, infectedFilePath string) bool {

@@ -310,7 +310,7 @@ func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow 
 						Severity:         currSeverity.printableTitle(isTable),
 						Finding:          GetResultMsgText(secret),
 						SeverityNumValue: currSeverity.numValue,
-						SourceCodeLocationRow: formats.SourceCodeLocationRow{
+						Location: formats.Location{
 							File:        GetLocationFileName(location),
 							StartLine:   GetLocationStartLine(location),
 							StartColumn: GetLocationStartColumn(location),
@@ -363,7 +363,7 @@ func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 						Finding:            GetResultMsgText(iac),
 						ScannerDescription: scannerDescription,
 						SeverityNumValue:   currSeverity.numValue,
-						SourceCodeLocationRow: formats.SourceCodeLocationRow{
+						Location: formats.Location{
 							File:        GetLocationFileName(location),
 							StartLine:   GetLocationStartLine(location),
 							StartColumn: GetLocationStartColumn(location),
@@ -412,11 +412,11 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 			for _, location := range sast.Locations {
 				sastRows = append(sastRows,
 					formats.SourceCodeRow{
-						Severity:         currSeverity.printableTitle(isTable),
+						Severity:           currSeverity.printableTitle(isTable),
 						Finding:            GetResultMsgText(sast),
 						ScannerDescription: scannerDescription,
-						SeverityNumValue: currSeverity.numValue,
-						SourceCodeLocationRow: formats.SourceCodeLocationRow{
+						SeverityNumValue:   currSeverity.numValue,
+						Location: formats.Location{
 							File:        GetLocationFileName(location),
 							StartLine:   GetLocationStartLine(location),
 							StartColumn: GetLocationStartColumn(location),
@@ -439,22 +439,22 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	return sastRows
 }
 
-func toSourceCodeCodeFlowRow(flows []*sarif.CodeFlow, isTable bool) (flowRows [][]formats.SourceCodeLocationRow) {
+func toSourceCodeCodeFlowRow(flows []*sarif.CodeFlow, isTable bool) (flowRows [][]formats.Location) {
 	if isTable {
 		// Not displaying in table
 		return
 	}
 	for _, codeFlow := range flows {
 		for _, stackTrace := range codeFlow.ThreadFlows {
-			rowFlow := []formats.SourceCodeLocationRow{}
+			rowFlow := []formats.Location{}
 			for _, stackTraceEntry := range stackTrace.Locations {
-				rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
+				rowFlow = append(rowFlow, formats.Location{
 					File:        GetLocationFileName(stackTraceEntry.Location),
-							StartLine:   GetLocationStartLine(stackTraceEntry.Location),
-							StartColumn: GetLocationStartColumn(stackTraceEntry.Location),
-							EndLine:     GetLocationEndLine(stackTraceEntry.Location),
-							EndColumn:   GetLocationEndColumn(stackTraceEntry.Location),
-							Snippet:     GetLocationSnippet(stackTraceEntry.Location),
+					StartLine:   GetLocationStartLine(stackTraceEntry.Location),
+					StartColumn: GetLocationStartColumn(stackTraceEntry.Location),
+					EndLine:     GetLocationEndLine(stackTraceEntry.Location),
+					EndColumn:   GetLocationEndColumn(stackTraceEntry.Location),
+					Snippet:     GetLocationSnippet(stackTraceEntry.Location),
 				})
 			}
 			flowRows = append(flowRows, rowFlow)
@@ -978,7 +978,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		// Add new evidences from locations
 		for _, location := range foundResult.Locations {
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
-				SourceCodeLocationRow: formats.SourceCodeLocationRow{
+				Location: formats.Location{
 					File:        GetLocationFileName(location),
 					StartLine:   GetLocationStartLine(location),
 					StartColumn: GetLocationStartColumn(location),

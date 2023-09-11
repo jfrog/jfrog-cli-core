@@ -34,7 +34,8 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 		return nil, err
 	}
 
-	scanResult, err := xrayManager.GetScanGraphResults(scanId, params.XrayGraphScanParams().IncludeVulnerabilities, params.XrayGraphScanParams().IncludeLicenses)
+	xscEnabled := params.xrayGraphScanParams.XscVersion != ""
+	scanResult, err := xrayManager.GetScanGraphResults(scanId, params.XrayGraphScanParams().IncludeVulnerabilities, params.XrayGraphScanParams().IncludeLicenses, xscEnabled)
 	if err != nil {
 		return nil, err
 	}

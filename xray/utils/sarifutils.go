@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -93,6 +94,9 @@ func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly 
 	AggregateMultipleRunsIntoSingle(sources, combinedSource)
 	if combinedSource == nil {
 		return
+	}
+	if len(targets) == 0 {
+		return combinedSource
 	}
 	combinedTarget := sarif.NewRunWithInformationURI(targets[0].Tool.Driver.Name, getRunInformationUri(targets[0]))
 	AggregateMultipleRunsIntoSingle(targets, combinedTarget)
@@ -340,9 +344,14 @@ func GetStartLocationInFile(location *sarif.Location) string {
 }
 
 func ExtractRelativePath(resultPath string, projectRoot string) string {
+	osFilePrefix := "file:///private"
 	filePrefix := "file://"
-	relativePath := strings.ReplaceAll(strings.ReplaceAll(resultPath, projectRoot, ""), filePrefix, "")
-	return relativePath
+	resultPath = strings.ReplaceAll(resultPath,osFilePrefix,"")
+	resultPath = strings.TrimSuffix(strings.ReplaceAll(resultPath,filePrefix,""), string(os.PathSeparator))
+	if resultPath == projectRoot {
+		return ""
+	}
+	return strings.TrimPrefix(resultPath, projectRoot)
 }
 
 func GetResultSeverity(result *sarif.Result) string {
@@ -361,7 +370,7 @@ func ConvertToSarifLevel(severity string) string {
 	return string(noneLevel)
 }
 
-func isApplicableResult(result *sarif.Result) bool {
+func IsApplicableResult(result *sarif.Result) bool {
 	return !(result.Kind != nil && *result.Kind == "pass")
 }
 

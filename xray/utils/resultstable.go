@@ -916,7 +916,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 			}
 			for _, relatedResult := range relatedResults {
 				cveExistsInResult = true
-				if isApplicableResult(relatedResult) {
+				if IsApplicableResult(relatedResult) {
 					return Applicable
 				}
 			}
@@ -943,7 +943,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		}
 		// Set applicable details
 		applicability = &formats.Applicability{
-			Status:             isApplicableResult(relatedResult),
+			Status:             IsApplicableResult(relatedResult),
 			ScannerDescription: description,
 		}
 		// Add new evidences from locations

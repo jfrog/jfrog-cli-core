@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -344,15 +345,13 @@ func GetStartLocationInFile(location *sarif.Location) string {
 }
 
 func ExtractRelativePath(resultPath string, projectRoot string) string {
-	osFilePrefix := "file:///private/"
-	filePrefix := "file://"
-	resultPath = strings.ReplaceAll(resultPath, osFilePrefix, "")
-	resultPath = strings.TrimSuffix(strings.ReplaceAll(resultPath, filePrefix, ""), string(os.PathSeparator))
-	if resultPath == projectRoot {
-		return ""
-	}
-	s := strings.ReplaceAll(resultPath, projectRoot, "")
-	return s
+	// Remove OS-specific file prefix
+	resultPath = strings.TrimPrefix(resultPath, "file:///private/")
+	resultPath = strings.TrimPrefix(resultPath, "file://")
+
+    // Get relative path
+	relativePath, _ := filepath.Rel(projectRoot, resultPath)
+	return relativePath
 }
 
 func GetResultSeverity(result *sarif.Result) string {

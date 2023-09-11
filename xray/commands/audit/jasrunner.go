@@ -54,6 +54,6 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if progress != nil {
 		progress.SetHeadlineMsg("Running SAST scanning")
 	}
-	scanResults.SastResults, err = sast.RunSastScan(scanner)
+	scanResults.SastScanResults, err = sast.RunSastScan(scanner)
 	return
 }

@@ -89,8 +89,10 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		case "security":
 			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves)
-			for _, cve := range cves {
-				cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+			if extendedResults.EntitledForJas {
+				for i := range cves {
+					cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults)
+				}
 			}
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
@@ -209,8 +211,10 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		}
 		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves)
-		for _, cve := range cves {
-			cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+		if extendedResults.EntitledForJas {
+			for i := range cves {
+				cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults)
+			}
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -910,7 +914,7 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	finalApplicableValue := NotApplicable
 	for _, applicabilityRun := range extendedResults.ApplicabilityScanResults {
 		for _, cve := range xrayCves {
-			relatedResults := GetResultsByRuleId(applicabilityRun, GetRuleIdFromCveId(cve.Id))
+			relatedResults := GetResultsByRuleId(applicabilityRun, CveToApplicabilityRuleId(cve.Id))
 			if len(relatedResults) == 0 {
 				finalApplicableValue = ApplicabilityUndetermined
 			}
@@ -928,37 +932,39 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndetermined
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run) (applicability *formats.Applicability) {
-	if len(applicabilityScanResults) == 0 {
-		return nil
-	}
+func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run) *formats.Applicability {
+	applicability := &formats.Applicability{Status: string(ApplicabilityUndetermined)}
 	for _, applicabilityRun := range applicabilityScanResults {
-		description := ""
-		if relatedRule, _ := applicabilityRun.GetRuleById(GetRuleIdFromCveId(cve.Id)); relatedRule != nil {
-			description = GetRuleFullDescription(relatedRule)
-		}
-		relatedResult, _ := applicabilityRun.GetResultByRuleId(GetRuleIdFromCveId(cve.Id))
-		if relatedResult == nil {
+		foundResult, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
+		if foundResult == nil {
 			continue
 		}
-		// Set applicable details
-		applicability = &formats.Applicability{
-			Status:             isApplicableResult(relatedResult),
-			ScannerDescription: description,
+		applicability = &formats.Applicability{}
+		if isApplicableResult(foundResult) {
+			applicability.Status = string(Applicable)
+		} else {
+			applicability.Status = string(NotApplicable)
 		}
+
+		foundRule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
+		if foundRule != nil {
+			applicability.ScannerDescription = GetRuleFullDescription(foundRule)
+		}
+
 		// Add new evidences from locations
-		for _, location := range relatedResult.Locations {
+		for _, location := range foundResult.Locations {
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				SourceCodeLocationRow: formats.SourceCodeLocationRow{
 					File:       GetLocationFileName(location),
 					LineColumn: GetStartLocationInFile(location),
 					Snippet:    GetLocationSnippet(location),
 				},
-				Reason: GetResultMsgText(relatedResult),
+				Reason: GetResultMsgText(foundResult),
 			})
 		}
+		break
 	}
-	return
+	return applicability
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {

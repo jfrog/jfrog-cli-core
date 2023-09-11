@@ -101,7 +101,7 @@ type CveRow struct {
 }
 
 type Applicability struct {
-	Status             bool       `json:"status"`
+	Status             string     `json:"status"`
 	ScannerDescription string     `json:"scannerDescription,omitempty"`
 	Evidence           []Evidence `json:"evidence,omitempty"`
 }

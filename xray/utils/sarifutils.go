@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -349,7 +348,7 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 	resultPath = strings.TrimPrefix(resultPath, "file:///private/")
 	resultPath = strings.TrimPrefix(resultPath, "file://")
 
-    // Get relative path
+	// Get relative path
 	relativePath, _ := filepath.Rel(projectRoot, resultPath)
 	return relativePath
 }

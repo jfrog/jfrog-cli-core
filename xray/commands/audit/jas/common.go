@@ -41,7 +41,7 @@ type JasScanner struct {
 	ScannerDirCleanupFunc func() error
 }
 
-func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails) (scanner *JasScanner, err error) {
+func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails, multiScanId string) (scanner *JasScanner, err error) {
 	scanner = &JasScanner{}
 	if scanner.AnalyzerManager.AnalyzerManagerFullPath, err = utils.GetAnalyzerManagerExecutable(); err != nil {
 		return
@@ -57,6 +57,7 @@ func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails) (s
 	scanner.ConfigFileName = filepath.Join(tempDir, "config.yaml")
 	scanner.ResultsFileName = filepath.Join(tempDir, "results.sarif")
 	scanner.WorkingDirs, err = coreutils.GetFullPathsWorkingDirs(workingDirs)
+	scanner.AnalyzerManager.MultiScanId = multiScanId
 	return
 }
 
@@ -181,7 +182,7 @@ var FakeBasicXrayResults = []services.ScanResponse{
 
 func InitJasTest(t *testing.T, workingDirs ...string) (*JasScanner, func()) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewJasScanner(workingDirs, &FakeServerDetails)
+	scanner, err := NewJasScanner(workingDirs, &FakeServerDetails, "")
 	assert.NoError(t, err)
 	return scanner, func() {
 		assert.NoError(t, scanner.ScannerDirCleanupFunc())

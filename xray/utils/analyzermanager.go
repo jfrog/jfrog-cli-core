@@ -122,7 +122,7 @@ func GetAnalyzerManagerDownloadPath() (string, error) {
 }
 
 func GetAnalyzerManagerVersion() string {
-	if analyzerManagerVersion, exists := os.LookupEnv(jfrogCliAnalyzerManagerVersionEnvVariable); exists {
+	if analyzerManagerVersion := os.Getenv(jfrogCliAnalyzerManagerVersionEnvVariable); analyzerManagerVersion != "" {
 		return analyzerManagerVersion
 	}
 	return defaultAnalyzerManagerVersion

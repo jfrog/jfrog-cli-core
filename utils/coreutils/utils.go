@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -598,4 +599,21 @@ func GetMaskedCommandString(cmd *exec.Cmd) string {
 		cmdString = strings.ReplaceAll(cmdString, matchedResults[1], "***")
 	}
 	return cmdString
+}
+
+func SetPermissionsRecursively(dirPath string, mode os.FileMode) error {
+	err := filepath.WalkDir(dirPath, func(path string, info fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		e = os.Chmod(path, mode)
+		if e != nil {
+			return e
+		}
+		return nil
+	})
+	if err != nil {
+		return errorutils.CheckErrorf("failed while setting permission to '%s' files: %s", dirPath, err.Error())
+	}
+	return nil
 }

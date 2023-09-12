@@ -5,6 +5,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"golang.org/x/exp/slices"
@@ -15,7 +16,7 @@ const (
 	ignoreScriptsFlag        = "--ignore-scripts"
 )
 
-func BuildDependencyTree(npmArgs []string) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func BuildDependencyTree(params *xrayutils.AuditBasicParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -28,10 +29,18 @@ func BuildDependencyTree(npmArgs []string) (dependencyTrees []*xrayUtils.GraphNo
 	if err != nil {
 		return
 	}
-	npmArgs = addIgnoreScriptsFlag(npmArgs)
-
+	treeDepsParam := biutils.NpmTreeDepListParam{
+		Args: addIgnoreScriptsFlag([]string{}),
+	}
+	if params != nil {
+		treeDepsParam = biutils.NpmTreeDepListParam{
+			Args:                 addIgnoreScriptsFlag(params.Args()),
+			IgnoreNodeModules:    params.NpmIgnoreNodeModules(),
+			OverWritePackageLock: params.NpmOverwritePackageLock(),
+		}
+	}
 	// Calculate npm dependencies
-	dependenciesMap, err := biutils.CalculateDependenciesMap(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, log.Logger)
+	dependenciesMap, err := biutils.CalculateDependenciesMap(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), treeDepsParam, log.Logger)
 	if err != nil {
 		log.Info("Used npm version:", npmVersion.GetVersion())
 		return

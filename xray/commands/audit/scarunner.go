@@ -140,7 +140,7 @@ func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Te
 	case coreutils.Maven, coreutils.Gradle:
 		fullDependencyTrees, uniqueDeps, err = java.BuildDependencyTree(params, tech)
 	case coreutils.Npm:
-		fullDependencyTrees, uniqueDeps, err = npm.BuildDependencyTree(params.Args())
+		fullDependencyTrees, uniqueDeps, err = npm.BuildDependencyTree(params)
 	case coreutils.Yarn:
 		fullDependencyTrees, uniqueDeps, err = yarn.BuildDependencyTree()
 	case coreutils.Go:

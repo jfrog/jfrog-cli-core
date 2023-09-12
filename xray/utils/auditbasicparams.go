@@ -18,6 +18,8 @@ type AuditBasicParams struct {
 	args                    []string
 	depsRepo                string
 	ignoreConfigFile        bool
+	npmIgnoreNodeModules    bool
+	npmOverWritePackageLock bool
 }
 
 func (abp *AuditBasicParams) DirectDependencies() []string {
@@ -58,6 +60,14 @@ func (abp *AuditBasicParams) SetExcludeTestDependencies(excludeTestDependencies 
 
 func (abp *AuditBasicParams) UseWrapper() bool {
 	return abp.useWrapper
+}
+
+func (abp *AuditBasicParams) NpmIgnoreNodeModules() bool {
+	return abp.npmIgnoreNodeModules
+}
+
+func (abp *AuditBasicParams) NpmOverwritePackageLock() bool {
+	return abp.npmOverWritePackageLock
 }
 
 func (abp *AuditBasicParams) SetUseWrapper(useWrapper bool) *AuditBasicParams {
@@ -129,5 +139,15 @@ func (abp *AuditBasicParams) IgnoreConfigFile() bool {
 
 func (abp *AuditBasicParams) SetIgnoreConfigFile(ignoreConfigFile bool) *AuditBasicParams {
 	abp.ignoreConfigFile = ignoreConfigFile
+	return abp
+}
+
+func (abp *AuditBasicParams) SetNpmIgnoreNodeModules(ignoreNpmNodeModules bool) *AuditBasicParams {
+	abp.npmIgnoreNodeModules = ignoreNpmNodeModules
+	return abp
+}
+
+func (abp *AuditBasicParams) SetNpmOverwritePackageLock(overwritePackageLock bool) *AuditBasicParams {
+	abp.npmOverWritePackageLock = overwritePackageLock
 	return abp
 }

@@ -231,9 +231,10 @@ func GetRelativeLocationFileName(location *sarif.Location, invocations []*sarif.
 	if len(invocations) > 0 {
 		wd = GetInvocationWorkingDirectory(invocations[0])
 	}
-	filePath := location.PhysicalLocation.ArtifactLocation.URI
-	if filePath != nil {
-		return ExtractRelativePath(*filePath, wd)
+	GetLocationFileName(location)
+	filePath := GetLocationFileName(location)
+	if filePath != "" {
+		return ExtractRelativePath(filePath, wd)
 	}
 	return ""
 }

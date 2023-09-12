@@ -1010,10 +1010,11 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 	return string(applicableValue)
 }
 
+// Relevant only when "third-party-contextual-analysis" flag is on,
 // which mean we scan the environment folders as well (node_modules for example...)
 // When a certain package is reported applicable, and the evidence found
 // is inside the source code of the same package, we should disqualify it.
-func shouldDisqualifyEvidence(components map[string]services.Component, infectedFilePath string) bool {
+func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) bool {
 	for key := range components {
 		// Only npm supported, break the loop if not handling npm.
 		trimNpm := strings.TrimPrefix(key, "npm://")
@@ -1021,7 +1022,7 @@ func shouldDisqualifyEvidence(components map[string]services.Component, infected
 			return false
 		}
 		dependencyName := strings.Split(trimNpm, ":")[0]
-		if strings.Contains(infectedFilePath, "node_modules/"+dependencyName) {
+		if strings.Contains(evidenceFilePath, "node_modules/"+dependencyName) {
 			return true
 		}
 	}

@@ -78,7 +78,6 @@ type SourceCodeRow struct {
 	Severity         string `json:"severity"`
 	SeverityNumValue int    `json:"-"` // For sorting
 	Location
-	Type               string       `json:"type"`
 	Finding            string       `json:"finding,omitempty"`
 	ScannerDescription string       `json:"scannerDescription,omitempty"`
 	CodeFlow           [][]Location `json:"codeFlow,omitempty"`

@@ -318,7 +318,6 @@ func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow 
 							EndColumn:   GetLocationEndColumn(location),
 							Snippet:     GetLocationSnippet(location),
 						},
-						Type: *secretResult.RuleID,
 					},
 				)
 			}
@@ -371,7 +370,6 @@ func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 							EndColumn:   GetLocationEndColumn(location),
 							Snippet:     GetLocationSnippet(location),
 						},
-						Type: *iacResult.RuleID,
 					},
 				)
 			}
@@ -425,7 +423,6 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 							EndColumn:   GetLocationEndColumn(location),
 							Snippet:     GetLocationSnippet(location),
 						},
-						Type:     *sastResult.RuleID,
 						CodeFlow: codeFlowToLocationFlow(codeFlows, sastRun.Invocations, isTable),
 					},
 				)

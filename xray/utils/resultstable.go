@@ -389,7 +389,7 @@ func PrintIacTable(iacs []*sarif.Run, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
 		log.Output()
-		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
+		return coreutils.PrintTable(formats.ConvertToIacOrSastTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
 	}
 	return nil
@@ -468,7 +468,7 @@ func PrintSastTable(sast []*sarif.Run, entitledForSastScan bool) error {
 	if entitledForSastScan {
 		sastRows := prepareSast(sast, true)
 		log.Output()
-		return coreutils.PrintTable(formats.ConvertToSastTableRow(sastRows), "Static Application Security Testing (SAST)",
+		return coreutils.PrintTable(formats.ConvertToIacOrSastTableRow(sastRows), "Static Application Security Testing (SAST)",
 			"✨ No Static Application Security Testing vulnerabilities were found ✨", false)
 	}
 	return nil

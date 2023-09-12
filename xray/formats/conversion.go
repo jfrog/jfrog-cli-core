@@ -147,31 +147,19 @@ func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
-			text:       rows[i].Snippet,
+			secret:     rows[i].Snippet,
 		})
 	}
 	return
 }
 
-func ConvertToIacTableRow(rows []SourceCodeRow) (tableRows []iacTableRow) {
+func ConvertToIacOrSastTableRow(rows []SourceCodeRow) (tableRows []iacOrSastTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, iacTableRow{
+		tableRows = append(tableRows, iacOrSastTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
 			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
-			text:       rows[i].Finding,
-		})
-	}
-	return
-}
-
-func ConvertToSastTableRow(rows []SourceCodeRow) (tableRows []sastTableRow) {
-	for i := range rows {
-		tableRows = append(tableRows, sastTableRow{
-			severity:   rows[i].Severity,
-			file:       rows[i].File,
-			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
-			text:       rows[i].Finding,
+			finding:    rows[i].Finding,
 		})
 	}
 	return

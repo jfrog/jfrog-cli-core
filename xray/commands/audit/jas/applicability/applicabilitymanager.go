@@ -27,7 +27,7 @@ type ApplicabilityScanManager struct {
 	xrayResults   []services.ScanResponse
 	scanner       *jas.JasScanner
 	// Include third party dependencies source code in the scan
-	thirdPartyApplicablityScan bool
+	thirdPartyApplicabilityScan bool
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -57,17 +57,17 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (manager *ApplicabilityScanManager) {
 	dependencyWhitelist := prepareCvesWhitelist(xrayScanResults, directDependencies, thirdPartyContextualAnalysis)
 	return &ApplicabilityScanManager{
-		applicabilityScanResults:   []*sarif.Run{},
-		cvesWhitelist:              dependencyWhitelist,
-		xrayResults:                xrayScanResults,
-		scanner:                    scanner,
-		thirdPartyApplicablityScan: thirdPartyContextualAnalysis,
+		applicabilityScanResults:    []*sarif.Run{},
+		cvesWhitelist:               dependencyWhitelist,
+		xrayResults:                 xrayScanResults,
+		scanner:                     scanner,
+		thirdPartyApplicabilityScan: thirdPartyContextualAnalysis,
 	}
 }
 
 // Prepares a list of Cves for the applicability scanner.
 // In most cases, we will send only direct components to the cve whitelist.
-// Except when ThirdPartyContextualAnalysis is set to true, we want every component.
+// Except when ThirdPartyContextualAnalysis is set to true, then we want every component.
 func prepareCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, thirdPartyContextualAnalysis bool) []string {
 	whitelistCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
@@ -108,7 +108,7 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	} else {
 		log.Info("Running applicability scanning...")
 	}
-	if err = asm.createConfigFile(wd, asm.thirdPartyApplicablityScan); err != nil {
+	if err = asm.createConfigFile(wd); err != nil {
 		return
 	}
 	if err = asm.runAnalyzerManager(); err != nil {
@@ -122,12 +122,12 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	return
 }
 
-func (asm *ApplicabilityScanManager) directDependenciesExist() bool {
+func (asm *ApplicabilityScanManager) cvesListNotEmpty() bool {
 	return len(asm.cvesWhitelist) > 0
 }
 
 func (asm *ApplicabilityScanManager) shouldRunApplicabilityScan(technologies []coreutils.Technology) bool {
-	return asm.directDependenciesExist() && coreutils.ContainsApplicabilityScannableTech(technologies)
+	return asm.cvesListNotEmpty() && coreutils.ContainsApplicabilityScannableTech(technologies)
 }
 
 type applicabilityScanConfig struct {
@@ -143,11 +143,12 @@ type scanConfiguration struct {
 	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
-func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, thirdPartyContextualAnalysis bool) error {
+func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 	skipDirs := jas.SkippedDirs
-	// If set to true, include third party dependencies code and ignore only test folders.
-	if thirdPartyContextualAnalysis {
-		skipDirs = []string{"**/*test*/**"}
+	// If set to true, remove third party folders from the scan skip list.
+	if asm.thirdPartyApplicabilityScan {
+		// Only npm supported
+		skipDirs = removeElementFromArray(skipDirs, jas.NpmSkipPattern)
 	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
@@ -168,4 +169,14 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string, thirdPa
 // advance security feature
 func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
+}
+
+func removeElementFromArray(arr []string, elementToRemove string) []string {
+	var result []string
+	for _, element := range arr {
+		if element != elementToRemove {
+			result = append(result, element)
+		}
+	}
+	return result
 }

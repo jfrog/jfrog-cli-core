@@ -26,6 +26,10 @@ const (
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
+
+	npmPackageTypeIdentifier = "npm://"
+
+	nodeModules = "node_modules"
 )
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
@@ -974,7 +978,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		// Add new evidences from locations
 		for _, location := range foundResult.Locations {
 			fileName := GetLocationFileName(location)
-			if shouldDisqualifyEvidence(components, fileName) {
+			if shouldDisqualifyNpmEvidence(components, fileName) {
 				continue
 			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
@@ -1014,17 +1018,37 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 // which mean we scan the environment folders as well (node_modules for example...)
 // When a certain package is reported applicable, and the evidence found
 // is inside the source code of the same package, we should disqualify it.
-func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) bool {
+//
+// For example,
+// Cve applicability was found inside the 'mquery' package.
+// filePath = myProject/node_modules/mquery/badCode.js , disqualify = True.
+// Disqualify the above evidence, as the reported applicability is used inside its own package.
+//
+// filePath = myProject/node_modules/mpath/badCode.js  , disqualify = False.
+// Found use of a badCode inside the node_modules from a different package, report applicable.
+func shouldDisqualifyNpmEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
 	for key := range components {
-		// Only npm supported, break the loop if not handling npm.
-		trimNpm := strings.TrimPrefix(key, "npm://")
-		if trimNpm == key {
-			return false
+		dependencyName := extractNpmDependencyNameFromComponent(key)
+		if dependencyName == "" {
+			return
 		}
-		dependencyName := strings.Split(trimNpm, ":")[0]
-		if strings.Contains(evidenceFilePath, "node_modules/"+dependencyName) {
-			return true
+		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) {
+			disqualify = true
+			return
 		}
 	}
-	return false
+	return
+}
+
+func extractNpmDependencyNameFromComponent(key string) (dependencyName string) {
+	if !strings.HasPrefix(key, npmPackageTypeIdentifier) {
+		return
+	}
+	packageAndVersion := strings.TrimPrefix(key, npmPackageTypeIdentifier)
+	split := strings.Split(packageAndVersion, ":")
+	if len(split) < 2 {
+		return
+	}
+	dependencyName = split[0]
+	return
 }

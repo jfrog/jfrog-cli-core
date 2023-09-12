@@ -22,9 +22,10 @@ import (
 )
 
 const (
-	YarnrcFileName           = ".yarnrc.yml"
-	YarnrcBackupFileName     = "jfrog.yarnrc.backup"
-	NpmScopesConfigName      = "npmScopes"
+	YarnrcFileName       = ".yarnrc.yml"
+	YarnrcBackupFileName = "jfrog.yarnrc.backup"
+	NpmScopesConfigName  = "npmScopes"
+	//#nosec G101
 	yarnNpmRegistryServerEnv = "YARN_NPM_REGISTRY_SERVER"
 	yarnNpmAuthIndent        = "YARN_NPM_AUTH_IDENT"
 	yarnNpmAlwaysAuth        = "YARN_NPM_ALWAYS_AUTH"
@@ -94,7 +95,7 @@ func (yc *YarnCommand) Run() error {
 		}()
 	}
 
-	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), filepath.Join(yc.workingDirectory, YarnrcBackupFileName))
+	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), YarnrcBackupFileName)
 	if err != nil {
 		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
 	}

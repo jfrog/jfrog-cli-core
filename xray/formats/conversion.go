@@ -1,6 +1,7 @@
 package formats
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -140,25 +141,25 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 	return
 }
 
-func ConvertToSecretsTableRow(rows []IacSecretsRow) (tableRows []secretsTableRow) {
+func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, secretsTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			secret:     rows[i].Snippet,
 		})
 	}
 	return
 }
 
-func ConvertToIacTableRow(rows []IacSecretsRow) (tableRows []iacTableRow) {
+func ConvertToIacOrSastTableRow(rows []SourceCodeRow) (tableRows []iacOrSastTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, iacTableRow{
+		tableRows = append(tableRows, iacOrSastTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			finding:    rows[i].Finding,
 		})
 	}
 	return

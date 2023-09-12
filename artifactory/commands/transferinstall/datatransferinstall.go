@@ -2,7 +2,7 @@ package transferinstall
 
 import (
 	"fmt"
-	downloadutils "github.com/jfrog/build-info-go/utils"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -216,8 +216,9 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 
 	// Flag override
 	if idtp.localJFrogHomePath != "" {
-		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s'.", idtp.localJFrogHomePath))
-		if exists, target, err = idtp.transferManger.findDestination(idtp.localJFrogHomePath); err != nil || exists {
+		jfrogHomeDir := strings.TrimSpace(idtp.localJFrogHomePath)
+		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s'.", jfrogHomeDir))
+		if exists, target, err = idtp.transferManger.findDestination(jfrogHomeDir); err != nil || exists {
 			return
 		}
 		if !exists {
@@ -227,8 +228,9 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 	}
 	// Environment variable override
 	if envVal, exists = os.LookupEnv(jfrogHomeEnvVar); exists {
-		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s' retrieved from the '%s' environment variable.", envVal, jfrogHomeEnvVar))
-		if exists, target, err = idtp.transferManger.findDestination(envVal); err != nil || exists {
+		jfrogHomeDir := strings.TrimSpace(envVal)
+		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s' retrieved from the '%s' environment variable.", jfrogHomeDir, jfrogHomeEnvVar))
+		if exists, target, err = idtp.transferManger.findDestination(jfrogHomeDir); err != nil || exists {
 			return
 		}
 	}
@@ -291,7 +293,7 @@ func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error)
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = downloadutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
+		if err = biutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
 			err = downloadConnectionErr(src, fileName, err.Error())
 			return
 		}
@@ -309,7 +311,7 @@ func CopyFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = fileutils.CopyFile(dstDirPath, srcPath); err != nil {
+		if err = biutils.CopyFile(dstDirPath, srcPath); err != nil {
 			return
 		}
 	}

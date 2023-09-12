@@ -8,11 +8,11 @@ on:
   pull_request:
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        os: [ ubuntu, windows, macos ]
     env:
       GOPROXY: direct
       GRADLE_OPTS: -Dorg.gradle.daemon=false

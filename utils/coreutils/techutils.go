@@ -1,6 +1,10 @@
 package coreutils
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -77,11 +81,10 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:                 []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptor:          "package.json",
-		packageVersionOperator:     "@",
-		packageInstallationCommand: "up",
-		applicabilityScannable:     true,
+		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptor:      "package.json",
+		packageVersionOperator: "@",
+		applicabilityScannable: true,
 	},
 	Go: {
 		indicators:                 []string{"go.mod"},
@@ -113,6 +116,11 @@ var technologiesData = map[Technology]TechData{
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},
 		formal:     "NuGet",
+		// .NET CLI is used for NuGet projects
+		execCommand:                "dotnet",
+		packageInstallationCommand: "add",
+		// packageName -v packageVersion
+		packageVersionOperator: " -v ",
 	},
 	Dotnet: {
 		indicators: []string{".sln", ".csproj"},
@@ -156,16 +164,33 @@ func (tech Technology) IsCiSetup() bool {
 	return technologiesData[tech].ciSetupSupport
 }
 
-func (tech Technology) GetPackageOperator() string {
+func (tech Technology) GetPackageVersionOperator() string {
 	return technologiesData[tech].packageVersionOperator
 }
 
-func (tech Technology) GetPackageInstallOperator() string {
+func (tech Technology) GetPackageInstallationCommand() string {
 	return technologiesData[tech].packageInstallationCommand
 }
 
 func (tech Technology) ApplicabilityScannable() bool {
 	return technologiesData[tech].applicabilityScannable
+}
+
+func DetectedTechnologiesList() (technologies []string) {
+	wd, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	detectedTechnologies, err := DetectTechnologies(wd, false, false)
+	if err != nil {
+		return
+	}
+	if len(detectedTechnologies) == 0 {
+		return
+	}
+	techStringsList := DetectedTechnologiesToSlice(detectedTechnologies)
+	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ",")))
+	return techStringsList
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
@@ -218,24 +243,11 @@ func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map
 	return detected
 }
 
-// DetectTechnologiesToString returns a string that includes all the names of the detected technologies separated by a comma.
-func DetectedTechnologiesToString(detected map[Technology]bool) string {
-	keys := DetectedTechnologiesToSlice(detected)
-	if len(keys) > 0 {
-		detectedTechnologiesString := strings.Join(keys, ", ")
-		detectedTechnologiesString += "."
-		return detectedTechnologiesString
-	}
-	return ""
-}
-
 // DetectedTechnologiesToSlice returns a string slice that includes all the names of the detected technologies.
 func DetectedTechnologiesToSlice(detected map[Technology]bool) []string {
-	keys := make([]string, len(detected))
-	i := 0
+	keys := make([]string, 0, len(detected))
 	for tech := range detected {
-		keys[i] = string(tech)
-		i++
+		keys = append(keys, string(tech))
 	}
 	return keys
 }

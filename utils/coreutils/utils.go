@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -24,16 +23,6 @@ const (
 	JFrogHelpUrl           = JFrogComUrl + "help/r/"
 )
 
-type MinVersionProduct string
-
-const (
-	Artifactory  MinVersionProduct = "JFrog Artifactory"
-	Xray         MinVersionProduct = "JFrog Xray"
-	DataTransfer MinVersionProduct = "Data Transfer"
-	DockerApi    MinVersionProduct = "Docker API"
-	Projects     MinVersionProduct = "JFrog Projects"
-)
-
 const (
 	// ReleasesRemoteEnv should be used for downloading the CLI dependencies (extractor jars, analyzerManager etc.) through an Artifactory remote
 	// repository, instead of downloading directly from releases.jfrog.io. The remote repository should be
@@ -44,8 +33,7 @@ const (
 	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
 	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
 	// JFrog releases URL
-	JfrogReleasesUrl  = "https://releases.jfrog.io/artifactory/"
-	MinimumVersionMsg = "You are using %s version %s, while this operation requires version %s or higher."
+	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
 )
 
 // Error modes (how should the application behave when the CheckError function is invoked):
@@ -121,8 +109,9 @@ func PanicOnError(err error) error {
 }
 
 func ExitOnErr(err error) {
-	if err, ok := err.(CliError); ok {
-		traceExit(err.ExitCode, err)
+	var cliError CliError
+	if errors.As(err, &cliError) {
+		traceExit(cliError.ExitCode, err)
 	}
 	if exitCode := GetExitCode(err, 0, 0, false); exitCode != ExitCodeNoError {
 		traceExit(exitCode, err)
@@ -153,7 +142,8 @@ func GetExitCode(err error, success, failed int, failNoOp bool) ExitCode {
 // We would like to return a regular error instead of ExitError,
 // because some frameworks (such as codegangsta used by JFrog CLI) automatically exit when this error is returned.
 func ConvertExitCodeError(err error) error {
-	if _, ok := err.(*exec.ExitError); ok {
+	var exitError *exec.ExitError
+	if errors.As(err, &exitError) {
 		err = errors.New(err.Error())
 	}
 	return err
@@ -271,6 +261,27 @@ func GetWorkingDirectory() (string, error) {
 	}
 
 	return currentDir, nil
+}
+
+// Receives a list of relative path working dirs, returns a list of full paths working dirs
+func GetFullPathsWorkingDirs(workingDirs []string) ([]string, error) {
+	if len(workingDirs) == 0 {
+		currentDir, err := GetWorkingDirectory()
+		if err != nil {
+			return nil, err
+		}
+		return []string{currentDir}, nil
+	}
+
+	var fullPathsWorkingDirs []string
+	for _, wd := range workingDirs {
+		fullPathWd, err := filepath.Abs(wd)
+		if err != nil {
+			return nil, err
+		}
+		fullPathsWorkingDirs = append(fullPathsWorkingDirs, fullPathWd)
+	}
+	return fullPathsWorkingDirs, nil
 }
 
 type Credentials interface {
@@ -559,13 +570,6 @@ func GetJfrogTransferDir() (string, error) {
 	return filepath.Join(homeDir, JfrogTransferDirName), nil
 }
 
-func ValidateMinimumVersion(product MinVersionProduct, currentVersion, minimumVersion string) error {
-	if !version.NewVersion(currentVersion).AtLeast(minimumVersion) {
-		return errorutils.CheckErrorf(MinimumVersionMsg, product, currentVersion, minimumVersion)
-	}
-	return nil
-}
-
 func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err error) {
 	serverAndRepo := os.Getenv(remoteEnv)
 	if serverAndRepo == "" {
@@ -573,10 +577,25 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 		return
 	}
 	// The serverAndRepo is in the form of '<ServerID>/<RemoteRepo>'
-	serverID, repoName, seperatorExists := strings.Cut(serverAndRepo, "/")
+	serverID, repoName, separatorExists := strings.Cut(serverAndRepo, "/")
 	// Check that the format is valid
-	if !seperatorExists || repoName == "" || serverID == "" {
+	if !separatorExists || repoName == "" || serverID == "" {
 		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
 	}
 	return
+}
+
+func GetMaskedCommandString(cmd *exec.Cmd) string {
+	cmdString := strings.Join(cmd.Args, " ")
+	// Mask url if required
+	matchedResult := regexp.MustCompile(utils.CredentialsInUrlRegexp).FindString(cmdString)
+	if matchedResult != "" {
+		cmdString = strings.ReplaceAll(cmdString, matchedResult, "***@")
+	}
+
+	matchedResults := regexp.MustCompile(`--(?:password|access-token)=(\S+)`).FindStringSubmatch(cmdString)
+	if len(matchedResults) > 1 && matchedResults[1] != "" {
+		cmdString = strings.ReplaceAll(cmdString, matchedResults[1], "***")
+	}
+	return cmdString
 }

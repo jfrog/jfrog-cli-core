@@ -1,0 +1,669 @@
+{
+    "runs": [
+        {
+            "tool": {
+                "driver": {
+                    "name": "JFrog Terraform scanner",
+                    "rules": [
+                        {
+                            "id": "aws_alb_https_only",
+                            "fullDescription": {
+                                "text": "Resources `aws_lb_listener` and `aws_alb_listener` should set `protocol = \"HTTPS\"` (default is `\"HTTP\"`)\n\nVulnerable example -\n```\nresource \"aws_lb_listener\" \"vulnerable_example\" {\n  protocol          = \"HTTP\"\n}\n```\n\nSecure example -\n```\nresource \"aws_lb_listener\" \"secure_example\" {\n  protocol          = \"HTTPS\"\n}\n```",
+                                "markdown": "Resources `aws_lb_listener` and `aws_alb_listener` should set `protocol = \"HTTPS\"` (default is `\"HTTP\"`)\n\nVulnerable example -\n```\nresource \"aws_lb_listener\" \"vulnerable_example\" {\n  protocol          = \"HTTP\"\n}\n```\n\nSecure example -\n```\nresource \"aws_lb_listener\" \"secure_example\" {\n  protocol          = \"HTTPS\"\n}\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_alb_https_only"
+                            }
+                        },
+                        {
+                            "id": "aws_cloudwatch_log_encrypt",
+                            "fullDescription": {
+                                "text": "Resource `aws_cloudwatch_log_group` should have `kms_key_id`\n\nVulnerable example - \n```\nresource \"aws_cloudwatch_log_group\" \"vulnerable_example\" {\n      # kms_key_id is not set\n}\n```\n\nSecure example -\n```\nresource \"aws_cloudwatch_log_group\" \"secure_example\" {\n        kms_key_id      = aws_kms_key.example.arn\n}\n```",
+                                "markdown": "Resource `aws_cloudwatch_log_group` should have `kms_key_id`\n\nVulnerable example - \n```\nresource \"aws_cloudwatch_log_group\" \"vulnerable_example\" {\n      # kms_key_id is not set\n}\n```\n\nSecure example -\n```\nresource \"aws_cloudwatch_log_group\" \"secure_example\" {\n        kms_key_id      = aws_kms_key.example.arn\n}\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_cloudwatch_log_encrypt"
+                            }
+                        },
+                        {
+                            "id": "aws_docdb_encrypt_cluster",
+                            "fullDescription": {
+                                "text": "Resource `aws_docdb_cluster` should have `storage_encrypted=true`\n\nVulnerable example - \n```\nresource \"aws_docdb_cluster\" \"vulnerable_example\" {\n  # storage_encrypted is unset\n}\n```\n\nSecure example -\n```\nresource \"aws_docdb_cluster\" \"secure_example\" {\n  storage_encrypted = true\n}\n```",
+                                "markdown": "Resource `aws_docdb_cluster` should have `storage_encrypted=true`\n\nVulnerable example - \n```\nresource \"aws_docdb_cluster\" \"vulnerable_example\" {\n  # storage_encrypted is unset\n}\n```\n\nSecure example -\n```\nresource \"aws_docdb_cluster\" \"secure_example\" {\n  storage_encrypted = true\n}\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_docdb_encrypt_cluster"
+                            }
+                        },
+                        {
+                            "id": "aws_eks_encrypt_cluster",
+                            "fullDescription": {
+                                "text": "Resource `aws_eks_cluster` should have key `encryption_config`\n\nVulnerable example -\n```\nresource \"aws_eks_cluster\" \"vulnerable_example\" {\n  # encryption_config is not set\n}\n```\n\nSecure example -\n```\nresource \"aws_eks_cluster\" \"secure_example\" {\n  encryption_config {\n         resources = [ \"secrets\" ]\n         provider {\n             key_arn = aws_kms_key.example.arn\n         }\n  }\n}\n```",
+                                "markdown": "Resource `aws_eks_cluster` should have key `encryption_config`\n\nVulnerable example -\n```\nresource \"aws_eks_cluster\" \"vulnerable_example\" {\n  # encryption_config is not set\n}\n```\n\nSecure example -\n```\nresource \"aws_eks_cluster\" \"secure_example\" {\n  encryption_config {\n         resources = [ \"secrets\" ]\n         provider {\n             key_arn = aws_kms_key.example.arn\n         }\n  }\n}\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_eks_encrypt_cluster"
+                            }
+                        },
+                        {
+                            "id": "aws_eks_no_cidr",
+                            "fullDescription": {
+                                "text": "Resource `aws_eks_cluster` should have key `public_access_cidrs` (default is `0.0.0.0/0` which is overly permissive). Note that this endpoint is only enabled when `endpoint_public_access = true` (default is `true`)\n\nVulnerable example -\n```\nresource \"aws_eks_cluster\" \"vulnerable_example\" {\n     vpc_config {\n        endpoint_public_access = true  # or unset\n        public_access_cidrs = [\"0.0.0.0/0\"]  # or unset \n     }\n }\n```\n\nSecure example #1 -\n```\nresource \"aws_eks_cluster\" \"secure_example_1\" {\n     vpc_config {\n        endpoint_public_access = false\n     }\n }\n```\n\nSecure example #2 -\n```\nresource \"aws_eks_cluster\" \"secure_example_2\" {\n     vpc_config {\n        endpoint_public_access = true\n        public_access_cidrs = [\"192.168.0.0/24\"]\n     }\n }\n```",
+                                "markdown": "Resource `aws_eks_cluster` should have key `public_access_cidrs` (default is `0.0.0.0/0` which is overly permissive). Note that this endpoint is only enabled when `endpoint_public_access = true` (default is `true`)\n\nVulnerable example -\n```\nresource \"aws_eks_cluster\" \"vulnerable_example\" {\n     vpc_config {\n        endpoint_public_access = true  # or unset\n        public_access_cidrs = [\"0.0.0.0/0\"]  # or unset \n     }\n }\n```\n\nSecure example #1 -\n```\nresource \"aws_eks_cluster\" \"secure_example_1\" {\n     vpc_config {\n        endpoint_public_access = false\n     }\n }\n```\n\nSecure example #2 -\n```\nresource \"aws_eks_cluster\" \"secure_example_2\" {\n     vpc_config {\n        endpoint_public_access = true\n        public_access_cidrs = [\"192.168.0.0/24\"]\n     }\n }\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_eks_no_cidr"
+                            }
+                        },
+                        {
+                            "id": "aws_rds_encrypt_instance",
+                            "fullDescription": {
+                                "text": "Resource `aws_db_instance` should have `storage_encrypted=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_db_instance\" \"vulnerable_example\" {\r\n  # storage_encrypted is not set\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_db_instance\" \"secure_example\" {\r\n  kms_key_id  = aws_kms_key.example.arn\r\n  storage_encrypted = true\r\n}\r\n```",
+                                "markdown": "Resource `aws_db_instance` should have `storage_encrypted=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_db_instance\" \"vulnerable_example\" {\r\n  # storage_encrypted is not set\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_db_instance\" \"secure_example\" {\r\n  kms_key_id  = aws_kms_key.example.arn\r\n  storage_encrypted = true\r\n}\r\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_rds_encrypt_instance"
+                            }
+                        },
+                        {
+                            "id": "aws_rds_iam_auth",
+                            "fullDescription": {
+                                "text": "Resource `aws_db_instance` should have `iam_database_authentication_enabled=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_db_instance\" \"vulnerable_example\" {\r\n  # iam_database_authentication_enabled is unset (or false)\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_db_instance\" \"secure_example\" {\r\n  iam_database_authentication_enabled = true\r\n}\r\n```",
+                                "markdown": "Resource `aws_db_instance` should have `iam_database_authentication_enabled=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_db_instance\" \"vulnerable_example\" {\r\n  # iam_database_authentication_enabled is unset (or false)\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_db_instance\" \"secure_example\" {\r\n  iam_database_authentication_enabled = true\r\n}\r\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_rds_iam_auth"
+                            }
+                        },
+                        {
+                            "id": "aws_s3_block_public_acl",
+                            "fullDescription": {
+                                "text": "If resource `aws_s3_bucket` exists, then resource `aws_s3_bucket_public_access_block` must also exist and have `block_public_acls=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"vulnerable_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  # block_public_acls is not set\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"secure_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  block_public_acls = true\r\n}\r\n```",
+                                "markdown": "If resource `aws_s3_bucket` exists, then resource `aws_s3_bucket_public_access_block` must also exist and have `block_public_acls=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"vulnerable_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  # block_public_acls is not set\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"secure_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  block_public_acls = true\r\n}\r\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_s3_block_public_acl"
+                            }
+                        },
+                        {
+                            "id": "aws_s3_block_public_policy",
+                            "fullDescription": {
+                                "text": "If resource `aws_s3_bucket` exists, then resource `aws_s3_bucket_public_access_block` must also exist and have `block_public_acls=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"vulnerable_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  # block_public_acls is not set\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"secure_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  block_public_acls = true\r\n}\r\n```",
+                                "markdown": "If resource `aws_s3_bucket` exists, then resource `aws_s3_bucket_public_access_block` must also exist and have `block_public_acls=true`\r\n\r\nVulnerable example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"vulnerable_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  # block_public_acls is not set\r\n}\r\n```\r\n\r\nSecure example -\r\n```\r\nresource \"aws_s3_bucket\" \"example_bucket\" {\r\n  bucket = \"mybucket\"\r\n}\r\n\r\nresource \"aws_s3_bucket_public_access_block\" \"secure_example\" {\r\n  bucket = aws_s3_bucket.example_bucket.id\r\n  block_public_acls = true\r\n}\r\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_s3_block_public_policy"
+                            }
+                        },
+                        {
+                            "id": "aws_s3_encrypt",
+                            "fullDescription": {
+                                "text": "If resource `aws_s3_bucket` exists, then resource `aws_s3_bucket_server_side_encryption_configuration` must also exist with the key `apply_server_side_encryption_by_default`. Alternatively, the `aws_s3_bucket` resource should have the (deprecated) `server_side_encryption_configuration` key.\n\nVulnerable example #1 -\n```\nresource \"aws_s3_bucket\" \"mybucket\" {\n  bucket = \"mybucket\"\n}\n\n# resource \"aws_s3_bucket_server_side_encryption_configuration\" is not defined\n```\n\nSecure example #1 -\n```\nresource \"aws_s3_bucket\" \"mybucket\" {\n  bucket = \"mybucket\"\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\" \"secure_example_1\" {\n  bucket = aws_s3_bucket.mybucket.bucket\n\n  rule {\n    apply_server_side_encryption_by_default {\n      kms_master_key_id = aws_kms_key.mykey.arn\n      sse_algorithm     = \"aws:kms\"\n    }\n  }\n}\n```\n\nVulnerable example #2 -\n```\nresource \"aws_s3_bucket\" \"vulnerable_example_2\" {\n  # server_side_encryption_configuration is not set\n}\n```\n\nSecure example #2 -\n```\nresource \"aws_s3_bucket\" \"secure_example_2\" {\n  bucket = \"mybucket\"\n\n  server_side_encryption_configuration {\n    rule {\n      apply_server_side_encryption_by_default {\n        kms_master_key_id = aws_kms_key.mykey.arn\n        sse_algorithm     = \"aws:kms\"\n      }\n    }\n  }\n}\n```",
+                                "markdown": "If resource `aws_s3_bucket` exists, then resource `aws_s3_bucket_server_side_encryption_configuration` must also exist with the key `apply_server_side_encryption_by_default`. Alternatively, the `aws_s3_bucket` resource should have the (deprecated) `server_side_encryption_configuration` key.\n\nVulnerable example #1 -\n```\nresource \"aws_s3_bucket\" \"mybucket\" {\n  bucket = \"mybucket\"\n}\n\n# resource \"aws_s3_bucket_server_side_encryption_configuration\" is not defined\n```\n\nSecure example #1 -\n```\nresource \"aws_s3_bucket\" \"mybucket\" {\n  bucket = \"mybucket\"\n}\n\nresource \"aws_s3_bucket_server_side_encryption_configuration\" \"secure_example_1\" {\n  bucket = aws_s3_bucket.mybucket.bucket\n\n  rule {\n    apply_server_side_encryption_by_default {\n      kms_master_key_id = aws_kms_key.mykey.arn\n      sse_algorithm     = \"aws:kms\"\n    }\n  }\n}\n```\n\nVulnerable example #2 -\n```\nresource \"aws_s3_bucket\" \"vulnerable_example_2\" {\n  # server_side_encryption_configuration is not set\n}\n```\n\nSecure example #2 -\n```\nresource \"aws_s3_bucket\" \"secure_example_2\" {\n  bucket = \"mybucket\"\n\n  server_side_encryption_configuration {\n    rule {\n      apply_server_side_encryption_by_default {\n        kms_master_key_id = aws_kms_key.mykey.arn\n        sse_algorithm     = \"aws:kms\"\n      }\n    }\n  }\n}\n```"
+                            },
+                            "shortDescription": {
+                                "text": "Scanner for aws_s3_encrypt"
+                            }
+                        }
+                    ],
+                    "version": ""
+                }
+            },
+            "invocations": [
+                {
+                    "executionSuccessful": true,
+                    "arguments": [
+                        "iac_scanner/tf_scanner",
+                        "scan",
+                        "/var/folders/mj/sk15wcdx5kl7p5shk662bjt80000gn/T/jfrog.cli.temp.-1690974158-62790465/config.yaml"
+                    ],
+                    "workingDirectory": {
+                        "uri": "file:///Users/omerz/.jfrog/dependencies/analyzerManager"
+                    }
+                }
+            ],
+            "results": [
+                {
+                    "message": {
+                        "text": "storage_encrypted=false was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/byok/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 121,
+                                    "snippet": {
+                                        "text": "byok_database"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 69
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_rds_encrypt_instance"
+                },
+                {
+                    "message": {
+                        "text": "iam_database_authentication_enabled=False was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/byok/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 121,
+                                    "snippet": {
+                                        "text": "byok_database"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 69
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_rds_iam_auth"
+                },
+                {
+                    "message": {
+                        "text": "storage_encrypted=False was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/documentdb/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 31,
+                                    "snippet": {
+                                        "text": "default"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 15
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_docdb_encrypt_cluster"
+                },
+                {
+                    "message": {
+                        "text": "AWS EKS public API server is publicly accessible"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/eks_mng_ng/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 65,
+                                    "snippet": {
+                                        "text": "aws_eks"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 36
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_eks_no_cidr"
+                },
+                {
+                    "message": {
+                        "text": "AWS EKS public API server is publicly accessible"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/eks_mng_ng_coralogix/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 65,
+                                    "snippet": {
+                                        "text": "aws_eks"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 36
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_eks_no_cidr"
+                },
+                {
+                    "message": {
+                        "text": "AWS EKS public API server is publicly accessible"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/k8s/module/cluster.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 24,
+                                    "snippet": {
+                                        "text": "this"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 1
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_eks_no_cidr"
+                },
+                {
+                    "message": {
+                        "text": "AWS EKS secrets do not usedata-at-rest encryption"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/k8s/module/cluster.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 24,
+                                    "snippet": {
+                                        "text": "this"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 1
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_eks_encrypt_cluster"
+                },
+                {
+                    "message": {
+                        "text": "AWS EKS public API server is publicly accessible"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/k8s/module2/cluster.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 49,
+                                    "snippet": {
+                                        "text": "this"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 9
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_eks_no_cidr"
+                },
+                {
+                    "message": {
+                        "text": "kms_key_id='' was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/msk/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 33,
+                                    "snippet": {
+                                        "text": "log"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 30
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_cloudwatch_log_encrypt"
+                },
+                {
+                    "message": {
+                        "text": "block_public_acls=false was detected"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/msk/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 39,
+                                    "snippet": {
+                                        "text": "bucket"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 35
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_s3_block_public_acl"
+                },
+                {
+                    "message": {
+                        "text": "block_public_acls=false was detected"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/msk/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 39,
+                                    "snippet": {
+                                        "text": "bucket"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 35
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_s3_block_public_policy"
+                },
+                {
+                    "message": {
+                        "text": "Missing server_side_encryption_configuration was detected, Missing aws_s3_bucket_server_side_encryption_configuration was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/msk/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 39,
+                                    "snippet": {
+                                        "text": "bucket"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 35
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_s3_encrypt"
+                },
+                {
+                    "message": {
+                        "text": "Missing server_side_encryption_configuration was detected, Missing aws_s3_bucket_server_side_encryption_configuration was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/msk/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 39,
+                                    "snippet": {
+                                        "text": "bucket"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 35
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_s3_encrypt"
+                },
+                {
+                    "message": {
+                        "text": "storage_encrypted=false was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/mysql_coralogix/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 147,
+                                    "snippet": {
+                                        "text": "k8s_database"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 102
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_rds_encrypt_instance"
+                },
+                {
+                    "message": {
+                        "text": "iam_database_authentication_enabled=False was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/mysql_coralogix/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 147,
+                                    "snippet": {
+                                        "text": "k8s_database"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 102
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_rds_iam_auth"
+                },
+                {
+                    "message": {
+                        "text": "AWS Load balancer using insecure communications"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/private_link/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 68,
+                                    "snippet": {
+                                        "text": "pl_lb_listener"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 53
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_alb_https_only"
+                },
+                {
+                    "message": {
+                        "text": "AWS Load balancer using insecure communications"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/private_link/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 115,
+                                    "snippet": {
+                                        "text": "pl_lb_listener_plain"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 100
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_alb_https_only"
+                },
+                {
+                    "message": {
+                        "text": "storage_encrypted=false was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/rds/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 152,
+                                    "snippet": {
+                                        "text": "k8s_database"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 103
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_rds_encrypt_instance"
+                },
+                {
+                    "message": {
+                        "text": "iam_database_authentication_enabled=False was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/rds/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 152,
+                                    "snippet": {
+                                        "text": "k8s_database"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 103
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_rds_iam_auth"
+                },
+                {
+                    "message": {
+                        "text": "block_public_acls=false was detected"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/s3/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 28,
+                                    "snippet": {
+                                        "text": "default"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 8
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_s3_block_public_acl"
+                },
+                {
+                    "message": {
+                        "text": "block_public_acls=false was detected"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/s3/module.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 28,
+                                    "snippet": {
+                                        "text": "default"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 8
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_s3_block_public_policy"
+                },
+                {
+                    "message": {
+                        "text": "kms_key_id='' was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/omerz/Documents/analyzers_test/iac/aws/vpc/module2/examples/vpc-flow-logs/cloud-watch-logs.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 53,
+                                    "snippet": {
+                                        "text": "flow_log"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 51
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_cloudwatch_log_encrypt"
+                }
+            ]
+        }
+    ],
+    "version": "2.1.0",
+    "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+}

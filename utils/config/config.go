@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/buger/jsonparser"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
@@ -72,8 +73,14 @@ func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableT
 	return details, nil
 }
 
-// Disables refreshable tokens if set in details.
+// Disables the refreshable tokens mechanism if set in details.
+// We identify the refreshable tokens mechanism by having both conditions:
+// 1. Non-empty username and password
+// 2. Non-empty access and refresh token OR token refresh interval enabled
 func excludeRefreshableTokensFromDetails(details *ServerDetails) {
+	if details.WebLogin || details.User == "" || details.Password == "" {
+		return
+	}
 	if details.AccessToken != "" && details.ArtifactoryRefreshToken != "" ||
 		details.AccessToken != "" && details.RefreshToken != "" {
 		details.AccessToken = ""
@@ -390,7 +397,7 @@ func createHomeDirBackup() error {
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
 	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLocksDirName, coreutils.JfrogLogsDirName}
-	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
+	return biutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 
 // Version key doesn't exist in version 0

@@ -3,26 +3,11 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"testing"
+
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
-
-func TestRemoveDuplicateValues(t *testing.T) {
-	tests := []struct {
-		testedSlice    []string
-		expectedResult []string
-	}{
-		{testedSlice: []string{"1", "1", "1", "3"}, expectedResult: []string{"1", "3"}},
-		{testedSlice: []string{}, expectedResult: []string{}},
-		{testedSlice: []string{"1", "2", "3", "4"}, expectedResult: []string{"1", "2", "3", "4"}},
-		{testedSlice: []string{"1", "6", "1", "6", "2"}, expectedResult: []string{"1", "6", "2"}},
-	}
-
-	for _, test := range tests {
-		assert.Equal(t, test.expectedResult, RemoveDuplicateValues(test.testedSlice))
-	}
-}
 
 func TestGetResultFileName(t *testing.T) {
 	fileNameValue := "fileNameValue"
@@ -40,12 +25,10 @@ func TestGetResultFileName(t *testing.T) {
 				{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &fileNameValue}}},
 			}},
 			expectedOutput: fileNameValue},
-		{result: &sarif.Result{},
-			expectedOutput: ""},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultFileName(test.result))
+		assert.Equal(t, test.expectedOutput, GetLocationFileName(test.result.Locations[0]))
 	}
 
 }
@@ -82,12 +65,10 @@ func TestGetResultLocationInFile(t *testing.T) {
 				StartColumn: nil,
 			}}}}},
 			expectedOutput: ""},
-		{result: &sarif.Result{},
-			expectedOutput: ""},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultLocationInFile(test.result))
+		assert.Equal(t, test.expectedOutput, GetStartLocationInFile(test.result.Locations[0]))
 	}
 }
 
@@ -113,9 +94,11 @@ func TestExtractRelativePath(t *testing.T) {
 }
 
 func TestGetResultSeverity(t *testing.T) {
-	levelValueHigh := "error"
-	levelValueMedium := "warning"
-	levelValueLow := "info"
+	levelValueHigh := string(errorLevel)
+	levelValueMedium := string(warningLevel)
+	levelValueMedium2 := string(infoLevel)
+	levelValueLow := string(noteLevel)
+	levelValueUnknown := string(noneLevel)
 
 	tests := []struct {
 		result           *sarif.Result
@@ -127,8 +110,12 @@ func TestGetResultSeverity(t *testing.T) {
 			expectedSeverity: "High"},
 		{result: &sarif.Result{Level: &levelValueMedium},
 			expectedSeverity: "Medium"},
+		{result: &sarif.Result{Level: &levelValueMedium2},
+			expectedSeverity: "Medium"},
 		{result: &sarif.Result{Level: &levelValueLow},
 			expectedSeverity: "Low"},
+		{result: &sarif.Result{Level: &levelValueUnknown},
+			expectedSeverity: "Unknown"},
 	}
 
 	for _, test := range tests {
@@ -138,7 +125,7 @@ func TestGetResultSeverity(t *testing.T) {
 
 func TestScanTypeErrorMsg(t *testing.T) {
 	tests := []struct {
-		scanner ScanType
+		scanner JasScanType
 		err     error
 		wantMsg string
 	}{

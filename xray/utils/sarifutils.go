@@ -225,7 +225,7 @@ func GetLocationFileName(location *sarif.Location) string {
 	return ""
 }
 
-func getRelativeLocationFileName(location *sarif.Location, invocations []*sarif.Invocation) string {
+func GetRelativeLocationFileName(location *sarif.Location, invocations []*sarif.Invocation) string {
 	wd := ""
 	if len(invocations) > 0 {
 		wd = GetInvocationWorkingDirectory(invocations[0])

@@ -311,7 +311,7 @@ func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow 
 						Finding:          GetResultMsgText(secretResult),
 						SeverityNumValue: currSeverity.numValue,
 						Location: formats.Location{
-							File:        getRelativeLocationFileName(location, secretRun.Invocations),
+							File:        GetRelativeLocationFileName(location, secretRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
 							StartColumn: GetLocationStartColumn(location),
 							EndLine:     GetLocationEndLine(location),
@@ -364,7 +364,7 @@ func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 						ScannerDescription: scannerDescription,
 						SeverityNumValue:   currSeverity.numValue,
 						Location: formats.Location{
-							File:        getRelativeLocationFileName(location, iacRun.Invocations),
+							File:        GetRelativeLocationFileName(location, iacRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
 							StartColumn: GetLocationStartColumn(location),
 							EndLine:     GetLocationEndLine(location),
@@ -418,7 +418,7 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 						ScannerDescription: scannerDescription,
 						SeverityNumValue:   currSeverity.numValue,
 						Location: formats.Location{
-							File:        getRelativeLocationFileName(location, sastRun.Invocations),
+							File:        GetRelativeLocationFileName(location, sastRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
 							StartColumn: GetLocationStartColumn(location),
 							EndLine:     GetLocationEndLine(location),
@@ -450,7 +450,7 @@ func codeFlowToLocationFlow(flows []*sarif.CodeFlow, invocations []*sarif.Invoca
 			rowFlow := []formats.Location{}
 			for _, stackTraceEntry := range stackTrace.Locations {
 				rowFlow = append(rowFlow, formats.Location{
-					File:        getRelativeLocationFileName(stackTraceEntry.Location, invocations),
+					File:        GetRelativeLocationFileName(stackTraceEntry.Location, invocations),
 					StartLine:   GetLocationStartLine(stackTraceEntry.Location),
 					StartColumn: GetLocationStartColumn(stackTraceEntry.Location),
 					EndLine:     GetLocationEndLine(stackTraceEntry.Location),
@@ -980,7 +980,7 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 		for _, location := range foundResult.Locations {
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				Location: formats.Location{
-					File:        getRelativeLocationFileName(location, applicabilityRun.Invocations),
+					File:        GetRelativeLocationFileName(location, applicabilityRun.Invocations),
 					StartLine:   GetLocationStartLine(location),
 					StartColumn: GetLocationStartColumn(location),
 					EndLine:     GetLocationEndLine(location),

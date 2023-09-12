@@ -81,62 +81,6 @@ func AggregateMultipleRunsIntoSingle(runs []*sarif.Run, destination *sarif.Run) 
 	}
 }
 
-func getRunInformationUri(run *sarif.Run) string {
-	if run != nil && run.Tool.Driver != nil && run.Tool.Driver.InformationURI != nil {
-		return *run.Tool.Driver.InformationURI
-	}
-	return ""
-}
-
-// Calculate new information that exists at the run and not at the source
-func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly *sarif.Run) {
-	// Combine
-	combinedSource := sarif.NewRunWithInformationURI(sources[0].Tool.Driver.Name, getRunInformationUri(sources[0])).WithInvocations([]*sarif.Invocation{})
-	AggregateMultipleRunsIntoSingle(sources, combinedSource)
-	if combinedSource == nil {
-		return
-	}
-	if len(targets) == 0 {
-		return combinedSource
-	}
-	combinedTarget := sarif.NewRunWithInformationURI(targets[0].Tool.Driver.Name, getRunInformationUri(targets[0])).WithInvocations([]*sarif.Invocation{})
-	AggregateMultipleRunsIntoSingle(targets, combinedTarget)
-	if combinedTarget == nil {
-		return combinedSource
-	}
-	// Get diff
-	runWithNewOnly = sarif.NewRun(combinedSource.Tool).WithInvocations(combinedSource.Invocations)
-	for _, sourceResult := range combinedSource.Results {
-		targetMatchingResults := GetResultsByRuleId(combinedTarget, *sourceResult.RuleID)
-		if len(targetMatchingResults) == 0 {
-			runWithNewOnly.AddResult(sourceResult)
-			if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
-				runWithNewOnly.Tool.Driver.AddRule(rule)
-			}
-			continue
-		}
-		for _, targetMatchingResult := range targetMatchingResults {
-			if len(sourceResult.Locations) > len(targetMatchingResult.Locations) ||
-				len(sourceResult.CodeFlows) > len(targetMatchingResult.CodeFlows) {
-				runWithNewOnly.AddResult(sourceResult)
-				if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
-					runWithNewOnly.Tool.Driver.AddRule(rule)
-				}
-			}
-		}
-	}
-	return
-}
-
-func FilterResultsByRuleIdAndMsgText(source []*sarif.Result, ruleId, msgText string) (results []*sarif.Result) {
-	for _, result := range source {
-		if ruleId == *result.RuleID && msgText == GetResultMsgText(result) {
-			results = append(results, result)
-		}
-	}
-	return
-}
-
 func GetLocationRelatedCodeFlowsFromResult(location *sarif.Location, result *sarif.Result) (codeFlows []*sarif.CodeFlow) {
 	for _, codeFlow := range result.CodeFlows {
 		for _, stackTrace := range codeFlow.ThreadFlows {

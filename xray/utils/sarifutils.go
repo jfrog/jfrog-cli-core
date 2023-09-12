@@ -2,10 +2,10 @@ package utils
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 )
@@ -128,36 +128,6 @@ func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly 
 	return
 }
 
-// Calculate new information that exists at the result and not at the source
-func GetDiffFromResult(result *sarif.Result, source *sarif.Result) *sarif.Result {
-	newLocations := datastructures.MakeSet[*sarif.Location]()
-	newCodeFlows := []*sarif.CodeFlow{}
-	for _, targetLocation := range result.Locations {
-		if !IsLocationInResult(targetLocation, source) {
-			newLocations.Add(targetLocation)
-			newCodeFlows = append(newCodeFlows, GetLocationRelatedCodeFlowsFromResult(targetLocation, result)...)
-			continue
-		}
-		// Location in result, compare related code flows
-		for _, targetCodeFlow := range GetLocationRelatedCodeFlowsFromResult(targetLocation, result) {
-			for _, sourceCodeFlow := range GetLocationRelatedCodeFlowsFromResult(targetLocation, source) {
-				if !IsSameCodeFlow(targetCodeFlow, sourceCodeFlow) {
-					// Code flow does not exist at source, add it and it's related location
-					newLocations.Add(targetLocation)
-					newCodeFlows = append(newCodeFlows, targetCodeFlow)
-				}
-			}
-		}
-	}
-	// Create the result only with new information
-	return sarif.NewRuleResult(*result.RuleID).
-		WithKind(*result.Kind).
-		WithMessage(&result.Message).
-		WithLevel(*result.Level).
-		WithLocations(newLocations.ToSlice()).
-		WithCodeFlows(newCodeFlows)
-}
-
 func FilterResultsByRuleIdAndMsgText(source []*sarif.Result, ruleId, msgText string) (results []*sarif.Result) {
 	for _, result := range source {
 		if ruleId == *result.RuleID && msgText == GetResultMsgText(result) {
@@ -172,7 +142,7 @@ func GetLocationRelatedCodeFlowsFromResult(location *sarif.Location, result *sar
 		for _, stackTrace := range codeFlow.ThreadFlows {
 			// The threadFlow is reverse stack trace.
 			// The last location is the location that it relates to.
-			if IsSameLocation(location, stackTrace.Locations[len(stackTrace.Locations)-1].Location) {
+			if isSameLocation(location, stackTrace.Locations[len(stackTrace.Locations)-1].Location) {
 				codeFlows = append(codeFlows, codeFlow)
 			}
 		}
@@ -180,41 +150,7 @@ func GetLocationRelatedCodeFlowsFromResult(location *sarif.Location, result *sar
 	return
 }
 
-func IsSameCodeFlow(codeFlow *sarif.CodeFlow, other *sarif.CodeFlow) bool {
-	if len(codeFlow.ThreadFlows) != len(other.ThreadFlows) {
-		return false
-	}
-	// ThreadFlows is unordered list of stack trace
-	for _, stackTrace := range codeFlow.ThreadFlows {
-		foundMatch := false
-		for _, otherStackTrace := range other.ThreadFlows {
-			if len(stackTrace.Locations) != len(otherStackTrace.Locations) {
-				continue
-			}
-			for i, stackTraceLocation := range stackTrace.Locations {
-				if !IsSameLocation(stackTraceLocation.Location, otherStackTrace.Locations[i].Location) {
-					continue
-				}
-			}
-			foundMatch = true
-		}
-		if !foundMatch {
-			return false
-		}
-	}
-	return true
-}
-
-func IsLocationInResult(location *sarif.Location, result *sarif.Result) bool {
-	for _, resultLocation := range result.Locations {
-		if IsSameLocation(location, resultLocation) {
-			return true
-		}
-	}
-	return false
-}
-
-func IsSameLocation(location *sarif.Location, other *sarif.Location) bool {
+func isSameLocation(location *sarif.Location, other *sarif.Location) bool {
 	if location == other {
 		return true
 	}
@@ -290,6 +226,19 @@ func GetLocationFileName(location *sarif.Location) string {
 	return ""
 }
 
+func GetRelativeLocationFileName(location *sarif.Location, invocations []*sarif.Invocation) string {
+	wd := ""
+	if len(invocations) > 0 {
+		wd = GetInvocationWorkingDirectory(invocations[0])
+	}
+	GetLocationFileName(location)
+	filePath := GetLocationFileName(location)
+	if filePath != "" {
+		return ExtractRelativePath(filePath, wd)
+	}
+	return ""
+}
+
 func SetLocationFileName(location *sarif.Location, fileName string) {
 	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
 		location.PhysicalLocation.ArtifactLocation.URI = &fileName
@@ -350,7 +299,8 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 	resultPath = strings.TrimPrefix(resultPath, "file://")
 
 	// Get relative path
-	return strings.ReplaceAll(resultPath, projectRoot, "")
+	relativePath := strings.ReplaceAll(resultPath, projectRoot, "")
+	return strings.TrimPrefix(relativePath, string(filepath.Separator))
 }
 
 func GetResultSeverity(result *sarif.Result) string {

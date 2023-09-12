@@ -1,7 +1,6 @@
 package usage
 
 import (
-	"errors"
 	"fmt"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 
@@ -88,7 +87,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 	log.Debug(ReportUsagePrefix, "Sending info...")
 	if ur.sendToEcosystem {
 		ur.reportWaitGroup.Go(func() (err error) {
-			if err = errors.Join(err, ur.reportToEcosystem(features...)); err != nil {
+			if err = ur.reportToEcosystem(features...); err != nil {
 				err = fmt.Errorf("ecosystem, %s", err.Error())
 			}
 			return
@@ -96,7 +95,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 	}
 	if ur.sendToXray {
 		ur.reportWaitGroup.Go(func() (err error) {
-			if err = errors.Join(err, ur.reportToXray(features...)); err != nil {
+			if err = ur.reportToXray(features...); err != nil {
 				err = fmt.Errorf("xray, %s", err.Error())
 			}
 			return
@@ -104,7 +103,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 	}
 	if ur.sendToArtifactory {
 		ur.reportWaitGroup.Go(func() (err error) {
-			if err = errors.Join(err, ur.reportToArtifactory(features...)); err != nil {
+			if err = ur.reportToArtifactory(features...); err != nil {
 				err = fmt.Errorf("artifactory, %s", err.Error())
 			}
 			return

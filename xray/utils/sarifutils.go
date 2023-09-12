@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -297,7 +298,8 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 	resultPath = strings.TrimPrefix(resultPath, "file://")
 
 	// Get relative path
-	return strings.ReplaceAll(resultPath, projectRoot, "")
+	relativePath := strings.ReplaceAll(resultPath, projectRoot, "")
+	return strings.TrimPrefix(relativePath, string(filepath.Separator))
 }
 
 func GetResultSeverity(result *sarif.Result) string {

@@ -24,11 +24,20 @@ func RunScanGraphAndGetResults(params *ScanGraphParams) (*services.ScanResponse,
 		// Remove scan type param if Xray version is under the minimum supported version
 		params.xrayGraphScanParams.ScanType = ""
 	}
+
+	if params.xrayGraphScanParams.XscGitInfoContext != nil {
+		if params.xrayGraphScanParams.XscVersion, err = xrayManager.XscEnabled(); err != nil {
+			return nil, err
+		}
+	}
+
 	scanId, err := xrayManager.ScanGraph(*params.xrayGraphScanParams)
 	if err != nil {
 		return nil, err
 	}
-	scanResult, err := xrayManager.GetScanGraphResults(scanId, params.XrayGraphScanParams().IncludeVulnerabilities, params.XrayGraphScanParams().IncludeLicenses)
+
+	xscEnabled := params.xrayGraphScanParams.XscVersion != ""
+	scanResult, err := xrayManager.GetScanGraphResults(scanId, params.XrayGraphScanParams().IncludeVulnerabilities, params.XrayGraphScanParams().IncludeLicenses, xscEnabled)
 	if err != nil {
 		return nil, err
 	}

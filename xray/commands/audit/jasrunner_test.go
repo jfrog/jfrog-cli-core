@@ -22,14 +22,14 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
 	}()
 	scanResults := &utils.ExtendedScanResults{XrayResults: jas.FakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
-	err = runJasScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, &jas.FakeServerDetails, nil, nil)
+	err = runJasScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, &jas.FakeServerDetails, nil, nil, "")
 	// Expect error:
 	assert.Error(t, err)
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
 	scanResults := &utils.ExtendedScanResults{XrayResults: jas.FakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Pip}}
-	err := runJasScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, nil, nil, nil)
+	err := runJasScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, nil, nil, nil, "")
 	assert.NoError(t, err)
 }
 
@@ -37,7 +37,7 @@ func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	mockDirectDependencies := []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 	scanResults := &utils.ExtendedScanResults{XrayResults: jas.FakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
-	err := runJasScannersAndSetResults(scanResults, mockDirectDependencies, &jas.FakeServerDetails, nil, nil)
+	err := runJasScannersAndSetResults(scanResults, mockDirectDependencies, &jas.FakeServerDetails, nil, nil, "")
 
 	// Expect error:
 	assert.ErrorContains(t, err, "failed to run Applicability scan")

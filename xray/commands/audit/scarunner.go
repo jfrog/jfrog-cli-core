@@ -79,7 +79,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
 			continue
 		}
-		if len(flattenTree.Nodes) == 0 {
+		if flattenTree == nil || len(flattenTree.Nodes) == 0 {
 			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
 			continue
 		}
@@ -127,8 +127,10 @@ func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []
 }
 
 func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
+	logMessage := fmt.Sprintf("Calculating %s dependencies", tech.ToFormal())
+	log.Info(logMessage)
 	if params.Progress() != nil {
-		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
+		params.Progress().SetHeadlineMsg(logMessage)
 	}
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
@@ -156,7 +158,7 @@ func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Te
 	default:
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}
-	if err != nil {
+	if err != nil || len(uniqueDeps) == 0 {
 		return
 	}
 	log.Debug(fmt.Sprintf("Created '%s' dependency tree with %d nodes. Elapsed time: %.1f seconds.", tech.ToFormal(), len(uniqueDeps), time.Since(startTime).Seconds()))

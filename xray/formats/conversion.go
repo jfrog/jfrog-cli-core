@@ -158,8 +158,8 @@ func ConvertToIacTableRow(rows []SourceCodeRow) (tableRows []iacTableRow) {
 		tableRows = append(tableRows, iacTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			lineColumn: (strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn)),
-			text:       rows[i].Snippet,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			text:       rows[i].Finding,
 		})
 	}
 	return
@@ -170,8 +170,8 @@ func ConvertToSastTableRow(rows []SourceCodeRow) (tableRows []sastTableRow) {
 		tableRows = append(tableRows, sastTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			lineColumn: (strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn)),
-			text:       rows[i].Snippet,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			text:       rows[i].Finding,
 		})
 	}
 	return

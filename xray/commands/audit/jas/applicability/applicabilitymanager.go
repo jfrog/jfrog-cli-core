@@ -67,12 +67,13 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 
 // Prepares a list of Cves for the applicability scanner.
 // In most cases, we will send only direct components to the cve whitelist.
-// Except when ThirdPartyContextualAnalysis is set to true, then we want every component.
+// Except when ThirdPartyContextualAnalysis with npm project is set to true, then we want every component.
 func prepareCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, thirdPartyContextualAnalysis bool) []string {
 	whitelistCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {
-			if thirdPartyContextualAnalysis || isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
+			shouldIncludeIndirect := thirdPartyContextualAnalysis && vulnerability.Technology == coreutils.Npm.ToString()
+			if shouldIncludeIndirect || isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
 				for _, cve := range vulnerability.Cves {
 					if cve.Id != "" {
 						whitelistCves.Add(cve.Id)
@@ -81,7 +82,8 @@ func prepareCvesWhitelist(xrayScanResults []services.ScanResponse, directDepende
 			}
 		}
 		for _, violation := range scanResult.Violations {
-			if thirdPartyContextualAnalysis || isDirectComponents(maps.Keys(violation.Components), directDependencies) {
+			shouldIncludeIndirect := thirdPartyContextualAnalysis && violation.Technology == coreutils.Npm.ToString()
+			if shouldIncludeIndirect || isDirectComponents(maps.Keys(violation.Components), directDependencies) {
 				for _, cve := range violation.Cves {
 					if cve.Id != "" {
 						whitelistCves.Add(cve.Id)

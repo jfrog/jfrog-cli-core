@@ -69,8 +69,13 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 	applicabilityManager := newApplicabilityScanManager(noDirectDependenciesResults, mockDirectDependencies, scanner, false)
+	assertApplicabilityScanner(t, applicabilityManager)
+	// ThirdPartyContextual shouldn't change anything here as this is not npm.
+	applicabilityManager = newApplicabilityScanManager(noDirectDependenciesResults, mockDirectDependencies, scanner, true)
+	assertApplicabilityScanner(t, applicabilityManager)
+}
 
-	// Assert
+func assertApplicabilityScanner(t *testing.T, applicabilityManager *ApplicabilityScanManager) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
@@ -250,7 +255,7 @@ func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)
-	err = applicabilityManager.createConfigFile(currWd, false)
+	err = applicabilityManager.createConfigFile(currWd)
 	assert.NoError(t, err)
 
 	defer func() {

@@ -462,7 +462,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 			},
 			cves:           []services.Cve{{Id: "testCve2"}},
 			expectedResult: Applicable,
-			expectedCves:   []formats.CveRow{{Id: "testCve2", Applicability: &formats.Applicability{Status: true}}},
+			expectedCves:   []formats.CveRow{{Id: "testCve2", Applicability: &formats.Applicability{Status: string(Applicable)}}},
 		},
 		{
 			scanResults: &ExtendedScanResults{
@@ -490,7 +490,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 			},
 			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
 			expectedResult: NotApplicable,
-			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: false}}, {Id: "testCve2", Applicability: &formats.Applicability{Status: false}}},
+			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: string(NotApplicable)}}, {Id: "testCve2", Applicability: &formats.Applicability{Status: string(NotApplicable)}}},
 		},
 		{
 			scanResults: &ExtendedScanResults{
@@ -504,7 +504,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 			},
 			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
 			expectedResult: Applicable,
-			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: false}}, {Id: "testCve2", Applicability: &formats.Applicability{Status: true}}},
+			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: string(NotApplicable)}}, {Id: "testCve2", Applicability: &formats.Applicability{Status: string(Applicable)}}},
 		},
 		{
 			scanResults: &ExtendedScanResults{
@@ -514,7 +514,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				EntitledForJas: true},
 			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
 			expectedResult: ApplicabilityUndetermined,
-			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: false}}, {Id: "testCve2"}},
+			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: string(NotApplicable)}}, {Id: "testCve2"}},
 		},
 	}
 
@@ -522,7 +522,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 		cves := convertCves(testCase.cves)
 		applicableValue := getApplicableCveValue(testCase.scanResults, cves)
 		for i := range cves {
-			cves[i].Applicability, _ = getCveApplicability(cves[i], testCase.scanResults.ApplicabilityScanResults,nil)
+			cves[i].Applicability = getCveApplicability(cves[i], testCase.scanResults.ApplicabilityScanResults, nil)
 		}
 		assert.Equal(t, testCase.expectedResult, applicableValue)
 		if assert.True(t, len(testCase.expectedCves) == len(cves)) {

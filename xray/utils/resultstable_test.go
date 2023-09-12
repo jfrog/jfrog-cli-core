@@ -646,23 +646,23 @@ func TestShouldDisqualifyEvidence(t *testing.T) {
 	}{
 		{
 			name:       "package folders",
-			component:  map[string]services.Component{"npm://protobufjs:6.11.2": services.Component{}},
+			component:  map[string]services.Component{"npm://protobufjs:6.11.2": {}},
 			filePath:   "file:///Users/jfrog/test/node_modules/protobufjs/src/badCode.js",
 			disqualify: true,
 		}, {
 			name:       "nested folders",
-			component:  map[string]services.Component{"npm://protobufjs:6.11.2": services.Component{}},
+			component:  map[string]services.Component{"npm://protobufjs:6.11.2": {}},
 			filePath:   "file:///Users/jfrog/test/node_modules/someDep/node_modules/protobufjs/src/badCode.js",
 			disqualify: true,
 		}, {
 			name:       "applicability in node modules",
-			component:  map[string]services.Component{"npm://protobufjs:6.11.2": services.Component{}},
+			component:  map[string]services.Component{"npm://protobufjs:6.11.2": {}},
 			filePath:   "file:///Users/jfrog/test/node_modules/mquery/src/badCode.js",
 			disqualify: false,
 		}, {
 			// Only npm supported
 			name:       "not npm",
-			component:  map[string]services.Component{"yarn://protobufjs:6.11.2": services.Component{}},
+			component:  map[string]services.Component{"yarn://protobufjs:6.11.2": {}},
 			filePath:   "file:///Users/jfrog/test/node_modules/protobufjs/src/badCode.js",
 			disqualify: false,
 		},

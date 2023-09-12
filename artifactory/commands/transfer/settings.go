@@ -2,7 +2,10 @@ package transfer
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -25,6 +28,8 @@ func (tst *TransferSettingsCommand) Run() error {
 	if err != nil {
 		return err
 	}
+
+	// Set the worker threads value.
 	var currThreadsNumber string
 	if currSettings == nil {
 		currThreadsNumber = strconv.Itoa(utils.DefaultThreads)
@@ -32,18 +37,48 @@ func (tst *TransferSettingsCommand) Run() error {
 		currThreadsNumber = strconv.Itoa(currSettings.ThreadsNumber)
 	}
 	var threadsNumberInput string
-	ioutils.ScanFromConsole("Set the maximum number of working threads", &threadsNumberInput, currThreadsNumber)
+	ioutils.ScanFromConsole("Set the maximum number of worker threads", &threadsNumberInput, currThreadsNumber)
 	threadsNumber, err := strconv.Atoi(threadsNumberInput)
 	if err != nil || threadsNumber < 1 || threadsNumber > MaxThreadsLimit {
-		return errorutils.CheckErrorf("the value must be a number between 1 and " + strconv.Itoa(MaxThreadsLimit))
+		return errorutils.CheckErrorf("the worker threads value must be a number between 1 and " + strconv.Itoa(MaxThreadsLimit))
 	}
-	conf := &utils.TransferSettings{ThreadsNumber: threadsNumber}
-	err = utils.SaveTransferSettings(conf)
-	if err != nil {
+
+	// Set the log level value.
+	currLogLevel := tst.getCurrLogLevel(*currSettings)
+	var logLevel string
+	ioutils.ScanFromConsole("Set the log level (DEBUG, INFO, WARN or ERROR)", &logLevel, currLogLevel)
+	logLevel = strings.ToUpper(logLevel)
+	if err = tst.validateLogLevelValue(logLevel); err != nil {
+		return err
+	}
+
+	conf := &utils.TransferSettings{
+		ThreadsNumber: threadsNumber,
+		LogLevel:      logLevel,
+	}
+	if err = utils.SaveTransferSettings(conf); err != nil {
 		return err
 	}
 	log.Output("The settings were saved successfully. It might take a few moments for the new settings to take effect.")
 	log.Output(fmt.Sprintf("Note - For Build Info repositories, the number of worker threads will be limited to %d.", utils.MaxBuildInfoThreads))
+	return nil
+}
+
+func (tst *TransferSettingsCommand) getCurrLogLevel(settings utils.TransferSettings) string {
+	currLogLevel := settings.LogLevel
+	if currLogLevel == "" {
+		currLogLevel = os.Getenv(coreutils.LogLevel)
+	}
+	if currLogLevel == "" {
+		currLogLevel = "INFO"
+	}
+	return currLogLevel
+}
+
+func (tst *TransferSettingsCommand) validateLogLevelValue(loglevel string) error {
+	if loglevel != "DEBUG" && loglevel != "INFO" && loglevel != "WARN" && loglevel != "ERROR" {
+		return errorutils.CheckErrorf("the log level value is invalid")
+	}
 	return nil
 }
 

@@ -22,7 +22,8 @@ const (
 )
 
 type TransferSettings struct {
-	ThreadsNumber int `json:"threadsNumber,omitempty"`
+	ThreadsNumber int    `json:"threadsNumber,omitempty"`
+	LogLevel      string `json:"logLevel,omitempty"`
 }
 
 func (ts *TransferSettings) CalcNumberOfThreads(buildInfoRepo bool) int {

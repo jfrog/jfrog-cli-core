@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"io"
 	"os"
 	"path"
@@ -338,17 +339,37 @@ func periodicallyUpdateThreadsAndStopStatus(pcWrapper *producerConsumerWrapper, 
 			log.Debug("Stopping the polling on the settings and stop files for the current phase.")
 			return
 		}
-		if err := updateThreads(pcWrapper, buildInfoRepo); err != nil {
+
+		settings, err := utils.LoadTransferSettings()
+		if err != nil || settings == nil {
+			log.Error(err)
+			return
+		}
+
+		updateWorkerThreads(*settings, pcWrapper, buildInfoRepo)
+		if err = updateLogLevel(*settings); err != nil {
 			log.Error(err)
 		}
 	}
 }
 
-func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error {
-	settings, err := utils.LoadTransferSettings()
-	if err != nil || settings == nil {
-		return err
+func updateLogLevel(settings utils.TransferSettings) error {
+	envLogLevel := os.Getenv(coreutils.LogLevel)
+	if envLogLevel == "" {
+		envLogLevel = "INFO"
 	}
+	if settings.LogLevel == envLogLevel {
+		return nil
+	}
+	log.Info("The log level was changed from", envLogLevel, "to", settings.LogLevel, ".")
+	if err := os.Setenv(coreutils.LogLevel, settings.LogLevel); err != nil {
+		return errorutils.CheckError(err)
+	}
+	log.Logger.SetLogLevel(corelog.GetCliLogLevel())
+	return nil
+}
+
+func updateWorkerThreads(settings utils.TransferSettings, pcWrapper *producerConsumerWrapper, buildInfoRepo bool) {
 	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
 	if curThreads != calculatedNumberOfThreads {
 		if pcWrapper != nil {
@@ -360,7 +381,6 @@ func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error
 	} else {
 		log.Debug("No change to the number of threads have been detected.")
 	}
-	return nil
 }
 
 // Interrupt the transfer by populating the stopSignal channel with the Interrupt signal if the '~/.jfrog/transfer/stop' file exists.

@@ -244,7 +244,8 @@ func ExtractRelativePath(resultPath string, projectRoot string) string {
 
 	// Get relative path
 	relativePath := strings.ReplaceAll(resultPath, projectRoot, "")
-	return strings.TrimPrefix(relativePath, string(filepath.Separator))
+	trimSlash := strings.TrimPrefix(relativePath, string(filepath.Separator))
+	return strings.TrimPrefix(trimSlash, "/")
 }
 
 func GetResultSeverity(result *sarif.Result) string {

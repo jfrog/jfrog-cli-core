@@ -146,7 +146,7 @@ func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow
 		tableRows = append(tableRows, secretsTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			lineColumn: (strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn)),
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
 			text:       rows[i].Snippet,
 		})
 	}

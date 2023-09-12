@@ -170,7 +170,6 @@ func installPipDeps(auditPython *AuditPython) (restoreEnv func() error, err erro
 	pipInstallArgs := getPipInstallArgs(auditPython.PipRequirementsFile, remoteUrl)
 	err = executeCommand("python", pipInstallArgs...)
 	if err != nil && auditPython.PipRequirementsFile == "" {
-		log.Debug(err.Error() + "\nTrying to install using a requirements file...")
 		pipInstallArgs = getPipInstallArgs("requirements.txt", remoteUrl)
 		reqErr := executeCommand("python", pipInstallArgs...)
 		if reqErr != nil {

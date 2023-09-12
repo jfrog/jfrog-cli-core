@@ -52,6 +52,10 @@ func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[st
 
 func RunXrayDependenciesTreeScanGraph(dependencyTree *xrayUtils.GraphNode, progress ioUtils.ProgressMgr, technology coreutils.Technology, scanGraphParams *scangraph.ScanGraphParams) (results []services.ScanResponse, err error) {
 	scanGraphParams.XrayGraphScanParams().DependenciesGraph = dependencyTree
+	xscGitInfoContext := scanGraphParams.XrayGraphScanParams().XscGitInfoContext
+	if xscGitInfoContext != nil {
+		xscGitInfoContext.Technologies = []string{technology.ToString()}
+	}
 	scanMessage := fmt.Sprintf("Scanning %d %s dependencies", len(dependencyTree.Nodes), technology)
 	if progress != nil {
 		progress.SetHeadlineMsg(scanMessage)
@@ -108,14 +112,18 @@ func GetModule(modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.Graph
 
 // GetExecutableVersion gets an executable version and prints to the debug log if possible.
 // Only supported for package managers that use "--version".
-func GetExecutableVersion(executable string) (version string, err error) {
+func LogExecutableVersion(executable string) {
 	verBytes, err := exec.Command(executable, "--version").CombinedOutput()
-	if err != nil || len(verBytes) == 0 {
-		return "", err
+	if err != nil {
+		log.Debug(fmt.Sprintf("'%q --version' command received an error: %s", executable, err.Error()))
+		return
 	}
-	version = strings.TrimSpace(string(verBytes))
+	if len(verBytes) == 0 {
+		log.Debug(fmt.Sprintf("'%q --version' command received an empty response", executable))
+		return
+	}
+	version := strings.TrimSpace(string(verBytes))
 	log.Debug(fmt.Sprintf("Used %q version: %s", executable, version))
-	return
 }
 
 // BuildImpactPathsForScanResponse builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.

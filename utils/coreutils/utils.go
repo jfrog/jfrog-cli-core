@@ -584,3 +584,18 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 	}
 	return
 }
+
+func GetMaskedCommandString(cmd *exec.Cmd) string {
+	cmdString := strings.Join(cmd.Args, " ")
+	// Mask url if required
+	matchedResult := regexp.MustCompile(utils.CredentialsInUrlRegexp).FindString(cmdString)
+	if matchedResult != "" {
+		cmdString = strings.ReplaceAll(cmdString, matchedResult, "***@")
+	}
+
+	matchedResults := regexp.MustCompile(`--(?:password|access-token)=(\S+)`).FindStringSubmatch(cmdString)
+	if len(matchedResults) > 1 && matchedResults[1] != "" {
+		cmdString = strings.ReplaceAll(cmdString, matchedResults[1], "***")
+	}
+	return cmdString
+}

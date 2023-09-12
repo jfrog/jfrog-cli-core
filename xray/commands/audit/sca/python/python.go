@@ -1,11 +1,13 @@
 package python
 
 import (
+	"errors"
 	"fmt"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	utils "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -72,15 +74,11 @@ func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]s
 	}
 
 	defer func() {
-		e := os.Chdir(wd)
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
-
-		e = fileutils.RemoveTempDir(tempDirPath)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(
+			err,
+			errorutils.CheckError(os.Chdir(wd)),
+			fileutils.RemoveTempDir(tempDirPath),
+		)
 	}()
 
 	err = biutils.CopyDir(wd, tempDirPath, true, nil)
@@ -90,10 +88,7 @@ func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]s
 
 	restoreEnv, err := runPythonInstall(auditPython)
 	defer func() {
-		e := restoreEnv()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, restoreEnv())
 	}()
 	if err != nil {
 		return
@@ -105,12 +100,8 @@ func getDependencies(auditPython *AuditPython) (dependenciesGraph map[string][]s
 	}
 	dependenciesGraph, directDependencies, err = pythonutils.GetPythonDependencies(auditPython.Tool, tempDirPath, localDependenciesPath)
 	if err != nil {
-		if _, innerErr := sca.GetExecutableVersion("python"); innerErr != nil {
-			log.Error(innerErr)
-		}
-		if _, innerErr := sca.GetExecutableVersion(string(auditPython.Tool)); innerErr != nil {
-			log.Error(innerErr)
-		}
+		sca.LogExecutableVersion("python")
+		sca.LogExecutableVersion(string(auditPython.Tool))
 	}
 	return
 }
@@ -168,14 +159,19 @@ func installPipDeps(auditPython *AuditPython) (restoreEnv func() error, err erro
 	if err != nil {
 		return
 	}
+
+	remoteUrl := ""
 	if auditPython.RemotePypiRepo != "" {
-		return restoreEnv, runPipInstallFromRemoteRegistry(auditPython.Server, auditPython.RemotePypiRepo, auditPython.PipRequirementsFile)
+		remoteUrl, err = utils.GetPypiRepoUrl(auditPython.Server, auditPython.RemotePypiRepo)
+		if err != nil {
+			return
+		}
 	}
-	pipInstallArgs := getPipInstallArgs(auditPython.PipRequirementsFile)
+	pipInstallArgs := getPipInstallArgs(auditPython.PipRequirementsFile, remoteUrl)
 	err = executeCommand("python", pipInstallArgs...)
 	if err != nil && auditPython.PipRequirementsFile == "" {
 		log.Debug(err.Error() + "\nTrying to install using a requirements file...")
-		pipInstallArgs = getPipInstallArgs("requirements.txt")
+		pipInstallArgs = getPipInstallArgs("requirements.txt", remoteUrl)
 		reqErr := executeCommand("python", pipInstallArgs...)
 		if reqErr != nil {
 			// Return Pip install error and log the requirements fallback error.
@@ -189,18 +185,17 @@ func installPipDeps(auditPython *AuditPython) (restoreEnv func() error, err erro
 
 func executeCommand(executable string, args ...string) error {
 	installCmd := exec.Command(executable, args...)
-	log.Debug(fmt.Sprintf("Running %q", strings.Join(installCmd.Args, " ")))
+	maskedCmdString := coreutils.GetMaskedCommandString(installCmd)
+	log.Debug("Running", maskedCmdString)
 	output, err := installCmd.CombinedOutput()
 	if err != nil {
-		if _, innerErr := sca.GetExecutableVersion(executable); innerErr != nil {
-			log.Error(innerErr)
-		}
-		return errorutils.CheckErrorf("%q command failed: %s - %s", strings.Join(installCmd.Args, " "), err.Error(), output)
+		sca.LogExecutableVersion(executable)
+		return errorutils.CheckErrorf("%q command failed: %s - %s", maskedCmdString, err.Error(), output)
 	}
 	return nil
 }
 
-func getPipInstallArgs(requirementsFile string) []string {
+func getPipInstallArgs(requirementsFile, remoteUrl string) []string {
 	args := []string{"-m", "pip", "install"}
 	if requirementsFile == "" {
 		// Run 'pip install .'
@@ -209,17 +204,10 @@ func getPipInstallArgs(requirementsFile string) []string {
 		// Run pip 'install -r requirements <requirementsFile>'
 		args = append(args, "-r", requirementsFile)
 	}
-	return args
-}
-
-func runPipInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoName, pipRequirementsFile string) (err error) {
-	rtUrl, err := utils.GetPypiRepoUrl(server, depsRepoName)
-	if err != nil {
-		return err
+	if remoteUrl != "" {
+		args = append(args, utils.GetPypiRemoteRegistryFlag(pythonutils.Pip), remoteUrl)
 	}
-	args := getPipInstallArgs(pipRequirementsFile)
-	args = append(args, utils.GetPypiRemoteRegistryFlag(pythonutils.Pip), rtUrl.String())
-	return executeCommand("python", args...)
+	return args
 }
 
 func runPipenvInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoName string) (err error) {
@@ -227,7 +215,7 @@ func runPipenvInstallFromRemoteRegistry(server *config.ServerDetails, depsRepoNa
 	if err != nil {
 		return err
 	}
-	args := []string{"install", "-d", utils.GetPypiRemoteRegistryFlag(pythonutils.Pipenv), rtUrl.String()}
+	args := []string{"install", "-d", utils.GetPypiRemoteRegistryFlag(pythonutils.Pipenv), rtUrl}
 	return executeCommand("pipenv", args...)
 }
 

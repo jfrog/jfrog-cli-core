@@ -158,13 +158,13 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 		return
 	}
 	var xrayManager *xray.XrayServicesManager
-	xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
-	if err != nil {
+	if xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails); err != nil {
 		return
 	}
 	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, scangraph.GraphScanMinXrayVersion); err != nil {
 		return
 	}
+	results.ExtendedScanResults.XrayVersion = auditParams.xrayVersion
 	results.ExtendedScanResults.EntitledForJas, err = isEntitledForJas(xrayManager, auditParams.xrayVersion)
 	if err != nil {
 		return
@@ -186,7 +186,7 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 
 	// Run scanners only if the user is entitled for Advanced Security
 	if results.ExtendedScanResults.EntitledForJas {
-		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.Progress())
+		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.Progress(), auditParams.xrayGraphScanParams.MultiScanId)
 	}
 	return
 }

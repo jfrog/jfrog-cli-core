@@ -2,8 +2,8 @@ package spec
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-client-go/utils/distribution"
 
-	"github.com/jfrog/jfrog-client-go/distribution/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
@@ -25,8 +25,8 @@ func (distributionRules *DistributionRules) Get(index int) *DistributionRule {
 	return new(DistributionRule)
 }
 
-func (distributionRule *DistributionRule) ToDistributionCommonParams() *utils.DistributionCommonParams {
-	return &utils.DistributionCommonParams{
+func (distributionRule *DistributionRule) ToDistributionCommonParams() *distribution.DistributionCommonParams {
+	return &distribution.DistributionCommonParams{
 		SiteName:     distributionRule.SiteName,
 		CityName:     distributionRule.CityName,
 		CountryCodes: distributionRule.CountryCodes,

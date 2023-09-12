@@ -95,7 +95,7 @@ func (yc *YarnCommand) Run() error {
 		}()
 	}
 
-	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), filepath.Join(yc.workingDirectory, YarnrcBackupFileName))
+	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), YarnrcBackupFileName)
 	if err != nil {
 		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
 	}

@@ -1,6 +1,10 @@
 package coreutils
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -112,6 +116,11 @@ var technologiesData = map[Technology]TechData{
 	Nuget: {
 		indicators: []string{".sln", ".csproj"},
 		formal:     "NuGet",
+		// .NET CLI is used for NuGet projects
+		execCommand:                "dotnet",
+		packageInstallationCommand: "add",
+		// packageName -v packageVersion
+		packageVersionOperator: " -v ",
 	},
 	Dotnet: {
 		indicators: []string{".sln", ".csproj"},
@@ -155,7 +164,7 @@ func (tech Technology) IsCiSetup() bool {
 	return technologiesData[tech].ciSetupSupport
 }
 
-func (tech Technology) GetPackageOperator() string {
+func (tech Technology) GetPackageVersionOperator() string {
 	return technologiesData[tech].packageVersionOperator
 }
 
@@ -165,6 +174,23 @@ func (tech Technology) GetPackageInstallationCommand() string {
 
 func (tech Technology) ApplicabilityScannable() bool {
 	return technologiesData[tech].applicabilityScannable
+}
+
+func DetectedTechnologiesList() (technologies []string) {
+	wd, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	detectedTechnologies, err := DetectTechnologies(wd, false, false)
+	if err != nil {
+		return
+	}
+	if len(detectedTechnologies) == 0 {
+		return
+	}
+	techStringsList := DetectedTechnologiesToSlice(detectedTechnologies)
+	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ",")))
+	return techStringsList
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.

@@ -613,7 +613,7 @@ func SetPermissionsRecursively(dirPath string, mode os.FileMode) error {
 		return nil
 	})
 	if err != nil {
-		err = errorutils.CheckErrorf("failed while setting permission to '%s' files: %s", dirPath, err.Error())
+		return errorutils.CheckErrorf("failed while setting permission to '%s' files: %s", dirPath, err.Error())
 	}
 	return nil
 }

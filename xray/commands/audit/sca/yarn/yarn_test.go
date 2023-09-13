@@ -1,6 +1,7 @@
 package yarn
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -18,30 +19,30 @@ func TestParseYarnDependenciesList(t *testing.T) {
 		"pack5@npm:5.0.0":        {Value: "pack5@npm:5.0.0", Details: biutils.YarnDepDetails{Version: "5.0.0", Dependencies: []biutils.YarnDependencyPointer{{Locator: "pack2@npm:2.0.0"}}}},
 	}
 
-	rootXrayId := NpmPackageTypeIdentifier + "@jfrog/pack3:3.0.0"
+	rootXrayId := utils.NpmPackageTypeIdentifier + "@jfrog/pack3:3.0.0"
 	expectedTree := &xrayUtils.GraphNode{
 		Id: rootXrayId,
 		Nodes: []*xrayUtils.GraphNode{
-			{Id: NpmPackageTypeIdentifier + "pack1:1.0.0",
+			{Id: utils.NpmPackageTypeIdentifier + "pack1:1.0.0",
 				Nodes: []*xrayUtils.GraphNode{
-					{Id: NpmPackageTypeIdentifier + "pack4:4.0.0",
+					{Id: utils.NpmPackageTypeIdentifier + "pack4:4.0.0",
 						Nodes: []*xrayUtils.GraphNode{}},
 				}},
-			{Id: NpmPackageTypeIdentifier + "pack2:2.0.0",
+			{Id: utils.NpmPackageTypeIdentifier + "pack2:2.0.0",
 				Nodes: []*xrayUtils.GraphNode{
-					{Id: NpmPackageTypeIdentifier + "pack4:4.0.0",
+					{Id: utils.NpmPackageTypeIdentifier + "pack4:4.0.0",
 						Nodes: []*xrayUtils.GraphNode{}},
-					{Id: NpmPackageTypeIdentifier + "pack5:5.0.0",
+					{Id: utils.NpmPackageTypeIdentifier + "pack5:5.0.0",
 						Nodes: []*xrayUtils.GraphNode{}},
 				}},
 		},
 	}
 	expectedUniqueDeps := []string{
-		NpmPackageTypeIdentifier + "pack1:1.0.0",
-		NpmPackageTypeIdentifier + "pack2:2.0.0",
-		NpmPackageTypeIdentifier + "pack4:4.0.0",
-		NpmPackageTypeIdentifier + "pack5:5.0.0",
-		NpmPackageTypeIdentifier + "@jfrog/pack3:3.0.0",
+		utils.NpmPackageTypeIdentifier + "pack1:1.0.0",
+		utils.NpmPackageTypeIdentifier + "pack2:2.0.0",
+		utils.NpmPackageTypeIdentifier + "pack4:4.0.0",
+		utils.NpmPackageTypeIdentifier + "pack5:5.0.0",
+		utils.NpmPackageTypeIdentifier + "@jfrog/pack3:3.0.0",
 	}
 
 	xrayDependenciesTree, uniqueDeps := parseYarnDependenciesMap(yarnDependencies, rootXrayId)

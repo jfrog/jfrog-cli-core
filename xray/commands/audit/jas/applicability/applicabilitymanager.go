@@ -21,12 +21,10 @@ const (
 )
 
 type ApplicabilityScanManager struct {
-	applicabilityScanResults []*sarif.Run
-	// List of Cves to determinant applicability status
-	cvesWhitelist []string
-	xrayResults   []services.ScanResponse
-	scanner       *jas.JasScanner
-	// Include third party dependencies source code in the scan
+	applicabilityScanResults    []*sarif.Run
+	directDependenciesCves      []string
+	xrayResults                 []services.ScanResponse
+	scanner                     *jas.JasScanner
 	thirdPartyApplicabilityScan bool
 }
 
@@ -54,45 +52,43 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (manager *ApplicabilityScanManager) {
-	dependencyWhitelist := prepareCvesWhitelist(xrayScanResults, directDependencies, thirdPartyContextualAnalysis)
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyApplicabilityScan bool) (manager *ApplicabilityScanManager) {
+	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults:    []*sarif.Run{},
-		cvesWhitelist:               dependencyWhitelist,
+		directDependenciesCves:      directDependenciesCves,
 		xrayResults:                 xrayScanResults,
 		scanner:                     scanner,
-		thirdPartyApplicabilityScan: thirdPartyContextualAnalysis,
+		thirdPartyApplicabilityScan: thirdPartyApplicabilityScan,
 	}
 }
 
-// Prepares a list of Cves for the applicability scanner.
-// In most cases, we will send only direct components to the cve whitelist.
-// Except when ThirdPartyContextualAnalysis with npm project is set to true, then we want every component.
-func prepareCvesWhitelist(xrayScanResults []services.ScanResponse, directDependencies []string, thirdPartyContextualAnalysis bool) []string {
-	whitelistCves := datastructures.MakeSet[string]()
+// This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
+// vulnerabilities of the scanned project, ignoring indirect vulnerabilities
+func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies []string) []string {
+	directsCves := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {
-			shouldIncludeIndirect := thirdPartyContextualAnalysis && vulnerability.Technology == coreutils.Npm.ToString()
-			if shouldIncludeIndirect || isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
+			if isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
 				for _, cve := range vulnerability.Cves {
 					if cve.Id != "" {
-						whitelistCves.Add(cve.Id)
+						directsCves.Add(cve.Id)
 					}
 				}
 			}
 		}
 		for _, violation := range scanResult.Violations {
-			shouldIncludeIndirect := thirdPartyContextualAnalysis && violation.Technology == coreutils.Npm.ToString()
-			if shouldIncludeIndirect || isDirectComponents(maps.Keys(violation.Components), directDependencies) {
+			if isDirectComponents(maps.Keys(violation.Components), directDependencies) {
 				for _, cve := range violation.Cves {
 					if cve.Id != "" {
-						whitelistCves.Add(cve.Id)
+						directsCves.Add(cve.Id)
 					}
 				}
 			}
 		}
 	}
-	return whitelistCves.ToSlice()
+
+	return directsCves.ToSlice()
 }
 
 func isDirectComponents(components []string, directDependencies []string) bool {
@@ -124,12 +120,12 @@ func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
 	return
 }
 
-func (asm *ApplicabilityScanManager) cvesListNotEmpty() bool {
-	return len(asm.cvesWhitelist) > 0
+func (asm *ApplicabilityScanManager) directDependenciesExist() bool {
+	return len(asm.directDependenciesCves) > 0
 }
 
 func (asm *ApplicabilityScanManager) shouldRunApplicabilityScan(technologies []coreutils.Technology) bool {
-	return asm.cvesListNotEmpty() && coreutils.ContainsApplicabilityScannableTech(technologies)
+	return asm.directDependenciesExist() && coreutils.ContainsApplicabilityScannableTech(technologies)
 }
 
 type applicabilityScanConfig struct {
@@ -159,7 +155,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 				Output:       asm.scanner.ResultsFileName,
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
-				CveWhitelist: asm.cvesWhitelist,
+				CveWhitelist: asm.directDependenciesCves,
 				SkippedDirs:  skipDirs,
 			},
 		},

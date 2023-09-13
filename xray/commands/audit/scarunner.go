@@ -97,7 +97,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		}
 		techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
 		var directDependencies []string
-		if tech == coreutils.Pip {
+		if tech == coreutils.Pip || params.thirdPartyApplicabilityScan {
 			// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
 			// Our solution for this case is to send all dependencies to the CA scanner.
 			directDependencies = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})

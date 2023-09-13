@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -93,8 +94,11 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		case "security":
 			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves)
-			for i, cve := range cves {
-				cves[i].Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, nil)
+			if extendedResults.EntitledForJas {
+				for i, cve := range cves {
+					cves[i].Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, nil)
+					applicableValue = ApplicabilityStatus(cves[i].Applicability.Status)
+				}
 			}
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
@@ -213,8 +217,11 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		}
 		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves)
-		for i, cve := range cves {
-			cves[i].Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, vulnerability.Components)
+		if extendedResults.EntitledForJas {
+			for i, cve := range cves {
+				cves[i].Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, vulnerability.Components)
+				applicableValue = ApplicabilityStatus(cves[i].Applicability.Status)
+			}
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -954,20 +961,14 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndetermined
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) (applicability *formats.Applicability) {
-	applicability = &formats.Applicability{Status: string(ApplicabilityUndetermined)}
+func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) *formats.Applicability {
+	applicability := &formats.Applicability{Status: string(ApplicabilityUndetermined)}
 	for _, applicabilityRun := range applicabilityScanResults {
 		foundResult, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
 		if foundResult == nil {
 			continue
 		}
 		applicability = &formats.Applicability{}
-		if IsApplicableResult(foundResult) {
-			applicability.Status = string(Applicable)
-		} else {
-			applicability.Status = string(NotApplicable)
-		}
-
 		foundRule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
 		if foundRule != nil {
 			applicability.ScannerDescription = GetRuleFullDescription(foundRule)
@@ -975,13 +976,13 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 
 		// Add new evidences from locations
 		for _, location := range foundResult.Locations {
-			fileName := GetLocationFileName(location)
-			if shouldDisqualifyNpmEvidence(components, fileName) {
+			fileName := GetRelativeLocationFileName(location, applicabilityRun.Invocations)
+			if shouldDisqualifyEvidence(components, fileName) {
 				continue
 			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				Location: formats.Location{
-					File:        GetRelativeLocationFileName(location, applicabilityRun.Invocations),
+					File:        fileName,
 					StartLine:   GetLocationStartLine(location),
 					StartColumn: GetLocationStartColumn(location),
 					EndLine:     GetLocationEndLine(location),
@@ -991,14 +992,13 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 				Reason: GetResultMsgText(foundResult),
 			})
 		}
-		// When there are no evidences left, it means we disqualified some of the original evidences.
-		if len(applicability.Evidence) == 0 {
-			applicability.Status = string(NotApplicable)
-			return
-		}
-		break
 	}
-	return
+	if len(applicability.Evidence) == 0 {
+		applicability.Status = string(NotApplicable)
+	} else {
+		applicability.Status = string(Applicable)
+	}
+	return applicability
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
@@ -1024,13 +1024,15 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 //
 // filePath = myProject/node_modules/mpath/badCode.js  , disqualify = False.
 // Found use of a badCode inside the node_modules from a different package, report applicable.
-func shouldDisqualifyNpmEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
+func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
 	for key := range components {
 		dependencyName := extractNpmDependencyNameFromComponent(key)
 		if dependencyName == "" {
 			return
 		}
-		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) {
+		// Check macOS and Linux path
+		linuxPath := nodeModules + "/" + dependencyName
+		if strings.Contains(evidenceFilePath, linuxPath) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
 			disqualify = true
 			return
 		}

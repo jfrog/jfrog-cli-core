@@ -20,11 +20,11 @@ import (
 )
 
 const (
-	NpmSkipPattern = "**/*node_modules*/**"
+	NodeModulesPattern = "**/*node_modules*/**"
 )
 
 var (
-	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", NpmSkipPattern, "**/*target*/**"}
+	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", NodeModulesPattern, "**/*target*/**"}
 
 	mapSeverityToScore = map[string]string{
 		"":         "0.0",

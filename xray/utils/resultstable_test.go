@@ -669,7 +669,7 @@ func TestShouldDisqualifyEvidence(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.disqualify, shouldDisqualifyNpmEvidence(tc.component, tc.filePath))
+			assert.Equal(t, tc.disqualify, shouldDisqualifyEvidence(tc.component, tc.filePath))
 		})
 	}
 }

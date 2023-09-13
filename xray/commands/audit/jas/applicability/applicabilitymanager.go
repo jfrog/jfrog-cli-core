@@ -21,11 +21,11 @@ const (
 )
 
 type ApplicabilityScanManager struct {
-	applicabilityScanResults    []*sarif.Run
-	directDependenciesCves      []string
-	xrayResults                 []services.ScanResponse
-	scanner                     *jas.JasScanner
-	thirdPartyApplicabilityScan bool
+	applicabilityScanResults []*sarif.Run
+	directDependenciesCves   []string
+	xrayResults              []services.ScanResponse
+	scanner                  *jas.JasScanner
+	thirdPartyScan           bool
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -52,14 +52,14 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyApplicabilityScan bool) (manager *ApplicabilityScanManager) {
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
-		applicabilityScanResults:    []*sarif.Run{},
-		directDependenciesCves:      directDependenciesCves,
-		xrayResults:                 xrayScanResults,
-		scanner:                     scanner,
-		thirdPartyApplicabilityScan: thirdPartyApplicabilityScan,
+		applicabilityScanResults: []*sarif.Run{},
+		directDependenciesCves:   directDependenciesCves,
+		xrayResults:              xrayScanResults,
+		scanner:                  scanner,
+		thirdPartyScan:           thirdPartyScan,
 	}
 }
 
@@ -144,9 +144,9 @@ type scanConfiguration struct {
 func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 	skipDirs := jas.SkippedDirs
 	// If set to true, remove third party folders from the scan skip list.
-	if asm.thirdPartyApplicabilityScan {
-		// Only npm supported
-		skipDirs = removeElementFromArray(skipDirs, jas.NpmSkipPattern)
+	if asm.thirdPartyScan {
+		log.Debug("Including node modules in applicability scan")
+		skipDirs = removeElementFromSlice(skipDirs, jas.NodeModulesPattern)
 	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
@@ -169,12 +169,7 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
 }
 
-func removeElementFromArray(arr []string, elementToRemove string) []string {
-	var result []string
-	for _, element := range arr {
-		if element != elementToRemove {
-			result = append(result, element)
-		}
-	}
-	return result
+func removeElementFromSlice(skipDirs []string, element string) []string {
+	deleteIndex := slices.Index(skipDirs, element)
+	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
 }

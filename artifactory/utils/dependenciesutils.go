@@ -57,7 +57,7 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	downloadUrl := artDetails.ArtifactoryUrl + remotePath
 	remoteFileDetails, _, err := client.GetRemoteFileDetails(downloadUrl, &httpClientDetails)
 	if err != nil {
-		return errors.New("couldn't get remote file details for " + downloadUrl)
+		return errors.New("couldn't get remote file details for " + downloadUrl + ": " + err.Error())
 	}
 	analyzerManagerDir, err := xrayutils.GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {

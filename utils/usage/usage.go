@@ -85,6 +85,9 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 		return
 	}
 	log.Debug(ReportUsagePrefix, "Sending info...")
+	// Xray service can only receive usage from admins.
+	// disable until fixed
+	ur.sendToXray = false
 	if ur.sendToEcosystem {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToEcosystem(features...); err != nil {

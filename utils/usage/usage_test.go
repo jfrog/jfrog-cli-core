@@ -160,6 +160,7 @@ func createArtifactoryUsageHandler(t *testing.T, productName, commandName string
 }
 
 func TestReportXrayUsage(t *testing.T) {
+	t.Skip()
 	const productName = "test-product"
 	const commandName = "test-command"
 	const clientName = "test-client"
@@ -178,6 +179,7 @@ func TestReportXrayUsage(t *testing.T) {
 }
 
 func TestReportXrayError(t *testing.T) {
+	t.Skip()
 	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToEcosystem(false).SetSendToArtifactory(false)
 	reporter.Report(ReportFeature{
 		FeatureId: "",

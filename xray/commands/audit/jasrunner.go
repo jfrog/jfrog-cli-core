@@ -34,7 +34,7 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if err != nil {
 		return
 	}
-	// Don't execute other scanners to avoid overhead when scanning third party dependencies.
+	// Don't execute other scanners when scanning third party dependencies.
 	if thirdPartyContextualAnalysis {
 		return
 	}

@@ -108,7 +108,9 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serv
 	cmd.Dir = workingDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Debug(fmt.Sprintf("%s %q output: %s", workingDir, strings.Join(cmd.Args, " "), string(output)))
+		if len(output) > 0 {
+			log.Debug(fmt.Sprintf("%s %q output: %s", workingDir, strings.Join(cmd.Args, " "), string(output)))
+		}
 		err = errorutils.CheckError(err)
 	}
 	return

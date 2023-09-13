@@ -96,16 +96,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 			continue
 		}
 		techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
-		var directDependencies []string
-		if tech == coreutils.Pip || (params.thirdPartyApplicabilityScan && tech == coreutils.Npm) {
-			// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
-			// Our solution for this case is to send all dependencies to the CA scanner.
-			// When thirdPartyApplicabilityScan is true, use flatten graph to include all the dependencies in applicability scanning.
-			// Only npm is supported for this flag.
-			directDependencies = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
-		} else {
-			directDependencies = getDirectDependenciesFromTree(fullDependencyTrees)
-		}
+		directDependencies := getDirectDependencies(params, tech, flattenTree, fullDependencyTrees)
 		params.AppendDirectDependencies(directDependencies)
 
 		results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
@@ -115,6 +106,19 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
 	}
 	return
+}
+
+// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
+// Our solution for this case is to send all dependencies to the CA scanner.
+// When thirdPartyApplicabilityScan is true, use flatten graph to include all the dependencies in applicability scanning.
+// Only npm is supported for this flag.
+func getDirectDependencies(params *AuditParams, tech coreutils.Technology, flattenTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode) (directDependencies []string) {
+	if tech == coreutils.Pip || (params.thirdPartyApplicabilityScan && tech == coreutils.Npm) {
+		directDependencies = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
+	} else {
+		directDependencies = getDirectDependenciesFromTree(fullDependencyTrees)
+	}
+	return directDependencies
 }
 
 // This function retrieves the dependency trees of the scanned project and extracts a set that contains only the direct dependencies.

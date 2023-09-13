@@ -959,21 +959,25 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndetermined
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) *formats.Applicability {
-	applicability := &formats.Applicability{Status: string(ApplicabilityUndetermined)}
+func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) (applicability *formats.Applicability) {
+	applicability = &formats.Applicability{}
+	if len(applicabilityScanResults) == 0 {
+		return
+	}
+	resultFound := false
 	for _, applicabilityRun := range applicabilityScanResults {
-		foundResult, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
-		if foundResult == nil {
+		result, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
+		if result == nil {
 			continue
 		}
-		applicability = &formats.Applicability{}
-		foundRule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
-		if foundRule != nil {
-			applicability.ScannerDescription = GetRuleFullDescription(foundRule)
+		resultFound = true
+		rule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
+		if rule != nil {
+			applicability.ScannerDescription = GetRuleFullDescription(rule)
 		}
 
 		// Add new evidences from locations
-		for _, location := range foundResult.Locations {
+		for _, location := range result.Locations {
 			fileName := GetRelativeLocationFileName(location, applicabilityRun.Invocations)
 			if shouldDisqualifyEvidence(components, fileName) {
 				continue
@@ -987,16 +991,20 @@ func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.R
 					EndColumn:   GetLocationEndColumn(location),
 					Snippet:     GetLocationSnippet(location),
 				},
-				Reason: GetResultMsgText(foundResult),
+				Reason: GetResultMsgText(result),
 			})
 		}
 	}
-	if len(applicability.Evidence) == 0 {
+
+	switch {
+	case !resultFound:
+		applicability.Status = string(ApplicabilityUndetermined)
+	case len(applicability.Evidence) == 0:
 		applicability.Status = string(NotApplicable)
-	} else {
+	default:
 		applicability.Status = string(Applicable)
 	}
-	return applicability
+	return
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
@@ -1024,10 +1032,10 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 // Found use of a badCode inside the node_modules from a different package, report applicable.
 func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
 	for key := range components {
-		dependencyName := extractNpmDependencyNameFromComponent(key)
-		if dependencyName == "" {
+		if !strings.HasPrefix(key, NpmPackageTypeIdentifier) {
 			return
 		}
+		dependencyName := extractDependencyNameFromComponent(key, NpmPackageTypeIdentifier)
 		// Check both Unix & Windows paths.
 		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
 			return true
@@ -1036,11 +1044,8 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 	return
 }
 
-func extractNpmDependencyNameFromComponent(key string) (dependencyName string) {
-	if !strings.HasPrefix(key, NpmPackageTypeIdentifier) {
-		return
-	}
-	packageAndVersion := strings.TrimPrefix(key, NpmPackageTypeIdentifier)
+func extractDependencyNameFromComponent(key string, techIdentifier string) (dependencyName string) {
+	packageAndVersion := strings.TrimPrefix(key, techIdentifier)
 	split := strings.Split(packageAndVersion, ":")
 	if len(split) < 2 {
 		return

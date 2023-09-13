@@ -144,7 +144,7 @@ type scanConfiguration struct {
 func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 	skipDirs := jas.SkippedDirs
 	if asm.thirdPartyScan {
-		log.Debug("Including node modules folder in applicability scan")
+		log.Info("Including node modules folder in applicability scan")
 		skipDirs = removeElementFromSlice(skipDirs, jas.NodeModulesPattern)
 	}
 	configFileContent := applicabilityScanConfig{
@@ -170,5 +170,8 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 
 func removeElementFromSlice(skipDirs []string, element string) []string {
 	deleteIndex := slices.Index(skipDirs, element)
+	if deleteIndex == -1 {
+		return skipDirs
+	}
 	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
 }

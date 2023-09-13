@@ -520,7 +520,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 
 	for _, testCase := range testCases {
 		cves := convertCves(testCase.cves)
-		applicableValue := getApplicableCveValue(testCase.scanResults, cves)
+		applicableValue := getApplicableCveValue(testCase.scanResults.EntitledForJas, testCase.scanResults.ApplicabilityScanResults, cves)
 		for i := range cves {
 			cves[i].Applicability = getCveApplicability(cves[i], testCase.scanResults.ApplicabilityScanResults)
 		}

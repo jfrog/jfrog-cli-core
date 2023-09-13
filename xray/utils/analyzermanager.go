@@ -39,6 +39,8 @@ const (
 	unsupportedOsExitCode                     = 55
 	ErrFailedScannerRun                       = "failed to run %s scan. Exit code received: %s"
 	jfrogCliAnalyzerManagerVersionEnvVariable = "JFROG_CLI_ANALYZER_MANAGER_VERSION"
+	// Xsc scan ID that links to GitInfoContext object to graph scans.
+	jfXscMultiScanID = "JF_XSC_MULTI_SCAN_ID"
 )
 
 type ApplicabilityStatus string
@@ -94,10 +96,12 @@ type AnalyzerManager struct {
 }
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
-	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
+	cleanUp, err := SetAnalyzerManagerEnvVariables(serverDetails, am.MultiScanId)
+	defer cleanUp()
+	if err != nil {
 		return
 	}
-	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
+	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile)
 	defer func() {
 		if !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {
@@ -164,30 +168,36 @@ func GetAnalyzerManagerExecutableName() string {
 	return analyzerManager
 }
 
-func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails) error {
+func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails, xscMultiScanId string) (cleanUp func(), err error) {
 	if serverDetails == nil {
-		return errors.New("cant get xray server details")
+		return nil, errors.New("cant get xray server details")
 	}
-	if err := os.Setenv(jfUserEnvVariable, serverDetails.User); errorutils.CheckError(err) != nil {
-		return err
+	if err = os.Setenv(jfUserEnvVariable, serverDetails.User); errorutils.CheckError(err) != nil {
+		return
 	}
-	if err := os.Setenv(jfPasswordEnvVariable, serverDetails.Password); errorutils.CheckError(err) != nil {
-		return err
+	if err = os.Setenv(jfPasswordEnvVariable, serverDetails.Password); errorutils.CheckError(err) != nil {
+		return
 	}
-	if err := os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url); errorutils.CheckError(err) != nil {
-		return err
+	if err = os.Setenv(jfPlatformUrlEnvVariable, serverDetails.Url); errorutils.CheckError(err) != nil {
+		return
 	}
-	if err := os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken); errorutils.CheckError(err) != nil {
-		return err
+	if err = os.Setenv(jfTokenEnvVariable, serverDetails.AccessToken); errorutils.CheckError(err) != nil {
+		return
 	}
 	analyzerManagerLogFolder, err := coreutils.CreateDirInJfrogHome(filepath.Join(coreutils.JfrogLogsDirName, analyzerManagerLogDirName))
 	if err != nil {
-		return err
+		return
 	}
 	if err = os.Setenv(logDirEnvVariable, analyzerManagerLogFolder); errorutils.CheckError(err) != nil {
-		return err
+		return
 	}
-	return nil
+	if err = os.Setenv(jfXscMultiScanID, xscMultiScanId); errorutils.CheckError(err) != nil {
+		return
+	}
+	cleanUp = func() {
+		os.Clearenv()
+	}
+	return
 }
 
 func ParseAnalyzerManagerError(scanner JasScanType, err error) error {

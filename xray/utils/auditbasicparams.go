@@ -6,26 +6,26 @@ import (
 )
 
 type AuditBasicParams struct {
-	serverDetails           *config.ServerDetails
-	outputFormat            OutputFormat
-	progress                ioUtils.ProgressMgr
-	directDependencies      []string
-	excludeTestDependencies bool
-	useWrapper              bool
-	insecureTls             bool
-	pipRequirementsFile     string
-	technologies            []string
-	args                    []string
-	depsRepo                string
-	ignoreConfigFile        bool
+	serverDetails                    *config.ServerDetails
+	outputFormat                     OutputFormat
+	progress                         ioUtils.ProgressMgr
+	dependenciesForApplicabilityScan []string
+	excludeTestDependencies          bool
+	useWrapper                       bool
+	insecureTls                      bool
+	pipRequirementsFile              string
+	technologies                     []string
+	args                             []string
+	depsRepo                         string
+	ignoreConfigFile                 bool
 }
 
 func (abp *AuditBasicParams) DirectDependencies() []string {
-	return abp.directDependencies
+	return abp.dependenciesForApplicabilityScan
 }
 
-func (abp *AuditBasicParams) AppendDirectDependencies(directDependencies []string) *AuditBasicParams {
-	abp.directDependencies = append(abp.directDependencies, directDependencies...)
+func (abp *AuditBasicParams) AppendDependenciesForApplicabilityScan(directDependencies []string) *AuditBasicParams {
+	abp.dependenciesForApplicabilityScan = append(abp.dependenciesForApplicabilityScan, directDependencies...)
 	return abp
 }
 

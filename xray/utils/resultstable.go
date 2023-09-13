@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ const (
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
+	nodeModules                = "node_modules"
+	NpmPackageTypeIdentifier   = "npm://"
 )
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
@@ -90,7 +93,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			cves := convertCves(violation.Cves)
 			if extendedResults.EntitledForJas {
 				for i := range cves {
-					cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults)
+					cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults, violation.Components)
 				}
 			}
 			applicabilityStatus := getApplicableCveStatus(extendedResults.EntitledForJas, extendedResults.ApplicabilityScanResults, cves)
@@ -212,7 +215,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		cves := convertCves(vulnerability.Cves)
 		if extendedResults.EntitledForJas {
 			for i := range cves {
-				cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults)
+				cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults, vulnerability.Components)
 			}
 		}
 		applicabilityStatus := getApplicableCveStatus(extendedResults.EntitledForJas, extendedResults.ApplicabilityScanResults, cves)
@@ -949,42 +952,51 @@ func getApplicableCveStatus(entitledForJas bool, applicabilityScanResults []*sar
 	return NotApplicable
 }
 
-func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sarif.Run) *formats.Applicability {
-	applicability := &formats.Applicability{Status: string(ApplicabilityUndetermined)}
+func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) *formats.Applicability {
+	if len(applicabilityScanResults) == 0 {
+		return nil
+	}
+
+	applicability := formats.Applicability{}
+	resultFound := false
 	for _, applicabilityRun := range applicabilityScanResults {
-		foundResult, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
-		if foundResult == nil {
+		result, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
+		if result == nil {
 			continue
 		}
-		applicability = &formats.Applicability{}
-		if IsApplicableResult(foundResult) {
-			applicability.Status = string(Applicable)
-		} else {
-			applicability.Status = string(NotApplicable)
+		resultFound = true
+		rule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
+		if rule != nil {
+			applicability.ScannerDescription = GetRuleFullDescription(rule)
 		}
-
-		foundRule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
-		if foundRule != nil {
-			applicability.ScannerDescription = GetRuleFullDescription(foundRule)
-		}
-
 		// Add new evidences from locations
-		for _, location := range foundResult.Locations {
+		for _, location := range result.Locations {
+			fileName := GetRelativeLocationFileName(location, applicabilityRun.Invocations)
+			if shouldDisqualifyEvidence(components, fileName) {
+				continue
+			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				Location: formats.Location{
-					File:        GetRelativeLocationFileName(location, applicabilityRun.Invocations),
+					File:        fileName,
 					StartLine:   GetLocationStartLine(location),
 					StartColumn: GetLocationStartColumn(location),
 					EndLine:     GetLocationEndLine(location),
 					EndColumn:   GetLocationEndColumn(location),
 					Snippet:     GetLocationSnippet(location),
 				},
-				Reason: GetResultMsgText(foundResult),
+				Reason: GetResultMsgText(result),
 			})
 		}
-		break
 	}
-	return applicability
+	switch {
+	case !resultFound:
+		applicability.Status = string(ApplicabilityUndetermined)
+	case len(applicability.Evidence) == 0:
+		applicability.Status = string(NotApplicable)
+	default:
+		applicability.Status = string(Applicable)
+	}
+	return &applicability
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
@@ -996,4 +1008,40 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 		}
 	}
 	return string(applicableValue)
+}
+
+// Relevant only when "third-party-contextual-analysis" flag is on,
+// which mean we scan the environment folders as well (node_modules for example...)
+// When a certain package is reported applicable, and the evidence found
+// is inside the source code of the same package, we should disqualify it.
+//
+// For example,
+// Cve applicability was found inside the 'mquery' package.
+// filePath = myProject/node_modules/mquery/badCode.js , disqualify = True.
+// Disqualify the above evidence, as the reported applicability is used inside its own package.
+//
+// filePath = myProject/node_modules/mpath/badCode.js  , disqualify = False.
+// Found use of a badCode inside the node_modules from a different package, report applicable.
+func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
+	for key := range components {
+		if !strings.HasPrefix(key, NpmPackageTypeIdentifier) {
+			return
+		}
+		dependencyName := extractDependencyNameFromComponent(key, NpmPackageTypeIdentifier)
+		// Check both Unix & Windows paths.
+		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
+			return true
+		}
+	}
+	return
+}
+
+func extractDependencyNameFromComponent(key string, techIdentifier string) (dependencyName string) {
+	packageAndVersion := strings.TrimPrefix(key, techIdentifier)
+	split := strings.Split(packageAndVersion, ":")
+	if len(split) < 2 {
+		return
+	}
+	dependencyName = split[0]
+	return
 }

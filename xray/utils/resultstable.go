@@ -932,7 +932,7 @@ func getApplicableCveStatus(entitledForJas bool, applicabilityScanResults []*sar
 	if len(cves) == 0 {
 		return ApplicabilityUndetermined
 	}
-	foundUndetermined := true
+	foundUndetermined := false
 	for _, cve := range cves {
 		if cve.Applicability != nil {
 			if cve.Applicability.Status == string(Applicable) {

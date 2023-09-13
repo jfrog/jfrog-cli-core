@@ -25,6 +25,7 @@ type ApplicabilityScanManager struct {
 	directDependenciesCves   []string
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
+	thirdPartyScan           bool
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -37,8 +38,8 @@ type ApplicabilityScanManager struct {
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
 func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
-	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner) (results []*sarif.Run, err error) {
-	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner)
+	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (results []*sarif.Run, err error) {
+	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, thirdPartyContextualAnalysis)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return
@@ -51,13 +52,14 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner) (manager *ApplicabilityScanManager) {
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
 		directDependenciesCves:   directDependenciesCves,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
+		thirdPartyScan:           thirdPartyScan,
 	}
 }
 
@@ -140,6 +142,11 @@ type scanConfiguration struct {
 }
 
 func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
+	skipDirs := jas.SkippedDirs
+	if asm.thirdPartyScan {
+		log.Info("Including node modules folder in applicability scan")
+		skipDirs = removeElementFromSlice(skipDirs, jas.NodeModulesPattern)
+	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
@@ -148,7 +155,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
 				CveWhitelist: asm.directDependenciesCves,
-				SkippedDirs:  jas.SkippedDirs,
+				SkippedDirs:  skipDirs,
 			},
 		},
 	}
@@ -159,4 +166,12 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 // advance security feature
 func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
+}
+
+func removeElementFromSlice(skipDirs []string, element string) []string {
+	deleteIndex := slices.Index(skipDirs, element)
+	if deleteIndex == -1 {
+		return skipDirs
+	}
+	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
 }

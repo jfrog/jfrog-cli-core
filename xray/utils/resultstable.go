@@ -93,8 +93,8 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves)
 			if extendedResults.EntitledForJas {
-				for i, cve := range cves {
-					cves[i].Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, nil)
+				for i := range cves {
+					cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults, nil)
 				}
 			}
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
@@ -215,8 +215,8 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves)
 		if extendedResults.EntitledForJas {
-			for i, cve := range cves {
-				cves[i].Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults, vulnerability.Components)
+			for i := range cves {
+				cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults, vulnerability.Components)
 			}
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)

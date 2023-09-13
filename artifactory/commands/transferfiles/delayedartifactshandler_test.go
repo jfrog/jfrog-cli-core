@@ -2,17 +2,18 @@ package transferfiles
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 )
 
 var delayTestRepoKey = "delay-local-repo"
@@ -128,4 +129,23 @@ func validateDelayedArtifactsFilesContent(t *testing.T, path string) (entitiesNu
 		artifactsNamesMap[entity.Name] = true
 	}
 	return len(delayedArtifacts.DelayedArtifacts)
+}
+
+var sortDelayedArtifactsCases = []struct {
+	shouldDelayFunctions   []shouldDelayUpload
+	delayedArtifacts       []api.FileRepresentation
+	sortedDelayedArtifacts []api.FileRepresentation
+}{
+	{[]shouldDelayUpload{}, []api.FileRepresentation{}, []api.FileRepresentation{}},
+	{getDelayUploadComparisonFunctions(maven), []api.FileRepresentation{{Name: "pom.xml"}}, []api.FileRepresentation{{Name: "pom.xml"}}},
+	{getDelayUploadComparisonFunctions(docker), []api.FileRepresentation{{Name: "list.manifest.json"}, {Name: "manifest.json"}}, []api.FileRepresentation{{Name: "manifest.json"}, {Name: "list.manifest.json"}}},
+	{getDelayUploadComparisonFunctions(conan), []api.FileRepresentation{{Name: "conanfile.py"}, {Name: ".timestamp"}, {Name: "conaninfo.txt"}}, []api.FileRepresentation{{Name: "conanfile.py"}, {Name: "conaninfo.txt"}, {Name: ".timestamp"}}},
+}
+
+func TestSortDelayedArtifacts(t *testing.T) {
+	for _, testCase := range sortDelayedArtifactsCases {
+		delayedArtifactsFile := DelayedArtifactsFile{DelayedArtifacts: testCase.delayedArtifacts}
+		delayHelper := delayUploadHelper{shouldDelayFunctions: testCase.shouldDelayFunctions}
+		assert.Equal(t, testCase.sortedDelayedArtifacts, sortDelayedArtifacts(delayedArtifactsFile, delayHelper))
+	}
 }

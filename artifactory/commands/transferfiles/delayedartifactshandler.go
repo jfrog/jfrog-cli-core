@@ -97,7 +97,7 @@ func consumeAllDelayFiles(base phaseBase) error {
 	delayFunctions := getDelayUploadComparisonFunctions(base.repoSummary.PackageType)
 	if len(filesToConsume) > 0 && len(delayFunctions) > 0 {
 		log.Info("Starting to handle delayed artifacts uploads...")
-		if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:]); err == nil {
+		if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions); err == nil {
 			log.Info("Done handling delayed artifacts uploads.")
 		}
 	}
@@ -149,15 +149,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 		}
 		return consumeDelayedArtifactsFiles(pcWrapper, filesToConsume, uploadChunkChan, base, delayHelper, errorsChannelMng)
 	}
-	delayAction := func(pBase phaseBase, addedDelayFiles []string) error {
-		// We call this method as a recursion in order to have inner order base on the comparison function list.
-		// Remove the first delay comparison function one by one to no longer delay it until the list is empty.
-		if len(filesToConsume) > 0 && len(delayUploadComparisonFunctions) > 0 {
-			return handleDelayedArtifactsFiles(addedDelayFiles, pBase, delayUploadComparisonFunctions[1:])
-		}
-		return nil
-	}
-	return manager.doTransferWithProducerConsumer(action, delayAction)
+	return manager.doTransferWithProducerConsumer(action, nil)
 }
 
 func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunk, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
@@ -168,7 +160,8 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 			return err
 		}
 
-		shouldStop, err := uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadChunkChan, base, delayHelper, errorsChannelMng, pcWrapper)
+		sortedDelayedArtifacts := sortDelayedArtifacts(delayedArtifactsFile, delayHelper)
+		shouldStop, err := uploadByChunks(sortedDelayedArtifacts, uploadChunkChan, base, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
 		}
@@ -181,6 +174,22 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 		log.Debug("Done handling delayed artifacts file: '" + filePath + "'. Deleting it...")
 	}
 	return nil
+}
+
+// Sort the delayed artifacts according to the delay functions order.
+// For example, in Docker, manifest.json will be uploaded before list.manifest.json.
+// delayedArtifactsFile - The delayed artifacts to sort
+// delayHelper - Includes the should delay functions
+func sortDelayedArtifacts(delayedArtifactsFile DelayedArtifactsFile, delayHelper delayUploadHelper) []api.FileRepresentation {
+	var results = []api.FileRepresentation{}
+	for _, shouldDelayFunction := range delayHelper.shouldDelayFunctions {
+		for _, delayedArtifact := range delayedArtifactsFile.DelayedArtifacts {
+			if shouldDelayFunction(delayedArtifact.Name) {
+				results = append(results, delayedArtifact)
+			}
+		}
+	}
+	return results
 }
 
 // Reads a delay file from a given path, parses and populate a given DelayedArtifactsFile instance with the file information
@@ -220,7 +229,7 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 	switch packageType {
 	case maven, gradle, ivy:
 		return []shouldDelayUpload{func(fileName string) bool {
-			return filepath.Ext(fileName) == ".pom"
+			return filepath.Ext(fileName) == ".pom" || fileName == "pom.xml"
 		}}
 	case docker:
 		return []shouldDelayUpload{func(fileName string) bool {
@@ -246,8 +255,10 @@ type delayUploadHelper struct {
 }
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
-// When there are multiple levels of requirements in the deployment order, the first comparison function in the array can be removed each time in order to no longer delay by that rule.
 func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, file api.FileRepresentation) (delayed, stopped bool) {
+	if phase.phaseId != api.Phase1 {
+		return
+	}
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
 		if ShouldStop(&phase, &delayHelper, nil) {
 			return delayed, true

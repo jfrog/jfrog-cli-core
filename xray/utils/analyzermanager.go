@@ -99,7 +99,7 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serv
 	}
 	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
 	defer func() {
-		if !cmd.ProcessState.Exited() {
+		if cmd.ProcessState != nil && !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {
 				err = errors.Join(err, killProcessError)
 			}

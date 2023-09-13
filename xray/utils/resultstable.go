@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/yarn"
 	"os"
 	"path/filepath"
 	"sort"
@@ -29,6 +28,7 @@ const (
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
 	nodeModules                = "node_modules"
+	NpmPackageTypeIdentifier   = "npm://"
 )
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
@@ -1037,10 +1037,10 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 }
 
 func extractNpmDependencyNameFromComponent(key string) (dependencyName string) {
-	if !strings.HasPrefix(key, yarn.NpmPackageTypeIdentifier) {
+	if !strings.HasPrefix(key, NpmPackageTypeIdentifier) {
 		return
 	}
-	packageAndVersion := strings.TrimPrefix(key, yarn.NpmPackageTypeIdentifier)
+	packageAndVersion := strings.TrimPrefix(key, NpmPackageTypeIdentifier)
 	split := strings.Split(packageAndVersion, ":")
 	if len(split) < 2 {
 		return

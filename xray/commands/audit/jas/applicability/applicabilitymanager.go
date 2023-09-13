@@ -144,7 +144,7 @@ type scanConfiguration struct {
 func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 	skipDirs := jas.SkippedDirs
 	if asm.thirdPartyScan {
-		log.Debug("Including node modules in applicability scan")
+		log.Debug("Including node modules folder in applicability scan")
 		skipDirs = removeElementFromSlice(skipDirs, jas.NodeModulesPattern)
 	}
 	configFileContent := applicabilityScanConfig{

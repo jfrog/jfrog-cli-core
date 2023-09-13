@@ -92,48 +92,16 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 			return
 		}
 	}
-	ConvertRunsPathsToRelative(results.SecretsScanResults)
 	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	ConvertRunsPathsToRelative(results.IacScanResults)
 	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
 		return
 	}
 	if !IsSastSupported() {
 		return
 	}
-	ConvertRunsPathsToRelative(results.SastScanResults)
 	return PrintSastTable(results.SastScanResults, results.EntitledForJas)
-}
-
-// The paths at Sarif runs are absolute.
-// Use this method if you need to translate the file paths to relative
-func ConvertRunsPathsToRelative(runs []*sarif.Run) {
-	for _, sarifRun := range runs {
-		for _, invocation := range sarifRun.Invocations {
-			if wd := GetInvocationWorkingDirectory(invocation); len(wd) > 0 {
-				ConvertRunPathsToRelative(sarifRun, wd)
-			}
-		}
-	}
-}
-
-func ConvertRunPathsToRelative(sarifRun *sarif.Run, wd string) {
-	for _, sarifResult := range sarifRun.Results {
-		// Convert paths in locations
-		for _, location := range sarifResult.Locations {
-			SetLocationFileName(location, ExtractRelativePath(GetLocationFileName(location), wd))
-		}
-		// Convert paths in code flows
-		for _, codeFlows := range sarifResult.CodeFlows {
-			for _, threadFlows := range codeFlows.ThreadFlows {
-				for _, location := range threadFlows.Locations {
-					SetLocationFileName(location.Location, ExtractRelativePath(GetLocationFileName(location.Location), wd))
-				}
-			}
-		}
-	}
 }
 
 func printMessages(messages []string) {

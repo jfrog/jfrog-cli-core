@@ -79,13 +79,15 @@ func TestExtractRelativePath(t *testing.T) {
 		expectedResult string
 	}{
 		{secretPath: "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
-			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "/tests/req.nodejs/file.js"},
+			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "tests/req.nodejs/file.js"},
 		{secretPath: "invalidSecretPath",
 			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "invalidSecretPath"},
 		{secretPath: "",
 			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: ""},
 		{secretPath: "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
-			projectPath: "invalidProjectPath", expectedResult: "/Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"},
+			projectPath: "invalidProjectPath", expectedResult: "Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"},
+		{secretPath: "file:///private/Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
+			projectPath: "invalidProjectPath", expectedResult: "Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"},
 	}
 
 	for _, test := range tests {

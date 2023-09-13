@@ -57,7 +57,7 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	downloadUrl := artDetails.ArtifactoryUrl + remotePath
 	remoteFileDetails, _, err := client.GetRemoteFileDetails(downloadUrl, &httpClientDetails)
 	if err != nil {
-		return err
+		return fmt.Errorf("couldn't get remote file details for %s: %s", downloadUrl, err.Error())
 	}
 	analyzerManagerDir, err := xrayutils.GetAnalyzerManagerDirAbsolutePath()
 	if err != nil {
@@ -70,7 +70,8 @@ func DownloadAnalyzerManagerIfNeeded() error {
 		return err
 	}
 	if exist {
-		sha2, err := fileutils.ReadFile(checksumFilePath)
+		var sha2 []byte
+		sha2, err = fileutils.ReadFile(checksumFilePath)
 		if err != nil {
 			return err
 		}
@@ -84,17 +85,6 @@ func DownloadAnalyzerManagerIfNeeded() error {
 	if err = DownloadDependency(artDetails, remotePath, filepath.Join(analyzerManagerDir, xrayutils.AnalyzerManagerZipName), true); err != nil {
 		return err
 	}
-	// Add permission for all unzipped files
-	filesList, err := fileutils.ListFilesRecursiveWalkIntoDirSymlink(analyzerManagerDir, false)
-	if err != nil {
-		return err
-	}
-	for _, file := range filesList {
-		if err = os.Chmod(file, 0777); err != nil {
-			return errorutils.CheckError(err)
-		}
-	}
-
 	return createChecksumFile(checksumFilePath, remoteFileDetails.Checksum.Sha256)
 }
 
@@ -219,9 +209,13 @@ func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 		return err
 	}
 	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, shouldExplode, false)
-	if err == nil && resp.StatusCode != http.StatusOK {
-		err = errorutils.CheckErrorf(resp.Status + " received when attempting to download " + downloadUrl)
+	if err != nil {
+		err = errorutils.CheckErrorf("received error while attempting to download '%s': %s"+downloadUrl, err.Error())
 	}
+	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
+		return err
+	}
+	err = coreutils.SetPermissionsRecursively(tempDirPath, 0700)
 	if err != nil {
 		return err
 	}

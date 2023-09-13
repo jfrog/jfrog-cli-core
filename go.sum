@@ -198,8 +198,8 @@ github.com/jfrog/build-info-go v1.9.10 h1:uXnDLVxpqxoAMpXcki00QaBB+M2BoGMMpHODPk
 github.com/jfrog/build-info-go v1.9.10/go.mod h1:ujJ8XQZMdT2tMkLSMJNyDd1pCY+duwHdjV+9or9FLIg=
 github.com/jfrog/gofrog v1.3.0 h1:o4zgsBZE4QyDbz2M7D4K6fXPTBJht+8lE87mS9bw7Gk=
 github.com/jfrog/gofrog v1.3.0/go.mod h1:IFMc+V/yf7rA5WZ74CSbXe+Lgf0iApEQLxRZVzKRUR0=
-github.com/jfrog/jfrog-client-go v1.28.1-0.20230910192358-6994626b2069 h1:vk+P6jK4Zv8+F44ZnRxXUPT14BQxjJtNKdpGdemci7A=
-github.com/jfrog/jfrog-client-go v1.28.1-0.20230910192358-6994626b2069/go.mod h1:362+oa7uTTYurzBs1L0dmUTlLo7uhpAU/pwM5Zb9clg=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20230912113954-9edb6abc36ff h1:9PZ7SObkjJqrNtzT1glRi5Ya6QHIQqdlCALBUniBQLw=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20230912113954-9edb6abc36ff/go.mod h1:362+oa7uTTYurzBs1L0dmUTlLo7uhpAU/pwM5Zb9clg=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=

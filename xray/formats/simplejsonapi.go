@@ -65,14 +65,19 @@ type OperationalRiskViolationRow struct {
 
 type SourceCodeRow struct {
 	SeverityDetails
-	SourceCodeLocationRow
-	Type     string                    `json:"type"`
-	CodeFlow [][]SourceCodeLocationRow `json:"codeFlow,omitempty"`
+	Location
+	Finding            string       `json:"finding,omitempty"`
+	ScannerDescription string       `json:"scannerDescription,omitempty"`
+	CodeFlow           [][]Location `json:"codeFlow,omitempty"`
 }
 
-type SourceCodeLocationRow struct {File       string `json:"file"`
-	LineColumn string `json:"lineColumn"`
-	Snippet    string `json:"snippet"`
+type Location struct {
+	File        string `json:"file"`
+	StartLine   int    `json:"startLine,omitempty"`
+	StartColumn int    `json:"startColumn,omitempty"`
+	EndLine     int    `json:"endLine,omitempty"`
+	EndColumn   int    `json:"endColumn,omitempty"`
+	Snippet     string `json:"snippet,omitempty"`
 }
 
 type ComponentRow struct {
@@ -88,13 +93,13 @@ type CveRow struct {
 }
 
 type Applicability struct {
-	Status             bool       `json:"status"`
+	Status             string     `json:"status"`
 	ScannerDescription string     `json:"scannerDescription,omitempty"`
 	Evidence           []Evidence `json:"evidence,omitempty"`
 }
 
 type Evidence struct {
-	SourceCodeLocationRow
+	Location
 	Reason string `json:"reason,omitempty"`
 }
 

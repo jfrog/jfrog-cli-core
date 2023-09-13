@@ -89,8 +89,10 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		case "security":
 			cves := convertCves(violation.Cves)
 			applicableValue := getApplicableCveValue(extendedResults, cves)
-			for _, cve := range cves {
-				cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+			if extendedResults.EntitledForJas {
+				for i := range cves {
+					cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults)
+				}
 			}
 			currSeverity := GetSeverity(violation.Severity, applicableValue)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
@@ -212,8 +214,10 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		}
 		cves := convertCves(vulnerability.Cves)
 		applicableValue := getApplicableCveValue(extendedResults, cves)
-		for _, cve := range cves {
-			cve.Applicability = getCveApplicability(cve, extendedResults.ApplicabilityScanResults)
+		if extendedResults.EntitledForJas {
+			for i := range cves {
+				cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults)
+			}
 		}
 		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
@@ -304,18 +308,21 @@ func PrepareSecrets(secrets []*sarif.Run) []formats.SourceCodeRow {
 func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	var secretsRows []formats.SourceCodeRow
 	for _, secretRun := range secrets {
-		for _, secret := range secretRun.Results {
-			currSeverity := GetSeverity(GetResultSeverity(secret), Applicable)
-			for _, location := range secret.Locations {
+		for _, secretResult := range secretRun.Results {
+			currSeverity := GetSeverity(GetResultSeverity(secretResult), Applicable)
+			for _, location := range secretResult.Locations {
 				secretsRows = append(secretsRows,
 					formats.SourceCodeRow{
 						SeverityDetails: formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
-						SourceCodeLocationRow: formats.SourceCodeLocationRow{
-							File:       GetLocationFileName(location),
-							LineColumn: GetStartLocationInFile(location),
-							Snippet:    GetLocationSnippet(location),
+						Finding:         GetResultMsgText(secretResult),
+						Location: formats.Location{
+							File:        GetRelativeLocationFileName(location, secretRun.Invocations),
+							StartLine:   GetLocationStartLine(location),
+							StartColumn: GetLocationStartColumn(location),
+							EndLine:     GetLocationEndLine(location),
+							EndColumn:   GetLocationEndColumn(location),
+							Snippet:     GetLocationSnippet(location),
 						},
-						Type: *secret.RuleID,
 					},
 				)
 			}
@@ -347,18 +354,26 @@ func PrepareIacs(iacs []*sarif.Run) []formats.SourceCodeRow {
 func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	var iacRows []formats.SourceCodeRow
 	for _, iacRun := range iacs {
-		for _, iac := range iacRun.Results {
-			currSeverity := GetSeverity(GetResultSeverity(iac), Applicable)
-			for _, location := range iac.Locations {
+		for _, iacResult := range iacRun.Results {
+			scannerDescription := ""
+			if rule, err := iacRun.GetRuleById(*iacResult.RuleID); err == nil {
+				scannerDescription = GetRuleFullDescription(rule)
+			}
+			currSeverity := GetSeverity(GetResultSeverity(iacResult), Applicable)
+			for _, location := range iacResult.Locations {
 				iacRows = append(iacRows,
 					formats.SourceCodeRow{
-						SeverityDetails: formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
-						SourceCodeLocationRow: formats.SourceCodeLocationRow{
-							File:       GetLocationFileName(location),
-							LineColumn: GetStartLocationInFile(location),
-							Snippet:    GetResultMsgText(iac),
+						SeverityDetails:    formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						Finding:            GetResultMsgText(iacResult),
+						ScannerDescription: scannerDescription,
+						Location: formats.Location{
+							File:        GetRelativeLocationFileName(location, iacRun.Invocations),
+							StartLine:   GetLocationStartLine(location),
+							StartColumn: GetLocationStartColumn(location),
+							EndLine:     GetLocationEndLine(location),
+							EndColumn:   GetLocationEndColumn(location),
+							Snippet:     GetLocationSnippet(location),
 						},
-						Type: *iac.RuleID,
 					},
 				)
 			}
@@ -376,7 +391,7 @@ func PrintIacTable(iacs []*sarif.Run, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
 		log.Output()
-		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
+		return coreutils.PrintTable(formats.ConvertToIacOrSastTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
 	}
 	return nil
@@ -389,21 +404,28 @@ func PrepareSast(sasts []*sarif.Run) []formats.SourceCodeRow {
 func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	var sastRows []formats.SourceCodeRow
 	for _, sastRun := range sasts {
-		for _, sast := range sastRun.Results {
-			currSeverity := GetSeverity(GetResultSeverity(sast), Applicable)
+		for _, sastResult := range sastRun.Results {
+			scannerDescription := ""
+			if rule, err := sastRun.GetRuleById(*sastResult.RuleID); err == nil {
+				scannerDescription = GetRuleFullDescription(rule)
+			}
+			currSeverity := GetSeverity(GetResultSeverity(sastResult), Applicable)
 
-			flows := toSourceCodeCodeFlowRow(sast.CodeFlows, isTable)
-			for _, location := range sast.Locations {
+			for _, location := range sastResult.Locations {
+				codeFlows := GetLocationRelatedCodeFlowsFromResult(location, sastResult)
 				sastRows = append(sastRows,
 					formats.SourceCodeRow{
-						SeverityDetails: formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
-						SourceCodeLocationRow: formats.SourceCodeLocationRow{
-							File:       GetLocationFileName(location),
-							LineColumn: GetStartLocationInFile(location),
-							Snippet:    GetResultMsgText(sast),
+						SeverityDetails:    formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						ScannerDescription: scannerDescription,
+						Location: formats.Location{
+							File:        GetRelativeLocationFileName(location, sastRun.Invocations),
+							StartLine:   GetLocationStartLine(location),
+							StartColumn: GetLocationStartColumn(location),
+							EndLine:     GetLocationEndLine(location),
+							EndColumn:   GetLocationEndColumn(location),
+							Snippet:     GetLocationSnippet(location),
 						},
-						Type:     *sast.RuleID,
-						CodeFlow: flows,
+						CodeFlow: codeFlowToLocationFlow(codeFlows, sastRun.Invocations, isTable),
 					},
 				)
 			}
@@ -417,19 +439,22 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	return sastRows
 }
 
-func toSourceCodeCodeFlowRow(flows []*sarif.CodeFlow, isTable bool) (flowRows [][]formats.SourceCodeLocationRow) {
+func codeFlowToLocationFlow(flows []*sarif.CodeFlow, invocations []*sarif.Invocation, isTable bool) (flowRows [][]formats.Location) {
 	if isTable {
 		// Not displaying in table
 		return
 	}
 	for _, codeFlow := range flows {
 		for _, stackTrace := range codeFlow.ThreadFlows {
-			rowFlow := []formats.SourceCodeLocationRow{}
+			rowFlow := []formats.Location{}
 			for _, stackTraceEntry := range stackTrace.Locations {
-				rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
-					File:       GetLocationFileName(stackTraceEntry.Location),
-					LineColumn: GetStartLocationInFile(stackTraceEntry.Location),
-					Snippet:    GetLocationSnippet(stackTraceEntry.Location),
+				rowFlow = append(rowFlow, formats.Location{
+					File:        GetRelativeLocationFileName(stackTraceEntry.Location, invocations),
+					StartLine:   GetLocationStartLine(stackTraceEntry.Location),
+					StartColumn: GetLocationStartColumn(stackTraceEntry.Location),
+					EndLine:     GetLocationEndLine(stackTraceEntry.Location),
+					EndColumn:   GetLocationEndColumn(stackTraceEntry.Location),
+					Snippet:     GetLocationSnippet(stackTraceEntry.Location),
 				})
 			}
 			flowRows = append(flowRows, rowFlow)
@@ -442,7 +467,7 @@ func PrintSastTable(sast []*sarif.Run, entitledForSastScan bool) error {
 	if entitledForSastScan {
 		sastRows := prepareSast(sast, true)
 		log.Output()
-		return coreutils.PrintTable(formats.ConvertToSastTableRow(sastRows), "Static Application Security Testing (SAST)",
+		return coreutils.PrintTable(formats.ConvertToIacOrSastTableRow(sastRows), "Static Application Security Testing (SAST)",
 			"✨ No Static Application Security Testing vulnerabilities were found ✨", false)
 	}
 	return nil
@@ -912,13 +937,13 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	finalApplicableValue := NotApplicable
 	for _, applicabilityRun := range extendedResults.ApplicabilityScanResults {
 		for _, cve := range xrayCves {
-			relatedResults := GetResultsByRuleId(applicabilityRun, GetRuleIdFromCveId(cve.Id))
+			relatedResults := GetResultsByRuleId(applicabilityRun, CveToApplicabilityRuleId(cve.Id))
 			if len(relatedResults) == 0 {
 				finalApplicableValue = ApplicabilityUndetermined
 			}
 			for _, relatedResult := range relatedResults {
 				cveExistsInResult = true
-				if isApplicableResult(relatedResult) {
+				if IsApplicableResult(relatedResult) {
 					return Applicable
 				}
 			}
@@ -930,37 +955,42 @@ func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []form
 	return ApplicabilityUndetermined
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run) (applicability *formats.Applicability) {
-	if len(applicabilityScanResults) == 0 {
-		return nil
-	}
+func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run) *formats.Applicability {
+	applicability := &formats.Applicability{Status: string(ApplicabilityUndetermined)}
 	for _, applicabilityRun := range applicabilityScanResults {
-		description := ""
-		if relatedRule, _ := applicabilityRun.GetRuleById(GetRuleIdFromCveId(cve.Id)); relatedRule != nil {
-			description = GetRuleFullDescription(relatedRule)
-		}
-		relatedResult, _ := applicabilityRun.GetResultByRuleId(GetRuleIdFromCveId(cve.Id))
-		if relatedResult == nil {
+		foundResult, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
+		if foundResult == nil {
 			continue
 		}
-		// Set applicable details
-		applicability = &formats.Applicability{
-			Status:             isApplicableResult(relatedResult),
-			ScannerDescription: description,
+		applicability = &formats.Applicability{}
+		if IsApplicableResult(foundResult) {
+			applicability.Status = string(Applicable)
+		} else {
+			applicability.Status = string(NotApplicable)
 		}
+
+		foundRule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
+		if foundRule != nil {
+			applicability.ScannerDescription = GetRuleFullDescription(foundRule)
+		}
+
 		// Add new evidences from locations
-		for _, location := range relatedResult.Locations {
+		for _, location := range foundResult.Locations {
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
-				SourceCodeLocationRow: formats.SourceCodeLocationRow{
-					File:       GetLocationFileName(location),
-					LineColumn: GetStartLocationInFile(location),
-					Snippet:    GetLocationSnippet(location),
+				Location: formats.Location{
+					File:        GetRelativeLocationFileName(location, applicabilityRun.Invocations),
+					StartLine:   GetLocationStartLine(location),
+					StartColumn: GetLocationStartColumn(location),
+					EndLine:     GetLocationEndLine(location),
+					EndColumn:   GetLocationEndColumn(location),
+					Snippet:     GetLocationSnippet(location),
 				},
-				Reason: GetResultMsgText(relatedResult),
+				Reason: GetResultMsgText(foundResult),
 			})
 		}
+		break
 	}
-	return
+	return applicability
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {

@@ -440,7 +440,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 			scanResults: &ExtendedScanResults{
 				ApplicabilityScanResults: []*sarif.Run{
 					getRunWithDummyResults(
-						getDummyResultWithOneLocation("fileName1", 0, 1, "snippet1", "applic_testCve1", "info"),
+						GetDummyResultWithOneLocation("fileName1", 0, 1, "snippet1", "applic_testCve1", "info"),
 						getDummyPassingResult("applic_testCve2"),
 					),
 				},
@@ -455,7 +455,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run{
 					getRunWithDummyResults(
 						getDummyPassingResult("applic_testCve1"),
-						getDummyResultWithOneLocation("fileName2", 1, 0, "snippet2", "applic_testCve2", "warning"),
+						GetDummyResultWithOneLocation("fileName2", 1, 0, "snippet2", "applic_testCve2", "warning"),
 					),
 				},
 				EntitledForJas: true,
@@ -469,7 +469,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run{
 					getRunWithDummyResults(
 						getDummyPassingResult("applic_testCve1"),
-						getDummyResultWithOneLocation("fileName3", 0, 1, "snippet3", "applic_testCve2", "info"),
+						GetDummyResultWithOneLocation("fileName3", 0, 1, "snippet3", "applic_testCve2", "info"),
 					),
 				},
 				EntitledForJas: true,
@@ -497,7 +497,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run{
 					getRunWithDummyResults(
 						getDummyPassingResult("applic_testCve1"),
-						getDummyResultWithOneLocation("fileName4", 1, 0, "snippet", "applic_testCve2", "warning"),
+						GetDummyResultWithOneLocation("fileName4", 1, 0, "snippet", "applic_testCve2", "warning"),
 					),
 				},
 				EntitledForJas: true,

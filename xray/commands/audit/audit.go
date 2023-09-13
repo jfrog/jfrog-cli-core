@@ -182,7 +182,7 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {
-		return
+		err = errors.New("failed while trying to get Analyzer Manager: " + err.Error())
 	}
 
 	// Run scanners only if the user is entitled for Advanced Security

@@ -49,8 +49,6 @@ github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migc
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 h1:kkhsdkhsCvIsutKu5zLMgWtgh9YxGCNAw8Ad8hjwfYg=
 github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
-github.com/RobiNino/jfrog-client-go v0.0.0-20230913141953-7b3b3a691883 h1:vIN6rRIO91vQprv8YLvtMtej9aKtZiNJ/ORechOtlTI=
-github.com/RobiNino/jfrog-client-go v0.0.0-20230913141953-7b3b3a691883/go.mod h1:362+oa7uTTYurzBs1L0dmUTlLo7uhpAU/pwM5Zb9clg=
 github.com/VividCortex/ewma v1.2.0 h1:f58SaIzcDXrSy3kWaHNvuJgJ3Nmz59Zji6XoJR/q1ow=
 github.com/VividCortex/ewma v1.2.0/go.mod h1:nz4BbCtbLyFDeC9SUHbtcT5644juEuWfUAUnGx7j5l4=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d h1:licZJFw2RwpHMqeKTCYkitsPqHNxTmd4SNR5r94FGM8=
@@ -200,6 +198,8 @@ github.com/jfrog/build-info-go v1.9.10 h1:uXnDLVxpqxoAMpXcki00QaBB+M2BoGMMpHODPk
 github.com/jfrog/build-info-go v1.9.10/go.mod h1:ujJ8XQZMdT2tMkLSMJNyDd1pCY+duwHdjV+9or9FLIg=
 github.com/jfrog/gofrog v1.3.0 h1:o4zgsBZE4QyDbz2M7D4K6fXPTBJht+8lE87mS9bw7Gk=
 github.com/jfrog/gofrog v1.3.0/go.mod h1:IFMc+V/yf7rA5WZ74CSbXe+Lgf0iApEQLxRZVzKRUR0=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20230913143831-14d189a3280f h1:QQdwpeVtcbp4prinH2eU7aR76EZVQmA2vvdQPKq5tsg=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20230913143831-14d189a3280f/go.mod h1:362+oa7uTTYurzBs1L0dmUTlLo7uhpAU/pwM5Zb9clg=
 github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1:6v2b51hI/fHJwM22ozAgKL4VKDeJcHhJFhtBdhmNjmU=
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=

@@ -12,13 +12,13 @@ func TestGetVulnerabilityOrViolationSarifHeadline(t *testing.T) {
 	assert.NotEqual(t, "[CVE-2022-1234] loadsh 1.4.1", getVulnerabilityOrViolationSarifHeadline("loadsh", "1.2.1", "CVE-2022-1234"))
 }
 
-func TestGetCves(t *testing.T) {
+func TestGetIssueIdentifier(t *testing.T) {
 	issueId := "XRAY-123456"
 	cvesRow := []formats.CveRow{{Id: "CVE-2022-1234"}}
-	assert.Equal(t, "CVE-2022-1234", getCves(cvesRow, issueId))
+	assert.Equal(t, "CVE-2022-1234", GetIssueIdentifier(cvesRow, issueId))
 	cvesRow = append(cvesRow, formats.CveRow{Id: "CVE-2019-1234"})
-	assert.Equal(t, "CVE-2022-1234, CVE-2019-1234", getCves(cvesRow, issueId))
-	assert.Equal(t, issueId, getCves(nil, issueId))
+	assert.Equal(t, "CVE-2022-1234, CVE-2019-1234", GetIssueIdentifier(cvesRow, issueId))
+	assert.Equal(t, issueId, GetIssueIdentifier(nil, issueId))
 }
 
 func TestGetDirectDependenciesFormatted(t *testing.T) {

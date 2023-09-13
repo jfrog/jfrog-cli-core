@@ -3,6 +3,7 @@ package npm
 import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"testing"
@@ -102,7 +103,7 @@ func TestParseNpmDependenciesList(t *testing.T) {
 	}
 	expectedUniqueDeps := []string{xrayDependenciesTree.Id}
 	for _, dep := range dependencies {
-		expectedUniqueDeps = append(expectedUniqueDeps, npmPackageTypeIdentifier+dep.Id)
+		expectedUniqueDeps = append(expectedUniqueDeps, utils.NpmPackageTypeIdentifier+dep.Id)
 	}
 	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 

@@ -119,11 +119,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 // When thirdPartyApplicabilityScan is true, use flatten graph to include all the dependencies in applicability scanning.
 // Only npm is supported for this flag.
 func shouldUseAllDependencies(thirdPartyApplicabilityScan bool, tech coreutils.Technology) bool {
-	if tech == coreutils.Pip || (thirdPartyApplicabilityScan && tech == coreutils.Npm) {
-		return true
-	} else {
-		return false
-	}
+	return tech == coreutils.Pip || (thirdPartyApplicabilityScan && tech == coreutils.Npm)
 }
 
 // This function retrieves the dependency trees of the scanned project and extracts a set that contains only the direct dependencies.

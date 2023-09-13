@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/yarn"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,10 +28,7 @@ const (
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
-
-	npmPackageTypeIdentifier = "npm://"
-
-	nodeModules = "node_modules"
+	nodeModules                = "node_modules"
 )
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
@@ -1030,21 +1028,19 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 		if dependencyName == "" {
 			return
 		}
-		// Check macOS and Linux path
-		linuxPath := nodeModules + "/" + dependencyName
-		if strings.Contains(evidenceFilePath, linuxPath) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
-			disqualify = true
-			return
+		// Check both Unix & Windows paths.
+		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
+			return true
 		}
 	}
 	return
 }
 
 func extractNpmDependencyNameFromComponent(key string) (dependencyName string) {
-	if !strings.HasPrefix(key, npmPackageTypeIdentifier) {
+	if !strings.HasPrefix(key, yarn.NpmPackageTypeIdentifier) {
 		return
 	}
-	packageAndVersion := strings.TrimPrefix(key, npmPackageTypeIdentifier)
+	packageAndVersion := strings.TrimPrefix(key, yarn.NpmPackageTypeIdentifier)
 	split := strings.Split(packageAndVersion, ":")
 	if len(split) < 2 {
 		return

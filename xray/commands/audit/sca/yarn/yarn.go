@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	npmPackageTypeIdentifier = "npm://"
+	NpmPackageTypeIdentifier = "npm://"
 )
 
 func BuildDependencyTree() (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
@@ -55,5 +55,5 @@ func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, r
 }
 
 func getXrayDependencyId(yarnDependency *biUtils.YarnDependency) string {
-	return npmPackageTypeIdentifier + yarnDependency.Name() + ":" + yarnDependency.Details.Version
+	return NpmPackageTypeIdentifier + yarnDependency.Name() + ":" + yarnDependency.Details.Version
 }

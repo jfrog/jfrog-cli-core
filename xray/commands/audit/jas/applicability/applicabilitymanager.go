@@ -143,7 +143,6 @@ type scanConfiguration struct {
 
 func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 	skipDirs := jas.SkippedDirs
-	// If set to true, remove third party folders from the scan skip list.
 	if asm.thirdPartyScan {
 		log.Debug("Including node modules in applicability scan")
 		skipDirs = removeElementFromSlice(skipDirs, jas.NodeModulesPattern)

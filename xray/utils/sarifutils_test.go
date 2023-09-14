@@ -25,30 +25,30 @@ func TestGetResultsLocationCount(t *testing.T) {
 			expectedOutput: 0,
 		},
 		{
-			runs:           []*sarif.Run{GetRunWithDummyResults()},
+			runs:           []*sarif.Run{CreateRunWithDummyResults()},
 			expectedOutput: 0,
 		},
 		{
-			runs: []*sarif.Run{GetRunWithDummyResults(
-				GetDummyPassingResult("rule"),
-				GetDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level"),
+			runs: []*sarif.Run{CreateRunWithDummyResults(
+				CreateDummyPassingResult("rule"),
+				CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level"),
 			)},
 			expectedOutput: 1,
 		},
 		{
 			runs: []*sarif.Run{
-				GetRunWithDummyResults(
-					GetDummyPassingResult("rule"),
-					GetDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level"),
+				CreateRunWithDummyResults(
+					CreateDummyPassingResult("rule"),
+					CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level"),
 				),
-				GetRunWithDummyResults(
-					GetDummyResultWithLocations(
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations(
 						"msg",
 						"rule",
 						"level",
-						GetDummyLocation("file", 0, 0, 0, 0, "snippet"),
-						GetDummyLocation("file", 0, 0, 0, 0, "snippet"),
-						GetDummyLocation("file", 0, 0, 0, 0, "snippet"),
+						CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+						CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+						CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
 					),
 				),
 			},
@@ -71,7 +71,7 @@ func TestGetResultMsgText(t *testing.T) {
 			expectedOutput: "",
 		},
 		{
-			result:         GetDummyResultWithLocations("msg", "rule", "level"),
+			result:         CreateDummyResultWithLocations("msg", "rule", "level"),
 			expectedOutput: "msg",
 		},
 	}
@@ -91,7 +91,7 @@ func TestGetLocationSnippet(t *testing.T) {
 			expectedOutput: "",
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: "snippet",
 		},
 	}
@@ -111,7 +111,7 @@ func TestSetLocationSnippet(t *testing.T) {
 			expectedOutput: "",
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: "changedSnippet",
 		},
 	}
@@ -132,7 +132,7 @@ func TestGetLocationFileName(t *testing.T) {
 			expectedOutput: "",
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: "filename",
 		},
 	}
@@ -149,17 +149,17 @@ func TestGetRelativeLocationFileName(t *testing.T) {
 		expectedOutput string
 	}{
 		{
-			location:       GetDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
 			invocations:    []*sarif.Invocation{},
 			expectedOutput: "root/someDir/another/file",
 		},
 		{
-			location:       GetDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
 			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation("/not/relevant")}},
 			expectedOutput: "root/someDir/another/file",
 		},
 		{
-			location:       GetDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
 			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation("/root/someDir/")}},
 			expectedOutput: "another/file",
 		},
@@ -180,7 +180,7 @@ func TestSetLocationFileName(t *testing.T) {
 			expectedOutput: "",
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: "changedFilename",
 		},
 	}
@@ -205,7 +205,7 @@ func TestGetLocationRegion(t *testing.T) {
 			expectedOutput: nil,
 		},
 		{
-			location: GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location: CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: sarif.NewRegion().WithStartLine(1).WithStartColumn(2).WithEndLine(3).WithEndColumn(4).
 				WithSnippet(sarif.NewArtifactContent().WithText("snippet")),
 		},
@@ -226,7 +226,7 @@ func TestGetLocationStartLine(t *testing.T) {
 			expectedOutput: 0,
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: 1,
 		},
 	}
@@ -246,7 +246,7 @@ func TestGetLocationStartColumn(t *testing.T) {
 			expectedOutput: 0,
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: 2,
 		},
 	}
@@ -266,7 +266,7 @@ func TestGetLocationEndLine(t *testing.T) {
 			expectedOutput: 0,
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: 3,
 		},
 	}
@@ -286,7 +286,7 @@ func TestGetLocationEndColumn(t *testing.T) {
 			expectedOutput: 0,
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			location:       CreateDummyLocation("filename", 1, 2, 3, 4, "snippet"),
 			expectedOutput: 4,
 		},
 	}
@@ -388,11 +388,11 @@ func TestIsApplicableResult(t *testing.T) {
 		expectedOutput bool
 	}{
 		{
-			sarifResult:    GetDummyPassingResult("rule"),
+			sarifResult:    CreateDummyPassingResult("rule"),
 			expectedOutput: false,
 		},
 		{
-			sarifResult:    GetDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet1", "ruleId1", "level1"),
+			sarifResult:    CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet1", "ruleId1", "level1"),
 			expectedOutput: true,
 		},
 	}
@@ -460,22 +460,22 @@ func TestGetRunRules(t *testing.T) {
 			expectedOutput: []*sarif.ReportingDescriptor{},
 		},
 		{
-			run:            GetRunWithDummyResults(),
+			run:            CreateRunWithDummyResults(),
 			expectedOutput: []*sarif.ReportingDescriptor{},
 		},
 		{
-			run: GetRunWithDummyResults(
-				GetDummyPassingResult("rule1"),
+			run: CreateRunWithDummyResults(
+				CreateDummyPassingResult("rule1"),
 			),
 			expectedOutput: []*sarif.ReportingDescriptor{sarif.NewRule("rule1")},
 		},
 		{
-			run: GetRunWithDummyResults(
-				GetDummyPassingResult("rule1"),
-				GetDummyPassingResult("rule1"),
-				GetDummyPassingResult("rule2"),
-				GetDummyPassingResult("rule3"),
-				GetDummyPassingResult("rule2"),
+			run: CreateRunWithDummyResults(
+				CreateDummyPassingResult("rule1"),
+				CreateDummyPassingResult("rule1"),
+				CreateDummyPassingResult("rule2"),
+				CreateDummyPassingResult("rule3"),
+				CreateDummyPassingResult("rule2"),
 			),
 			expectedOutput: []*sarif.ReportingDescriptor{sarif.NewRule("rule1"), sarif.NewRule("rule2"), sarif.NewRule("rule3")},
 		},

@@ -16,30 +16,54 @@ func TestGetLocationRelatedCodeFlowsFromResult(t *testing.T) {
 }
 
 func TestGetResultsLocationCount(t *testing.T) {
-
-}
-
-func TestGetResultsByRuleId(t *testing.T) {
-
-}
-
-func TestGetResultMsgText(t *testing.T) {
 	tests := []struct {
-		location       *sarif.Location
-		expectedOutput string
+		runs           []*sarif.Run
+		expectedOutput int
 	}{
 		{
-			location:       nil,
-			expectedOutput: "",
+			runs:         []*sarif.Run{},
+			expectedOutput: 0,
 		},
 		{
-			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
-			expectedOutput: "filename",
+			runs:         []*sarif.Run{GetRunWithDummyResults()},
+			expectedOutput: 0,
 		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetLocationFileName(test.location))
+		assert.Equal(t, test.expectedOutput, GetResultsLocationCount(test.runs...))
+	}
+}
+
+func TestGetResultsByRuleId(t *testing.T) {
+	tests := []struct {
+		run            *sarif.Run
+		ruleId         string
+		expectedOutput []*sarif.Result
+	}{}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetResultsByRuleId(test.run, test.ruleId))
+	}
+}
+
+func TestGetResultMsgText(t *testing.T) {
+	tests := []struct {
+		result         *sarif.Result
+		expectedOutput string
+	}{
+		{
+			result:         &sarif.Result{},
+			expectedOutput: "",
+		},
+		{
+			result:         GetDummyResultWithLocations("msg", "rule", "level"),
+			expectedOutput: "msg",
+		},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetResultMsgText(test.result))
 	}
 }
 
@@ -88,7 +112,15 @@ func TestGetLocationFileName(t *testing.T) {
 }
 
 func TestGetRelativeLocationFileName(t *testing.T) {
+	tests := []struct {
+		location       *sarif.Location
+		invocations    []*sarif.Invocation
+		expectedOutput string
+	}{}
 
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetRelativeLocationFileName(test.location, test.invocations))
+	}
 }
 
 func TestSetLocationFileName(t *testing.T) {
@@ -296,7 +328,7 @@ func TestIsApplicableResult(t *testing.T) {
 			expectedOutput: false,
 		},
 		{
-			sarifResult:    GetDummyResultWithOneLocation("file", 0, 0, "snippet1", "ruleId1", "level1"),
+			sarifResult:    GetDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet1", "ruleId1", "level1"),
 			expectedOutput: true,
 		},
 	}

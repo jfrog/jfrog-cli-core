@@ -145,9 +145,8 @@ func SetLocationSnippet(location *sarif.Location, snippet string) {
 }
 
 func GetLocationFileName(location *sarif.Location) string {
-	filePath := location.PhysicalLocation.ArtifactLocation.URI
-	if filePath != nil {
-		return *filePath
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.ArtifactLocation != nil {
+		return *location.PhysicalLocation.ArtifactLocation.URI
 	}
 	return ""
 }
@@ -278,10 +277,11 @@ func GetRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
 	return run.WithResults(results)
 }
 
-func GetDummyPassingResult(ruleId string) *sarif.Result {
-	kind := "pass"
+func GetDummyResultWithLocations(msg, ruleId, level string, locations ...*sarif.Location) *sarif.Result {
 	return &sarif.Result{
-		Kind:   &kind,
+		Message: *sarif.NewTextMessage(msg),
+		Locations: locations,
+		Level:  &level,
 		RuleID: &ruleId,
 	}
 }
@@ -299,18 +299,17 @@ func GetDummyLocation(fileName string, startLine, startCol, endLine, endCol int,
 	}
 }
 
-func GetDummyResultWithOneLocation(fileName string, startLine, startCol int, snippet, ruleId string, level string) *sarif.Result {
+func GetDummyPassingResult(ruleId string) *sarif.Result {
+	kind := "pass"
 	return &sarif.Result{
-		Locations: []*sarif.Location{
-			{
-				PhysicalLocation: &sarif.PhysicalLocation{
-					ArtifactLocation: &sarif.ArtifactLocation{URI: &fileName},
-					Region: &sarif.Region{
-						StartLine:   &startLine,
-						StartColumn: &startCol,
-						Snippet:     &sarif.ArtifactContent{Text: &snippet}}},
-			},
-		},
+		Kind:   &kind,
+		RuleID: &ruleId,
+	}
+}
+
+func GetDummyResultWithOneLocation(fileName string, startLine, startCol, endLine, endCol int, snippet, ruleId, level string) *sarif.Result {
+	return &sarif.Result{
+		Locations: []*sarif.Location{ GetDummyLocation(fileName, startCol, startCol, endLine, endCol, snippet)},
 		Level:  &level,
 		RuleID: &ruleId,
 	}

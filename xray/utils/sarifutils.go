@@ -2,10 +2,11 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/datastructures"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/gofrog/datastructures"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -298,7 +299,7 @@ func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {
 	return ""
 }
 
-func getRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
+func GetRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
 	run := sarif.NewRunWithInformationURI("", "")
 	ids := datastructures.MakeSet[string]()
 	for _, result := range results {

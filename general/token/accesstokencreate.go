@@ -117,7 +117,7 @@ func (atc *AccessTokenCreateCommand) Run() error {
 }
 
 func (atc *AccessTokenCreateCommand) getTokenParams() services.CreateTokenParams {
-	tokenParams := services.NewCreateTokenParams()
+	tokenParams := services.CreateTokenParams{}
 
 	tokenParams.Username = strings.ToLower(atc.username)
 	tokenParams.ProjectKey = atc.projectKey

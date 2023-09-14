@@ -29,7 +29,7 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 	}
 	// Calculate go dependencies graph
 	dependenciesGraph, err := goutils.GetDependenciesGraph(currentDir)
-	if err != nil {
+	if err != nil || len(dependenciesGraph) == 0 {
 		return
 	}
 	// Calculate go dependencies list

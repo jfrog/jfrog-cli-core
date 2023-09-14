@@ -51,15 +51,15 @@ func GetPypiRemoteRegistryFlag(tool pythonutils.PythonTool) string {
 	return pipenvRemoteRegistryFlag
 }
 
-func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string) (*url.URL, error) {
+func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string) (string, error) {
 	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(serverDetails, repository)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if password != "" {
 		rtUrl.User = url.UserPassword(username, password)
 	}
-	return rtUrl, err
+	return rtUrl.String(), err
 }
 
 func ConfigPoetryRepo(url, username, password, configRepoName string) error {

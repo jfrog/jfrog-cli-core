@@ -189,7 +189,7 @@ func DetectedTechnologiesList() (technologies []string) {
 		return
 	}
 	techStringsList := DetectedTechnologiesToSlice(detectedTechnologies)
-	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ",")))
+	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ", ")))
 	return techStringsList
 }
 

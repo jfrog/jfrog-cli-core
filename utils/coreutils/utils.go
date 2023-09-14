@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -583,4 +584,36 @@ func GetServerIdAndRepo(remoteEnv string) (serverID string, repoName string, err
 		err = errorutils.CheckErrorf("'%s' environment variable is '%s' but should be '<server ID>/<repo name>'", remoteEnv, serverAndRepo)
 	}
 	return
+}
+
+func GetMaskedCommandString(cmd *exec.Cmd) string {
+	cmdString := strings.Join(cmd.Args, " ")
+	// Mask url if required
+	matchedResult := regexp.MustCompile(utils.CredentialsInUrlRegexp).FindString(cmdString)
+	if matchedResult != "" {
+		cmdString = strings.ReplaceAll(cmdString, matchedResult, "***@")
+	}
+
+	matchedResults := regexp.MustCompile(`--(?:password|access-token)=(\S+)`).FindStringSubmatch(cmdString)
+	if len(matchedResults) > 1 && matchedResults[1] != "" {
+		cmdString = strings.ReplaceAll(cmdString, matchedResults[1], "***")
+	}
+	return cmdString
+}
+
+func SetPermissionsRecursively(dirPath string, mode os.FileMode) error {
+	err := filepath.WalkDir(dirPath, func(path string, info fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		e = os.Chmod(path, mode)
+		if e != nil {
+			return e
+		}
+		return nil
+	})
+	if err != nil {
+		return errorutils.CheckErrorf("failed while setting permission to '%s' files: %s", dirPath, err.Error())
+	}
+	return nil
 }

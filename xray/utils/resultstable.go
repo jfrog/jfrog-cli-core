@@ -3,11 +3,13 @@ package utils
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"golang.org/x/exp/maps"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -25,6 +27,8 @@ const (
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
+	nodeModules                = "node_modules"
+	NpmPackageTypeIdentifier   = "npm://"
 )
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
@@ -87,8 +91,13 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		switch violation.ViolationType {
 		case "security":
 			cves := convertCves(violation.Cves)
-			applicableValue := getApplicableCveValue(extendedResults, cves)
-			currSeverity := GetSeverity(violation.Severity, applicableValue)
+			if extendedResults.EntitledForJas {
+				for i := range cves {
+					cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults, violation.Components)
+				}
+			}
+			applicabilityStatus := getApplicableCveStatus(extendedResults.EntitledForJas, extendedResults.ApplicabilityScanResults, cves)
+			currSeverity := GetSeverity(violation.Severity, applicabilityStatus)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
@@ -107,7 +116,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 						JfrogResearchInformation:  jfrogResearchInfo,
 						ImpactPaths:               impactPaths[compIndex],
 						Technology:                coreutils.Technology(violation.Technology),
-						Applicable:                printApplicableCveValue(applicableValue, isTable),
+						Applicable:                printApplicableCveValue(applicabilityStatus, isTable),
 					},
 				)
 			}
@@ -204,8 +213,13 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 			return nil, err
 		}
 		cves := convertCves(vulnerability.Cves)
-		applicableValue := getApplicableCveValue(extendedResults, cves)
-		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
+		if extendedResults.EntitledForJas {
+			for i := range cves {
+				cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults, vulnerability.Components)
+			}
+		}
+		applicabilityStatus := getApplicableCveStatus(extendedResults.EntitledForJas, extendedResults.ApplicabilityScanResults, cves)
+		currSeverity := GetSeverity(vulnerability.Severity, applicabilityStatus)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
@@ -224,7 +238,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 					JfrogResearchInformation:  jfrogResearchInfo,
 					ImpactPaths:               impactPaths[compIndex],
 					Technology:                coreutils.Technology(vulnerability.Technology),
-					Applicable:                printApplicableCveValue(applicableValue, isTable),
+					Applicable:                printApplicableCveValue(applicabilityStatus, isTable),
 				},
 			)
 		}
@@ -284,26 +298,33 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 }
 
 // Prepare secrets for all non-table formats (without style or emoji)
-func PrepareSecrets(secrets []SourceCodeScanResult) []formats.SourceCodeRow {
+func PrepareSecrets(secrets []*sarif.Run) []formats.SourceCodeRow {
 	return prepareSecrets(secrets, false)
 }
 
-func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	var secretsRows []formats.SourceCodeRow
-	for _, secret := range secrets {
-		currSeverity := GetSeverity(secret.Severity, Applicable)
-		secretsRows = append(secretsRows,
-			formats.SourceCodeRow{
-				Severity:         currSeverity.printableTitle(isTable),
-				SeverityNumValue: currSeverity.numValue,
-				SourceCodeLocationRow: formats.SourceCodeLocationRow{
-					File:       secret.File,
-					LineColumn: secret.LineColumn,
-					Text:       secret.Text,
-				},
-				Type: secret.Type,
-			},
-		)
+	for _, secretRun := range secrets {
+		for _, secretResult := range secretRun.Results {
+			currSeverity := GetSeverity(GetResultSeverity(secretResult), Applicable)
+			for _, location := range secretResult.Locations {
+				secretsRows = append(secretsRows,
+					formats.SourceCodeRow{
+						Severity:         currSeverity.printableTitle(isTable),
+						Finding:          GetResultMsgText(secretResult),
+						SeverityNumValue: currSeverity.numValue,
+						Location: formats.Location{
+							File:        GetRelativeLocationFileName(location, secretRun.Invocations),
+							StartLine:   GetLocationStartLine(location),
+							StartColumn: GetLocationStartColumn(location),
+							EndLine:     GetLocationEndLine(location),
+							EndColumn:   GetLocationEndColumn(location),
+							Snippet:     GetLocationSnippet(location),
+						},
+					},
+				)
+			}
+		}
 	}
 
 	sort.Slice(secretsRows, func(i, j int) bool {
@@ -313,7 +334,7 @@ func prepareSecrets(secrets []SourceCodeScanResult, isTable bool) []formats.Sour
 	return secretsRows
 }
 
-func PrintSecretsTable(secrets []SourceCodeScanResult, entitledForSecretsScan bool) error {
+func PrintSecretsTable(secrets []*sarif.Run, entitledForSecretsScan bool) error {
 	if entitledForSecretsScan {
 		secretsRows := prepareSecrets(secrets, true)
 		log.Output()
@@ -324,26 +345,38 @@ func PrintSecretsTable(secrets []SourceCodeScanResult, entitledForSecretsScan bo
 }
 
 // Prepare iacs for all non-table formats (without style or emoji)
-func PrepareIacs(iacs []SourceCodeScanResult) []formats.SourceCodeRow {
+func PrepareIacs(iacs []*sarif.Run) []formats.SourceCodeRow {
 	return prepareIacs(iacs, false)
 }
 
-func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	var iacRows []formats.SourceCodeRow
-	for _, iac := range iacs {
-		currSeverity := GetSeverity(iac.Severity, Applicable)
-		iacRows = append(iacRows,
-			formats.SourceCodeRow{
-				Severity:         currSeverity.printableTitle(isTable),
-				SeverityNumValue: currSeverity.numValue,
-				SourceCodeLocationRow: formats.SourceCodeLocationRow{
-					File:       iac.File,
-					LineColumn: iac.LineColumn,
-					Text:       iac.Text,
-				},
-				Type: iac.Type,
-			},
-		)
+	for _, iacRun := range iacs {
+		for _, iacResult := range iacRun.Results {
+			scannerDescription := ""
+			if rule, err := iacRun.GetRuleById(*iacResult.RuleID); err == nil {
+				scannerDescription = GetRuleFullDescription(rule)
+			}
+			currSeverity := GetSeverity(GetResultSeverity(iacResult), Applicable)
+			for _, location := range iacResult.Locations {
+				iacRows = append(iacRows,
+					formats.SourceCodeRow{
+						Severity:           currSeverity.printableTitle(isTable),
+						Finding:            GetResultMsgText(iacResult),
+						ScannerDescription: scannerDescription,
+						SeverityNumValue:   currSeverity.numValue,
+						Location: formats.Location{
+							File:        GetRelativeLocationFileName(location, iacRun.Invocations),
+							StartLine:   GetLocationStartLine(location),
+							StartColumn: GetLocationStartColumn(location),
+							EndLine:     GetLocationEndLine(location),
+							EndColumn:   GetLocationEndColumn(location),
+							Snippet:     GetLocationSnippet(location),
+						},
+					},
+				)
+			}
+		}
 	}
 
 	sort.Slice(iacRows, func(i, j int) bool {
@@ -353,37 +386,51 @@ func prepareIacs(iacs []SourceCodeScanResult, isTable bool) []formats.SourceCode
 	return iacRows
 }
 
-func PrintIacTable(iacs []SourceCodeScanResult, entitledForIacScan bool) error {
+func PrintIacTable(iacs []*sarif.Run, entitledForIacScan bool) error {
 	if entitledForIacScan {
 		iacRows := prepareIacs(iacs, true)
 		log.Output()
-		return coreutils.PrintTable(formats.ConvertToIacTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
+		return coreutils.PrintTable(formats.ConvertToIacOrSastTableRow(iacRows), "Infrastructure as Code Vulnerabilities",
 			"✨ No Infrastructure as Code vulnerabilities were found ✨", false)
 	}
 	return nil
 }
 
-func PrepareSast(sasts []SourceCodeScanResult) []formats.SourceCodeRow {
+func PrepareSast(sasts []*sarif.Run) []formats.SourceCodeRow {
 	return prepareSast(sasts, false)
 }
 
-func prepareSast(sasts []SourceCodeScanResult, isTable bool) []formats.SourceCodeRow {
+func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 	var sastRows []formats.SourceCodeRow
-	for _, sast := range sasts {
-		currSeverity := GetSeverity(sast.Severity, Applicable)
-		sastRows = append(sastRows,
-			formats.SourceCodeRow{
-				Severity:         currSeverity.printableTitle(isTable),
-				SeverityNumValue: currSeverity.numValue,
-				SourceCodeLocationRow: formats.SourceCodeLocationRow{
-					File:       sast.File,
-					LineColumn: sast.LineColumn,
-					Text:       sast.Text,
-				},
-				Type:     sast.Type,
-				CodeFlow: toSourceCodeCodeFlowRow(sast, isTable),
-			},
-		)
+	for _, sastRun := range sasts {
+		for _, sastResult := range sastRun.Results {
+			scannerDescription := ""
+			if rule, err := sastRun.GetRuleById(*sastResult.RuleID); err == nil {
+				scannerDescription = GetRuleFullDescription(rule)
+			}
+			currSeverity := GetSeverity(GetResultSeverity(sastResult), Applicable)
+
+			for _, location := range sastResult.Locations {
+				codeFlows := GetLocationRelatedCodeFlowsFromResult(location, sastResult)
+				sastRows = append(sastRows,
+					formats.SourceCodeRow{
+						Severity:           currSeverity.printableTitle(isTable),
+						Finding:            GetResultMsgText(sastResult),
+						ScannerDescription: scannerDescription,
+						SeverityNumValue:   currSeverity.numValue,
+						Location: formats.Location{
+							File:        GetRelativeLocationFileName(location, sastRun.Invocations),
+							StartLine:   GetLocationStartLine(location),
+							StartColumn: GetLocationStartColumn(location),
+							EndLine:     GetLocationEndLine(location),
+							EndColumn:   GetLocationEndColumn(location),
+							Snippet:     GetLocationSnippet(location),
+						},
+						CodeFlow: codeFlowToLocationFlow(codeFlows, sastRun.Invocations, isTable),
+					},
+				)
+			}
+		}
 	}
 
 	sort.Slice(sastRows, func(i, j int) bool {
@@ -393,41 +440,38 @@ func prepareSast(sasts []SourceCodeScanResult, isTable bool) []formats.SourceCod
 	return sastRows
 }
 
-func toSourceCodeCodeFlowRow(result SourceCodeScanResult, isTable bool) (flows [][]formats.SourceCodeLocationRow) {
+func codeFlowToLocationFlow(flows []*sarif.CodeFlow, invocations []*sarif.Invocation, isTable bool) (flowRows [][]formats.Location) {
 	if isTable {
 		// Not displaying in table
 		return
 	}
-	for _, flowStack := range result.CodeFlow {
-		rowFlow := []formats.SourceCodeLocationRow{}
-		for _, location := range *flowStack {
-			rowFlow = append(rowFlow, formats.SourceCodeLocationRow{
-				File:       location.File,
-				LineColumn: location.LineColumn,
-				Text:       location.Text,
-			})
+	for _, codeFlow := range flows {
+		for _, stackTrace := range codeFlow.ThreadFlows {
+			rowFlow := []formats.Location{}
+			for _, stackTraceEntry := range stackTrace.Locations {
+				rowFlow = append(rowFlow, formats.Location{
+					File:        GetRelativeLocationFileName(stackTraceEntry.Location, invocations),
+					StartLine:   GetLocationStartLine(stackTraceEntry.Location),
+					StartColumn: GetLocationStartColumn(stackTraceEntry.Location),
+					EndLine:     GetLocationEndLine(stackTraceEntry.Location),
+					EndColumn:   GetLocationEndColumn(stackTraceEntry.Location),
+					Snippet:     GetLocationSnippet(stackTraceEntry.Location),
+				})
+			}
+			flowRows = append(flowRows, rowFlow)
 		}
-		flows = append(flows, rowFlow)
 	}
 	return
 }
 
-func PrintSastTable(sast []SourceCodeScanResult, entitledForSastScan bool) error {
+func PrintSastTable(sast []*sarif.Run, entitledForSastScan bool) error {
 	if entitledForSastScan {
 		sastRows := prepareSast(sast, true)
 		log.Output()
-		return coreutils.PrintTable(formats.ConvertToSastTableRow(sastRows), "Static Application Security Testing (SAST)",
+		return coreutils.PrintTable(formats.ConvertToIacOrSastTableRow(sastRows), "Static Application Security Testing (SAST)",
 			"✨ No Static Application Security Testing vulnerabilities were found ✨", false)
 	}
 	return nil
-}
-
-func convertCves(cves []services.Cve) []formats.CveRow {
-	var cveRows []formats.CveRow
-	for _, cveObj := range cves {
-		cveRows = append(cveRows, formats.CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
-	}
-	return cveRows
 }
 
 func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation) *formats.JfrogResearchInformation {
@@ -873,33 +917,86 @@ func GetUniqueKey(vulnerableDependency, vulnerableVersion, xrayID string, fixVer
 	return strings.Join([]string{vulnerableDependency, vulnerableVersion, xrayID, strconv.FormatBool(fixVersionExist)}, ":")
 }
 
+func convertCves(cves []services.Cve) []formats.CveRow {
+	var cveRows []formats.CveRow
+	for _, cveObj := range cves {
+		cveRows = append(cveRows, formats.CveRow{Id: cveObj.Id, CvssV2: cveObj.CvssV2Score, CvssV3: cveObj.CvssV3Score})
+	}
+	return cveRows
+}
+
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
-func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) ApplicabilityStatus {
-	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
+func getApplicableCveStatus(entitledForJas bool, applicabilityScanResults []*sarif.Run, cves []formats.CveRow) ApplicabilityStatus {
+	if !entitledForJas || len(applicabilityScanResults) == 0 {
 		return NotScanned
 	}
-
-	if len(xrayCves) == 0 {
+	if len(cves) == 0 {
 		return ApplicabilityUndetermined
 	}
-	cveExistsInResult := false
-	finalApplicableValue := NotApplicable
-	for _, cve := range xrayCves {
-		if currentCveApplicableValue, exists := extendedResults.ApplicabilityScanResults[cve.Id]; exists {
-			cveExistsInResult = true
-			if currentCveApplicableValue == Applicable {
-				return currentCveApplicableValue
-			} else if currentCveApplicableValue == ApplicabilityUndetermined {
-				finalApplicableValue = currentCveApplicableValue
+	foundUndetermined := false
+	for _, cve := range cves {
+		if cve.Applicability != nil {
+			if cve.Applicability.Status == string(Applicable) {
+				return Applicable
+			}
+			if cve.Applicability.Status == string(ApplicabilityUndetermined) {
+				foundUndetermined = true
 			}
 		}
 	}
-	if cveExistsInResult {
-		return finalApplicableValue
+	if foundUndetermined {
+		return ApplicabilityUndetermined
 	}
-	return ApplicabilityUndetermined
+	return NotApplicable
+}
+
+func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) *formats.Applicability {
+	if len(applicabilityScanResults) == 0 {
+		return nil
+	}
+
+	applicability := formats.Applicability{}
+	resultFound := false
+	for _, applicabilityRun := range applicabilityScanResults {
+		result, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
+		if result == nil {
+			continue
+		}
+		resultFound = true
+		rule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
+		if rule != nil {
+			applicability.ScannerDescription = GetRuleFullDescription(rule)
+		}
+		// Add new evidences from locations
+		for _, location := range result.Locations {
+			fileName := GetRelativeLocationFileName(location, applicabilityRun.Invocations)
+			if shouldDisqualifyEvidence(components, fileName) {
+				continue
+			}
+			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
+				Location: formats.Location{
+					File:        fileName,
+					StartLine:   GetLocationStartLine(location),
+					StartColumn: GetLocationStartColumn(location),
+					EndLine:     GetLocationEndLine(location),
+					EndColumn:   GetLocationEndColumn(location),
+					Snippet:     GetLocationSnippet(location),
+				},
+				Reason: GetResultMsgText(result),
+			})
+		}
+	}
+	switch {
+	case !resultFound:
+		applicability.Status = string(ApplicabilityUndetermined)
+	case len(applicability.Evidence) == 0:
+		applicability.Status = string(NotApplicable)
+	default:
+		applicability.Status = string(Applicable)
+	}
+	return &applicability
 }
 
 func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
@@ -911,4 +1008,40 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 		}
 	}
 	return string(applicableValue)
+}
+
+// Relevant only when "third-party-contextual-analysis" flag is on,
+// which mean we scan the environment folders as well (node_modules for example...)
+// When a certain package is reported applicable, and the evidence found
+// is inside the source code of the same package, we should disqualify it.
+//
+// For example,
+// Cve applicability was found inside the 'mquery' package.
+// filePath = myProject/node_modules/mquery/badCode.js , disqualify = True.
+// Disqualify the above evidence, as the reported applicability is used inside its own package.
+//
+// filePath = myProject/node_modules/mpath/badCode.js  , disqualify = False.
+// Found use of a badCode inside the node_modules from a different package, report applicable.
+func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
+	for key := range components {
+		if !strings.HasPrefix(key, NpmPackageTypeIdentifier) {
+			return
+		}
+		dependencyName := extractDependencyNameFromComponent(key, NpmPackageTypeIdentifier)
+		// Check both Unix & Windows paths.
+		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
+			return true
+		}
+	}
+	return
+}
+
+func extractDependencyNameFromComponent(key string, techIdentifier string) (dependencyName string) {
+	packageAndVersion := strings.TrimPrefix(key, techIdentifier)
+	split := strings.Split(packageAndVersion, ":")
+	if len(split) < 2 {
+		return
+	}
+	dependencyName = split[0]
+	return
 }

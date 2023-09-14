@@ -31,11 +31,11 @@ const (
 type TokenType string
 
 func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
-	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, AccessToken, auth.InviteRefreshBeforeExpiryMinutes)
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, AccessToken, auth.RefreshPlatformTokenBeforeExpiryMinutes)
 }
 
 func ArtifactoryTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
-	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, ArtifactoryToken, auth.RefreshBeforeExpiryMinutes)
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, ArtifactoryToken, auth.RefreshArtifactoryTokenBeforeExpiryMinutes)
 }
 
 func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails, tokenType TokenType, refreshBeforeExpiryMinutes int64) (err error) {

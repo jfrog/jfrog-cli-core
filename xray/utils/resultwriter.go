@@ -177,7 +177,7 @@ func (rw *ResultsWriter) generateSarifContentFromResults(markdownOutput bool) (s
 	if err != nil {
 		return
 	}
-	xrayRun, err := rw.convertXrayResponsesToSarifRun(rw.results, rw.isMultipleRoots, rw.includeLicenses, markdownOutput)
+	xrayRun, err := rw.convertXrayResponsesToSarifRun(markdownOutput)
 	if err != nil {
 		return
 	}
@@ -196,13 +196,13 @@ func (rw *ResultsWriter) generateSarifContentFromResults(markdownOutput bool) (s
 	return clientUtils.IndentJson(out), nil
 }
 
-func (rw *ResultsWriter) convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {
+func (rw *ResultsWriter) convertXrayResponsesToSarifRun(markdownOutput bool) (run *sarif.Run, err error) {
 	xrayJson, err := rw.convertXrayScanToSimpleJson(true)
 	if err != nil {
 		return
 	}
 	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray Sca", "https://jfrog.com/xray/")
-	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
+	xrayRun.Tool.Driver.Version = &rw.results.XrayVersion
 	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
 		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {
 			return

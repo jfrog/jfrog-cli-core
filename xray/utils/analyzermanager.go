@@ -23,7 +23,7 @@ const (
 	EntitlementsMinVersion                    = "3.66.5"
 	ApplicabilityFeatureId                    = "contextual_analysis"
 	AnalyzerManagerZipName                    = "analyzerManager.zip"
-	defaultAnalyzerManagerVersion             = "1.2.4.2000151"
+	defaultAnalyzerManagerVersion             = "1.3.2.2005632"
 	minAnalyzerManagerVersionForSast          = "1.3"
 	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName                    = "analyzerManager"
@@ -108,7 +108,10 @@ func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serv
 	cmd.Dir = workingDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		err = errorutils.CheckErrorf("running %q in directory: %q failed: %s - %s", strings.Join(cmd.Args, " "), workingDir, err.Error(), string(output))
+		if len(output) > 0 {
+			log.Debug(fmt.Sprintf("%s %q output: %s", workingDir, strings.Join(cmd.Args, " "), string(output)))
+		}
+		err = errorutils.CheckError(err)
 	}
 	return
 }

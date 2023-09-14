@@ -3,10 +3,7 @@ package utils
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
-
-	"github.com/jfrog/gofrog/datastructures"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -117,15 +114,6 @@ func GetResultsLocationCount(runs ...*sarif.Run) (count int) {
 	return
 }
 
-func GetLevelResultsLocationCount(run *sarif.Run, level SarifLevel) (count int) {
-	for _, result := range run.Results {
-		if level == SarifLevel(*result.Level) {
-			count += len(result.Locations)
-		}
-	}
-	return
-}
-
 func GetResultsByRuleId(run *sarif.Run, ruleId string) (results []*sarif.Result) {
 	for _, result := range run.Results {
 		if *result.RuleID == ruleId {
@@ -143,19 +131,11 @@ func GetResultMsgText(result *sarif.Result) string {
 }
 
 func GetLocationSnippet(location *sarif.Location) string {
-	snippet := GetLocationSnippetPointer(location)
-	if snippet == nil {
-		return ""
-	}
-	return *snippet
-}
-
-func GetLocationSnippetPointer(location *sarif.Location) *string {
 	region := getLocationRegion(location)
 	if region != nil && region.Snippet != nil {
-		return region.Snippet.Text
+		return *region.Snippet.Text
 	}
-	return nil
+	return ""
 }
 
 func SetLocationSnippet(location *sarif.Location, snippet string) {
@@ -230,15 +210,6 @@ func GetLocationEndColumn(location *sarif.Location) int {
 	return 0
 }
 
-func GetStartLocationInFile(location *sarif.Location) string {
-	startLine := location.PhysicalLocation.Region.StartLine
-	startColumn := location.PhysicalLocation.Region.StartColumn
-	if startLine != nil && startColumn != nil {
-		return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
-	}
-	return ""
-}
-
 func ExtractRelativePath(resultPath string, projectRoot string) string {
 	// Remove OS-specific file prefix
 	resultPath = strings.TrimPrefix(resultPath, "file:///private")
@@ -293,7 +264,7 @@ func GetRunRules(run *sarif.Run) []*sarif.ReportingDescriptor {
 }
 
 func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {
-	if invocation.WorkingDirectory != nil && invocation.WorkingDirectory.URI != nil {
+	if invocation != nil && invocation.WorkingDirectory != nil && invocation.WorkingDirectory.URI != nil {
 		return *invocation.WorkingDirectory.URI
 	}
 	return ""
@@ -301,21 +272,30 @@ func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {
 
 func GetRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
 	run := sarif.NewRunWithInformationURI("", "")
-	ids := datastructures.MakeSet[string]()
 	for _, result := range results {
-		if !ids.Exists(*result.RuleID) {
-			run.Tool.Driver.Rules = append(run.Tool.Driver.Rules, sarif.NewRule(*result.RuleID))
-			ids.Add(*result.RuleID)
-		}
+		run.Tool.Driver.AddRule(sarif.NewRule(*result.RuleID))
 	}
 	return run.WithResults(results)
 }
 
-func getDummyPassingResult(ruleId string) *sarif.Result {
+func GetDummyPassingResult(ruleId string) *sarif.Result {
 	kind := "pass"
 	return &sarif.Result{
 		Kind:   &kind,
 		RuleID: &ruleId,
+	}
+}
+
+func GetDummyLocation(fileName string, startLine, startCol, endLine, endCol int, snippet string) *sarif.Location {
+	return &sarif.Location{
+		PhysicalLocation: &sarif.PhysicalLocation{
+			ArtifactLocation: &sarif.ArtifactLocation{URI: &fileName},
+			Region: &sarif.Region{
+				StartLine:   &startLine,
+				StartColumn: &startCol,
+				EndLine:     &endLine,
+				EndColumn:   &endCol,
+				Snippet:     &sarif.ArtifactContent{Text: &snippet}}},
 	}
 }
 

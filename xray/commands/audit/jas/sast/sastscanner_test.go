@@ -66,3 +66,11 @@ func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
 		assert.Len(t, sastScanManager.sastScannerResults[0].Results, 3)
 	}
 }
+
+func TestGroupResultsByLocation(t *testing.T) {
+
+}
+
+func TestGetResultId(t *testing.T) {
+
+}

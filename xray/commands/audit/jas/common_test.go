@@ -50,34 +50,34 @@ func TestAddScoreToRunRules(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		sarifRun   *sarif.Run
+		sarifRun       *sarif.Run
 		expectedOutput []*sarif.ReportingDescriptor
 	}{
 		{
 			sarifRun: utils.GetRunWithDummyResults(
-				utils.GetDummyResultWithOneLocation("file1",0,0, "snippet", "rule1", "info"),
-				utils.GetDummyResultWithOneLocation("file2",0,0, "snippet", "rule1", "info"),
-				utils.GetDummyResultWithOneLocation("file",0,0, "snippet", "rule2", "warning"),
+				utils.GetDummyResultWithOneLocation("file1", 0, 0, "snippet", "rule1", "info"),
+				utils.GetDummyResultWithOneLocation("file2", 0, 0, "snippet", "rule1", "info"),
+				utils.GetDummyResultWithOneLocation("file", 0, 0, "snippet", "rule2", "warning"),
 			),
 			expectedOutput: []*sarif.ReportingDescriptor{
-				sarif.NewRule("rule1").WithProperties(sarif.Properties{"security-severity":"6.9"}),
-				sarif.NewRule("rule2").WithProperties(sarif.Properties{"security-severity":"6.9"}),
+				sarif.NewRule("rule1").WithProperties(sarif.Properties{"security-severity": "6.9"}),
+				sarif.NewRule("rule2").WithProperties(sarif.Properties{"security-severity": "6.9"}),
 			},
 		},
 		{
 			sarifRun: utils.GetRunWithDummyResults(
-				utils.GetDummyResultWithOneLocation("file",0,0, "snippet", "rule1", "none"),
-				utils.GetDummyResultWithOneLocation("file",0,0, "snippet", "rule2", "note"),
-				utils.GetDummyResultWithOneLocation("file",0,0, "snippet", "rule3", "info"),
-				utils.GetDummyResultWithOneLocation("file",0,0, "snippet", "rule4", "warning"),
-				utils.GetDummyResultWithOneLocation("file",0,0, "snippet", "rule5", "error"),
+				utils.GetDummyResultWithOneLocation("file", 0, 0, "snippet", "rule1", "none"),
+				utils.GetDummyResultWithOneLocation("file", 0, 0, "snippet", "rule2", "note"),
+				utils.GetDummyResultWithOneLocation("file", 0, 0, "snippet", "rule3", "info"),
+				utils.GetDummyResultWithOneLocation("file", 0, 0, "snippet", "rule4", "warning"),
+				utils.GetDummyResultWithOneLocation("file", 0, 0, "snippet", "rule5", "error"),
 			),
 			expectedOutput: []*sarif.ReportingDescriptor{
-				sarif.NewRule("rule1").WithProperties(sarif.Properties{"security-severity":"0.0"}),
-				sarif.NewRule("rule2").WithProperties(sarif.Properties{"security-severity":"3.9"}),
-				sarif.NewRule("rule3").WithProperties(sarif.Properties{"security-severity":"6.9"}),
-				sarif.NewRule("rule4").WithProperties(sarif.Properties{"security-severity":"6.9"}),
-				sarif.NewRule("rule5").WithProperties(sarif.Properties{"security-severity":"8.9"}),
+				sarif.NewRule("rule1").WithProperties(sarif.Properties{"security-severity": "0.0"}),
+				sarif.NewRule("rule2").WithProperties(sarif.Properties{"security-severity": "3.9"}),
+				sarif.NewRule("rule3").WithProperties(sarif.Properties{"security-severity": "6.9"}),
+				sarif.NewRule("rule4").WithProperties(sarif.Properties{"security-severity": "6.9"}),
+				sarif.NewRule("rule5").WithProperties(sarif.Properties{"security-severity": "8.9"}),
 			},
 		},
 	}

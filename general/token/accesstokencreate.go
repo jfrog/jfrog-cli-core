@@ -138,13 +138,13 @@ func (atc *AccessTokenCreateCommand) getScope() string {
 		return atc.scope
 	}
 
-	scope := ""
+	var scopes []string
 	if atc.groups != "" {
-		scope = GroupsScopePrefix + atc.groups
+		scopes = append(scopes, GroupsScopePrefix+atc.groups)
 	}
 
 	if atc.grantAdmin {
-		scope = strings.Join([]string{scope, AdminScope}, " ")
+		scopes = append(scopes, AdminScope)
 	}
-	return scope
+	return strings.Join(scopes, " ")
 }

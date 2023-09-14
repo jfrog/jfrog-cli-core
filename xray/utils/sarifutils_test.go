@@ -21,29 +21,43 @@ func TestGetResultsLocationCount(t *testing.T) {
 		expectedOutput int
 	}{
 		{
-			runs:         []*sarif.Run{},
+			runs:           []*sarif.Run{},
 			expectedOutput: 0,
 		},
 		{
-			runs:         []*sarif.Run{GetRunWithDummyResults()},
+			runs:           []*sarif.Run{GetRunWithDummyResults()},
 			expectedOutput: 0,
+		},
+		{
+			runs: []*sarif.Run{GetRunWithDummyResults(
+				GetDummyPassingResult("rule"),
+				GetDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level"),
+			)},
+			expectedOutput: 1,
+		},
+		{
+			runs: []*sarif.Run{
+				GetRunWithDummyResults(
+					GetDummyPassingResult("rule"),
+					GetDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level"),
+				),
+				GetRunWithDummyResults(
+					GetDummyResultWithLocations(
+						"msg",
+						"rule",
+						"level",
+						GetDummyLocation("file", 0, 0, 0, 0, "snippet"),
+						GetDummyLocation("file", 0, 0, 0, 0, "snippet"),
+						GetDummyLocation("file", 0, 0, 0, 0, "snippet"),
+					),
+				),
+			},
+			expectedOutput: 4,
 		},
 	}
 
 	for _, test := range tests {
 		assert.Equal(t, test.expectedOutput, GetResultsLocationCount(test.runs...))
-	}
-}
-
-func TestGetResultsByRuleId(t *testing.T) {
-	tests := []struct {
-		run            *sarif.Run
-		ruleId         string
-		expectedOutput []*sarif.Result
-	}{}
-
-	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultsByRuleId(test.run, test.ruleId))
 	}
 }
 

@@ -114,15 +114,6 @@ func GetResultsLocationCount(runs ...*sarif.Run) (count int) {
 	return
 }
 
-func GetResultsByRuleId(run *sarif.Run, ruleId string) (results []*sarif.Result) {
-	for _, result := range run.Results {
-		if *result.RuleID == ruleId {
-			results = append(results, result)
-		}
-	}
-	return
-}
-
 func GetResultMsgText(result *sarif.Result) string {
 	if result.Message.Text != nil {
 		return *result.Message.Text
@@ -145,7 +136,7 @@ func SetLocationSnippet(location *sarif.Location, snippet string) {
 }
 
 func GetLocationFileName(location *sarif.Location) string {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.ArtifactLocation != nil {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.ArtifactLocation != nil && location.PhysicalLocation.ArtifactLocation.URI != nil {
 		return *location.PhysicalLocation.ArtifactLocation.URI
 	}
 	return ""
@@ -272,17 +263,17 @@ func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {
 func GetRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
 	run := sarif.NewRunWithInformationURI("", "")
 	for _, result := range results {
-		run.Tool.Driver.AddRule(sarif.NewRule(*result.RuleID))
+		run.AddResult(result)
 	}
-	return run.WithResults(results)
+	return run
 }
 
 func GetDummyResultWithLocations(msg, ruleId, level string, locations ...*sarif.Location) *sarif.Result {
 	return &sarif.Result{
-		Message: *sarif.NewTextMessage(msg),
+		Message:   *sarif.NewTextMessage(msg),
 		Locations: locations,
-		Level:  &level,
-		RuleID: &ruleId,
+		Level:     &level,
+		RuleID:    &ruleId,
 	}
 }
 
@@ -309,8 +300,8 @@ func GetDummyPassingResult(ruleId string) *sarif.Result {
 
 func GetDummyResultWithOneLocation(fileName string, startLine, startCol, endLine, endCol int, snippet, ruleId, level string) *sarif.Result {
 	return &sarif.Result{
-		Locations: []*sarif.Location{ GetDummyLocation(fileName, startCol, startCol, endLine, endCol, snippet)},
-		Level:  &level,
-		RuleID: &ruleId,
+		Locations: []*sarif.Location{GetDummyLocation(fileName, startCol, startCol, endLine, endCol, snippet)},
+		Level:     &level,
+		RuleID:    &ruleId,
 	}
 }

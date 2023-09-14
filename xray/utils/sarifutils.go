@@ -305,3 +305,19 @@ func CreateDummyResultWithOneLocation(fileName string, startLine, startCol, endL
 		RuleID:    &ruleId,
 	}
 }
+
+func CreateDummyCodeFlow(threadFlows ...*sarif.ThreadFlow) *sarif.CodeFlow {
+	flow := sarif.NewCodeFlow()
+	for _, threadFlow := range threadFlows {
+		flow.AddThreadFlow(threadFlow)
+	}
+	return flow
+}
+
+func CreateDummyThreadFlow(locations ...*sarif.Location) *sarif.ThreadFlow {
+	stackStrace := sarif.NewThreadFlow()
+	for _, location := range locations {
+		stackStrace.AddLocation(sarif.NewThreadFlowLocation().WithLocation(location))
+	}
+	return stackStrace
+}

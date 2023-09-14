@@ -8,11 +8,83 @@ import (
 )
 
 func TestAggregateMultipleRunsIntoSingle(t *testing.T) {
+	tests := []struct {
+		runs           []*sarif.Run
+		expectedOutput *sarif.Run
+	}{
+		{
+			runs:           []*sarif.Run{},
+			expectedOutput: sarif.NewRunWithInformationURI("tool", "url"),
+		},
+	}
 
+	for _, test := range tests {
+		result := sarif.NewRunWithInformationURI("tool", "url")
+		AggregateMultipleRunsIntoSingle(test.runs, result)
+		assert.Equal(t, test.expectedOutput, result)
+	}
 }
 
 func TestGetLocationRelatedCodeFlowsFromResult(t *testing.T) {
+	tests := []struct {
+		result         *sarif.Result
+		location       *sarif.Location
+		expectedOutput []*sarif.CodeFlow
+	}{
+		{
+			result:         CreateDummyPassingResult("rule"),
+			location:       CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+			expectedOutput: nil,
+		},
+		{
+			result:         CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level"),
+			location:       CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+			expectedOutput: nil,
+		},
+		{
+			result:         CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level").WithCodeFlows([]*sarif.CodeFlow{CreateDummyCodeFlow(CreateDummyThreadFlow(CreateDummyLocation("file", 0, 0, 0, 0, "snippet")))}),
+			location:       CreateDummyLocation("file2", 0, 0, 0, 0, "snippet"),
+			expectedOutput: nil,
+		},
+		{
+			result:         CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level").WithCodeFlows([]*sarif.CodeFlow{CreateDummyCodeFlow(CreateDummyThreadFlow(CreateDummyLocation("file", 0, 0, 0, 0, "snippet")))}),
+			location:       CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+			expectedOutput: []*sarif.CodeFlow{CreateDummyCodeFlow(CreateDummyThreadFlow(CreateDummyLocation("file", 0, 0, 0, 0, "snippet")))},
+		},
+		{
+			result: CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule", "level").WithCodeFlows([]*sarif.CodeFlow{
+				CreateDummyCodeFlow(CreateDummyThreadFlow(
+					CreateDummyLocation("file4", 2, 0, 2, 0, "snippetB"),
+					CreateDummyLocation("file2", 0, 2, 0, 2, "snippetA"),
+					CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+				)),
+				CreateDummyCodeFlow(CreateDummyThreadFlow(
+					CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+					CreateDummyLocation("file2", 1, 0, 1, 0, "snippet"),
+				)),
+				CreateDummyCodeFlow(CreateDummyThreadFlow(
+					CreateDummyLocation("fileC", 1, 1, 1, 1, "snippetC"),
+					CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+				)),
+			}),
+			location: CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+			expectedOutput: []*sarif.CodeFlow{
+				CreateDummyCodeFlow(CreateDummyThreadFlow(
+					CreateDummyLocation("file4", 2, 0, 2, 0, "snippetB"),
+					CreateDummyLocation("file2", 0, 2, 0, 2, "snippetA"),
+					CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+				)),
+				CreateDummyCodeFlow(CreateDummyThreadFlow(
+					CreateDummyLocation("fileC", 1, 1, 1, 1, "snippetC"),
+					CreateDummyLocation("file", 0, 0, 0, 0, "snippet"),
+				)),
+			},
+		},
+	}
 
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetLocationRelatedCodeFlowsFromResult(test.location, test.result))
+	}
 }
 
 func TestGetResultsLocationCount(t *testing.T) {
@@ -303,6 +375,8 @@ func TestExtractRelativePath(t *testing.T) {
 		expectedResult string
 	}{
 		{fullPath: "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
+			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "tests/req.nodejs/file.js"},
+		{fullPath: "file:///private/Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
 			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "tests/req.nodejs/file.js"},
 		{fullPath: "invalidFullPath",
 			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "invalidFullPath"},

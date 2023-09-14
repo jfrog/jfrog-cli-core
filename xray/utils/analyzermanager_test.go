@@ -25,12 +25,10 @@ func TestGetResultFileName(t *testing.T) {
 				{PhysicalLocation: &sarif.PhysicalLocation{ArtifactLocation: &sarif.ArtifactLocation{URI: &fileNameValue}}},
 			}},
 			expectedOutput: fileNameValue},
-		{result: &sarif.Result{},
-			expectedOutput: ""},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultFileName(test.result))
+		assert.Equal(t, test.expectedOutput, GetLocationFileName(test.result.Locations[0]))
 	}
 
 }
@@ -67,12 +65,10 @@ func TestGetResultLocationInFile(t *testing.T) {
 				StartColumn: nil,
 			}}}}},
 			expectedOutput: ""},
-		{result: &sarif.Result{},
-			expectedOutput: ""},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedOutput, GetResultLocationInFile(test.result))
+		assert.Equal(t, test.expectedOutput, GetStartLocationInFile(test.result.Locations[0]))
 	}
 }
 
@@ -83,13 +79,15 @@ func TestExtractRelativePath(t *testing.T) {
 		expectedResult string
 	}{
 		{secretPath: "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
-			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "/tests/req.nodejs/file.js"},
+			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "tests/req.nodejs/file.js"},
 		{secretPath: "invalidSecretPath",
 			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: "invalidSecretPath"},
 		{secretPath: "",
 			projectPath: "Users/user/Desktop/secrets_scanner/", expectedResult: ""},
 		{secretPath: "file:///Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
-			projectPath: "invalidProjectPath", expectedResult: "/Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"},
+			projectPath: "invalidProjectPath", expectedResult: "Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"},
+		{secretPath: "file:///private/Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js",
+			projectPath: "invalidProjectPath", expectedResult: "Users/user/Desktop/secrets_scanner/tests/req.nodejs/file.js"},
 	}
 
 	for _, test := range tests {
@@ -98,11 +96,11 @@ func TestExtractRelativePath(t *testing.T) {
 }
 
 func TestGetResultSeverity(t *testing.T) {
-	levelValueHigh := string(Error)
-	levelValueMedium := string(Warning)
-	levelValueMedium2 := string(Info)
-	levelValueLow := string(Note)
-	levelValueUnknown := string(None)
+	levelValueHigh := string(errorLevel)
+	levelValueMedium := string(warningLevel)
+	levelValueMedium2 := string(infoLevel)
+	levelValueLow := string(noteLevel)
+	levelValueUnknown := string(noneLevel)
 
 	tests := []struct {
 		result           *sarif.Result

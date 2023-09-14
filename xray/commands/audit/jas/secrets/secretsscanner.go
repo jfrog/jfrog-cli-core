@@ -1,10 +1,13 @@
 package secrets
 
 import (
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path/filepath"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
@@ -13,7 +16,7 @@ const (
 )
 
 type SecretScanManager struct {
-	secretsScannerResults []utils.SourceCodeScanResult
+	secretsScannerResults []*sarif.Run
 	scanner               *jas.JasScanner
 }
 
@@ -24,7 +27,7 @@ type SecretScanManager struct {
 // Return values:
 // []utils.IacOrSecretResult: a list of the secrets that were found.
 // error: An error object (if any).
-func RunSecretsScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, err error) {
+func RunSecretsScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 	secretScanManager := newSecretsScanManager(scanner)
 	log.Info("Running secrets scanning...")
 	if err = secretScanManager.scanner.Run(secretScanManager); err != nil {
@@ -33,14 +36,14 @@ func RunSecretsScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResu
 	}
 	results = secretScanManager.secretsScannerResults
 	if len(results) > 0 {
-		log.Info("Found", len(results), "secrets")
+		log.Info("Found", utils.GetResultsLocationCount(results...), "secrets")
 	}
 	return
 }
 
 func newSecretsScanManager(scanner *jas.JasScanner) (manager *SecretScanManager) {
 	return &SecretScanManager{
-		secretsScannerResults: []utils.SourceCodeScanResult{},
+		secretsScannerResults: []*sarif.Run{},
 		scanner:               scanner,
 	}
 }
@@ -53,11 +56,11 @@ func (s *SecretScanManager) Run(wd string) (err error) {
 	if err = s.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = jas.GetSourceCodeScanResults(scanner.ResultsFileName, wd, utils.Secrets); err != nil {
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	if err != nil {
 		return
 	}
-	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
+	s.secretsScannerResults = append(s.secretsScannerResults, processSecretScanRuns(workingDirRuns)...)
 	return
 }
 
@@ -88,4 +91,24 @@ func (s *SecretScanManager) createConfigFile(currentWd string) error {
 
 func (s *SecretScanManager) runAnalyzerManager() error {
 	return s.scanner.AnalyzerManager.Exec(s.scanner.ConfigFileName, secretsScanCommand, filepath.Dir(s.scanner.AnalyzerManager.AnalyzerManagerFullPath), s.scanner.ServerDetails)
+}
+
+func maskSecret(secret string) string {
+	if len(secret) <= 3 {
+		return "***"
+	}
+	return secret[:3] + strings.Repeat("*", 12)
+}
+
+func processSecretScanRuns(sarifRuns []*sarif.Run) []*sarif.Run {
+	for _, secretRun := range sarifRuns {
+		// Hide discovered secrets value
+		for _, secretResult := range secretRun.Results {
+			for _, location := range secretResult.Locations {
+				secret := utils.GetLocationSnippetPointer(location)
+				utils.SetLocationSnippet(location, maskSecret(*secret))
+			}
+		}
+	}
+	return sarifRuns
 }

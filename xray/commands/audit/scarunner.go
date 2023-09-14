@@ -79,7 +79,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
 			continue
 		}
-		if len(flattenTree.Nodes) == 0 {
+		if flattenTree == nil || len(flattenTree.Nodes) == 0 {
 			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
 			continue
 		}
@@ -96,15 +96,14 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 			continue
 		}
 		techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
-		var directDependencies []string
-		if tech == coreutils.Pip {
-			// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
-			// Our solution for this case is to send all dependencies to the CA scanner.
-			directDependencies = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
+
+		var dependenciesForApplicabilityScan []string
+		if shouldUseAllDependencies(params.thirdPartyApplicabilityScan, tech) {
+			dependenciesForApplicabilityScan = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
 		} else {
-			directDependencies = getDirectDependenciesFromTree(fullDependencyTrees)
+			dependenciesForApplicabilityScan = getDirectDependenciesFromTree(fullDependencyTrees)
 		}
-		params.AppendDirectDependencies(directDependencies)
+		params.AppendDependenciesForApplicabilityScan(dependenciesForApplicabilityScan)
 
 		results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
 		if !results.IsMultipleRootProject {
@@ -113,6 +112,14 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
 	}
 	return
+}
+
+// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
+// Our solution for this case is to send all dependencies to the CA scanner.
+// When thirdPartyApplicabilityScan is true, use flatten graph to include all the dependencies in applicability scanning.
+// Only npm is supported for this flag.
+func shouldUseAllDependencies(thirdPartyApplicabilityScan bool, tech coreutils.Technology) bool {
+	return tech == coreutils.Pip || (thirdPartyApplicabilityScan && tech == coreutils.Npm)
 }
 
 // This function retrieves the dependency trees of the scanned project and extracts a set that contains only the direct dependencies.
@@ -158,7 +165,7 @@ func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Te
 	default:
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}
-	if err != nil {
+	if err != nil || len(uniqueDeps) == 0 {
 		return
 	}
 	log.Debug(fmt.Sprintf("Created '%s' dependency tree with %d nodes. Elapsed time: %.1f seconds.", tech.ToFormal(), len(uniqueDeps), time.Since(startTime).Seconds()))

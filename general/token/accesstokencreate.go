@@ -20,8 +20,8 @@ type AccessTokenCreateCommand struct {
 	username      string
 	projectKey    string
 
-	groups     string
 	scope      string
+	groups     string
 	grantAdmin bool
 
 	expiry      *uint
@@ -121,21 +121,30 @@ func (atc *AccessTokenCreateCommand) getTokenParams() services.CreateTokenParams
 
 	tokenParams.Username = strings.ToLower(atc.username)
 	tokenParams.ProjectKey = atc.projectKey
-
-	// If a specific scope was requested, apply it. Otherwise, the scope remains empty and the default user scope will be applied.
-	switch {
-	case atc.grantAdmin:
-		tokenParams.Scope = AdminScope
-	case atc.groups != "":
-		tokenParams.Scope = GroupsScopePrefix + atc.groups
-	case atc.scope != "":
-		tokenParams.Scope = atc.scope
-	}
-
+	tokenParams.Scope = atc.getScope()
 	tokenParams.ExpiresIn = atc.expiry
 	tokenParams.Refreshable = &atc.refreshable
 	tokenParams.Description = atc.description
 	tokenParams.Audience = atc.audience
 	tokenParams.IncludeReferenceToken = &atc.includeReferenceToken
 	return tokenParams
+}
+
+// If an explicit scope was provided, apply it.
+// Otherwise, if admin or groups scopes were requested, construct scope from them (space separated).
+// If no scopes were requested, leave scope empty to provide the default user scope.
+func (atc *AccessTokenCreateCommand) getScope() string {
+	if atc.scope != "" {
+		return atc.scope
+	}
+
+	scope := ""
+	if atc.groups != "" {
+		scope = GroupsScopePrefix + atc.groups
+	}
+
+	if atc.grantAdmin {
+		scope = strings.Join([]string{scope, AdminScope}, " ")
+	}
+	return scope
 }

@@ -102,7 +102,24 @@ func TestGetLocationSnippet(t *testing.T) {
 }
 
 func TestSetLocationSnippet(t *testing.T) {
+	tests := []struct {
+		location       *sarif.Location
+		expectedOutput string
+	}{
+		{
+			location:       nil,
+			expectedOutput: "",
+		},
+		{
+			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			expectedOutput: "changedSnippet",
+		},
+	}
 
+	for _, test := range tests {
+		SetLocationSnippet(test.location, test.expectedOutput)
+		assert.Equal(t, test.expectedOutput, GetLocationSnippet(test.location))
+	}
 }
 
 func TestGetLocationFileName(t *testing.T) {
@@ -130,7 +147,23 @@ func TestGetRelativeLocationFileName(t *testing.T) {
 		location       *sarif.Location
 		invocations    []*sarif.Invocation
 		expectedOutput string
-	}{}
+	}{
+		{
+			location:       GetDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
+			invocations:    []*sarif.Invocation{},
+			expectedOutput: "root/someDir/another/file",
+		},
+		{
+			location:       GetDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
+			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation("/not/relevant")}},
+			expectedOutput: "root/someDir/another/file",
+		},
+		{
+			location:       GetDummyLocation("file:///root/someDir/another/file", 1, 2, 3, 4, "snippet"),
+			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation("/root/someDir/")}},
+			expectedOutput: "another/file",
+		},
+	}
 
 	for _, test := range tests {
 		assert.Equal(t, test.expectedOutput, GetRelativeLocationFileName(test.location, test.invocations))
@@ -138,7 +171,24 @@ func TestGetRelativeLocationFileName(t *testing.T) {
 }
 
 func TestSetLocationFileName(t *testing.T) {
+	tests := []struct {
+		location       *sarif.Location
+		expectedOutput string
+	}{
+		{
+			location:       nil,
+			expectedOutput: "",
+		},
+		{
+			location:       GetDummyLocation("filename", 1, 2, 3, 4, "snippet"),
+			expectedOutput: "changedFilename",
+		},
+	}
 
+	for _, test := range tests {
+		SetLocationFileName(test.location, test.expectedOutput)
+		assert.Equal(t, test.expectedOutput, GetLocationFileName(test.location))
+	}
 }
 
 func TestGetLocationRegion(t *testing.T) {

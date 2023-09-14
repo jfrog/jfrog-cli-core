@@ -19,8 +19,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	NodeModulesPattern = "**/*node_modules*/**"
+)
+
 var (
-	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", NodeModulesPattern, "**/*target*/**"}
 
 	mapSeverityToScore = map[string]string{
 		"":         "0.0",

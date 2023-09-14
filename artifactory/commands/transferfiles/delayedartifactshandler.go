@@ -153,21 +153,34 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 }
 
 func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunk, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	var allDelayedArtifacts []api.FileRepresentation
+
+	// Read all delayed artifacts files
 	for _, filePath := range filesToConsume {
-		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
+		log.Debug("Reading delayed artifacts file: '" + filePath + "'")
 		delayedArtifactsFile, err := readDelayFile(filePath)
 		if err != nil {
 			return err
 		}
 
-		sortedDelayedArtifacts := sortDelayedArtifacts(delayedArtifactsFile, delayHelper)
-		shouldStop, err := uploadByChunks(sortedDelayedArtifacts, uploadChunkChan, base, delayHelper, errorsChannelMng, pcWrapper)
+		allDelayedArtifacts = append(allDelayedArtifacts, delayedArtifactsFile.DelayedArtifacts...)
+	}
+
+	// Upload delayed artifacts, if any exist
+	if len(allDelayedArtifacts) > 0 {
+		log.Info(fmt.Sprintf("Uploading %d delayed artifacts...", len(allDelayedArtifacts)))
+		allDelayedArtifacts = sortDelayedArtifacts(&allDelayedArtifacts, delayHelper)
+		// Use an empty delayUploadHelper to prevent further delays of these files.
+		shouldStop, err := uploadByChunks(allDelayedArtifacts, uploadChunkChan, base, delayUploadHelper{}, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
 		}
+		log.Info("Done uploading delayed artifacts")
+	}
 
-		// Remove the file, so it won't be consumed again.
-		if err = os.Remove(filePath); err != nil {
+	// Remove the delayed artifacts files, so they won't be consumed again.
+	for _, filePath := range filesToConsume {
+		if err := os.Remove(filePath); err != nil {
 			return errorutils.CheckError(err)
 		}
 
@@ -178,18 +191,18 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 
 // Sort the delayed artifacts according to the delay functions order.
 // For example, in Docker, manifest.json will be uploaded before list.manifest.json.
-// delayedArtifactsFile - The delayed artifacts to sort
+// delayedArtifacts - The delayed artifacts to sort
 // delayHelper - Includes the should delay functions
-func sortDelayedArtifacts(delayedArtifactsFile DelayedArtifactsFile, delayHelper delayUploadHelper) []api.FileRepresentation {
-	var results = []api.FileRepresentation{}
+func sortDelayedArtifacts(delayedArtifacts *[]api.FileRepresentation, delayHelper delayUploadHelper) []api.FileRepresentation {
+	var sortedDelayedArtifacts = []api.FileRepresentation{}
 	for _, shouldDelayFunction := range delayHelper.shouldDelayFunctions {
-		for _, delayedArtifact := range delayedArtifactsFile.DelayedArtifacts {
+		for _, delayedArtifact := range *delayedArtifacts {
 			if shouldDelayFunction(delayedArtifact.Name) {
-				results = append(results, delayedArtifact)
+				sortedDelayedArtifacts = append(sortedDelayedArtifacts, delayedArtifact)
 			}
 		}
 	}
-	return results
+	return sortedDelayedArtifacts
 }
 
 // Reads a delay file from a given path, parses and populate a given DelayedArtifactsFile instance with the file information
@@ -256,9 +269,6 @@ type delayUploadHelper struct {
 
 // Decide whether to delay the deployment of a file by running over the shouldDelayUpload array.
 func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, file api.FileRepresentation) (delayed, stopped bool) {
-	if phase.phaseId != api.Phase1 {
-		return
-	}
 	for _, shouldDelay := range delayHelper.shouldDelayFunctions {
 		if ShouldStop(&phase, &delayHelper, nil) {
 			return delayed, true

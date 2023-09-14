@@ -143,9 +143,8 @@ var sortDelayedArtifactsCases = []struct {
 }
 
 func TestSortDelayedArtifacts(t *testing.T) {
-	for _, testCase := range sortDelayedArtifactsCases {
-		delayedArtifactsFile := DelayedArtifactsFile{DelayedArtifacts: testCase.delayedArtifacts}
+	for i, testCase := range sortDelayedArtifactsCases {
 		delayHelper := delayUploadHelper{shouldDelayFunctions: testCase.shouldDelayFunctions}
-		assert.Equal(t, testCase.sortedDelayedArtifacts, sortDelayedArtifacts(delayedArtifactsFile, delayHelper))
+		assert.Equal(t, testCase.sortedDelayedArtifacts, sortDelayedArtifacts(&sortDelayedArtifactsCases[i].delayedArtifacts, delayHelper))
 	}
 }

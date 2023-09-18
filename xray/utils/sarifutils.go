@@ -303,7 +303,7 @@ func CreateDummyPassingResult(ruleId string) *sarif.Result {
 
 func CreateDummyResultWithOneLocation(fileName string, startLine, startCol, endLine, endCol int, snippet, ruleId, level string) *sarif.Result {
 	return &sarif.Result{
-		Locations: []*sarif.Location{CreateDummyLocation(fileName, startCol, startCol, endLine, endCol, snippet)},
+		Locations: []*sarif.Location{CreateDummyLocation(fileName, startLine, startCol, endLine, endCol, snippet)},
 		Level:     &level,
 		RuleID:    &ruleId,
 	}

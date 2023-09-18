@@ -14,14 +14,66 @@ func TestAggregateMultipleRunsIntoSingle(t *testing.T) {
 	}{
 		{
 			runs:           []*sarif.Run{},
-			expectedOutput: sarif.NewRunWithInformationURI("tool", "url"),
+			expectedOutput: CreateRunWithDummyResults(),
+		},
+		{
+			runs: []*sarif.Run{
+				CreateRunWithDummyResults(
+					CreateDummyPassingResult("rule1"),
+					CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule2", "level"),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(),
+			},
+			expectedOutput: CreateRunWithDummyResults(
+				CreateDummyPassingResult("rule1"),
+				CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule2", "level"),
+			).WithInvocations([]*sarif.Invocation{
+				sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+			}),
+		},
+		{
+			runs: []*sarif.Run{
+				CreateRunWithDummyResults(
+					CreateDummyPassingResult("rule1"),
+					CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule2", "level"),
+					CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule3", "level"),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations("msg", "rule2", "level",
+						CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
+						CreateDummyLocation("file2", 1, 2, 3, 4, "other-snippet"),
+					),
+					CreateDummyResultWithOneLocation("file", 5, 6, 7, 8, "snippet2", "rule2", "level"),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+				}),
+			},
+			expectedOutput: CreateRunWithDummyResults(
+				// First run results
+				CreateDummyPassingResult("rule1"),
+				CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule2", "level"),
+				CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule3", "level"),
+				// Second run results
+				CreateDummyResultWithLocations("msg", "rule2", "level",
+					CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
+					CreateDummyLocation("file2", 1, 2, 3, 4, "other-snippet"),
+				),
+				CreateDummyResultWithOneLocation("file", 5, 6, 7, 8, "snippet2", "rule2", "level"),
+			).WithInvocations([]*sarif.Invocation{
+				sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+			}),
 		},
 	}
 
 	for _, test := range tests {
-		result := sarif.NewRunWithInformationURI("tool", "url")
-		AggregateMultipleRunsIntoSingle(test.runs, result)
-		assert.Equal(t, test.expectedOutput, result)
+		run := CreateRunWithDummyResults()
+		AggregateMultipleRunsIntoSingle(test.runs, run)
+		assert.Equal(t, test.expectedOutput, run)
 	}
 }
 

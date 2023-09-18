@@ -2,6 +2,7 @@ package formats
 
 import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
+	"strconv"
 	"strings"
 )
 
@@ -171,32 +172,20 @@ func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow
 		tableRows = append(tableRows, secretsTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			secret:     rows[i].Snippet,
 		})
 	}
 	return
 }
 
-func ConvertToIacTableRow(rows []SourceCodeRow) (tableRows []iacTableRow) {
+func ConvertToIacOrSastTableRow(rows []SourceCodeRow) (tableRows []iacOrSastTableRow) {
 	for i := range rows {
-		tableRows = append(tableRows, iacTableRow{
+		tableRows = append(tableRows, iacOrSastTableRow{
 			severity:   rows[i].Severity,
 			file:       rows[i].File,
-			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
-		})
-	}
-	return
-}
-
-func ConvertToSastTableRow(rows []SourceCodeRow) (tableRows []sastTableRow) {
-	for i := range rows {
-		tableRows = append(tableRows, sastTableRow{
-			severity:   rows[i].Severity,
-			file:       rows[i].File,
-			lineColumn: rows[i].LineColumn,
-			text:       rows[i].Text,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			finding:    rows[i].Finding,
 		})
 	}
 	return

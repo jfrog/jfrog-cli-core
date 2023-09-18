@@ -140,19 +140,12 @@ type secretsTableRow struct {
 	severity   string `col-name:"Severity"`
 	file       string `col-name:"File"`
 	lineColumn string `col-name:"Line:Column"`
-	text       string `col-name:"Secret"`
+	secret     string `col-name:"Secret"`
 }
 
-type iacTableRow struct {
+type iacOrSastTableRow struct {
 	severity   string `col-name:"Severity"`
 	file       string `col-name:"File"`
 	lineColumn string `col-name:"Line:Column"`
-	text       string `col-name:"Finding"`
-}
-
-type sastTableRow struct {
-	severity   string `col-name:"Severity"`
-	file       string `col-name:"File"`
-	lineColumn string `col-name:"Line:Column"`
-	text       string `col-name:"Finding"`
+	finding    string `col-name:"Finding"`
 }

@@ -2,6 +2,11 @@ package jas
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -12,14 +17,23 @@ import (
 	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"os"
-	"path/filepath"
-	"strings"
-	"testing"
+)
+
+const (
+	NodeModulesPattern = "**/*node_modules*/**"
 )
 
 var (
-	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", "**/*node_modules*/**", "**/*target*/**"}
+	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", NodeModulesPattern, "**/*target*/**"}
+
+	mapSeverityToScore = map[string]string{
+		"":         "0.0",
+		"unknown":  "0.0",
+		"low":      "3.9",
+		"medium":   "6.9",
+		"high":     "8.9",
+		"critical": "10",
+	}
 )
 
 type JasScanner struct {
@@ -31,7 +45,7 @@ type JasScanner struct {
 	ScannerDirCleanupFunc func() error
 }
 
-func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails) (scanner *JasScanner, err error) {
+func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails, multiScanId string) (scanner *JasScanner, err error) {
 	scanner = &JasScanner{}
 	if scanner.AnalyzerManager.AnalyzerManagerFullPath, err = utils.GetAnalyzerManagerExecutable(); err != nil {
 		return
@@ -47,6 +61,7 @@ func NewJasScanner(workingDirs []string, serverDetails *config.ServerDetails) (s
 	scanner.ConfigFileName = filepath.Join(tempDir, "config.yaml")
 	scanner.ResultsFileName = filepath.Join(tempDir, "results.sarif")
 	scanner.WorkingDirs, err = coreutils.GetFullPathsWorkingDirs(workingDirs)
+	scanner.AnalyzerManager.MultiScanId = multiScanId
 	return
 }
 
@@ -88,46 +103,54 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func GetSourceCodeScanResults(resultsFileName, workingDir string, scanType utils.JasScanType) (results []utils.SourceCodeScanResult, err error) {
-	// Read Sarif format results generated from the Jas scanner
-	report, err := sarif.Open(resultsFileName)
-	if errorutils.CheckError(err) != nil {
-		return nil, err
+func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err error) {
+	if sarifRuns, err = utils.ReadScanRunsFromFile(fileName); err != nil {
+		return
 	}
-	var sarifResults []*sarif.Result
-	if len(report.Runs) > 0 {
-		// Jas scanners returns results in a single run entry
-		sarifResults = report.Runs[0].Results
+	for _, sarifRun := range sarifRuns {
+		// Jas reports has only one invocation
+		// Set the actual working directory to the invocation, not the analyzerManager directory
+		// Also used to calculate relative paths if needed with it
+		sarifRun.Invocations[0].WorkingDirectory.WithUri(wd)
+		// Process runs values
+		sarifRun.Results = excludeSuppressResults(sarifRun.Results)
+		addScoreToRunRules(sarifRun)
 	}
-	resultPointers := convertSarifResultsToSourceCodeScanResults(sarifResults, workingDir, scanType)
-	for _, res := range resultPointers {
-		results = append(results, *res)
-	}
-	return results, nil
+	return
 }
 
-func convertSarifResultsToSourceCodeScanResults(sarifResults []*sarif.Result, workingDir string, scanType utils.JasScanType) []*utils.SourceCodeScanResult {
-	var sourceCodeScanResults []*utils.SourceCodeScanResult
+func excludeSuppressResults(sarifResults []*sarif.Result) []*sarif.Result {
+	results := []*sarif.Result{}
 	for _, sarifResult := range sarifResults {
-		// Describes a request to “suppress” a result (to exclude it from result lists)
 		if len(sarifResult.Suppressions) > 0 {
+			// Describes a request to “suppress” a result (to exclude it from result lists)
 			continue
 		}
-		// Convert
-		currentResult := utils.GetResultIfExists(sarifResult, workingDir, sourceCodeScanResults)
-		if currentResult == nil {
-			currentResult = utils.ConvertSarifResultToSourceCodeScanResult(sarifResult, workingDir)
-			// Set specific Jas scan attributes
-			if scanType == utils.Secrets {
-				currentResult.Text = hideSecret(utils.GetResultLocationSnippet(sarifResult.Locations[0]))
+		results = append(results, sarifResult)
+	}
+	return results
+}
+
+func addScoreToRunRules(sarifRun *sarif.Run) {
+	for _, sarifResult := range sarifRun.Results {
+		if rule, err := sarifRun.GetRuleById(*sarifResult.RuleID); err == nil {
+			// Add to the rule security-severity score based on results severity
+			score := convertToScore(utils.GetResultSeverity(sarifResult))
+			if score != utils.MissingCveScore {
+				if rule.Properties == nil {
+					rule.WithProperties(sarif.NewPropertyBag().Properties)
+				}
+				rule.Properties["security-severity"] = score
 			}
-			sourceCodeScanResults = append(sourceCodeScanResults, currentResult)
-		}
-		if scanType == utils.Sast {
-			currentResult.CodeFlow = append(currentResult.CodeFlow, utils.GetResultCodeFlows(sarifResult, workingDir)...)
 		}
 	}
-	return sourceCodeScanResults
+}
+
+func convertToScore(severity string) string {
+	if level, ok := mapSeverityToScore[strings.ToLower(severity)]; ok {
+		return level
+	}
+	return ""
 }
 
 func CreateScannersConfigFile(fileName string, fileContent interface{}) error {
@@ -137,13 +160,6 @@ func CreateScannersConfigFile(fileName string, fileContent interface{}) error {
 	}
 	err = os.WriteFile(fileName, yamlData, 0644)
 	return errorutils.CheckError(err)
-}
-
-func hideSecret(secret string) string {
-	if len(secret) <= 3 {
-		return "***"
-	}
-	return secret[:3] + strings.Repeat("*", 12)
 }
 
 var FakeServerDetails = config.ServerDetails{
@@ -170,7 +186,7 @@ var FakeBasicXrayResults = []services.ScanResponse{
 
 func InitJasTest(t *testing.T, workingDirs ...string) (*JasScanner, func()) {
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
-	scanner, err := NewJasScanner(workingDirs, &FakeServerDetails)
+	scanner, err := NewJasScanner(workingDirs, &FakeServerDetails, "")
 	assert.NoError(t, err)
 	return scanner, func() {
 		assert.NoError(t, scanner.ScannerDirCleanupFunc())

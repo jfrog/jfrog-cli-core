@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -263,4 +264,18 @@ func TestGetFullPathsWorkingDirs(t *testing.T) {
 			assert.Equal(t, test.expectedDirs, actualDirs, "Incorrect full paths of working directories")
 		})
 	}
+}
+
+func TestGetMaskedCommandString(t *testing.T) {
+	assert.Equal(t,
+		"pip -i ***@someurl.com/repo",
+		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo")))
+
+	assert.Equal(t,
+		"pip -i ***@someurl.com/repo --password=***",
+		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo", "--password=123")))
+
+	assert.Equal(t,
+		"pip -i ***@someurl.com/repo --access-token=***",
+		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo", "--access-token=123")))
 }

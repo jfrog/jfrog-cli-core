@@ -3,7 +3,6 @@ package applicability
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -18,7 +17,7 @@ func TestNewApplicabilityScanManager_InputIsValid(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 	// Act
-	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner, false)
 
 	// Assert
 	if assert.NotNil(t, applicabilityManager) {
@@ -32,7 +31,7 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 	// Act
-	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, nil, scanner)
+	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, nil, scanner, false)
 
 	// Assert
 	if assert.NotNil(t, applicabilityManager) {
@@ -69,9 +68,14 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 	// Act
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
-	applicabilityManager := newApplicabilityScanManager(noDirectDependenciesResults, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(noDirectDependenciesResults, mockDirectDependencies, scanner, false)
+	assertApplicabilityScanner(t, applicabilityManager)
+	// ThirdPartyContextual shouldn't change anything here as this is not npm.
+	applicabilityManager = newApplicabilityScanManager(noDirectDependenciesResults, mockDirectDependencies, scanner, true)
+	assertApplicabilityScanner(t, applicabilityManager)
+}
 
-	// Assert
+func assertApplicabilityScanner(t *testing.T, applicabilityManager *ApplicabilityScanManager) {
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
@@ -85,7 +89,7 @@ func TestNewApplicabilityScanManager_MultipleDependencyTrees(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 	// Act
-	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockMultiRootDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockMultiRootDirectDependencies, scanner, false)
 
 	// Assert
 	if assert.NotNil(t, applicabilityManager) {
@@ -111,7 +115,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 	defer cleanUp()
 
 	// Act
-	applicabilityManager := newApplicabilityScanManager(noViolationScanResponse, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(noViolationScanResponse, mockDirectDependencies, scanner, false)
 
 	// Assert
 	if assert.NotNil(t, applicabilityManager) {
@@ -137,7 +141,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 	defer cleanUp()
 
 	// Act
-	applicabilityManager := newApplicabilityScanManager(noVulnerabilitiesScanResponse, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(noVulnerabilitiesScanResponse, mockDirectDependencies, scanner, false)
 
 	// Assert
 	if assert.NotNil(t, applicabilityManager) {
@@ -151,8 +155,7 @@ func TestApplicabilityScanManager_ShouldRun_TechnologiesNotEligibleForScan(t *te
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 
-	results, err := RunApplicabilityScan(jas.FakeBasicXrayResults, mockDirectDependencies,
-		[]coreutils.Technology{coreutils.Nuget, coreutils.Go}, scanner)
+	results, err := RunApplicabilityScan(jas.FakeBasicXrayResults, mockDirectDependencies, []coreutils.Technology{coreutils.Nuget, coreutils.Go}, scanner, false)
 
 	// Assert
 	assert.Nil(t, results)
@@ -164,7 +167,7 @@ func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 
-	applicabilityManager := newApplicabilityScanManager(nil, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(nil, mockDirectDependencies, scanner, false)
 
 	// Assert
 	eligible := applicabilityManager.shouldRunApplicabilityScan([]coreutils.Technology{coreutils.Npm})
@@ -248,7 +251,7 @@ func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 
-	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, scanner)
+	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, scanner, false)
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)
@@ -272,17 +275,16 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 
-	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner, false)
 	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "empty-results.sarif")
 
 	// Act
-	results, err := applicabilityManager.getScanResults()
+	var err error
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(results))
-	for _, cveResult := range results {
-		assert.Equal(t, utils.ApplicabilityUndetermined, cveResult)
+	if assert.NoError(t, err) {
+		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
+		assert.Empty(t, applicabilityManager.applicabilityScanResults[0].Results)
 	}
 }
 
@@ -290,33 +292,32 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 	// Arrange
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
-	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner, false)
 	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "applicable-cve-results.sarif")
 
 	// Act
-	results, err := applicabilityManager.getScanResults()
+	var err error
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(results))
-	assert.Equal(t, utils.Applicable, results["testCve1"])
-	assert.Equal(t, utils.NotApplicable, results["testCve3"])
+	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
+		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
+		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
+	}
 }
 
 func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 	// Arrange
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
-	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner)
+	applicabilityManager := newApplicabilityScanManager(jas.FakeBasicXrayResults, mockDirectDependencies, scanner, false)
 	applicabilityManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "applicability-scan", "no-applicable-cves-results.sarif")
 
 	// Act
-	results, err := applicabilityManager.getScanResults()
+	var err error
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
 
-	// Assert
-	assert.NoError(t, err)
-	assert.Equal(t, 5, len(results))
-	for _, cveResult := range results {
-		assert.Equal(t, utils.NotApplicable, cveResult)
+	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
+		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
+		assert.NotEmpty(t, applicabilityManager.applicabilityScanResults[0].Results)
 	}
 }

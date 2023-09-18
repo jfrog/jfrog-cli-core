@@ -2,7 +2,6 @@ package audit
 
 import (
 	"errors"
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas/applicability"
@@ -15,12 +14,12 @@ import (
 )
 
 func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDependencies []string,
-	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr) (err error) {
+	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr, multiScanId string, thirdPartyApplicabilityScan bool) (err error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
 		return
 	}
-	scanner, err := jas.NewJasScanner(workingDirs, serverDetails)
+	scanner, err := jas.NewJasScanner(workingDirs, serverDetails, multiScanId)
 	if err != nil {
 		return
 	}
@@ -31,8 +30,12 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if progress != nil {
 		progress.SetHeadlineMsg("Running applicability scanning")
 	}
-	scanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.XrayResults, directDependencies, scanResults.ScannedTechnologies, scanner)
+	scanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.XrayResults, directDependencies, scanResults.ScannedTechnologies, scanner, thirdPartyApplicabilityScan)
 	if err != nil {
+		return
+	}
+	// Don't execute other scanners when scanning third party dependencies.
+	if thirdPartyApplicabilityScan {
 		return
 	}
 	if progress != nil {
@@ -49,12 +52,12 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if err != nil {
 		return
 	}
-	if !version.NewVersion(utils.AnalyzerManagerVersion).AtLeast(utils.MinAnalyzerManagerVersionForSast) {
+	if !utils.IsSastSupported() {
 		return
 	}
 	if progress != nil {
 		progress.SetHeadlineMsg("Running SAST scanning")
 	}
-	scanResults.SastResults, err = sast.RunSastScan(scanner)
+	scanResults.SastScanResults, err = sast.RunSastScan(scanner)
 	return
 }

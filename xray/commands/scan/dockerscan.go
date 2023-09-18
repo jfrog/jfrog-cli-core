@@ -302,12 +302,13 @@ func (dsc *DockerScanCommand) mapDockerfileCommands(dockerCommandsMap map[string
 			firstAppearanceFrom = false
 		}
 
-		// TODO this needs to be optimized with a prefix tree or something
+		// TODO optimize this
 		for key, cmd := range dockerCommandsMap {
 			current := dockerCommandsMap[key]
 			if CommandContains(cmd.Command, scannedCommand) {
 				current.Line = append(current.Line, strconv.Itoa(lineNumber))
 				dockerCommandsMap[key] = current
+				break
 			}
 		}
 		lineNumber++

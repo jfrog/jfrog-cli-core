@@ -31,11 +31,10 @@ const (
 
 type DockerScanCommand struct {
 	ScanCommand
-	imageTag         string
-	targetRepoPath   string
-	dockerFilePath   string
-	scanner          *bufio.Scanner
-	hashToCommandMap map[string]services.DockerfileCommandDetails
+	imageTag       string
+	targetRepoPath string
+	dockerFilePath string
+	scanner        *bufio.Scanner
 }
 
 func NewDockerScanCommand() *DockerScanCommand {

@@ -123,7 +123,6 @@ func TestGroupResultsByLocation(t *testing.T) {
 			// With similar groups
 			runs: []*sarif.Run{
 				utils.CreateRunWithDummyResults(
-					utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
 					utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
 						utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
 							utils.CreateDummyLocation("other", 0, 0, 0, 0, "other-snippet"),
@@ -132,11 +131,12 @@ func TestGroupResultsByLocation(t *testing.T) {
 					}),
 					utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
 						utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-							utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet2"),
+							utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet"),
 							utils.CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
 						)),
 					}),
 					utils.CreateDummyResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
+					utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
 				),
 			},
 			expectedOutput: []*sarif.Run{
@@ -147,7 +147,7 @@ func TestGroupResultsByLocation(t *testing.T) {
 							utils.CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
 						)),
 						utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-							utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet2"),
+							utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet"),
 							utils.CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
 						)),
 					}),

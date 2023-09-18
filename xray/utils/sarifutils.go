@@ -263,6 +263,9 @@ func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {
 func CreateRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
 	run := sarif.NewRunWithInformationURI("", "")
 	for _, result := range results {
+		if result.RuleID != nil {
+			run.AddRule(*result.RuleID)
+		}
 		run.AddResult(result)
 	}
 	return run

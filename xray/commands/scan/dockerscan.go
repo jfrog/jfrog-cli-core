@@ -36,7 +36,6 @@ type DockerScanCommand struct {
 	dockerFilePath   string
 	scanner          *bufio.Scanner
 	hashToCommandMap map[string]services.DockerfileCommandDetails
-	commandsMap      map[string]string
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -147,7 +146,7 @@ func (dsc *DockerScanCommand) buildDockerImage() (err error) {
 		return fmt.Errorf("didn't find Dockerfile in the provided path: %s", dsc.dockerFilePath)
 	}
 	if dsc.progress != nil {
-		dsc.progress.SetHeadlineMsg(fmt.Sprintf("Building Docker image 🏗️"))
+		dsc.progress.SetHeadlineMsg("Building Docker image 🏗....️")
 	}
 	dsc.imageTag = "audittag"
 	// TODO this could take a while, need to update progress bar.
@@ -289,8 +288,8 @@ func (dsc *DockerScanCommand) mapDockerfileCommands(dockerCommandsMap map[string
 		}
 		// Assign all the unassigned commands to the FROM command before moving on.
 		if strings.Contains(scannedCommand, fromCommand) {
-			if firstAppearanceFrom == false {
-				for key, _ := range dockerCommandsMap {
+			if !firstAppearanceFrom {
+				for key := range dockerCommandsMap {
 					current := dockerCommandsMap[key]
 					if len(current.Line) == 0 {
 						current.Line = append(current.Line, strconv.Itoa(fromLineNumber))

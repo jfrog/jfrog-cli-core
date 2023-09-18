@@ -26,6 +26,7 @@ const (
 	DockerScanMinXrayVersion = "3.40.0"
 	maxDisplayCommandLength  = 60
 	layerDigestPrefix        = "sha256:"
+	buildKitSuffix           = " # buildkit"
 )
 
 type DockerScanCommand struct {
@@ -161,7 +162,7 @@ func (dsc *DockerScanCommand) buildDockerImage() (err error) {
 	return
 }
 
-func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layerToDockerfileCommand map[string]services.DockerfileCommandDetails, err error) {
+func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layersMapping map[string]services.DockerfileCommandDetails, err error) {
 	log.Debug("Mapping docker layers into commands ")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
@@ -172,17 +173,17 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layerToDockerfileComman
 		return
 	}
 	// Create mapping between sha256 hash to dockerfile Command.
-	layerToDockerfileCommand = make(map[string]services.DockerfileCommandDetails)
+	layersMapping = make(map[string]services.DockerfileCommandDetails)
 	for _, layer := range dockerImage.Layers {
 		layerHash := strings.TrimPrefix(layer.Digest, layerDigestPrefix)
-		layerToDockerfileCommand[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: formatCommand(layer)}
+		layersMapping[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: formatCommand(layer)}
 	}
-	layerToDockerfileCommand = dsc.enrichCommandWithLineNumbers(layerToDockerfileCommand)
-	return
+	return dsc.mapDockerfileCommands(layersMapping)
 }
 
 func formatCommand(layer *image.Layer) string {
 	command := trimSpacesInMiddle(layer.Command)
+	command = strings.TrimSuffix(command, buildKitSuffix)
 	if len(command) > maxDisplayCommandLength {
 		command = command[:maxDisplayCommandLength] + " ..."
 	}
@@ -266,10 +267,9 @@ const (
 
 // Scans the dockerfile line by line and match docker commands to their respective lines.
 // Lines which don't appear in dockerfile would get assigned to the corresponding FROM command.
-func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map[string]services.DockerfileCommandDetails) map[string]services.DockerfileCommandDetails {
-
+func (dsc *DockerScanCommand) mapDockerfileCommands(dockerCommandsMap map[string]services.DockerfileCommandDetails) (map[string]services.DockerfileCommandDetails, error) {
 	if dsc.scanner == nil {
-		return dockerCommandsMap
+		return dockerCommandsMap, nil
 	}
 	lineNumber := 1
 	fromLineNumber := 1
@@ -313,12 +313,19 @@ func (dsc *DockerScanCommand) enrichCommandWithLineNumbers(dockerCommandsMap map
 		lineNumber++
 	}
 
+	// Iterate again and assign all unassigned commands to that nearest FROM command
+	for key := range dockerCommandsMap {
+		current := dockerCommandsMap[key]
+		if len(current.Line) == 0 {
+			current.Line = append(current.Line, strconv.Itoa(fromLineNumber))
+			dockerCommandsMap[key] = current
+		}
+	}
 	// Check for scanner errors
 	if err := dsc.scanner.Err(); err != nil {
-		fmt.Println("Error scanning file:", err)
+		return nil, fmt.Errorf("error scanning dockerfile:%s", err.Error())
 	}
-
-	return dockerCommandsMap
+	return dockerCommandsMap, nil
 }
 func CommandContains(commandFromLayer, scannedCommand string) bool {
 	// Normalize and split the commands into arguments

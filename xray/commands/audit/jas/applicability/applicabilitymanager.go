@@ -1,6 +1,7 @@
 package applicability
 
 import (
+	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"path/filepath"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
@@ -26,6 +27,7 @@ type ApplicabilityScanManager struct {
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
 	thirdPartyScan           bool
+	extraRoot                string
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -44,6 +46,11 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return
 	}
+
+	for _, wd := range pythonutils.GetPythonTechs(techToStringArray(scannedTechnologies)) {
+		applicabilityScanManager.scanner.WorkingDirs = append(applicabilityScanManager.scanner.WorkingDirs, wd)
+	}
+
 	if err = applicabilityScanManager.scanner.Run(applicabilityScanManager); err != nil {
 		err = utils.ParseAnalyzerManagerError(utils.Applicability, err)
 		return
@@ -174,4 +181,11 @@ func removeElementFromSlice(skipDirs []string, element string) []string {
 		return skipDirs
 	}
 	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
+}
+
+func techToStringArray(technologies []coreutils.Technology) (stringArr []string) {
+	for _, tech := range technologies {
+		stringArr = append(stringArr, tech.String())
+	}
+	return
 }

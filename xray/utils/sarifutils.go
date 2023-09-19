@@ -175,12 +175,18 @@ func GetRelativeLocationFileName(location *sarif.Location, invocations []*sarif.
 	if len(invocations) > 0 {
 		wd = GetInvocationWorkingDirectory(invocations[0])
 	}
-	GetLocationFileName(location)
 	filePath := GetLocationFileName(location)
 	if filePath != "" {
 		return ExtractRelativePath(filePath, wd)
 	}
 	return ""
+}
+
+func GetFullLocationFileName(relative string, invocations []*sarif.Invocation) string {
+	if len(invocations) == 0 {
+		return relative
+	}
+	return filepath.Join(GetInvocationWorkingDirectory(invocations[0]), relative)
 }
 
 func SetLocationFileName(location *sarif.Location, fileName string) {

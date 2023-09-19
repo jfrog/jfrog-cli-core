@@ -210,8 +210,10 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file st
 	}
 	cveId := GetIssueIdentifier(cves, issueId)
 	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
-	location := sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
-
+	location, err := getXrayIssueLocationIfValidExists(file, run, markdownOutput)
+	if err != nil {
+		return err
+	}
 	if rule, isNewRule := addResultToSarifRun(cveId, msg, severity, location, run); isNewRule {
 		cveRuleProperties := sarif.NewPropertyBag()
 		if maxCveScore != MissingCveScore {
@@ -230,6 +232,32 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file st
 		}
 	}
 	return nil
+}
+
+// Xray GetPackageDescriptor can return multiple types of content.
+// This could cause the sarif content not to be valid. if not override, we should handle all those situations:
+// Full path - should be used as is
+// Relative path - should be converted to full path
+// Non path - should not be used as location
+func getXrayIssueLocationIfValidExists(file string, run *sarif.Run, override bool) (location *sarif.Location, err error) {
+	location = sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
+	if override {
+		// Use the content as is
+		return
+	}
+	// Check if full path
+	exists, err := fileutils.IsFileExists(file, false)
+	if err != nil || exists {
+		return
+	}
+	// Check if relative path
+	fullPath := GetFullLocationFileName(file, run.Invocations)
+	location = sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + fullPath)))
+	if exists, err = fileutils.IsFileExists(fullPath, false); err != nil || exists {
+		return
+	}
+	// Not usable content
+	return nil, nil
 }
 
 func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {

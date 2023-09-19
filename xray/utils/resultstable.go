@@ -117,7 +117,7 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 						JfrogResearchInformation: jfrogResearchInfo,
 						ImpactPaths:              impactPaths[compIndex],
 						Technology:               coreutils.Technology(violation.Technology),
-						Applicable:               printApplicableCveValue(applicabilityStatus, isTable),
+						Applicable:               printApplicabilityCveValue(applicabilityStatus, isTable),
 					},
 				)
 			}
@@ -242,7 +242,7 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 					JfrogResearchInformation: jfrogResearchInfo,
 					ImpactPaths:              impactPaths[compIndex],
 					Technology:               coreutils.Technology(vulnerability.Technology),
-					Applicable:               printApplicableCveValue(applicabilityStatus, isTable),
+					Applicable:               printApplicabilityCveValue(applicabilityStatus, isTable),
 				},
 			)
 		}
@@ -1000,11 +1000,7 @@ func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sa
 	return &applicability
 }
 
-func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
-	if applicableValue == NotScanned {
-		return NotScanned.String()
-	}
-
+func printApplicabilityCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
 		if applicableValue == Applicable {
 			return color.New(color.Red).Render(applicableValue)
@@ -1012,7 +1008,7 @@ func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) 
 			return color.New(color.Green).Render(applicableValue)
 		}
 	}
-	return Applicable.String()
+	return applicableValue.String()
 }
 
 // Relevant only when "third-party-contextual-analysis" flag is on,

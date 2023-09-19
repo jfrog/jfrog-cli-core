@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -15,6 +12,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"strconv"
+	"strings"
+	"unicode"
 )
 
 type OutputFormat string
@@ -128,10 +128,10 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	}
 
 	report.Runs = append(report.Runs, xrayRun)
-	report.Runs = append(report.Runs, extendedResults.ApplicabilityScanResults...)
-	report.Runs = append(report.Runs, extendedResults.IacScanResults...)
-	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
-	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.ApplicabilityScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.IacScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.SecretsScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.SastScanResults)...)
 
 	out, err := json.Marshal(report)
 	if err != nil {
@@ -139,6 +139,29 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	}
 
 	return clientUtils.IndentJson(out), nil
+}
+
+func fillMissingRequiredInformationForJas(runs []*sarif.Run) []*sarif.Run {
+	defaultJasInformationUri := "https://jfrog.com/devops-native-security/"
+	defaultVersion := GetAnalyzerManagerVersion()
+	for _, run := range runs {
+		driver := run.Tool.Driver
+		if driver.InformationURI == nil {
+			driver.InformationURI = &defaultJasInformationUri
+		}
+		if driver.Version == nil || !isValidVersion(*driver.Version) {
+			driver.InformationURI = &defaultVersion
+		}
+	}
+	return runs
+}
+
+func isValidVersion(version string) bool {
+	if len(version) == 0 {
+		return false
+	}
+	firstChar := rune(version[0])
+	return unicode.IsDigit(firstChar)
 }
 
 func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {

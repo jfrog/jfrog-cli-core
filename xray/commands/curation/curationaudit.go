@@ -199,7 +199,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	}
 	// Validate the graph isn't empty.
 	if len(fullDependenciesTree) == 0 {
-		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.ToString())
+		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.String())
 	}
 	if err = ca.SetRepo(tech); err != nil {
 		return err
@@ -333,7 +333,7 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 		}
 		ca.setPackageManagerConfig(resolverParams)
 	default:
-		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.ToString())
+		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.String())
 	}
 	return nil
 }
@@ -502,7 +502,7 @@ func makeLegiblePolicyDetails(explanation, recommendation string) (string, strin
 
 func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, scope string, version string) {
 	if tech == coreutils.Npm {
-		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
+		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.String())
 	}
 	return
 }

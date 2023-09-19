@@ -4,6 +4,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
+	"reflect"
 	"testing"
 )
 
@@ -20,43 +21,36 @@ func TestSetPathsForIssues(t *testing.T) {
 	childNode3.Nodes = []*xrayUtils.GraphNode{childNode5}
 
 	// Create a test issues map
-	issuesMap := make(map[string]*services.Component)
-	issuesMap["child1"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
-	issuesMap["child4"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
-	issuesMap["child5"] = &services.Component{ImpactPaths: [][]services.ImpactPathNode{}}
+	issuesMap := make(map[string][][]services.ImpactPathNode)
+	issuesMap["child1"] = [][]services.ImpactPathNode{}
+	issuesMap["child4"] = [][]services.ImpactPathNode{}
+	issuesMap["child5"] = [][]services.ImpactPathNode{}
 
 	// Call setPathsForIssues with the test data
 	setPathsForIssues(rootNode, issuesMap, []services.ImpactPathNode{})
 
 	// Check the results
-	assert.Equal(t, issuesMap["child1"].ImpactPaths[0][0].ComponentId, "root")
-	assert.Equal(t, issuesMap["child1"].ImpactPaths[0][1].ComponentId, "child1")
+	assert.Equal(t, issuesMap["child1"][0][0].ComponentId, "root")
+	assert.Equal(t, issuesMap["child1"][0][1].ComponentId, "child1")
 
-	assert.Equal(t, issuesMap["child4"].ImpactPaths[0][0].ComponentId, "root")
-	assert.Equal(t, issuesMap["child4"].ImpactPaths[0][1].ComponentId, "child2")
-	assert.Equal(t, issuesMap["child4"].ImpactPaths[0][2].ComponentId, "child4")
+	assert.Equal(t, issuesMap["child4"][0][0].ComponentId, "root")
+	assert.Equal(t, issuesMap["child4"][0][1].ComponentId, "child2")
+	assert.Equal(t, issuesMap["child4"][0][2].ComponentId, "child4")
 
-	assert.Equal(t, issuesMap["child5"].ImpactPaths[0][0].ComponentId, "root")
-	assert.Equal(t, issuesMap["child5"].ImpactPaths[0][1].ComponentId, "child3")
-	assert.Equal(t, issuesMap["child5"].ImpactPaths[0][2].ComponentId, "child5")
+	assert.Equal(t, issuesMap["child5"][0][0].ComponentId, "root")
+	assert.Equal(t, issuesMap["child5"][0][1].ComponentId, "child3")
+	assert.Equal(t, issuesMap["child5"][0][2].ComponentId, "child5")
 }
 
 func TestUpdateVulnerableComponent(t *testing.T) {
-	// Create test data
 	components := map[string]services.Component{
 		"dependency1": {
 			FixedVersions: []string{"1.0.0"},
 			ImpactPaths:   [][]services.ImpactPathNode{},
 		},
 	}
-	dependencyName := "dependency1"
-	issuesMap := map[string]*services.Component{
-		dependencyName: {
-			FixedVersions: []string{"1.0.0"},
-			ImpactPaths: [][]services.ImpactPathNode{
-				{{ComponentId: "dependency2"}},
-			},
-		},
+	dependencyName, issuesMap := "dependency1", map[string][][]services.ImpactPathNode{
+		"dependency1": {},
 	}
 
 	updateComponentsWithImpactPaths(components, issuesMap)
@@ -64,7 +58,7 @@ func TestUpdateVulnerableComponent(t *testing.T) {
 	// Check the result
 	expected := services.Component{
 		FixedVersions: []string{"1.0.0"},
-		ImpactPaths:   issuesMap[dependencyName].ImpactPaths,
+		ImpactPaths:   issuesMap[dependencyName],
 	}
 	assert.Equal(t, expected, components[dependencyName])
 }
@@ -79,6 +73,9 @@ func TestBuildImpactPaths(t *testing.T) {
 						"dep1": {
 							FixedVersions: []string{"1.2.3"},
 							Cpes:          []string{"cpe:/o:vendor:product:1.2.3"},
+						},
+						"dep2": {
+							FixedVersions: []string{"3.0.0"},
 						},
 					},
 				},
@@ -120,6 +117,28 @@ func TestBuildImpactPaths(t *testing.T) {
 				},
 			},
 		},
+		{
+			Id: "dep7",
+			Nodes: []*xrayUtils.GraphNode{
+				{
+					Id: "dep4",
+					Nodes: []*xrayUtils.GraphNode{
+						{
+							Id:    "dep2",
+							Nodes: []*xrayUtils.GraphNode{},
+						},
+						{
+							Id:    "dep5",
+							Nodes: []*xrayUtils.GraphNode{},
+						},
+						{
+							Id:    "dep6",
+							Nodes: []*xrayUtils.GraphNode{},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	scanResult = BuildImpactPathsForScanResponse(scanResult, dependencyTrees)
@@ -127,7 +146,17 @@ func TestBuildImpactPaths(t *testing.T) {
 	expectedImpactPaths := [][]services.ImpactPathNode{{{ComponentId: "dep1"}}}
 	assert.Equal(t, expectedImpactPaths, scanResult[0].Vulnerabilities[0].Components["dep1"].ImpactPaths)
 	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}, {ComponentId: "dep2"}}}
-	assert.Equal(t, expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths)
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Vulnerabilities[0].Components["dep2"].ImpactPaths[0])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep7"}, {ComponentId: "dep4"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Vulnerabilities[0].Components["dep2"].ImpactPaths[1])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep1"].ImpactPaths)
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths[0])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep7"}, {ComponentId: "dep4"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths[1])
+	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep7"}, {ComponentId: "dep4"}, {ComponentId: "dep2"}}}
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths)
 	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}, {ComponentId: "dep2"}, {ComponentId: "dep3"}}}
-	assert.Equal(t, expectedImpactPaths, scanResult[0].Licenses[0].Components["dep3"].ImpactPaths)
+	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Licenses[0].Components["dep3"].ImpactPaths)
 }

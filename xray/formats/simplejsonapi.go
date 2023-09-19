@@ -9,7 +9,7 @@ import "github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 type SimpleJsonResults struct {
 	Vulnerabilities           []VulnerabilityOrViolationRow `json:"vulnerabilities"`
 	SecurityViolations        []VulnerabilityOrViolationRow `json:"securityViolations"`
-	LicensesViolations        []LicenseViolationRow         `json:"licensesViolations"`
+	LicensesViolations        []LicenseRow                  `json:"licensesViolations"`
 	Licenses                  []LicenseRow                  `json:"licenses"`
 	OperationalRiskViolations []OperationalRiskViolationRow `json:"operationalRiskViolations"`
 	Secrets                   []SourceCodeRow               `json:"secrets"`
@@ -18,65 +18,53 @@ type SimpleJsonResults struct {
 	Errors                    []SimpleJsonError             `json:"errors"`
 }
 
+type SeverityDetails struct {
+	Severity         string `json:"severity"`
+	SeverityNumValue int    `json:"-"` // For sorting
+}
+
+type ImpactedDependencyDetails struct {
+	SeverityDetails
+	ImpactedDependencyName    string         `json:"impactedPackageName"`
+	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
+	ImpactedDependencyType    string         `json:"impactedPackageType"`
+	Components                []ComponentRow `json:"components"`
+}
+
 // Used for vulnerabilities and security violations
 type VulnerabilityOrViolationRow struct {
-	Summary                   string                    `json:"summary"`
-	Severity                  string                    `json:"severity"`
-	Applicable                string                    `json:"applicable"`
-	SeverityNumValue          int                       `json:"-"` // For sorting
-	ImpactedDependencyName    string                    `json:"impactedPackageName"`
-	ImpactedDependencyVersion string                    `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string                    `json:"impactedPackageType"`
-	FixedVersions             []string                  `json:"fixedVersions"`
-	Components                []ComponentRow            `json:"components"`
-	Cves                      []CveRow                  `json:"cves"`
-	IssueId                   string                    `json:"issueId"`
-	References                []string                  `json:"references"`
-	ImpactPaths               [][]ComponentRow          `json:"impactPaths"`
-	JfrogResearchInformation  *JfrogResearchInformation `json:"jfrogResearchInformation"`
-	Technology                coreutils.Technology      `json:"-"`
+	ImpactedDependencyDetails
+	Summary                  string                    `json:"summary"`
+	Applicable               string                    `json:"applicable"`
+	FixedVersions            []string                  `json:"fixedVersions"`
+	Cves                     []CveRow                  `json:"cves"`
+	IssueId                  string                    `json:"issueId"`
+	References               []string                  `json:"references"`
+	ImpactPaths              [][]ComponentRow          `json:"impactPaths"`
+	JfrogResearchInformation *JfrogResearchInformation `json:"jfrogResearchInformation"`
+	Technology               coreutils.Technology      `json:"-"`
 }
 
 type LicenseRow struct {
-	LicenseKey                string           `json:"licenseKey"`
-	ImpactedDependencyName    string           `json:"impactedPackageName"`
-	ImpactedDependencyVersion string           `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string           `json:"impactedPackageType"`
-	Components                []ComponentRow   `json:"components"`
-	ImpactPaths               [][]ComponentRow `json:"impactPaths"`
-}
-
-type LicenseViolationRow struct {
-	LicenseKey                string         `json:"licenseKey"`
-	Severity                  string         `json:"severity"`
-	Applicable                string         `json:"applicable"`
-	SeverityNumValue          int            `json:"-"` // For sorting
-	ImpactedDependencyName    string         `json:"impactedPackageName"`
-	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string         `json:"impactedPackageType"`
-	Components                []ComponentRow `json:"components"`
+	ImpactedDependencyDetails
+	LicenseKey  string           `json:"licenseKey"`
+	ImpactPaths [][]ComponentRow `json:"impactPaths"`
 }
 
 type OperationalRiskViolationRow struct {
-	Severity                  string         `json:"severity"`
-	SeverityNumValue          int            `json:"-"` // For sorting
-	ImpactedDependencyName    string         `json:"impactedPackageName"`
-	ImpactedDependencyVersion string         `json:"impactedPackageVersion"`
-	ImpactedDependencyType    string         `json:"impactedPackageType"`
-	Components                []ComponentRow `json:"components"`
-	RiskReason                string         `json:"riskReason"`
-	IsEol                     string         `json:"isEndOfLife"`
-	EolMessage                string         `json:"endOfLifeMessage"`
-	Cadence                   string         `json:"cadence"`
-	Commits                   string         `json:"commits"`
-	Committers                string         `json:"committers"`
-	NewerVersions             string         `json:"newerVersions"`
-	LatestVersion             string         `json:"latestVersion"`
+	ImpactedDependencyDetails
+	RiskReason    string `json:"riskReason"`
+	IsEol         string `json:"isEndOfLife"`
+	EolMessage    string `json:"endOfLifeMessage"`
+	Cadence       string `json:"cadence"`
+	Commits       string `json:"commits"`
+	Committers    string `json:"committers"`
+	NewerVersions string `json:"newerVersions"`
+	LatestVersion string `json:"latestVersion"`
 }
 
 type SourceCodeRow struct {
-	Severity         string `json:"severity"`
-	SeverityNumValue int    `json:"-"` // For sorting
+	SeverityDetails
 	Location
 	Finding            string       `json:"finding,omitempty"`
 	ScannerDescription string       `json:"scannerDescription,omitempty"`
@@ -121,9 +109,9 @@ type SimpleJsonError struct {
 }
 
 type JfrogResearchInformation struct {
+	SeverityDetails
 	Summary         string                        `json:"summary,omitempty"`
 	Details         string                        `json:"details,omitempty"`
-	Severity        string                        `json:"severity,omitempty"`
 	SeverityReasons []JfrogResearchSeverityReason `json:"severityReasons,omitempty"`
 	Remediation     string                        `json:"remediation,omitempty"`
 }

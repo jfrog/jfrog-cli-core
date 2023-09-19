@@ -1000,15 +1000,15 @@ func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sa
 	return &applicability
 }
 
-func printApplicabilityCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
+func printApplicabilityCveValue(applicabilityStatus ApplicabilityStatus, isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		if applicableValue == Applicable {
-			return color.New(color.Red).Render(applicableValue)
-		} else if applicableValue == NotApplicable {
-			return color.New(color.Green).Render(applicableValue)
+		if applicabilityStatus == Applicable {
+			return color.New(color.Red).Render(applicabilityStatus)
+		} else if applicabilityStatus == NotApplicable {
+			return color.New(color.Green).Render(applicabilityStatus)
 		}
 	}
-	return applicableValue.String()
+	return applicabilityStatus.String()
 }
 
 // Relevant only when "third-party-contextual-analysis" flag is on,

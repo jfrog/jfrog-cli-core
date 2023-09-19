@@ -130,25 +130,25 @@ var technologiesData = map[Technology]TechData{
 
 func (tech Technology) ToFormal() string {
 	if technologiesData[tech].formal == "" {
-		return cases.Title(language.Und).String(tech.ToString())
+		return cases.Title(language.Und).String(tech.String())
 	}
 	return technologiesData[tech].formal
 }
 
-func (tech Technology) ToString() string {
+func (tech Technology) String() string {
 	return string(tech)
 }
 
 func (tech Technology) GetExecCommandName() string {
 	if technologiesData[tech].execCommand == "" {
-		return tech.ToString()
+		return tech.String()
 	}
 	return technologiesData[tech].execCommand
 }
 
 func (tech Technology) GetPackageType() string {
 	if technologiesData[tech].packageType == "" {
-		return tech.ToString()
+		return tech.String()
 	}
 	return technologiesData[tech].packageType
 }

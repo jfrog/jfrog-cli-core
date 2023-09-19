@@ -150,7 +150,7 @@ func fillMissingRequiredInformationForJas(runs []*sarif.Run) []*sarif.Run {
 			driver.InformationURI = &defaultJasInformationUri
 		}
 		if driver.Version == nil || !isValidVersion(*driver.Version) {
-			driver.InformationURI = &defaultVersion
+			driver.Version = &defaultVersion
 		}
 	}
 	return runs

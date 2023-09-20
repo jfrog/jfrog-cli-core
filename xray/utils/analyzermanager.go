@@ -23,7 +23,7 @@ const (
 	EntitlementsMinVersion                    = "3.66.5"
 	ApplicabilityFeatureId                    = "contextual_analysis"
 	AnalyzerManagerZipName                    = "analyzerManager.zip"
-	defaultAnalyzerManagerVersion             = "1.3.2.2019257"
+	defaultAnalyzerManagerVersion             = "1.4.0"
 	minAnalyzerManagerVersionForSast          = "1.3"
 	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName                    = "analyzerManager"
@@ -40,7 +40,7 @@ const (
 	ErrFailedScannerRun                       = "failed to run %s scan. Exit code received: %s"
 	jfrogCliAnalyzerManagerVersionEnvVariable = "JFROG_CLI_ANALYZER_MANAGER_VERSION"
 	// Xsc scan ID that links to GitInfoContext object to graph scans.
-	jfXscMultiScanID = "JF_XSC_MULTI_SCAN_ID"
+	jfXscMultiScanID = "JF_MSI"
 )
 
 type ApplicabilityStatus string
@@ -180,6 +180,9 @@ func GetAnalyzerManagerExecutableName() string {
 }
 
 func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails, xscMultiScanId string) (cleanUp func(), err error) {
+	cleanUp = func() {
+		os.Clearenv()
+	}
 	if serverDetails == nil {
 		return nil, errors.New("cant get xray server details")
 	}
@@ -204,9 +207,6 @@ func SetAnalyzerManagerEnvVariables(serverDetails *config.ServerDetails, xscMult
 	}
 	if err = os.Setenv(jfXscMultiScanID, xscMultiScanId); errorutils.CheckError(err) != nil {
 		return
-	}
-	cleanUp = func() {
-		os.Clearenv()
 	}
 	return
 }

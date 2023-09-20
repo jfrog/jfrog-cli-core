@@ -43,7 +43,8 @@ func TestIsChunkFull(t *testing.T) {
 
 func TestIsChunkFullNumberOfFiles(t *testing.T) {
 	uploadChunk := &UploadChunk{}
-	for i := 0; i < maxFilesInChunk+1; i++ {
+	for i := 0; i < maxFilesInChunk; i++ {
+		assert.False(t, uploadChunk.IsChunkFull())
 		uploadChunk.AppendUploadCandidateIfNeeded(FileRepresentation{Name: fmt.Sprintf("%d", i)}, false)
 	}
 	assert.True(t, uploadChunk.IsChunkFull())

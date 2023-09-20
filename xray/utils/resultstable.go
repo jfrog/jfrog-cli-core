@@ -423,6 +423,7 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 					formats.SourceCodeRow{
 						SeverityDetails:    formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
 						ScannerDescription: scannerDescription,
+						Finding:            GetResultMsgText(sastResult),
 						Location: formats.Location{
 							File:        GetRelativeLocationFileName(location, sastRun.Invocations),
 							StartLine:   GetLocationStartLine(location),

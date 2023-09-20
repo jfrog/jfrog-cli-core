@@ -208,7 +208,7 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file st
 	if err != nil {
 		return err
 	}
-	cveId := getCves(cves, issueId)
+	cveId := GetIssueIdentifier(cves, issueId)
 	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
 	location := sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
 
@@ -292,20 +292,20 @@ func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []form
 	return jsonTable, nil
 }
 
-func getCves(cvesRow []formats.CveRow, issueId string) string {
-	var cvesStr string
+func GetIssueIdentifier(cvesRow []formats.CveRow, issueId string) string {
+	var identifier string
 	if len(cvesRow) != 0 {
 		var cvesBuilder strings.Builder
 		for _, cve := range cvesRow {
 			cvesBuilder.WriteString(cve.Id + ", ")
 		}
-		cvesStr = strings.TrimSuffix(cvesBuilder.String(), ", ")
+		identifier = strings.TrimSuffix(cvesBuilder.String(), ", ")
 	}
-	if cvesStr == "" {
-		cvesStr = issueId
+	if identifier == "" {
+		identifier = issueId
 	}
 
-	return cvesStr
+	return identifier
 }
 
 func getVulnerabilityOrViolationSarifHeadline(depName, version, key string) string {
@@ -327,7 +327,7 @@ func getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicab
 	if len(fixedVersions) > 0 {
 		descriptionFixVersions = strings.Join(fixedVersions, ", ")
 	}
-	if applicable == string(NotScanned) {
+	if applicable == NotScanned.String() {
 		return fmt.Sprintf("| Severity Score | Direct Dependencies | Fixed Versions     |\n| :---:        |    :----:   |          :---: |\n| %s      | %s       | %s   |",
 			maxCveScore, formattedDirectDependencies, descriptionFixVersions)
 	}

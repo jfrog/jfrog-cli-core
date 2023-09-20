@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +27,8 @@ const (
 	rootIndex                  = 0
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
+	nodeModules                = "node_modules"
+	NpmPackageTypeIdentifier   = "npm://"
 )
 
 // PrintViolationsTable prints the violations in 4 tables: security violations, license compliance violations, operational risk violations and ignore rule URLs.
@@ -69,16 +72,16 @@ func PrintViolationsTable(violations []services.Violation, extendedResults *Exte
 }
 
 // Prepare violations for all non-table formats (without style or emoji)
-func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseRow, []formats.OperationalRiskViolationRow, error) {
 	return prepareViolations(violations, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseRow, []formats.OperationalRiskViolationRow, error) {
 	if simplifiedOutput {
 		violations = simplifyViolations(violations, multipleRoots)
 	}
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
-	var licenseViolationsRows []formats.LicenseViolationRow
+	var licenseViolationsRows []formats.LicenseRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components)
@@ -88,32 +91,33 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 		switch violation.ViolationType {
 		case "security":
 			cves := convertCves(violation.Cves)
-			applicableValue := getApplicableCveValue(extendedResults, cves)
 			if extendedResults.EntitledForJas {
 				for i := range cves {
-					cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults)
+					cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults, violation.Components)
 				}
 			}
-			currSeverity := GetSeverity(violation.Severity, applicableValue)
+			applicabilityStatus := getApplicableCveStatus(extendedResults.EntitledForJas, extendedResults.ApplicabilityScanResults, cves)
+			currSeverity := GetSeverity(violation.Severity, applicabilityStatus)
 			jfrogResearchInfo := convertJfrogResearchInformation(violation.ExtendedInformation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
 					formats.VulnerabilityOrViolationRow{
-						Summary:                   violation.Summary,
-						Severity:                  currSeverity.printableTitle(isTable),
-						SeverityNumValue:          currSeverity.numValue,
-						ImpactedDependencyName:    impactedPackagesNames[compIndex],
-						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-						FixedVersions:             fixedVersions[compIndex],
-						Components:                components[compIndex],
-						Cves:                      cves,
-						IssueId:                   violation.IssueId,
-						References:                violation.References,
-						JfrogResearchInformation:  jfrogResearchInfo,
-						ImpactPaths:               impactPaths[compIndex],
-						Technology:                coreutils.Technology(violation.Technology),
-						Applicable:                printApplicableCveValue(applicableValue, isTable),
+						Summary: violation.Summary,
+						ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+							SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+							ImpactedDependencyName:    impactedPackagesNames[compIndex],
+							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+							Components:                components[compIndex],
+						},
+						FixedVersions:            fixedVersions[compIndex],
+						Cves:                     cves,
+						IssueId:                  violation.IssueId,
+						References:               violation.References,
+						JfrogResearchInformation: jfrogResearchInfo,
+						ImpactPaths:              impactPaths[compIndex],
+						Technology:               coreutils.Technology(violation.Technology),
+						Applicable:               printApplicabilityCveValue(applicabilityStatus, isTable),
 					},
 				)
 			}
@@ -121,14 +125,15 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndetermined)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
-					formats.LicenseViolationRow{
-						LicenseKey:                violation.LicenseKey,
-						Severity:                  currSeverity.printableTitle(isTable),
-						SeverityNumValue:          currSeverity.numValue,
-						ImpactedDependencyName:    impactedPackagesNames[compIndex],
-						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-						Components:                components[compIndex],
+					formats.LicenseRow{
+						LicenseKey: violation.LicenseKey,
+						ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+							SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+							ImpactedDependencyName:    impactedPackagesNames[compIndex],
+							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+							Components:                components[compIndex],
+						},
 					},
 				)
 			}
@@ -137,20 +142,21 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
-					Severity:                  currSeverity.printableTitle(isTable),
-					SeverityNumValue:          currSeverity.numValue,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					Components:                components[compIndex],
-					IsEol:                     violationOpRiskData.isEol,
-					Cadence:                   violationOpRiskData.cadence,
-					Commits:                   violationOpRiskData.commits,
-					Committers:                violationOpRiskData.committers,
-					NewerVersions:             violationOpRiskData.newerVersions,
-					LatestVersion:             violationOpRiskData.latestVersion,
-					RiskReason:                violationOpRiskData.riskReason,
-					EolMessage:                violationOpRiskData.eolMessage,
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
+					IsEol:         violationOpRiskData.isEol,
+					Cadence:       violationOpRiskData.cadence,
+					Commits:       violationOpRiskData.commits,
+					Committers:    violationOpRiskData.committers,
+					NewerVersions: violationOpRiskData.newerVersions,
+					LatestVersion: violationOpRiskData.latestVersion,
+					RiskReason:    violationOpRiskData.riskReason,
+					EolMessage:    violationOpRiskData.eolMessage,
 				}
 				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
 			}
@@ -210,32 +216,33 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 			return nil, err
 		}
 		cves := convertCves(vulnerability.Cves)
-		applicableValue := getApplicableCveValue(extendedResults, cves)
 		if extendedResults.EntitledForJas {
 			for i := range cves {
-				cves[i].Applicability = getCveApplicability(cves[i], extendedResults.ApplicabilityScanResults)
+				cves[i].Applicability = getCveApplicabilityField(cves[i], extendedResults.ApplicabilityScanResults, vulnerability.Components)
 			}
 		}
-		currSeverity := GetSeverity(vulnerability.Severity, applicableValue)
+		applicabilityStatus := getApplicableCveStatus(extendedResults.EntitledForJas, extendedResults.ApplicabilityScanResults, cves)
+		currSeverity := GetSeverity(vulnerability.Severity, applicabilityStatus)
 		jfrogResearchInfo := convertJfrogResearchInformation(vulnerability.ExtendedInformation)
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				formats.VulnerabilityOrViolationRow{
-					Summary:                   vulnerability.Summary,
-					Severity:                  currSeverity.printableTitle(isTable),
-					SeverityNumValue:          currSeverity.numValue,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					FixedVersions:             fixedVersions[compIndex],
-					Components:                components[compIndex],
-					Cves:                      cves,
-					IssueId:                   vulnerability.IssueId,
-					References:                vulnerability.References,
-					JfrogResearchInformation:  jfrogResearchInfo,
-					ImpactPaths:               impactPaths[compIndex],
-					Technology:                coreutils.Technology(vulnerability.Technology),
-					Applicable:                printApplicableCveValue(applicableValue, isTable),
+					Summary: vulnerability.Summary,
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
+					FixedVersions:            fixedVersions[compIndex],
+					Cves:                     cves,
+					IssueId:                  vulnerability.IssueId,
+					References:               vulnerability.References,
+					JfrogResearchInformation: jfrogResearchInfo,
+					ImpactPaths:              impactPaths[compIndex],
+					Technology:               coreutils.Technology(vulnerability.Technology),
+					Applicable:               printApplicabilityCveValue(applicabilityStatus, isTable),
 				},
 			)
 		}
@@ -280,12 +287,14 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				formats.LicenseRow{
-					LicenseKey:                license.Key,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					Components:                components[compIndex],
-					ImpactPaths:               impactPaths[compIndex],
+					LicenseKey:  license.Key,
+					ImpactPaths: impactPaths[compIndex],
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
 				},
 			)
 		}
@@ -307,9 +316,8 @@ func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow 
 			for _, location := range secretResult.Locations {
 				secretsRows = append(secretsRows,
 					formats.SourceCodeRow{
-						Severity:         currSeverity.printableTitle(isTable),
-						Finding:          GetResultMsgText(secretResult),
-						SeverityNumValue: currSeverity.numValue,
+						SeverityDetails: formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						Finding:         GetResultMsgText(secretResult),
 						Location: formats.Location{
 							File:        GetRelativeLocationFileName(location, secretRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
@@ -358,10 +366,9 @@ func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 			for _, location := range iacResult.Locations {
 				iacRows = append(iacRows,
 					formats.SourceCodeRow{
-						Severity:           currSeverity.printableTitle(isTable),
+						SeverityDetails:    formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
 						Finding:            GetResultMsgText(iacResult),
 						ScannerDescription: scannerDescription,
-						SeverityNumValue:   currSeverity.numValue,
 						Location: formats.Location{
 							File:        GetRelativeLocationFileName(location, iacRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
@@ -411,10 +418,8 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 				codeFlows := GetLocationRelatedCodeFlowsFromResult(location, sastResult)
 				sastRows = append(sastRows,
 					formats.SourceCodeRow{
-						Severity:           currSeverity.printableTitle(isTable),
-						Finding:            GetResultMsgText(sastResult),
+						SeverityDetails:    formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
 						ScannerDescription: scannerDescription,
-						SeverityNumValue:   currSeverity.numValue,
 						Location: formats.Location{
 							File:        GetRelativeLocationFileName(location, sastRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
@@ -486,7 +491,7 @@ func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation)
 	return &formats.JfrogResearchInformation{
 		Summary:         extendedInfo.ShortDescription,
 		Details:         extendedInfo.FullDescription,
-		Severity:        extendedInfo.JfrogResearchSeverity,
+		SeverityDetails: formats.SeverityDetails{Severity: extendedInfo.JfrogResearchSeverity},
 		SeverityReasons: severityReasons,
 		Remediation:     extendedInfo.Remediation,
 	}
@@ -625,53 +630,52 @@ func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode) 
 	return
 }
 
-type Severity struct {
-	title    string
-	numValue int
-	style    color.Style
-	emoji    string
+type TableSeverity struct {
+	formats.SeverityDetails
+	style color.Style
+	emoji string
 }
 
-func (s *Severity) printableTitle(isTable bool) string {
+func (s *TableSeverity) printableTitle(isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		return s.style.Render(s.emoji + s.title)
+		return s.style.Render(s.emoji + s.Severity)
 	}
-	return s.title
+	return s.Severity
 }
 
-var Severities = map[string]map[ApplicabilityStatus]*Severity{
+var Severities = map[string]map[ApplicabilityStatus]*TableSeverity{
 	"Critical": {
-		Applicable:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
-		ApplicabilityUndetermined: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicable:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 15}, emoji: "💀", style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 14}, emoji: "💀", style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 5}, emoji: "💀", style: color.New(color.Gray)},
 	},
 	"High": {
-		Applicable:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
-		ApplicabilityUndetermined: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
-		NotApplicable:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 13}, emoji: "🔥", style: color.New(color.Red)},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 12}, emoji: "🔥", style: color.New(color.Red)},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 4}, emoji: "🔥", style: color.New(color.Gray)},
 	},
 	"Medium": {
-		Applicable:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
-		ApplicabilityUndetermined: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
-		NotApplicable:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 11}, emoji: "🎃", style: color.New(color.Yellow)},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 10}, emoji: "🎃", style: color.New(color.Yellow)},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 3}, emoji: "🎃", style: color.New(color.Gray)},
 	},
 	"Low": {
-		Applicable:                {emoji: "👻", title: "Low", numValue: 9},
-		ApplicabilityUndetermined: {emoji: "👻", title: "Low", numValue: 8},
-		NotApplicable:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 9}, emoji: "👻"},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 8}, emoji: "👻"},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 2}, emoji: "👻", style: color.New(color.Gray)},
 	},
 	"Unknown": {
-		Applicable:                {emoji: "😐", title: "Unknown", numValue: 7},
-		ApplicabilityUndetermined: {emoji: "😐", title: "Unknown", numValue: 6},
-		NotApplicable:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 7}, emoji: "😐"},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 6}, emoji: "😐"},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 1}, emoji: "😐", style: color.New(color.Gray)},
 	},
 }
 
-func (s *Severity) NumValue() int {
-	return s.numValue
+func (s *TableSeverity) NumValue() int {
+	return s.SeverityNumValue
 }
 
-func (s *Severity) Emoji() string {
+func (s *TableSeverity) Emoji() string {
 	return s.emoji
 }
 
@@ -684,9 +688,9 @@ func GetSeveritiesFormat(severity string) (string, error) {
 	return formattedSeverity, nil
 }
 
-func GetSeverity(severityTitle string, applicable ApplicabilityStatus) *Severity {
+func GetSeverity(severityTitle string, applicable ApplicabilityStatus) *TableSeverity {
 	if Severities[severityTitle] == nil {
-		return &Severity{title: severityTitle}
+		return &TableSeverity{SeverityDetails: formats.SeverityDetails{Severity: severityTitle}}
 	}
 
 	switch applicable {
@@ -925,80 +929,120 @@ func convertCves(cves []services.Cve) []formats.CveRow {
 // If at least one cve is applicable - final value is applicable
 // Else if at least one cve is undetermined - final value is undetermined
 // Else (case when all cves aren't applicable) -> final value is not applicable
-func getApplicableCveValue(extendedResults *ExtendedScanResults, xrayCves []formats.CveRow) ApplicabilityStatus {
-	if !extendedResults.EntitledForJas || len(extendedResults.ApplicabilityScanResults) == 0 {
+func getApplicableCveStatus(entitledForJas bool, applicabilityScanResults []*sarif.Run, cves []formats.CveRow) ApplicabilityStatus {
+	if !entitledForJas || len(applicabilityScanResults) == 0 {
 		return NotScanned
 	}
-	if len(xrayCves) == 0 {
+	if len(cves) == 0 {
 		return ApplicabilityUndetermined
 	}
-	cveExistsInResult := false
-	finalApplicableValue := NotApplicable
-	for _, applicabilityRun := range extendedResults.ApplicabilityScanResults {
-		for _, cve := range xrayCves {
-			relatedResults := GetResultsByRuleId(applicabilityRun, CveToApplicabilityRuleId(cve.Id))
-			if len(relatedResults) == 0 {
-				finalApplicableValue = ApplicabilityUndetermined
+	foundUndetermined := false
+	for _, cve := range cves {
+		if cve.Applicability != nil {
+			if cve.Applicability.Status == string(Applicable) {
+				return Applicable
 			}
-			for _, relatedResult := range relatedResults {
-				cveExistsInResult = true
-				if IsApplicableResult(relatedResult) {
-					return Applicable
-				}
+			if cve.Applicability.Status == string(ApplicabilityUndetermined) {
+				foundUndetermined = true
 			}
 		}
 	}
-	if cveExistsInResult {
-		return finalApplicableValue
+	if foundUndetermined {
+		return ApplicabilityUndetermined
 	}
-	return ApplicabilityUndetermined
+	return NotApplicable
 }
 
-func getCveApplicability(cve formats.CveRow, applicabilityScanResults []*sarif.Run) *formats.Applicability {
-	applicability := &formats.Applicability{Status: string(ApplicabilityUndetermined)}
+func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sarif.Run, components map[string]services.Component) *formats.Applicability {
+	if len(applicabilityScanResults) == 0 {
+		return nil
+	}
+
+	applicability := formats.Applicability{}
+	resultFound := false
 	for _, applicabilityRun := range applicabilityScanResults {
-		foundResult, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
-		if foundResult == nil {
+		result, _ := applicabilityRun.GetResultByRuleId(CveToApplicabilityRuleId(cve.Id))
+		if result == nil {
 			continue
 		}
-		applicability = &formats.Applicability{}
-		if IsApplicableResult(foundResult) {
-			applicability.Status = string(Applicable)
-		} else {
-			applicability.Status = string(NotApplicable)
+		resultFound = true
+		rule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
+		if rule != nil {
+			applicability.ScannerDescription = GetRuleFullDescription(rule)
 		}
-
-		foundRule, _ := applicabilityRun.GetRuleById(CveToApplicabilityRuleId(cve.Id))
-		if foundRule != nil {
-			applicability.ScannerDescription = GetRuleFullDescription(foundRule)
-		}
-
 		// Add new evidences from locations
-		for _, location := range foundResult.Locations {
+		for _, location := range result.Locations {
+			fileName := GetRelativeLocationFileName(location, applicabilityRun.Invocations)
+			if shouldDisqualifyEvidence(components, fileName) {
+				continue
+			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				Location: formats.Location{
-					File:        GetRelativeLocationFileName(location, applicabilityRun.Invocations),
+					File:        fileName,
 					StartLine:   GetLocationStartLine(location),
 					StartColumn: GetLocationStartColumn(location),
 					EndLine:     GetLocationEndLine(location),
 					EndColumn:   GetLocationEndColumn(location),
 					Snippet:     GetLocationSnippet(location),
 				},
-				Reason: GetResultMsgText(foundResult),
+				Reason: GetResultMsgText(result),
 			})
 		}
-		break
 	}
-	return applicability
+	switch {
+	case !resultFound:
+		applicability.Status = string(ApplicabilityUndetermined)
+	case len(applicability.Evidence) == 0:
+		applicability.Status = string(NotApplicable)
+	default:
+		applicability.Status = string(Applicable)
+	}
+	return &applicability
 }
 
-func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
+func printApplicabilityCveValue(applicabilityStatus ApplicabilityStatus, isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		if applicableValue == Applicable {
-			return color.New(color.Red).Render(applicableValue)
-		} else if applicableValue == NotApplicable {
-			return color.New(color.Green).Render(applicableValue)
+		if applicabilityStatus == Applicable {
+			return color.New(color.Red).Render(applicabilityStatus)
+		} else if applicabilityStatus == NotApplicable {
+			return color.New(color.Green).Render(applicabilityStatus)
 		}
 	}
-	return string(applicableValue)
+	return applicabilityStatus.String()
+}
+
+// Relevant only when "third-party-contextual-analysis" flag is on,
+// which mean we scan the environment folders as well (node_modules for example...)
+// When a certain package is reported applicable, and the evidence found
+// is inside the source code of the same package, we should disqualify it.
+//
+// For example,
+// Cve applicability was found inside the 'mquery' package.
+// filePath = myProject/node_modules/mquery/badCode.js , disqualify = True.
+// Disqualify the above evidence, as the reported applicability is used inside its own package.
+//
+// filePath = myProject/node_modules/mpath/badCode.js  , disqualify = False.
+// Found use of a badCode inside the node_modules from a different package, report applicable.
+func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
+	for key := range components {
+		if !strings.HasPrefix(key, NpmPackageTypeIdentifier) {
+			return
+		}
+		dependencyName := extractDependencyNameFromComponent(key, NpmPackageTypeIdentifier)
+		// Check both Unix & Windows paths.
+		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
+			return true
+		}
+	}
+	return
+}
+
+func extractDependencyNameFromComponent(key string, techIdentifier string) (dependencyName string) {
+	packageAndVersion := strings.TrimPrefix(key, techIdentifier)
+	split := strings.Split(packageAndVersion, ":")
+	if len(split) < 2 {
+		return
+	}
+	dependencyName = split[0]
+	return
 }

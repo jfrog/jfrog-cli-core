@@ -220,7 +220,7 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 	switch packageType {
 	case maven, gradle, ivy:
 		return []shouldDelayUpload{func(fileName string) bool {
-			return filepath.Ext(fileName) == ".pom"
+			return filepath.Ext(fileName) == ".pom" || fileName == "pom.xml"
 		}}
 	case docker:
 		return []shouldDelayUpload{func(fileName string) bool {

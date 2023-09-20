@@ -25,8 +25,8 @@ const (
 	Phase3 int = 2
 
 	maxFilesInChunk = 16
-	// 1GiB
-	maxBytesInChunk = 1 << (30)
+	// 1 GiB
+	maxBytesInChunk = 1 << 30
 )
 
 type TargetAuth struct {

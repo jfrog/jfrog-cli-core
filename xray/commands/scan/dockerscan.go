@@ -71,8 +71,8 @@ func (dsc *DockerScanCommand) Run() (err error) {
 			err = e
 		}
 	}()
-
-	// No image tag provided, check for dockerfile in working dir.
+	// Check for dockerfile to scan
+	var isDockerFileScanned bool
 	if dsc.imageTag == "" {
 		if err = dsc.buildDockerImage(); err != nil {
 			return
@@ -83,6 +83,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		if err != nil {
 			return err
 		}
+		isDockerFileScanned = true
 	}
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
@@ -99,6 +100,8 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		return fmt.Errorf("failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String())
 	}
 
+	// Map layers sha to build commands
+	// If dockerfile exists, will also map to line number.
 	dockerCommandsMapping, err := dsc.mapDockerLayerToCommand()
 	if err != nil {
 		return
@@ -119,12 +122,12 @@ func (dsc *DockerScanCommand) Run() (err error) {
 			err = errorutils.CheckError(e)
 		}
 	}()
-
 	extendedScanResults, cleanup, scanErrors, err := dsc.ScanCommand.binaryScan()
 	defer cleanup()
 	if err != nil {
 		return
 	}
+
 	// Print results
 	err = xrayutils.NewResultsWriter(extendedScanResults).
 		SetOutputFormat(dsc.outputFormat).
@@ -132,7 +135,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetIncludeLicenses(dsc.includeLicenses).
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
-		SetDockerCommandsMapping(dockerCommandsMapping).
+		SetDockerCommandsMapping(dockerCommandsMapping, isDockerFileScanned).
 		SetScanType(services.Docker).
 		PrintScanResults()
 
@@ -258,7 +261,7 @@ func (dsc *DockerScanCommand) loadDockerfileToMemory() (cleanUp func(), err erro
 const (
 	emptyDockerfileLine     = ""
 	dockerfileCommentPrefix = "#"
-	bashLinesomething       = "\\"
+	backslash               = "\\"
 	fromCommand             = "FROM"
 )
 
@@ -279,7 +282,7 @@ func (dsc *DockerScanCommand) mapDockerfileCommands(dockerCommandsMap map[string
 			continue
 		}
 		// Read the next line as it is the same command.
-		for strings.HasSuffix(scannedCommand, bashLinesomething) {
+		for strings.HasSuffix(scannedCommand, backslash) {
 			dsc.scanner.Scan()
 			lineNumber++
 			scannedCommand += dsc.scanner.Text()

@@ -1,7 +1,7 @@
 package sast
 
 import (
-	"strconv"
+	"fmt"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -76,16 +76,17 @@ func groupResultsByLocation(sarifRuns []*sarif.Run) {
 	}
 }
 
-// In Sast there is only one location for each result
 func getResultLocationStr(result *sarif.Result) string {
 	if len(result.Locations) == 0 {
 		return ""
 	}
-	return utils.GetLocationFileName(result.Locations[0]) +
-		strconv.Itoa(utils.GetLocationStartLine(result.Locations[0])) +
-		strconv.Itoa(utils.GetLocationStartColumn(result.Locations[0])) +
-		strconv.Itoa(utils.GetLocationEndLine(result.Locations[0])) +
-		strconv.Itoa(utils.GetLocationEndColumn(result.Locations[0]))
+	location := result.Locations[0]
+	return fmt.Sprintf("%s%d%d%d%d",
+		utils.GetLocationFileName(location),
+		utils.GetLocationStartLine(location),
+		utils.GetLocationStartColumn(location),
+		utils.GetLocationEndLine(location),
+		utils.GetLocationEndColumn(location))
 }
 
 func getResultRuleId(result *sarif.Result) string {

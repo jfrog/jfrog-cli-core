@@ -263,6 +263,10 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file st
 // Non path - should not be used as location
 func getXrayIssueLocationIfValidExists(file string, run *sarif.Run, override bool) (location *sarif.Location, err error) {
 	location = sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
+	if override {
+		// Use the content as is
+		return
+	}
 	// Check if full path
 	exists, err := fileutils.IsFileExists(file, false)
 	if err != nil || exists {
@@ -270,12 +274,8 @@ func getXrayIssueLocationIfValidExists(file string, run *sarif.Run, override boo
 	}
 	// Check if relative path
 	fullPath := GetFullLocationFileName(file, run.Invocations)
+	location = sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + fullPath)))
 	if exists, err = fileutils.IsFileExists(fullPath, false); err != nil || exists {
-		location = sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + fullPath)))
-		return
-	}
-	if override {
-		// Use the content as is
 		return
 	}
 	// Not usable content

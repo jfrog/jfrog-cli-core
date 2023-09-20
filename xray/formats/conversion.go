@@ -66,7 +66,7 @@ func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow
 			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
 			ImpactedPackageType:    rows[i].ImpactedDependencyType,
 			fixedVersions:          fixedVersionsFallback(rows[i].FixedVersions),
-			cves:                   convertToCveTableRow(rows[i].Cves),
+			cves:                   convertToShortCveTableRow(rows[i].Cves),
 			dockerfileCommand:      dockerCommand.Command,
 			dockerfileLine:         strings.Join(dockerCommand.Line, ","),
 		})
@@ -216,6 +216,15 @@ func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 			id:     rows[i].Id,
 			cvssV2: rows[i].CvssV2,
 			cvssV3: rows[i].CvssV3,
+		})
+	}
+	return
+}
+
+func convertToShortCveTableRow(rows []CveRow) (tableRows []cveShortTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, cveShortTableRow{
+			id: rows[i].Id,
 		})
 	}
 	return

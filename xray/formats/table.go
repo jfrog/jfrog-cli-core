@@ -36,13 +36,13 @@ type vulnerabilityDockerScanTableRow struct {
 	severity string `col-name:"Severity"`
 	// For sorting
 	severityNumValue       int
-	impactedPackageName    string        `col-name:"Impacted\nPackage\nName"`
-	impactedPackageVersion string        `col-name:"Impacted\nPackage\nVersion"`
-	fixedVersions          string        `col-name:"Fixed\nVersions"`
-	ImpactedPackageType    string        `col-name:"Type"`
-	dockerfileLine         string        `col-name:"Dockerfile\nLine Number\n" extended:"true"`
-	dockerfileCommand      string        `col-name:"Dockerfile\nCommand\n" `
-	cves                   []cveTableRow `embed-table:"true"`
+	impactedPackageName    string             `col-name:"Impacted\nPackage\nName"`
+	impactedPackageVersion string             `col-name:"Impacted\nPackage\nVersion"`
+	fixedVersions          string             `col-name:"Fixed\nVersions"`
+	ImpactedPackageType    string             `col-name:"Type"`
+	dockerfileLine         string             `col-name:"Dockerfile\nLine Number\n" extended:"true"`
+	dockerfileCommand      string             `col-name:"Dockerfile\nCommand\n" `
+	cves                   []cveShortTableRow `embed-table:"true"`
 }
 
 type licenseTableRow struct {
@@ -133,6 +133,10 @@ type cveTableRow struct {
 	id     string `col-name:"CVE"`
 	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
 	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
+}
+
+type cveShortTableRow struct {
+	id string `col-name:"CVE"`
 }
 
 type secretsTableRow struct {

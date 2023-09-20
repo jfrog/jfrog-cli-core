@@ -101,8 +101,10 @@ func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 	return rw
 }
 
-func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]services.DockerfileCommandDetails) *ResultsWriter {
+func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]services.DockerfileCommandDetails, dockerFileScan bool) *ResultsWriter {
 	rw.dockerCommandsMapping = mapping
+	// Extended will show line numbers, enable only if a dockerfile was scanned and not docker image.
+	rw.printExtended = dockerFileScan
 	return rw
 }
 

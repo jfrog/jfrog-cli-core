@@ -40,8 +40,8 @@ type vulnerabilityDockerScanTableRow struct {
 	impactedPackageVersion string        `col-name:"Impacted\nPackage\nVersion"`
 	fixedVersions          string        `col-name:"Fixed\nVersions"`
 	ImpactedPackageType    string        `col-name:"Type"`
-	dockerfileLine         string        `col-name:"Dockerfile\nLine Number\n" `
-	dockerfileCommand      string        `col-name:"Dockerfile\nCommand\n" omitempty:"true"`
+	dockerfileLine         string        `col-name:"Dockerfile\nLine Number\n" extended:"true"`
+	dockerfileCommand      string        `col-name:"Dockerfile\nCommand\n" `
 	cves                   []cveTableRow `embed-table:"true"`
 }
 

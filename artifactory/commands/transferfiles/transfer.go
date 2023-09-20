@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
 	retries                      = 600

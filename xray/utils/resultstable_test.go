@@ -706,6 +706,344 @@ func TestShouldDisqualifyEvidence(t *testing.T) {
 	}
 }
 
+func TestPrepareIac(t *testing.T) {
+	testCases := []struct {
+		name string
+		input []*sarif.Run
+		expectedOutput []formats.SourceCodeRow
+	}{
+		{
+			name: "No Iac run",
+			input: []*sarif.Run{},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Iac run - no results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+			},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Iac run - with results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations("iac finding", "rule1", "info",
+						CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateDummyLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations("other iac finding", "rule2", "error",
+						CreateDummyLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+				}),
+			},
+			expectedOutput: []formats.SourceCodeRow{
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "High",
+						SeverityNumValue: 13,
+					},
+					Finding: "other iac finding",
+					Location: formats.Location{
+						File:        "file3",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:  3,
+						EndColumn: 4,
+						Snippet:     "snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "iac finding",
+					Location: formats.Location{
+						File:        "file",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:  3,
+						EndColumn: 4,
+						Snippet:     "snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "iac finding",
+					Location: formats.Location{
+						File:        "file2",
+						StartLine:   5,
+						StartColumn: 6,
+						EndLine:  7,
+						EndColumn: 8,
+						Snippet:     "other-snippet",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expectedOutput, prepareIacs(tc.input, false))
+		})
+	}
+}
+
+func TestPrepareSecrets(t *testing.T) {
+	testCases := []struct {
+		name string
+		input []*sarif.Run
+		expectedOutput []formats.SourceCodeRow
+	}{
+		{
+			name: "No Secret run",
+			input: []*sarif.Run{},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Secret run - no results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+			},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Secret run - with results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations("secret finding", "rule1", "info",
+						CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "some-secret-snippet"),
+						CreateDummyLocation("file://wd/file2", 5, 6, 7, 8, "other-secret-snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations("other secret finding", "rule2", "note",
+						CreateDummyLocation("file://wd2/file3", 1, 2, 3, 4, "some-secret-snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+				}),
+			},
+			expectedOutput: []formats.SourceCodeRow{
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Low",
+						SeverityNumValue: 9,
+					},
+					Finding: "other secret finding",
+					Location: formats.Location{
+						File:        "file3",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:  3,
+						EndColumn: 4,
+						Snippet:     "some-secret-snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "secret finding",
+					Location: formats.Location{
+						File:        "file",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:  3,
+						EndColumn: 4,
+						Snippet:     "some-secret-snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "secret finding",
+					Location: formats.Location{
+						File:        "file2",
+						StartLine:   5,
+						StartColumn: 6,
+						EndLine:  7,
+						EndColumn: 8,
+						Snippet:     "other-secret-snippet",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expectedOutput, prepareSecrets(tc.input, false))
+		})
+	}
+}
+
+func TestPrepareSast(t *testing.T) {
+	testCases := []struct {
+		name string
+		input []*sarif.Run
+		expectedOutput []formats.SourceCodeRow
+	}{
+		{
+			name: "No Sast run",
+			input: []*sarif.Run{},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Sast run - no results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+			},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Sast run - with results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations("sast finding", "rule1", "info",
+						CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateDummyLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
+					).WithCodeFlows([]*sarif.CodeFlow{
+						CreateDummyCodeFlow(CreateDummyThreadFlow(
+							CreateDummyLocation("file://wd/file2", 0, 2, 0, 2, "snippetA"),
+							CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						)),
+						CreateDummyCodeFlow(CreateDummyThreadFlow(
+							CreateDummyLocation("file://wd/file4", 1, 0, 1, 8, "snippetB"),
+							CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						)),
+					}),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(
+					CreateDummyResultWithLocations("other sast finding", "rule2", "error",
+						CreateDummyLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+				}),
+			},
+			expectedOutput: []formats.SourceCodeRow{
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "High",
+						SeverityNumValue: 13,
+					},
+					Finding: "other sast finding",
+					Location: formats.Location{
+						File:        "file3",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:  3,
+						EndColumn: 4,
+						Snippet:     "snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "sast finding",
+					Location: formats.Location{
+						File:        "file",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:  3,
+						EndColumn: 4,
+						Snippet:     "snippet",
+					},
+					CodeFlow: [][]formats.Location{
+						{
+							{
+								File:        "file2",
+								StartLine:   0,
+								StartColumn: 2,
+								EndLine:  0,
+								EndColumn: 2,
+								Snippet:     "snippetA",
+							},
+							{
+								File:        "file",
+								StartLine:   1,
+								StartColumn: 2,
+								EndLine:  3,
+								EndColumn: 4,
+								Snippet:     "snippet",
+							},
+						},
+						{
+							{
+								File:        "file4",
+								StartLine:   1,
+								StartColumn: 0,
+								EndLine:  1,
+								EndColumn: 8,
+								Snippet:     "snippetB",
+							},
+							{
+								File:        "file",
+								StartLine:   1,
+								StartColumn: 2,
+								EndLine:  3,
+								EndColumn: 4,
+								Snippet:     "snippet",
+							},
+						},
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "sast finding",
+					Location: formats.Location{
+						File:        "file2",
+						StartLine:   5,
+						StartColumn: 6,
+						EndLine:  7,
+						EndColumn: 8,
+						Snippet:     "other-snippet",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expectedOutput, prepareSast(tc.input, false))
+		})
+	}
+}
+
 func newBoolPtr(v bool) *bool {
 	return &v
 }

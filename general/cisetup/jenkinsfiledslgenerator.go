@@ -163,7 +163,7 @@ func generateEnvironments(buildType coreutils.Technology) string {
 	case coreutils.Maven:
 		fallthrough
 	case coreutils.Gradle:
-		envs += fmt.Sprintf(homeEnv, strings.ToUpper(buildType.ToString()))
+		envs += fmt.Sprintf(homeEnv, strings.ToUpper(buildType.String()))
 	default:
 		envs += ""
 	}
@@ -197,8 +197,8 @@ func generateRtConfigSteps(techInfo *TechnologyInfo, rtUrl string) string {
 
 func generateBuildStages(buildCmd string, buildType coreutils.Technology) (buildStages string) {
 	buildStages = ""
-	resolverId := fmt.Sprintf(resolverIdTemplate, strings.ToUpper(buildType.ToString()))
-	deployerId := fmt.Sprintf(deployerIdTemplate, strings.ToUpper(buildType.ToString()))
+	resolverId := fmt.Sprintf(resolverIdTemplate, strings.ToUpper(buildType.String()))
+	deployerId := fmt.Sprintf(deployerIdTemplate, strings.ToUpper(buildType.String()))
 	switch buildType {
 	case coreutils.Maven:
 		buildStages += generateStage("Exec Maven", fmt.Sprintf(mavenRunStepTemplate, buildCmd, resolverId, deployerId))

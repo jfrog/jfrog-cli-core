@@ -128,10 +128,10 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	}
 
 	report.Runs = append(report.Runs, xrayRun)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.ApplicabilityScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.IacScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.SecretsScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas(extendedResults.SastScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/xray/contextual-vulnerabilities/", extendedResults.ApplicabilityScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/xray/iac-security-check/", extendedResults.IacScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/xray/secrets-detection-source-binaries/", extendedResults.SecretsScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/sast/", extendedResults.SastScanResults)...)
 
 	out, err := json.Marshal(report)
 	if err != nil {
@@ -141,8 +141,7 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	return clientUtils.IndentJson(out), nil
 }
 
-func fillMissingRequiredInformationForJas(runs []*sarif.Run) []*sarif.Run {
-	defaultJasInformationUri := "https://jfrog.com/devops-native-security/"
+func fillMissingRequiredInformationForJas(defaultJasInformationUri string, runs []*sarif.Run) []*sarif.Run {
 	defaultVersion := GetAnalyzerManagerVersion()
 	for _, run := range runs {
 		driver := run.Tool.Driver

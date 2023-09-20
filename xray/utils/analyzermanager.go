@@ -23,7 +23,7 @@ const (
 	EntitlementsMinVersion                    = "3.66.5"
 	ApplicabilityFeatureId                    = "contextual_analysis"
 	AnalyzerManagerZipName                    = "analyzerManager.zip"
-	defaultAnalyzerManagerVersion             = "1.3.2.2006984"
+	defaultAnalyzerManagerVersion             = "1.3.2.2019257"
 	minAnalyzerManagerVersionForSast          = "1.3"
 	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName                    = "analyzerManager"
@@ -50,6 +50,10 @@ const (
 	NotScanned                ApplicabilityStatus = ""
 )
 
+func (as ApplicabilityStatus) String() string {
+	return string(as)
+}
+
 type JasScanType string
 
 const (
@@ -59,9 +63,13 @@ const (
 	Sast          JasScanType = "Sast"
 )
 
-func (st JasScanType) FormattedError(err error) error {
+func (jst JasScanType) String() string {
+	return string(jst)
+}
+
+func (jst JasScanType) FormattedError(err error) error {
 	if err != nil {
-		return fmt.Errorf(ErrFailedScannerRun, st, err.Error())
+		return fmt.Errorf(ErrFailedScannerRun, jst, err.Error())
 	}
 	return nil
 }

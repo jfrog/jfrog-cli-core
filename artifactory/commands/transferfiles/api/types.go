@@ -23,6 +23,10 @@ const (
 	Phase1 int = 0
 	Phase2 int = 1
 	Phase3 int = 2
+
+	maxFilesInChunk = 16
+	// 1 GiB
+	maxBytesInChunk = 1 << 30
 )
 
 type TargetAuth struct {
@@ -100,4 +104,19 @@ func (uc *UploadChunk) AppendUploadCandidateIfNeeded(file FileRepresentation, bu
 		return
 	}
 	uc.UploadCandidates = append(uc.UploadCandidates, file)
+}
+
+// Return true if the chunk contains at least 16 files or at least 1GiB in total
+func (uc *UploadChunk) IsChunkFull() bool {
+	if len(uc.UploadCandidates) >= maxFilesInChunk {
+		return true
+	}
+	var totalSize int64 = 0
+	for _, uploadCandidate := range uc.UploadCandidates {
+		totalSize += uploadCandidate.Size
+		if totalSize > maxBytesInChunk {
+			return true
+		}
+	}
+	return false
 }

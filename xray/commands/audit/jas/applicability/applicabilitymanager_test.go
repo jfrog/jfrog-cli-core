@@ -49,13 +49,13 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 		{
 			ScanId: "scanId_1",
 			Vulnerabilities: []services.Vulnerability{
-				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_1", Technology: coreutils.Pipenv.String(),
 					Cves: []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
 					Components: map[string]services.Component{
 						"issueId_1_non_direct_dependency": {}}},
 			},
 			Violations: []services.Violation{
-				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves: []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
 					Components: map[string]services.Component{
 						"issueId_2_non_direct_dependency": {}}},
@@ -105,7 +105,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 		{
 			ScanId: "scanId_1",
 			Vulnerabilities: []services.Vulnerability{
-				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_1", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "test_cve_1"}, {Id: "test_cve_2"}, {Id: "test_cve_3"}},
 					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
 			},
@@ -131,7 +131,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 		{
 			ScanId: "scanId_1",
 			Violations: []services.Violation{
-				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "test_cve_3"}, {Id: "test_cve_4"}},
 					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
 			},
@@ -178,7 +178,7 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	var xrayResponseForDirectViolationsTest = []services.ScanResponse{
 		{
 			Violations: []services.Violation{
-				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
 					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
 			},
@@ -212,12 +212,12 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 			ScanId: "scanId_1",
 			Vulnerabilities: []services.Vulnerability{
 				{
-					IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+					IssueId: "issueId_1", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
 					Components: map[string]services.Component{"issueId_1_direct_dependency": {}},
 				},
 				{
-					IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+					IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
 					Components: map[string]services.Component{"issueId_2_direct_dependency": {}},
 				},

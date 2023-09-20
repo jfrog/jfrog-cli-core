@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -127,7 +126,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		return
 	}
 	// Print results
-	err = xrutils.NewResultsWriter(extendedScanResults).
+	err = xrayutils.NewResultsWriter(extendedScanResults).
 		SetOutputFormat(dsc.outputFormat).
 		SetIncludeVulnerabilities(dsc.includeVulnerabilities).
 		SetIncludeLicenses(dsc.includeLicenses).

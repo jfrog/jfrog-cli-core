@@ -39,11 +39,12 @@ func TestIsChunkFull(t *testing.T) {
 			assert.Equal(t, testCase.isFull, uploadChunk.IsChunkFull())
 		})
 	}
-	t.Run("", func(t *testing.T) {
-		uploadChunk := &UploadChunk{}
-		for i := 0; i < 17; i++ {
-			uploadChunk.AppendUploadCandidateIfNeeded(FileRepresentation{Name: fmt.Sprintf("%d", i)}, false)
-		}
-		assert.True(t, uploadChunk.IsChunkFull())
-	})
+}
+
+func TestIsChunkFullNumberOfFiles(t *testing.T) {
+	uploadChunk := &UploadChunk{}
+	for i := 0; i < maxFilesInChunk+1; i++ {
+		uploadChunk.AppendUploadCandidateIfNeeded(FileRepresentation{Name: fmt.Sprintf("%d", i)}, false)
+	}
+	assert.True(t, uploadChunk.IsChunkFull())
 }

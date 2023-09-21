@@ -5,18 +5,17 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
-	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"golang.org/x/exp/slices"
 )
 
 const (
-	npmPackageTypeIdentifier = "npm://"
-	ignoreScriptsFlag        = "--ignore-scripts"
+	ignoreScriptsFlag = "--ignore-scripts"
 )
 
-func BuildDependencyTree(params *xrayutils.AuditBasicParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func BuildDependencyTree(params *utils.AuditBasicParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -51,7 +50,7 @@ func BuildDependencyTree(params *xrayutils.AuditBasicParams) (dependencyTrees []
 	return
 }
 
-func createTreeDepsParam(params *xrayutils.AuditBasicParams) biutils.NpmTreeDepListParam {
+func createTreeDepsParam(params *utils.AuditBasicParams) biutils.NpmTreeDepListParam {
 	return biutils.NpmTreeDepListParam{
 		Args:                 addIgnoreScriptsFlag(params.Args()),
 		IgnoreNodeModules:    params.NpmIgnoreNodeModules(),
@@ -71,9 +70,9 @@ func addIgnoreScriptsFlag(npmArgs []string) []string {
 func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *biutils.PackageInfo) (*xrayUtils.GraphNode, []string) {
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
-		dependencyId := npmPackageTypeIdentifier + dependency.Id
+		dependencyId := utils.NpmPackageTypeIdentifier + dependency.Id
 		for _, requestedByNode := range dependency.RequestedBy {
-			parent := npmPackageTypeIdentifier + requestedByNode[0]
+			parent := utils.NpmPackageTypeIdentifier + requestedByNode[0]
 			if children, ok := treeMap[parent]; ok {
 				treeMap[parent] = appendUniqueChild(children, dependencyId)
 			} else {
@@ -81,7 +80,7 @@ func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *
 			}
 		}
 	}
-	return sca.BuildXrayDependencyTree(treeMap, npmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
+	return sca.BuildXrayDependencyTree(treeMap, utils.NpmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
 }
 
 func appendUniqueChild(children []string, candidateDependency string) []string {

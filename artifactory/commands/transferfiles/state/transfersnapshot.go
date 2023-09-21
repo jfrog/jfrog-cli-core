@@ -1,11 +1,14 @@
 package state
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"sync"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/reposnapshot"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
+
+var saveRepoSnapshotMutex sync.Mutex
 
 type SnapshotActionFunc func(rts *RepoTransferSnapshot) error
 
@@ -20,8 +23,7 @@ type RepoTransferSnapshot struct {
 	snapshotManager   reposnapshot.RepoSnapshotManager
 	lastSaveTimestamp time.Time
 	// This boolean marks that this snapshot continues a previous run. It allows skipping certain checks if it was not loaded, because some data is known to be new.
-	loadedFromSnapshot    bool
-	saveRepoSnapshotMutex sync.Mutex
+	loadedFromSnapshot bool
 }
 
 // Runs the provided action on the snapshot manager, and periodically saves the repo state and snapshot to the snapshot dir.
@@ -38,22 +40,16 @@ func (ts *TransferStateManager) snapshotAction(action SnapshotActionFunc) (err e
 		return nil
 	}
 
-	if !ts.repoTransferSnapshot.saveRepoSnapshotMutex.TryLock() {
+	if !saveRepoSnapshotMutex.TryLock() {
 		return nil
 	}
-	defer ts.repoTransferSnapshot.saveRepoSnapshotMutex.Unlock()
+	defer saveRepoSnapshotMutex.Unlock()
 
 	ts.repoTransferSnapshot.lastSaveTimestamp = now
 	if err = ts.repoTransferSnapshot.snapshotManager.PersistRepoSnapshot(); err != nil {
 		return err
 	}
 
-	return saveStateToSnapshot(&ts.TransferState)
-}
-
-func saveStateToSnapshot(ts *TransferState) error {
-	saveStateMutex.Lock()
-	defer saveStateMutex.Unlock()
 	return ts.persistTransferState(true)
 }
 

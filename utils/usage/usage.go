@@ -2,8 +2,6 @@ package usage
 
 import (
 	"fmt"
-	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-
 	"golang.org/x/sync/errgroup"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -93,14 +91,6 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 			return
 		})
 	}
-	if ur.sendToXray {
-		ur.reportWaitGroup.Go(func() (err error) {
-			if err = ur.reportToXray(features...); err != nil {
-				err = fmt.Errorf("xray, %s", err.Error())
-			}
-			return
-		})
-	}
 	if ur.sendToArtifactory {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToArtifactory(features...); err != nil {
@@ -129,23 +119,6 @@ func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error
 		return
 	}
 	return ecosysusage.SendEcosystemUsageReports(reports...)
-}
-
-func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
-	if ur.serverDetails.XrayUrl == "" {
-		err = errorutils.CheckErrorf("Xray Url is not set.")
-		return
-	}
-	serviceManager, err := xrayutils.CreateXrayServiceManager(ur.serverDetails)
-	if err != nil {
-		return
-	}
-	events := ur.convertAttributesToXrayEvents(features...)
-	if len(events) == 0 {
-		err = errorutils.CheckErrorf("Nothing to send.")
-		return
-	}
-	return xrayusage.SendXrayUsageEvents(*serviceManager, events...)
 }
 
 func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err error) {

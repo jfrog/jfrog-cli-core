@@ -40,12 +40,11 @@ func ConvertToVulnerabilityScanTableRow(rows []VulnerabilityOrViolationRow) (tab
 	return
 }
 
-func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []licenseViolationTableRow) {
+func ConvertToLicenseViolationTableRow(rows []LicenseRow) (tableRows []licenseViolationTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseViolationTableRow{
 			licenseKey:                rows[i].LicenseKey,
 			severity:                  rows[i].Severity,
-			applicable:                rows[i].Applicable,
 			severityNumValue:          rows[i].SeverityNumValue,
 			impactedDependencyName:    rows[i].ImpactedDependencyName,
 			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
@@ -56,7 +55,7 @@ func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []
 	return
 }
 
-func ConvertToLicenseViolationScanTableRow(rows []LicenseViolationRow) (tableRows []licenseViolationScanTableRow) {
+func ConvertToLicenseViolationScanTableRow(rows []LicenseRow) (tableRows []licenseViolationScanTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseViolationScanTableRow{
 			licenseKey:             rows[i].LicenseKey,

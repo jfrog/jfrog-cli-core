@@ -105,8 +105,7 @@ func processSecretScanRuns(sarifRuns []*sarif.Run) []*sarif.Run {
 		// Hide discovered secrets value
 		for _, secretResult := range secretRun.Results {
 			for _, location := range secretResult.Locations {
-				secret := utils.GetLocationSnippetPointer(location)
-				utils.SetLocationSnippet(location, maskSecret(*secret))
+				utils.SetLocationSnippet(location, maskSecret(utils.GetLocationSnippet(location)))
 			}
 		}
 	}

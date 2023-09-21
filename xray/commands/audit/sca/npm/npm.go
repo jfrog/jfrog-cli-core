@@ -33,11 +33,7 @@ func BuildDependencyTree(params *xrayutils.AuditBasicParams) (dependencyTrees []
 		Args: addIgnoreScriptsFlag([]string{}),
 	}
 	if params != nil {
-		treeDepsParam = biutils.NpmTreeDepListParam{
-			Args:                 addIgnoreScriptsFlag(params.Args()),
-			IgnoreNodeModules:    params.NpmIgnoreNodeModules(),
-			OverWritePackageLock: params.NpmOverwritePackageLock(),
-		}
+		treeDepsParam = createTreeDepsParam(params)
 	}
 	// Calculate npm dependencies
 	dependenciesMap, err := biutils.CalculateDependenciesMap(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), treeDepsParam, log.Logger)
@@ -53,6 +49,14 @@ func BuildDependencyTree(params *xrayutils.AuditBasicParams) (dependencyTrees []
 	dependencyTree, uniqueDeps := parseNpmDependenciesList(dependenciesList, packageInfo)
 	dependencyTrees = []*xrayUtils.GraphNode{dependencyTree}
 	return
+}
+
+func createTreeDepsParam(params *xrayutils.AuditBasicParams) biutils.NpmTreeDepListParam {
+	return biutils.NpmTreeDepListParam{
+		Args:                 addIgnoreScriptsFlag(params.Args()),
+		IgnoreNodeModules:    params.NpmIgnoreNodeModules(),
+		OverWritePackageLock: params.NpmOverwritePackageLock(),
+	}
 }
 
 // Add the --ignore-scripts to prevent execution of npm scripts during npm install.

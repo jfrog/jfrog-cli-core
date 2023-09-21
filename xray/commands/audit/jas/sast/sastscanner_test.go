@@ -81,36 +81,36 @@ func TestGroupResultsByLocation(t *testing.T) {
 		{
 			// No similar groups at all
 			run: utils.CreateRunWithDummyResults(
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "note"),
-				utils.CreateDummyResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
-				utils.CreateDummyResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other", 0, 0, 0, 0, "other-snippet"),
-						utils.CreateDummyLocation("file2", 1, 2, 3, 4, "snippet"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "note"),
+				utils.CreateResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other", 0, 0, 0, 0, "other-snippet"),
+						utils.CreateLocation("file2", 1, 2, 3, 4, "snippet"),
 					)),
 				}),
-				utils.CreateDummyResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule2", "info").WithCodeFlows([]*sarif.CodeFlow{
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet2"),
-						utils.CreateDummyLocation("file2", 1, 2, 3, 4, "snippet"),
+				utils.CreateResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule2", "info").WithCodeFlows([]*sarif.CodeFlow{
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other2", 1, 1, 1, 1, "other-snippet2"),
+						utils.CreateLocation("file2", 1, 2, 3, 4, "snippet"),
 					)),
 				}),
 			),
 			expectedOutput: utils.CreateRunWithDummyResults(
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "note"),
-				utils.CreateDummyResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
-				utils.CreateDummyResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other", 0, 0, 0, 0, "other-snippet"),
-						utils.CreateDummyLocation("file2", 1, 2, 3, 4, "snippet"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "note"),
+				utils.CreateResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other", 0, 0, 0, 0, "other-snippet"),
+						utils.CreateLocation("file2", 1, 2, 3, 4, "snippet"),
 					)),
 				}),
-				utils.CreateDummyResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule2", "info").WithCodeFlows([]*sarif.CodeFlow{
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet2"),
-						utils.CreateDummyLocation("file2", 1, 2, 3, 4, "snippet"),
+				utils.CreateResultWithOneLocation("file2", 1, 2, 3, 4, "snippet", "rule2", "info").WithCodeFlows([]*sarif.CodeFlow{
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other2", 1, 1, 1, 1, "other-snippet2"),
+						utils.CreateLocation("file2", 1, 2, 3, 4, "snippet"),
 					)),
 				}),
 			),
@@ -118,33 +118,33 @@ func TestGroupResultsByLocation(t *testing.T) {
 		{
 			// With similar groups
 			run: utils.CreateRunWithDummyResults(
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other", 0, 0, 0, 0, "other-snippet"),
-						utils.CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other", 0, 0, 0, 0, "other-snippet"),
+						utils.CreateLocation("file", 1, 2, 3, 4, "snippet"),
 					)),
 				}),
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet"),
-						utils.CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other2", 1, 1, 1, 1, "other-snippet"),
+						utils.CreateLocation("file", 1, 2, 3, 4, "snippet"),
 					)),
 				}),
-				utils.CreateDummyResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info"),
 			),
 			expectedOutput: utils.CreateRunWithDummyResults(
-				utils.CreateDummyResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other", 0, 0, 0, 0, "other-snippet"),
-						utils.CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
+				utils.CreateResultWithOneLocation("file", 1, 2, 3, 4, "snippet", "rule1", "info").WithCodeFlows([]*sarif.CodeFlow{
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other", 0, 0, 0, 0, "other-snippet"),
+						utils.CreateLocation("file", 1, 2, 3, 4, "snippet"),
 					)),
-					utils.CreateDummyCodeFlow(utils.CreateDummyThreadFlow(
-						utils.CreateDummyLocation("other2", 1, 1, 1, 1, "other-snippet"),
-						utils.CreateDummyLocation("file", 1, 2, 3, 4, "snippet"),
+					utils.CreateCodeFlow(utils.CreateThreadFlow(
+						utils.CreateLocation("other2", 1, 1, 1, 1, "other-snippet"),
+						utils.CreateLocation("file", 1, 2, 3, 4, "snippet"),
 					)),
 				}),
-				utils.CreateDummyResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file", 5, 6, 7, 8, "snippet", "rule1", "info"),
 			),
 		},
 	}

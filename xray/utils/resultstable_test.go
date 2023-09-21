@@ -440,7 +440,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 			scanResults: &ExtendedScanResults{
 				ApplicabilityScanResults: []*sarif.Run{
 					CreateRunWithDummyResults(
-						CreateDummyResultWithOneLocation("fileName1", 0, 1, 0, 0, "snippet1", "applic_testCve1", "info"),
+						CreateResultWithOneLocation("fileName1", 0, 1, 0, 0, "snippet1", "applic_testCve1", "info"),
 						CreateDummyPassingResult("applic_testCve2"),
 					),
 				},
@@ -455,7 +455,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run{
 					CreateRunWithDummyResults(
 						CreateDummyPassingResult("applic_testCve1"),
-						CreateDummyResultWithOneLocation("fileName2", 1, 0, 0, 0, "snippet2", "applic_testCve2", "warning"),
+						CreateResultWithOneLocation("fileName2", 1, 0, 0, 0, "snippet2", "applic_testCve2", "warning"),
 					),
 				},
 				EntitledForJas: true,
@@ -469,7 +469,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run{
 					CreateRunWithDummyResults(
 						CreateDummyPassingResult("applic_testCve1"),
-						CreateDummyResultWithOneLocation("fileName3", 0, 1, 0, 0, "snippet3", "applic_testCve2", "info"),
+						CreateResultWithOneLocation("fileName3", 0, 1, 0, 0, "snippet3", "applic_testCve2", "info"),
 					),
 				},
 				EntitledForJas: true,
@@ -497,7 +497,7 @@ func TestGetApplicableCveValue(t *testing.T) {
 				ApplicabilityScanResults: []*sarif.Run{
 					CreateRunWithDummyResults(
 						CreateDummyPassingResult("applic_testCve1"),
-						CreateDummyResultWithOneLocation("fileName4", 1, 0, 0, 0, "snippet", "applic_testCve2", "warning"),
+						CreateResultWithOneLocation("fileName4", 1, 0, 0, 0, "snippet", "applic_testCve2", "warning"),
 					),
 				},
 				EntitledForJas: true,
@@ -708,13 +708,13 @@ func TestShouldDisqualifyEvidence(t *testing.T) {
 
 func TestPrepareIac(t *testing.T) {
 	testCases := []struct {
-		name string
-		input []*sarif.Run
+		name           string
+		input          []*sarif.Run
 		expectedOutput []formats.SourceCodeRow
 	}{
 		{
-			name: "No Iac run",
-			input: []*sarif.Run{},
+			name:           "No Iac run",
+			input:          []*sarif.Run{},
 			expectedOutput: []formats.SourceCodeRow{},
 		},
 		{
@@ -731,16 +731,16 @@ func TestPrepareIac(t *testing.T) {
 			input: []*sarif.Run{
 				CreateRunWithDummyResults(),
 				CreateRunWithDummyResults(
-					CreateDummyResultWithLocations("iac finding", "rule1", "info",
-						CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
-						CreateDummyLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
+					CreateResultWithLocations("iac finding", "rule1", "info",
+						CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
 					),
 				).WithInvocations([]*sarif.Invocation{
 					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
 				}),
 				CreateRunWithDummyResults(
-					CreateDummyResultWithLocations("other iac finding", "rule2", "error",
-						CreateDummyLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
+					CreateResultWithLocations("other iac finding", "rule2", "error",
+						CreateLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
 					),
 				).WithInvocations([]*sarif.Invocation{
 					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
@@ -757,8 +757,8 @@ func TestPrepareIac(t *testing.T) {
 						File:        "file3",
 						StartLine:   1,
 						StartColumn: 2,
-						EndLine:  3,
-						EndColumn: 4,
+						EndLine:     3,
+						EndColumn:   4,
 						Snippet:     "snippet",
 					},
 				},
@@ -772,8 +772,8 @@ func TestPrepareIac(t *testing.T) {
 						File:        "file",
 						StartLine:   1,
 						StartColumn: 2,
-						EndLine:  3,
-						EndColumn: 4,
+						EndLine:     3,
+						EndColumn:   4,
 						Snippet:     "snippet",
 					},
 				},
@@ -787,8 +787,8 @@ func TestPrepareIac(t *testing.T) {
 						File:        "file2",
 						StartLine:   5,
 						StartColumn: 6,
-						EndLine:  7,
-						EndColumn: 8,
+						EndLine:     7,
+						EndColumn:   8,
 						Snippet:     "other-snippet",
 					},
 				},
@@ -805,13 +805,13 @@ func TestPrepareIac(t *testing.T) {
 
 func TestPrepareSecrets(t *testing.T) {
 	testCases := []struct {
-		name string
-		input []*sarif.Run
+		name           string
+		input          []*sarif.Run
 		expectedOutput []formats.SourceCodeRow
 	}{
 		{
-			name: "No Secret run",
-			input: []*sarif.Run{},
+			name:           "No Secret run",
+			input:          []*sarif.Run{},
 			expectedOutput: []formats.SourceCodeRow{},
 		},
 		{
@@ -828,16 +828,16 @@ func TestPrepareSecrets(t *testing.T) {
 			input: []*sarif.Run{
 				CreateRunWithDummyResults(),
 				CreateRunWithDummyResults(
-					CreateDummyResultWithLocations("secret finding", "rule1", "info",
-						CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "some-secret-snippet"),
-						CreateDummyLocation("file://wd/file2", 5, 6, 7, 8, "other-secret-snippet"),
+					CreateResultWithLocations("secret finding", "rule1", "info",
+						CreateLocation("file://wd/file", 1, 2, 3, 4, "some-secret-snippet"),
+						CreateLocation("file://wd/file2", 5, 6, 7, 8, "other-secret-snippet"),
 					),
 				).WithInvocations([]*sarif.Invocation{
 					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
 				}),
 				CreateRunWithDummyResults(
-					CreateDummyResultWithLocations("other secret finding", "rule2", "note",
-						CreateDummyLocation("file://wd2/file3", 1, 2, 3, 4, "some-secret-snippet"),
+					CreateResultWithLocations("other secret finding", "rule2", "note",
+						CreateLocation("file://wd2/file3", 1, 2, 3, 4, "some-secret-snippet"),
 					),
 				).WithInvocations([]*sarif.Invocation{
 					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
@@ -854,8 +854,8 @@ func TestPrepareSecrets(t *testing.T) {
 						File:        "file3",
 						StartLine:   1,
 						StartColumn: 2,
-						EndLine:  3,
-						EndColumn: 4,
+						EndLine:     3,
+						EndColumn:   4,
 						Snippet:     "some-secret-snippet",
 					},
 				},
@@ -869,8 +869,8 @@ func TestPrepareSecrets(t *testing.T) {
 						File:        "file",
 						StartLine:   1,
 						StartColumn: 2,
-						EndLine:  3,
-						EndColumn: 4,
+						EndLine:     3,
+						EndColumn:   4,
 						Snippet:     "some-secret-snippet",
 					},
 				},
@@ -884,8 +884,8 @@ func TestPrepareSecrets(t *testing.T) {
 						File:        "file2",
 						StartLine:   5,
 						StartColumn: 6,
-						EndLine:  7,
-						EndColumn: 8,
+						EndLine:     7,
+						EndColumn:   8,
 						Snippet:     "other-secret-snippet",
 					},
 				},
@@ -902,13 +902,13 @@ func TestPrepareSecrets(t *testing.T) {
 
 func TestPrepareSast(t *testing.T) {
 	testCases := []struct {
-		name string
-		input []*sarif.Run
+		name           string
+		input          []*sarif.Run
 		expectedOutput []formats.SourceCodeRow
 	}{
 		{
-			name: "No Sast run",
-			input: []*sarif.Run{},
+			name:           "No Sast run",
+			input:          []*sarif.Run{},
 			expectedOutput: []formats.SourceCodeRow{},
 		},
 		{
@@ -925,25 +925,25 @@ func TestPrepareSast(t *testing.T) {
 			input: []*sarif.Run{
 				CreateRunWithDummyResults(),
 				CreateRunWithDummyResults(
-					CreateDummyResultWithLocations("sast finding", "rule1", "info",
-						CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
-						CreateDummyLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
+					CreateResultWithLocations("sast finding", "rule1", "info",
+						CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
 					).WithCodeFlows([]*sarif.CodeFlow{
-						CreateDummyCodeFlow(CreateDummyThreadFlow(
-							CreateDummyLocation("file://wd/file2", 0, 2, 0, 2, "snippetA"),
-							CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateCodeFlow(CreateThreadFlow(
+							CreateLocation("file://wd/file2", 0, 2, 0, 2, "snippetA"),
+							CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
 						)),
-						CreateDummyCodeFlow(CreateDummyThreadFlow(
-							CreateDummyLocation("file://wd/file4", 1, 0, 1, 8, "snippetB"),
-							CreateDummyLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateCodeFlow(CreateThreadFlow(
+							CreateLocation("file://wd/file4", 1, 0, 1, 8, "snippetB"),
+							CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
 						)),
 					}),
 				).WithInvocations([]*sarif.Invocation{
 					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
 				}),
 				CreateRunWithDummyResults(
-					CreateDummyResultWithLocations("other sast finding", "rule2", "error",
-						CreateDummyLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
+					CreateResultWithLocations("other sast finding", "rule2", "error",
+						CreateLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
 					),
 				).WithInvocations([]*sarif.Invocation{
 					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
@@ -960,8 +960,8 @@ func TestPrepareSast(t *testing.T) {
 						File:        "file3",
 						StartLine:   1,
 						StartColumn: 2,
-						EndLine:  3,
-						EndColumn: 4,
+						EndLine:     3,
+						EndColumn:   4,
 						Snippet:     "snippet",
 					},
 				},
@@ -975,8 +975,8 @@ func TestPrepareSast(t *testing.T) {
 						File:        "file",
 						StartLine:   1,
 						StartColumn: 2,
-						EndLine:  3,
-						EndColumn: 4,
+						EndLine:     3,
+						EndColumn:   4,
 						Snippet:     "snippet",
 					},
 					CodeFlow: [][]formats.Location{
@@ -985,16 +985,16 @@ func TestPrepareSast(t *testing.T) {
 								File:        "file2",
 								StartLine:   0,
 								StartColumn: 2,
-								EndLine:  0,
-								EndColumn: 2,
+								EndLine:     0,
+								EndColumn:   2,
 								Snippet:     "snippetA",
 							},
 							{
 								File:        "file",
 								StartLine:   1,
 								StartColumn: 2,
-								EndLine:  3,
-								EndColumn: 4,
+								EndLine:     3,
+								EndColumn:   4,
 								Snippet:     "snippet",
 							},
 						},
@@ -1003,16 +1003,16 @@ func TestPrepareSast(t *testing.T) {
 								File:        "file4",
 								StartLine:   1,
 								StartColumn: 0,
-								EndLine:  1,
-								EndColumn: 8,
+								EndLine:     1,
+								EndColumn:   8,
 								Snippet:     "snippetB",
 							},
 							{
 								File:        "file",
 								StartLine:   1,
 								StartColumn: 2,
-								EndLine:  3,
-								EndColumn: 4,
+								EndLine:     3,
+								EndColumn:   4,
 								Snippet:     "snippet",
 							},
 						},
@@ -1028,8 +1028,8 @@ func TestPrepareSast(t *testing.T) {
 						File:        "file2",
 						StartLine:   5,
 						StartColumn: 6,
-						EndLine:  7,
-						EndColumn: 8,
+						EndLine:     7,
+						EndColumn:   8,
 						Snippet:     "other-snippet",
 					},
 				},

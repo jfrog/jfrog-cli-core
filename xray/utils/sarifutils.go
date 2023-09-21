@@ -271,7 +271,7 @@ func CreateRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
 	return run
 }
 
-func CreateDummyResultWithLocations(msg, ruleId, level string, locations ...*sarif.Location) *sarif.Result {
+func CreateResultWithLocations(msg, ruleId, level string, locations ...*sarif.Location) *sarif.Result {
 	return &sarif.Result{
 		Message:   *sarif.NewTextMessage(msg),
 		Locations: locations,
@@ -280,7 +280,7 @@ func CreateDummyResultWithLocations(msg, ruleId, level string, locations ...*sar
 	}
 }
 
-func CreateDummyLocation(fileName string, startLine, startCol, endLine, endCol int, snippet string) *sarif.Location {
+func CreateLocation(fileName string, startLine, startCol, endLine, endCol int, snippet string) *sarif.Location {
 	return &sarif.Location{
 		PhysicalLocation: &sarif.PhysicalLocation{
 			ArtifactLocation: &sarif.ArtifactLocation{URI: &fileName},
@@ -301,15 +301,11 @@ func CreateDummyPassingResult(ruleId string) *sarif.Result {
 	}
 }
 
-func CreateDummyResultWithOneLocation(fileName string, startLine, startCol, endLine, endCol int, snippet, ruleId, level string) *sarif.Result {
-	return &sarif.Result{
-		Locations: []*sarif.Location{CreateDummyLocation(fileName, startLine, startCol, endLine, endCol, snippet)},
-		Level:     &level,
-		RuleID:    &ruleId,
-	}
+func CreateResultWithOneLocation(fileName string, startLine, startCol, endLine, endCol int, snippet, ruleId, level string) *sarif.Result {
+	return CreateResultWithLocations("", ruleId, level, CreateLocation(fileName, startLine, startCol, endLine, endCol, snippet))
 }
 
-func CreateDummyCodeFlow(threadFlows ...*sarif.ThreadFlow) *sarif.CodeFlow {
+func CreateCodeFlow(threadFlows ...*sarif.ThreadFlow) *sarif.CodeFlow {
 	flow := sarif.NewCodeFlow()
 	for _, threadFlow := range threadFlows {
 		flow.AddThreadFlow(threadFlow)
@@ -317,7 +313,7 @@ func CreateDummyCodeFlow(threadFlows ...*sarif.ThreadFlow) *sarif.CodeFlow {
 	return flow
 }
 
-func CreateDummyThreadFlow(locations ...*sarif.Location) *sarif.ThreadFlow {
+func CreateThreadFlow(locations ...*sarif.Location) *sarif.ThreadFlow {
 	stackStrace := sarif.NewThreadFlow()
 	for _, location := range locations {
 		stackStrace.AddLocation(sarif.NewThreadFlowLocation().WithLocation(location))

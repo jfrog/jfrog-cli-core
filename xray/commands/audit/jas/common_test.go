@@ -16,27 +16,27 @@ func TestExcludeSuppressResults(t *testing.T) {
 	}{
 		{
 			sarifResults: []*sarif.Result{
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1"),
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1"),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
 			},
 			expectedOutput: []*sarif.Result{
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1"),
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1"),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
 			},
 		},
 		{
 			sarifResults: []*sarif.Result{
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1").WithSuppression([]*sarif.Suppression{sarif.NewSuppression("")}),
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1").WithSuppression([]*sarif.Suppression{sarif.NewSuppression("")}),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
 			},
 			expectedOutput: []*sarif.Result{
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2"),
 			},
 		},
 		{
 			sarifResults: []*sarif.Result{
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1").WithSuppression([]*sarif.Suppression{sarif.NewSuppression("")}),
-				utils.CreateDummyResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2").WithSuppression([]*sarif.Suppression{sarif.NewSuppression("")}),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet1", "ruleId1", "level1").WithSuppression([]*sarif.Suppression{sarif.NewSuppression("")}),
+				utils.CreateResultWithOneLocation("", 0, 0, 0, 0, "snippet2", "ruleId2", "level2").WithSuppression([]*sarif.Suppression{sarif.NewSuppression("")}),
 			},
 			expectedOutput: []*sarif.Result{},
 		},
@@ -56,9 +56,9 @@ func TestAddScoreToRunRules(t *testing.T) {
 	}{
 		{
 			sarifRun: utils.CreateRunWithDummyResults(
-				utils.CreateDummyResultWithOneLocation("file1", 0, 0, 0, 0, "snippet", "rule1", "info"),
-				utils.CreateDummyResultWithOneLocation("file2", 0, 0, 0, 0, "snippet", "rule1", "info"),
-				utils.CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule2", "warning"),
+				utils.CreateResultWithOneLocation("file1", 0, 0, 0, 0, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file2", 0, 0, 0, 0, "snippet", "rule1", "info"),
+				utils.CreateResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule2", "warning"),
 			),
 			expectedOutput: []*sarif.ReportingDescriptor{
 				sarif.NewRule("rule1").WithProperties(sarif.Properties{"security-severity": "6.9"}),
@@ -67,11 +67,11 @@ func TestAddScoreToRunRules(t *testing.T) {
 		},
 		{
 			sarifRun: utils.CreateRunWithDummyResults(
-				utils.CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule1", "none"),
-				utils.CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule2", "note"),
-				utils.CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule3", "info"),
-				utils.CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule4", "warning"),
-				utils.CreateDummyResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule5", "error"),
+				utils.CreateResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule1", "none"),
+				utils.CreateResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule2", "note"),
+				utils.CreateResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule3", "info"),
+				utils.CreateResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule4", "warning"),
+				utils.CreateResultWithOneLocation("file", 0, 0, 0, 0, "snippet", "rule5", "error"),
 			),
 			expectedOutput: []*sarif.ReportingDescriptor{
 				sarif.NewRule("rule1").WithProperties(sarif.Properties{"security-severity": "0.0"}),

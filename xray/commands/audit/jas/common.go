@@ -21,10 +21,11 @@ import (
 
 const (
 	NodeModulesPattern = "**/*node_modules*/**"
+	VirtualEnvPattern  = "**/*venv*/**"
 )
 
 var (
-	SkippedDirs = []string{"**/*test*/**", "**/*venv*/**", NodeModulesPattern, "**/*target*/**"}
+	SkippedDirs = []string{"**/*test*/**", VirtualEnvPattern, NodeModulesPattern, "**/*target*/**"}
 
 	mapSeverityToScore = map[string]string{
 		"":         "0.0",

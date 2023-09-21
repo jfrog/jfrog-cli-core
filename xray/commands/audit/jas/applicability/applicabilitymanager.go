@@ -1,6 +1,7 @@
 package applicability
 
 import (
+	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"path/filepath"
 
@@ -27,7 +28,7 @@ type ApplicabilityScanManager struct {
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
 	thirdPartyScan           bool
-	extraRoot                string
+	techs                    []coreutils.Technology
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -41,14 +42,10 @@ type ApplicabilityScanManager struct {
 // error: An error object (if any).
 func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
 	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (results []*sarif.Run, err error) {
-	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, thirdPartyContextualAnalysis)
+	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, scannedTechnologies, thirdPartyContextualAnalysis)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return
-	}
-
-	for _, wd := range pythonutils.GetPythonTechs(techToStringArray(scannedTechnologies)) {
-		applicabilityScanManager.scanner.WorkingDirs = append(applicabilityScanManager.scanner.WorkingDirs, wd)
 	}
 
 	if err = applicabilityScanManager.scanner.Run(applicabilityScanManager); err != nil {
@@ -59,7 +56,7 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, technologies []coreutils.Technology, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
@@ -67,6 +64,7 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
 		thirdPartyScan:           thirdPartyScan,
+		techs:                    technologies,
 	}
 }
 
@@ -149,11 +147,6 @@ type scanConfiguration struct {
 }
 
 func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
-	skipDirs := jas.SkippedDirs
-	if asm.thirdPartyScan {
-		log.Info("Including node modules folder in applicability scan")
-		skipDirs = removeElementFromSlice(skipDirs, jas.NodeModulesPattern)
-	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
@@ -162,7 +155,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
 				CveWhitelist: asm.directDependenciesCves,
-				SkippedDirs:  skipDirs,
+				SkippedDirs:  asm.getSkipDirsAndAppendWdIfNeeded(),
 			},
 		},
 	}
@@ -175,17 +168,34 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
 }
 
+// When thirdPartyScan is enabled we need to remove ignore patterns based on technologies
+// and add extra working dir paths to be scanned.
+func (asm *ApplicabilityScanManager) getSkipDirsAndAppendWdIfNeeded() (skipDirs []string) {
+	if !asm.thirdPartyScan {
+		return jas.SkippedDirs
+	}
+	for _, tech := range asm.techs {
+		switch tech {
+		case coreutils.Npm:
+			skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.NodeModulesPattern)
+		case coreutils.Pip, coreutils.Poetry, coreutils.Pipenv:
+			skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.VirtualEnvPattern)
+			extraPythonRoot, pythonErr := pythonutils.GetPythonEnvRoot(tech.String())
+			if pythonErr != nil {
+				log.Warn(fmt.Sprintf("failed trying to get %s env folder path, error: %s ", tech.ToFormal(), pythonErr.Error()))
+				continue
+			}
+			asm.scanner.WorkingDirs = append(asm.scanner.WorkingDirs, extraPythonRoot)
+			log.Debug(fmt.Sprintf("including %s env folder in applicability scan. path : %s", tech.ToFormal(), extraPythonRoot))
+		}
+	}
+	return
+}
+
 func removeElementFromSlice(skipDirs []string, element string) []string {
 	deleteIndex := slices.Index(skipDirs, element)
 	if deleteIndex == -1 {
 		return skipDirs
 	}
 	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
-}
-
-func techToStringArray(technologies []coreutils.Technology) (stringArr []string) {
-	for _, tech := range technologies {
-		stringArr = append(stringArr, tech.String())
-	}
-	return
 }

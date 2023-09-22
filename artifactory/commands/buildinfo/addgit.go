@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	GitLogLimit               = 100
+	GitLogLimit               = 1000
 	ConfigIssuesPrefix        = "issues."
 	ConfigParseValueError     = "Failed parsing %s from configuration file: %s"
 	MissingConfigurationError = "Configuration file must contain: %s"
@@ -179,30 +179,19 @@ func (config *BuildAddGitCommand) collectBuildIssues(vcsUrl string) ([]buildinfo
 		return nil, err
 	}
 
-	// Get latest build's VCS revision from Artifactory.
-	lastVcsRevision, err := config.getLatestVcsRevision(vcsUrl)
-	if err != nil {
-		return nil, err
-	}
-
 	// Run issues collection.
-	return config.DoCollect(config.issuesConfig, lastVcsRevision)
+	return config.DoCollect(config.issuesConfig)
 }
 
-func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, lastVcsRevision string) ([]buildinfo.AffectedIssue, error) {
+func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration) ([]buildinfo.AffectedIssue, error) {
 	var foundIssues []buildinfo.AffectedIssue
 	logRegExp, err := createLogRegExpHandler(issuesConfig, &foundIssues)
 	if err != nil {
 		return nil, err
 	}
 
-	errRegExp, err := createErrRegExpHandler(lastVcsRevision)
-	if err != nil {
-		return nil, err
-	}
-
 	// Get log with limit, starting from the latest commit.
-	logCmd := &LogCmd{logLimit: issuesConfig.LogLimit, lastVcsRevision: lastVcsRevision}
+	logCmd := &LogCmd{logLimit: issuesConfig.LogLimit}
 
 	// Change working dir to where .git is.
 	wd, err := os.Getwd()
@@ -221,7 +210,7 @@ func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, l
 	}
 
 	// Run git command.
-	_, _, exitOk, err := gofrogcmd.RunCmdWithOutputParser(logCmd, false, logRegExp, errRegExp)
+	_, _, exitOk, err := gofrogcmd.RunCmdWithOutputParser(logCmd, false, logRegExp)
 	if err != nil {
 		if _, ok := err.(RevisionRangeError); ok {
 			// Revision not found in range. Ignore and don't collect new issues.
@@ -277,26 +266,6 @@ type RevisionRangeError struct {
 
 func (err RevisionRangeError) Error() string {
 	return err.ErrorMsg
-}
-
-// Creates a regexp handler to handle the event of revision missing in the git revision range.
-func createErrRegExpHandler(lastVcsRevision string) (*gofrogcmd.CmdOutputPattern, error) {
-	// Create regex pattern.
-	invalidRangeExp, err := clientutils.GetRegExp(`fatal: Invalid revision range [a-fA-F0-9]+\.\.`)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create handler with exec function.
-	errRegExp := gofrogcmd.CmdOutputPattern{
-		RegExp: invalidRangeExp,
-		ExecFunc: func(pattern *gofrogcmd.CmdOutputPattern) (string, error) {
-			// Revision could not be found in the revision range, probably due to a squash / revert. Ignore and don't collect new issues.
-			errMsg := "Revision: '" + lastVcsRevision + "' that was fetched from latest build info does not exist in the git revision range. No new issues are added."
-			return "", RevisionRangeError{ErrorMsg: errMsg}
-		},
-	}
-	return &errRegExp, nil
 }
 
 func (config *BuildAddGitCommand) createIssuesConfigs() (err error) {

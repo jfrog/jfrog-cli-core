@@ -1,11 +1,14 @@
 package applicability
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
-	"path/filepath"
-
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -58,7 +61,7 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, technologies []coreutils.Technology, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
-	return &ApplicabilityScanManager{
+	applicabilityManager := &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
 		directDependenciesCves:   directDependenciesCves,
 		xrayResults:              xrayScanResults,
@@ -66,6 +69,10 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 		thirdPartyScan:           thirdPartyScan,
 		techs:                    technologies,
 	}
+	if thirdPartyScan && slices.Contains(technologies, coreutils.Pip) {
+		appendPipEnvToScanWorkingDir(applicabilityManager)
+	}
+	return applicabilityManager
 }
 
 // This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
@@ -178,15 +185,8 @@ func (asm *ApplicabilityScanManager) getSkipDirsAndAppendWdIfNeeded() (skipDirs 
 		switch tech {
 		case coreutils.Npm:
 			skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.NodeModulesPattern)
-		case coreutils.Pip, coreutils.Poetry, coreutils.Pipenv:
+		case coreutils.Pip:
 			skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.VirtualEnvPattern)
-			extraPythonRoot, pythonErr := pythonutils.GetPythonEnvRoot(tech.String())
-			if pythonErr != nil {
-				log.Warn(fmt.Sprintf("failed trying to get %s env folder path, error: %s ", tech.ToFormal(), pythonErr.Error()))
-				continue
-			}
-			asm.scanner.WorkingDirs = append(asm.scanner.WorkingDirs, extraPythonRoot)
-			log.Debug(fmt.Sprintf("including %s env folder in applicability scan. path : %s", tech.ToFormal(), extraPythonRoot))
 		}
 	}
 	return
@@ -198,4 +198,34 @@ func removeElementFromSlice(skipDirs []string, element string) []string {
 		return skipDirs
 	}
 	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
+}
+
+func appendPipEnvToScanWorkingDir(applicabilityManager *ApplicabilityScanManager) {
+	extraPythonRoot, pythonErr := getPipRoot()
+	if pythonErr != nil {
+		log.Warn(fmt.Sprintf("failed trying to get pip env folder path, error:%s ", pythonErr.Error()))
+		return
+	}
+	applicabilityManager.scanner.WorkingDirs = append(applicabilityManager.scanner.WorkingDirs, extraPythonRoot)
+}
+
+func getPipRoot() (path string, err error) {
+	pythonExe, _ := pythonutils.GetPython3Executable()
+	command := exec.Command(pythonExe, "-m", "pip", "-V")
+	outBuffer := bytes.NewBuffer([]byte{})
+	command.Stdout = outBuffer
+	if err = command.Run(); err != nil {
+		return
+	}
+	// Define a regular expression to match the path based on the returned output.
+	re := regexp.MustCompile(`from (.+) \(python`)
+	output := outBuffer.String()
+	match := re.FindStringSubmatch(output)
+	if len(match) >= 2 {
+		// Scan the parent of the result dir.
+		path = strings.TrimSuffix(match[1], "/pip")
+	} else {
+		err = fmt.Errorf("failed to get pip env root folder, pip -V outout : %s", output)
+	}
+	return
 }

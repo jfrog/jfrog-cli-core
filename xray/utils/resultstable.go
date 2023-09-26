@@ -28,6 +28,7 @@ const (
 	directDependencyIndex      = 1
 	directDependencyPathLength = 2
 	nodeModules                = "node_modules"
+	pipEnvFolder               = "site-packages"
 	NpmPackageTypeIdentifier   = "npm://"
 )
 
@@ -973,13 +974,12 @@ func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sa
 		}
 		// Add new evidences from locations
 		for _, location := range result.Locations {
-			fileName := GetRelativeLocationFileName(location, applicabilityRun.Invocations)
-			if shouldDisqualifyEvidence(components, fileName) {
+			if shouldDisqualifyEvidence(components, location) {
 				continue
 			}
 			applicability.Evidence = append(applicability.Evidence, formats.Evidence{
 				Location: formats.Location{
-					File:        fileName,
+					File:        GetRelativeLocationFileName(location, applicabilityRun.Invocations),
 					StartLine:   GetLocationStartLine(location),
 					StartColumn: GetLocationStartColumn(location),
 					EndLine:     GetLocationEndLine(location),
@@ -1024,26 +1024,45 @@ func printApplicabilityCveValue(applicabilityStatus ApplicabilityStatus, isTable
 //
 // filePath = myProject/node_modules/mpath/badCode.js  , disqualify = False.
 // Found use of a badCode inside the node_modules from a different package, report applicable.
-func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath string) (disqualify bool) {
+func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath *sarif.Location) (disqualify bool) {
+	// TODO npe check here
+	fullPath := *evidenceFilePath.PhysicalLocation.ArtifactLocation.URI
 	for key := range components {
-		if !strings.HasPrefix(key, NpmPackageTypeIdentifier) {
-			return
+		dependencyName, envLocationPath, supported := parseComponent(key)
+		if !supported {
+			continue
 		}
-		dependencyName := extractDependencyNameFromComponent(key, NpmPackageTypeIdentifier)
-		// Check both Unix & Windows paths.
-		if strings.Contains(evidenceFilePath, nodeModules+"/"+dependencyName) || strings.Contains(evidenceFilePath, filepath.Join(nodeModules, dependencyName)) {
-			return true
+		if disqualify = checkIfSelfNested(fullPath, dependencyName, envLocationPath); disqualify {
+			return
 		}
 	}
 	return
 }
 
-func extractDependencyNameFromComponent(key string, techIdentifier string) (dependencyName string) {
-	packageAndVersion := strings.TrimPrefix(key, techIdentifier)
-	split := strings.Split(packageAndVersion, ":")
-	if len(split) < 2 {
+func parseComponent(key string) (dependencyName string, envLocationPath string, supported bool) {
+	split := strings.Split(key, "://")
+	if len(split) < 1 {
 		return
 	}
-	dependencyName = split[0]
-	return
+	tech := split[0]
+	switch tech {
+	case "npm":
+		envLocationPath = nodeModules
+	case "pypi":
+		envLocationPath = pipEnvFolder
+	default:
+		// Not supported tech
+		return
+	}
+	// Split name and version.
+	dependencyName = strings.Split(split[1], ":")[0]
+	return dependencyName, envLocationPath, true
+}
+
+func checkIfSelfNested(evidenceFilePath, dependencyName, envLocationPath string) bool {
+	// Check both Unix & Windows paths.
+	if strings.Contains(evidenceFilePath, filepath.Join(envLocationPath, dependencyName)) {
+		return true
+	}
+	return false
 }

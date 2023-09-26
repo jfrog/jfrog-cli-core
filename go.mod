@@ -93,5 +93,3 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
-
-replace github.com/jfrog/build-info-go => github.com/eyaldelarea/build-info-go v0.0.0-20230926111013-3672e8264549

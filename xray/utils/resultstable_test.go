@@ -697,11 +697,30 @@ func TestShouldDisqualifyEvidence(t *testing.T) {
 			component:  map[string]services.Component{"yarn://protobufjs:6.11.2": {}},
 			filePath:   "file:///Users/jfrog/test/node_modules/protobufjs/src/badCode.js",
 			disqualify: false,
+		}, {
+			// pip
+			name:       "pip disqualify",
+			component:  map[string]services.Component{"pypi://badPackage:6.11.2": {}},
+			filePath:   "/opt/homebrew/lib/python3.11/site-packages/badPackage/badCode.js",
+			disqualify: true,
+		}, {
+			// pip
+			name:       "pip approve",
+			component:  map[string]services.Component{"pypi://badPackage:6.11.2": {}},
+			filePath:   "/opt/homebrew/lib/python3.11/site-packages/otherPackage/badCode.js",
+			disqualify: false,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.disqualify, shouldDisqualifyEvidence(tc.component, tc.filePath))
+			locationObject := &sarif.Location{
+				PhysicalLocation: &sarif.PhysicalLocation{
+					ArtifactLocation: &sarif.ArtifactLocation{
+						URI: &tc.filePath,
+					},
+				},
+			}
+			assert.Equal(t, tc.disqualify, shouldDisqualifyEvidence(tc.component, locationObject))
 		})
 	}
 }

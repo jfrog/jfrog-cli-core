@@ -280,7 +280,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0], applicabilityDocsUrlSuffix)
 
 	if assert.NoError(t, err) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
@@ -297,7 +297,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0], applicabilityDocsUrlSuffix)
 
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
@@ -314,7 +314,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0], applicabilityDocsUrlSuffix)
 
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)

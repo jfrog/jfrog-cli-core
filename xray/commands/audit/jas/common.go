@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode"
 
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -103,7 +104,7 @@ func deleteJasProcessFiles(configFile string, resultFile string) error {
 	return errorutils.CheckError(err)
 }
 
-func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err error) {
+func ReadJasScanRunsFromFile(fileName, wd, informationUrlSuffix string) (sarifRuns []*sarif.Run, err error) {
 	if sarifRuns, err = utils.ReadScanRunsFromFile(fileName); err != nil {
 		return
 	}
@@ -113,10 +114,29 @@ func ReadJasScanRunsFromFile(fileName, wd string) (sarifRuns []*sarif.Run, err e
 		// Also used to calculate relative paths if needed with it
 		sarifRun.Invocations[0].WorkingDirectory.WithUri(wd)
 		// Process runs values
+		fillMissingRequiredDriverInformation(utils.BaseDocumentationURL+informationUrlSuffix, utils.GetAnalyzerManagerVersion(), sarifRun)
 		sarifRun.Results = excludeSuppressResults(sarifRun.Results)
 		addScoreToRunRules(sarifRun)
 	}
 	return
+}
+
+func fillMissingRequiredDriverInformation(defaultJasInformationUri, defaultVersion string, run *sarif.Run) {
+	driver := run.Tool.Driver
+	if driver.InformationURI == nil {
+		driver.InformationURI = &defaultJasInformationUri
+	}
+	if driver.Version == nil || !isValidVersion(*driver.Version) {
+		driver.Version = &defaultVersion
+	}
+}
+
+func isValidVersion(version string) bool {
+	if len(version) == 0 {
+		return false
+	}
+	firstChar := rune(version[0])
+	return unicode.IsDigit(firstChar)
 }
 
 func excludeSuppressResults(sarifResults []*sarif.Result) []*sarif.Result {

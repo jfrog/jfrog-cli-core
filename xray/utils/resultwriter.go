@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -12,9 +15,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
-	"strconv"
-	"strings"
-	"unicode"
 )
 
 type OutputFormat string
@@ -25,6 +25,8 @@ const (
 	Json       OutputFormat = "json"
 	SimpleJson OutputFormat = "simple-json"
 	Sarif      OutputFormat = "sarif"
+
+	BaseDocumentationURL = "https://docs.jfrog-applications.jfrog.io/jfrog-security-features/"
 )
 
 const MissingCveScore = "0"
@@ -125,10 +127,10 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	}
 
 	report.Runs = append(report.Runs, xrayRun)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/contextual-analysis", extendedResults.ApplicabilityScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/infrastructure-as-code-iac", extendedResults.IacScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/secrets", extendedResults.SecretsScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/sast", extendedResults.SastScanResults)...)
+	report.Runs = append(report.Runs, extendedResults.ApplicabilityScanResults...)
+	report.Runs = append(report.Runs, extendedResults.IacScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
 
 	out, err := json.Marshal(report)
 	if err != nil {
@@ -138,34 +140,12 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	return clientUtils.IndentJson(out), nil
 }
 
-func fillMissingRequiredInformationForJas(defaultJasInformationUri string, runs []*sarif.Run) []*sarif.Run {
-	defaultVersion := GetAnalyzerManagerVersion()
-	for _, run := range runs {
-		driver := run.Tool.Driver
-		if driver.InformationURI == nil {
-			driver.InformationURI = &defaultJasInformationUri
-		}
-		if driver.Version == nil || !isValidVersion(*driver.Version) {
-			driver.Version = &defaultVersion
-		}
-	}
-	return runs
-}
-
-func isValidVersion(version string) bool {
-	if len(version) == 0 {
-		return false
-	}
-	firstChar := rune(version[0])
-	return unicode.IsDigit(firstChar)
-}
-
 func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {
 	xrayJson, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, true)
 	if err != nil {
 		return
 	}
-	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", "https://docs.jfrog-applications.jfrog.io/jfrog-security-features/sca")
+	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", BaseDocumentationURL+"sca")
 	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
 	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
 		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {

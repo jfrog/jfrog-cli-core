@@ -65,7 +65,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], secretsDocsUrlSuffix)
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, secretScanManager.secretsScannerResults) {
@@ -88,7 +88,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], secretsDocsUrlSuffix)
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, secretScanManager.secretsScannerResults) {

@@ -302,22 +302,22 @@ func TestGetFullLocationFileName(t *testing.T) {
 		expectedOutput string
 	}{
 		{
-			file:           path.Join("root","someDir","another","file"),
+			file:           path.Join("root", "someDir", "another", "file"),
 			invocations:    []*sarif.Invocation{},
-			expectedOutput: path.Join("root","someDir","another","file"),
+			expectedOutput: path.Join("root", "someDir", "another", "file"),
 		},
 		{
-			file: path.Join("another","file"),
+			file: path.Join("another", "file"),
 			invocations: []*sarif.Invocation{
-				{WorkingDirectory: sarif.NewSimpleArtifactLocation(path.Join("root","someDir"))},
-				{WorkingDirectory: sarif.NewSimpleArtifactLocation(path.Join("not","relevant"))},
+				{WorkingDirectory: sarif.NewSimpleArtifactLocation(path.Join("root", "someDir"))},
+				{WorkingDirectory: sarif.NewSimpleArtifactLocation(path.Join("not", "relevant"))},
 			},
-			expectedOutput: path.Join("root","someDir","another","file"),
+			expectedOutput: path.Join("root", "someDir", "another", "file"),
 		},
 		{
 			file:           "another/file",
-			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation(path.Join("root","someDir"))}},
-			expectedOutput: path.Join("root","someDir","another","file"),
+			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation(path.Join("root", "someDir"))}},
+			expectedOutput: path.Join("root", "someDir", "another", "file"),
 		},
 	}
 

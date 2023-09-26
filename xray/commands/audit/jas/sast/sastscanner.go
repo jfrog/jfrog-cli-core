@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	sastScanCommand = "zd"
+	sastScanCommand   = "zd"
+	sastDocsUrlSuffix = "sast"
 )
 
 type SastScanManager struct {
@@ -45,7 +46,7 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	if err = ssm.runAnalyzerManager(wd); err != nil {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd, sastDocsUrlSuffix)
 	if err != nil {
 		return
 	}

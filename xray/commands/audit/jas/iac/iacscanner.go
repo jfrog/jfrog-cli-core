@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	iacScannerType = "iac-scan-modules"
-	iacScanCommand = "iac"
+	iacScannerType   = "iac-scan-modules"
+	iacScanCommand   = "iac"
+	iacDocsUrlSuffix = "infrastructure-as-code-iac"
 )
 
 type IacScanManager struct {
@@ -56,7 +57,7 @@ func (iac *IacScanManager) Run(wd string) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd, iacDocsUrlSuffix)
 	if err != nil {
 		return
 	}

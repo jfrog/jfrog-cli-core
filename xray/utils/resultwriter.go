@@ -128,10 +128,10 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	}
 
 	report.Runs = append(report.Runs, xrayRun)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/xray/contextual-vulnerabilities/", extendedResults.ApplicabilityScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/xray/iac-security-check/", extendedResults.IacScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/xray/secrets-detection-source-binaries/", extendedResults.SecretsScanResults)...)
-	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://jfrog.com/sast/", extendedResults.SastScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/contextual-analysis", extendedResults.ApplicabilityScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/infrastructure-as-code-iac", extendedResults.IacScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/secrets", extendedResults.SecretsScanResults)...)
+	report.Runs = append(report.Runs, fillMissingRequiredInformationForJas("https://docs.jfrog-applications.jfrog.io/jfrog-security-features/sast", extendedResults.SastScanResults)...)
 
 	out, err := json.Marshal(report)
 	if err != nil {
@@ -168,7 +168,7 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 	if err != nil {
 		return
 	}
-	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", "https://jfrog.com/xray/")
+	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", "https://docs.jfrog-applications.jfrog.io/jfrog-security-features/sca")
 	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
 	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
 		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {

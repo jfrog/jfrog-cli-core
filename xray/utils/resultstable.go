@@ -1034,7 +1034,7 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 		if !supported {
 			continue
 		}
-		if disqualify = checkIfSelfNested(*fullPath, dependencyName, envLocationPath); disqualify {
+		if disqualify = strings.Contains(*fullPath, filepath.Join(envLocationPath, dependencyName)); disqualify {
 			return
 		}
 	}
@@ -1059,12 +1059,4 @@ func parseComponent(key string) (dependencyName string, envLocationPath string, 
 	// Split name and version.
 	dependencyName = strings.Split(split[1], ":")[0]
 	return dependencyName, envLocationPath, true
-}
-
-func checkIfSelfNested(evidenceFilePath, dependencyName, envLocationPath string) bool {
-	// Check both Unix & Windows paths.
-	if strings.Contains(evidenceFilePath, filepath.Join(envLocationPath, dependencyName)) {
-		return true
-	}
-	return false
 }

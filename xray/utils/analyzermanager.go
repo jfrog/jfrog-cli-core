@@ -39,7 +39,7 @@ const (
 	unsupportedOsExitCode                     = 55
 	ErrFailedScannerRun                       = "failed to run %s scan. Exit code received: %s"
 	jfrogCliAnalyzerManagerVersionEnvVariable = "JFROG_CLI_ANALYZER_MANAGER_VERSION"
-	// Xsc scan ID that links to GitInfoContext object to graph scans.
+	// Xsc scan ID that links GitInfoContext object to graph scans.
 	jfXscMultiScanID = "JF_MSI"
 )
 

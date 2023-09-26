@@ -294,6 +294,37 @@ func TestGetRelativeLocationFileName(t *testing.T) {
 	}
 }
 
+func TestGetFullLocationFileName(t *testing.T) {
+	tests := []struct {
+		file           string
+		invocations    []*sarif.Invocation
+		expectedOutput string
+	}{
+		{
+			file:           "root/someDir/another/file",
+			invocations:    []*sarif.Invocation{},
+			expectedOutput: "root/someDir/another/file",
+		},
+		{
+			file: "/another/file",
+			invocations: []*sarif.Invocation{
+				{WorkingDirectory: sarif.NewSimpleArtifactLocation("/root/someDir/")},
+				{WorkingDirectory: sarif.NewSimpleArtifactLocation("/not/relevant")},
+			},
+			expectedOutput: "/root/someDir/another/file",
+		},
+		{
+			file:           "another/file",
+			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation("/root/someDir")}},
+			expectedOutput: "/root/someDir/another/file",
+		},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetFullLocationFileName(test.file, test.invocations))
+	}
+}
+
 func TestSetLocationFileName(t *testing.T) {
 	tests := []struct {
 		location       *sarif.Location

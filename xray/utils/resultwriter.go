@@ -98,9 +98,6 @@ func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeV
 	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
 		return
 	}
-	if !IsSastSupported() {
-		return
-	}
 	return PrintSastTable(results.SastScanResults, results.EntitledForJas)
 }
 

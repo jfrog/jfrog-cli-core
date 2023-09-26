@@ -94,4 +94,4 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/build-info-go => ../build-info-go
+replace github.com/jfrog/build-info-go => github.com/eyaldelarea/build-info-go v0.0.0-20230926111013-3672e8264549

@@ -1,6 +1,8 @@
 package sast
 
 import (
+	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -47,7 +49,8 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	if err != nil {
 		return
 	}
-	ssm.sastScannerResults = append(ssm.sastScannerResults, groupResultsByLocation(workingDirRuns)...)
+	groupResultsByLocation(workingDirRuns)
+	ssm.sastScannerResults = append(ssm.sastScannerResults, workingDirRuns...)
 	return
 }
 
@@ -58,7 +61,7 @@ func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
 // In the Sast scanner, there can be multiple results with the same location.
 // The only difference is that their CodeFlow values are different.
 // We combine those under the same result location value
-func groupResultsByLocation(sarifRuns []*sarif.Run) []*sarif.Run {
+func groupResultsByLocation(sarifRuns []*sarif.Run) {
 	for _, sastRun := range sarifRuns {
 		locationToResult := map[string]*sarif.Result{}
 		for _, sastResult := range sastRun.Results {
@@ -71,25 +74,28 @@ func groupResultsByLocation(sarifRuns []*sarif.Run) []*sarif.Run {
 		}
 		sastRun.Results = maps.Values(locationToResult)
 	}
-	return sarifRuns
 }
 
-// In Sast there is only one location for each result
-func getResultFileName(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		return utils.GetLocationFileName(result.Locations[0])
+func getResultLocationStr(result *sarif.Result) string {
+	if len(result.Locations) == 0 {
+		return ""
 	}
-	return ""
+	location := result.Locations[0]
+	return fmt.Sprintf("%s%d%d%d%d",
+		utils.GetLocationFileName(location),
+		utils.GetLocationStartLine(location),
+		utils.GetLocationStartColumn(location),
+		utils.GetLocationEndLine(location),
+		utils.GetLocationEndColumn(location))
 }
 
-// In Sast there is only one location for each result
-func getResultStartLocationInFile(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		return utils.GetStartLocationInFile(result.Locations[0])
+func getResultRuleId(result *sarif.Result) string {
+	if result.RuleID == nil {
+		return ""
 	}
-	return ""
+	return *result.RuleID
 }
 
 func getResultId(result *sarif.Result) string {
-	return getResultFileName(result) + getResultStartLocationInFile(result) + utils.GetResultSeverity(result) + utils.GetResultMsgText(result)
+	return getResultRuleId(result) + utils.GetResultSeverity(result) + utils.GetResultMsgText(result) + getResultLocationStr(result)
 }

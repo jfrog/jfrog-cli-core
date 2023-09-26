@@ -1025,14 +1025,16 @@ func printApplicabilityCveValue(applicabilityStatus ApplicabilityStatus, isTable
 // filePath = myProject/node_modules/mpath/badCode.js  , disqualify = False.
 // Found use of a badCode inside the node_modules from a different package, report applicable.
 func shouldDisqualifyEvidence(components map[string]services.Component, evidenceFilePath *sarif.Location) (disqualify bool) {
-	// TODO npe check here
-	fullPath := *evidenceFilePath.PhysicalLocation.ArtifactLocation.URI
+	fullPath := evidenceFilePath.PhysicalLocation.ArtifactLocation.URI
+	if fullPath == nil {
+		return
+	}
 	for key := range components {
 		dependencyName, envLocationPath, supported := parseComponent(key)
 		if !supported {
 			continue
 		}
-		if disqualify = checkIfSelfNested(fullPath, dependencyName, envLocationPath); disqualify {
+		if disqualify = checkIfSelfNested(*fullPath, dependencyName, envLocationPath); disqualify {
 			return
 		}
 	}

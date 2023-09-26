@@ -242,14 +242,18 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
 	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults}
-	err = xrutils.PrintScanResults(extendedScanResults,
-		scanErrors,
-		scanCmd.outputFormat,
-		scanCmd.includeVulnerabilities,
-		scanCmd.includeLicenses,
-		true,
-		scanCmd.printExtendedTable, true, nil,
-	)
+
+	if err = xrutils.NewResultsWriter(extendedScanResults).
+		SetOutputFormat(scanCmd.outputFormat).
+		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
+		SetIncludeLicenses(scanCmd.includeLicenses).
+		SetPrintExtendedTable(scanCmd.printExtendedTable).
+		SetIsMultipleRootProject(true).
+		SetScanType(services.Binary).
+		PrintScanResults(); err != nil {
+		return
+	}
+
 	if err != nil {
 		return err
 	}

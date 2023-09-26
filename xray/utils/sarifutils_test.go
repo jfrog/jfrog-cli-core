@@ -314,11 +314,6 @@ func TestGetFullLocationFileName(t *testing.T) {
 			},
 			expectedOutput: path.Join("root", "someDir", "another", "file"),
 		},
-		{
-			file:           "another/file",
-			invocations:    []*sarif.Invocation{{WorkingDirectory: sarif.NewSimpleArtifactLocation(path.Join("root", "someDir"))}},
-			expectedOutput: path.Join("root", "someDir", "another", "file"),
-		},
 	}
 
 	for _, test := range tests {

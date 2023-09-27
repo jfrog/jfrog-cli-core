@@ -1,7 +1,6 @@
 package scan
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -16,7 +15,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
@@ -33,7 +31,6 @@ type DockerScanCommand struct {
 	imageTag       string
 	targetRepoPath string
 	dockerFilePath string
-	scanner        *bufio.Scanner
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -71,20 +68,6 @@ func (dsc *DockerScanCommand) Run() (err error) {
 			err = e
 		}
 	}()
-	// Check for dockerfile to scan
-	var isDockerFileScanned bool
-	if dsc.imageTag == "" {
-		if err = dsc.buildDockerImage(); err != nil {
-			return
-		}
-		// Load content of dockerfile to memory to allow search by file line.
-		cleanUp, err := dsc.loadDockerfileToMemory()
-		defer cleanUp()
-		if err != nil {
-			return err
-		}
-		isDockerFileScanned = true
-	}
 
 	// Run the 'docker save' command, to create tar file from the docker image, and pass it to the indexer-app
 	if dsc.progress != nil {
@@ -135,7 +118,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetIncludeLicenses(dsc.includeLicenses).
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
-		SetDockerCommandsMapping(dockerCommandsMapping, isDockerFileScanned).
+		SetDockerCommandsMapping(dockerCommandsMapping).
 		SetScanType(services.Docker).
 		PrintScanResults()
 
@@ -242,106 +225,4 @@ func (dsc *DockerScanCommand) unsetCredentialEnvsForIndexerApp() error {
 
 func (dsc *DockerScanCommand) CommandName() string {
 	return "xr_docker_scan"
-}
-
-func (dsc *DockerScanCommand) loadDockerfileToMemory() (cleanUp func(), err error) {
-	file, err := os.Open(".dockerfile")
-	if err != nil {
-		err = fmt.Errorf("failed while trying to load dockerfile")
-		return
-	}
-	cleanUp = func() {
-		err = file.Close()
-	}
-	dsc.scanner = bufio.NewScanner(file)
-	return
-}
-
-const (
-	emptyDockerfileLine     = ""
-	dockerfileCommentPrefix = "#"
-	backslash               = "\\"
-	fromCommand             = "FROM"
-)
-
-// Scans the dockerfile line by line and match docker commands to their respective lines.
-// Lines which don't appear in dockerfile would get assigned to the corresponding FROM command.
-func (dsc *DockerScanCommand) mapDockerfileCommands(dockerCommandsMap map[string]services.DockerfileCommandDetails) (map[string]services.DockerfileCommandDetails, error) {
-	if dsc.scanner == nil {
-		return dockerCommandsMap, nil
-	}
-	lineNumber := 1
-	fromLineNumber := 1
-	firstAppearanceFrom := true
-	// Scan dockerfile line by line.
-	for dsc.scanner.Scan() {
-		scannedCommand := dsc.scanner.Text()
-		// Skip comments in the dockerfile
-		if strings.HasPrefix(scannedCommand, dockerfileCommentPrefix) || scannedCommand == emptyDockerfileLine {
-			lineNumber++
-			continue
-		}
-		// Read the next line as it is the same command.
-		for strings.HasSuffix(scannedCommand, backslash) {
-			dsc.scanner.Scan()
-			lineNumber++
-			scannedCommand += dsc.scanner.Text()
-		}
-		// Assign all the unassigned commands to the FROM command before moving on.
-		if strings.Contains(scannedCommand, fromCommand) {
-			if !firstAppearanceFrom {
-				for key := range dockerCommandsMap {
-					current := dockerCommandsMap[key]
-					if len(current.Line) == 0 {
-						current.Line = append(current.Line, strconv.Itoa(fromLineNumber))
-					}
-					dockerCommandsMap[key] = current
-				}
-			}
-			fromLineNumber = lineNumber
-			firstAppearanceFrom = false
-		}
-
-		// TODO optimize this
-		for sha256, dockerfileCommandDetails := range dockerCommandsMap {
-			current := dockerCommandsMap[sha256]
-			if CommandContains(dockerfileCommandDetails.Command, scannedCommand) {
-				current.Line = append(current.Line, strconv.Itoa(lineNumber))
-				dockerCommandsMap[sha256] = current
-				break
-			}
-		}
-		lineNumber++
-	}
-
-	// Iterate again and assign all unassigned commands to that nearest FROM command
-	for key := range dockerCommandsMap {
-		current := dockerCommandsMap[key]
-		if len(current.Line) == 0 {
-			current.Line = append(current.Line, strconv.Itoa(fromLineNumber))
-			dockerCommandsMap[key] = current
-		}
-	}
-	// Check for scanner errors
-	if err := dsc.scanner.Err(); err != nil {
-		return nil, fmt.Errorf("error scanning dockerfile:%s", err.Error())
-	}
-	return dockerCommandsMap, nil
-}
-func CommandContains(commandFromLayer, scannedCommand string) bool {
-	// Normalize and split the commands into arguments
-	args1 := strings.Fields(commandFromLayer)
-	args2 := strings.Fields(scannedCommand)
-	// Create a map to store the arguments of commandFromLayer
-	argMap1 := make(map[string]bool)
-	for _, arg := range args1 {
-		argMap1[arg] = true
-	}
-	// Check if all arguments of scannedCommand are present in commandFromLayer
-	for _, arg := range args2 {
-		if !argMap1[arg] {
-			return false
-		}
-	}
-	return true
 }

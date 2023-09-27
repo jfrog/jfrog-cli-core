@@ -46,6 +46,7 @@ func (dsc *DockerScanCommand) SetTargetRepoPath(repoPath string) *DockerScanComm
 	return dsc
 }
 
+// Docker scan will save a docker image as .tar file and will prefore binary scan on it.
 func (dsc *DockerScanCommand) Run() (err error) {
 	// Validate Xray minimum version
 	_, xrayVersion, err := xrayutils.CreateXrayServiceManagerAndGetVersion(dsc.ScanCommand.serverDetails)
@@ -103,13 +104,14 @@ func (dsc *DockerScanCommand) Run() (err error) {
 			err = errorutils.CheckError(e)
 		}
 	}()
+	// Preform binary scan.
 	extendedScanResults, cleanup, scanErrors, err := dsc.ScanCommand.binaryScan()
 	defer cleanup()
 	if err != nil {
 		return
 	}
 
-	// Print results
+	// Print results with docker commands mapping.
 	err = xrayutils.NewResultsWriter(extendedScanResults).
 		SetOutputFormat(dsc.outputFormat).
 		SetIncludeVulnerabilities(dsc.includeVulnerabilities).
@@ -143,7 +145,7 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layersMapping map[strin
 }
 
 func formatCommand(layer *image.Layer) string {
-	command := trimSpacesInMiddle(layer.Command)
+	command := trimMiddleSpaces(layer.Command)
 	command = strings.TrimSuffix(command, buildKitSuffix)
 	if len(command) > maxDisplayCommandLength {
 		command = command[:maxDisplayCommandLength] + " ..."
@@ -151,8 +153,8 @@ func formatCommand(layer *image.Layer) string {
 	return command
 }
 
-func trimSpacesInMiddle(input string) string {
-	parts := strings.Fields(input) // Split the string by spaces
+func trimMiddleSpaces(input string) string {
+	parts := strings.Fields(input)
 	return strings.Join(parts, " ")
 }
 

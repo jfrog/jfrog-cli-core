@@ -273,6 +273,7 @@ func (dsc *DockerScanCommand) mapDockerfileCommands(dockerCommandsMap map[string
 	lineNumber := 1
 	fromLineNumber := 1
 	firstAppearanceFrom := true
+	// Scan dockerfile line by line.
 	for dsc.scanner.Scan() {
 		scannedCommand := dsc.scanner.Text()
 		// Skip comments in the dockerfile
@@ -302,11 +303,11 @@ func (dsc *DockerScanCommand) mapDockerfileCommands(dockerCommandsMap map[string
 		}
 
 		// TODO optimize this
-		for key, cmd := range dockerCommandsMap {
-			current := dockerCommandsMap[key]
-			if CommandContains(cmd.Command, scannedCommand) {
+		for sha256, dockerfileCommandDetails := range dockerCommandsMap {
+			current := dockerCommandsMap[sha256]
+			if CommandContains(dockerfileCommandDetails.Command, scannedCommand) {
 				current.Line = append(current.Line, strconv.Itoa(lineNumber))
-				dockerCommandsMap[key] = current
+				dockerCommandsMap[sha256] = current
 				break
 			}
 		}

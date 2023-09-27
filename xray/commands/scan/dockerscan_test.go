@@ -68,5 +68,4 @@ func TestDockerScan(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expected, mapping)
-
 }

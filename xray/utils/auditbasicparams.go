@@ -5,6 +5,32 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 )
 
+type AuditParams interface {
+	DirectDependencies() []string
+	AppendDependenciesForApplicabilityScan(directDependencies []string) *AuditBasicParams
+	ServerDetails() (*config.ServerDetails, error)
+	SetServerDetails(serverDetails *config.ServerDetails) *AuditBasicParams
+	PipRequirementsFile() string
+	SetPipRequirementsFile(requirementsFile string) *AuditBasicParams
+	ExcludeTestDependencies() bool
+	SetExcludeTestDependencies(excludeTestDependencies bool) *AuditBasicParams
+	UseWrapper() bool
+	SetUseWrapper(useWrapper bool) *AuditBasicParams
+	InsecureTls() bool
+	SetInsecureTls(insecureTls bool) *AuditBasicParams
+	Technologies() []string
+	SetTechnologies(technologies []string) *AuditBasicParams
+	Progress() ioUtils.ProgressMgr
+	SetProgress(progress ioUtils.ProgressMgr)
+	Args() []string
+	SetNpmScope(depType string) *AuditBasicParams
+	OutputFormat() OutputFormat
+	DepsRepo() string
+	SetDepsRepo(depsRepo string) *AuditBasicParams
+	IgnoreConfigFile() bool
+	SetIgnoreConfigFile(ignoreConfigFile bool) *AuditBasicParams
+}
+
 type AuditBasicParams struct {
 	serverDetails                    *config.ServerDetails
 	outputFormat                     OutputFormat
@@ -18,8 +44,6 @@ type AuditBasicParams struct {
 	args                             []string
 	depsRepo                         string
 	ignoreConfigFile                 bool
-	npmIgnoreNodeModules    bool
-	npmOverWritePackageLock bool
 }
 
 func (abp *AuditBasicParams) DirectDependencies() []string {
@@ -60,14 +84,6 @@ func (abp *AuditBasicParams) SetExcludeTestDependencies(excludeTestDependencies 
 
 func (abp *AuditBasicParams) UseWrapper() bool {
 	return abp.useWrapper
-}
-
-func (abp *AuditBasicParams) NpmIgnoreNodeModules() bool {
-	return abp.npmIgnoreNodeModules
-}
-
-func (abp *AuditBasicParams) NpmOverwritePackageLock() bool {
-	return abp.npmOverWritePackageLock
 }
 
 func (abp *AuditBasicParams) SetUseWrapper(useWrapper bool) *AuditBasicParams {
@@ -139,15 +155,5 @@ func (abp *AuditBasicParams) IgnoreConfigFile() bool {
 
 func (abp *AuditBasicParams) SetIgnoreConfigFile(ignoreConfigFile bool) *AuditBasicParams {
 	abp.ignoreConfigFile = ignoreConfigFile
-	return abp
-}
-
-func (abp *AuditBasicParams) SetNpmIgnoreNodeModules(ignoreNpmNodeModules bool) *AuditBasicParams {
-	abp.npmIgnoreNodeModules = ignoreNpmNodeModules
-	return abp
-}
-
-func (abp *AuditBasicParams) SetNpmOverwritePackageLock(overwritePackageLock bool) *AuditBasicParams {
-	abp.npmOverWritePackageLock = overwritePackageLock
 	return abp
 }

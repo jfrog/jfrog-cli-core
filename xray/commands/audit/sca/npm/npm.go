@@ -15,7 +15,7 @@ const (
 	ignoreScriptsFlag = "--ignore-scripts"
 )
 
-func BuildDependencyTree(params *utils.AuditBasicParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -50,12 +50,15 @@ func BuildDependencyTree(params *utils.AuditBasicParams) (dependencyTrees []*xra
 	return
 }
 
-func createTreeDepsParam(params *utils.AuditBasicParams) biutils.NpmTreeDepListParam {
-	return biutils.NpmTreeDepListParam{
-		Args:                 addIgnoreScriptsFlag(params.Args()),
-		IgnoreNodeModules:    params.NpmIgnoreNodeModules(),
-		OverWritePackageLock: params.NpmOverwritePackageLock(),
+func createTreeDepsParam(params utils.AuditParams) biutils.NpmTreeDepListParam {
+	npmTreeDepParam := biutils.NpmTreeDepListParam{
+		Args: addIgnoreScriptsFlag(params.Args()),
 	}
+	if npmParams, ok := params.(utils.AuditNpmParams); ok {
+		npmTreeDepParam.IgnoreNodeModules = npmParams.NpmIgnoreNodeModules()
+		npmTreeDepParam.OverWritePackageLock = npmParams.NpmOverwritePackageLock()
+	}
+	return npmTreeDepParam
 }
 
 // Add the --ignore-scripts to prevent execution of npm scripts during npm install.

@@ -30,7 +30,6 @@ type DockerScanCommand struct {
 	ScanCommand
 	imageTag       string
 	targetRepoPath string
-	dockerFilePath string
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -84,7 +83,6 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}
 
 	// Map layers sha to build commands
-	// If dockerfile exists, will also map to line number.
 	dockerCommandsMapping, err := dsc.mapDockerLayerToCommand()
 	if err != nil {
 		return
@@ -123,25 +121,6 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		PrintScanResults()
 
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
-}
-
-func (dsc *DockerScanCommand) buildDockerImage() (err error) {
-	if exists, _ := fileutils.IsFileExists(".dockerfile", false); !exists {
-		return fmt.Errorf("didn't find Dockerfile in the provided path: %s", dsc.dockerFilePath)
-	}
-	if dsc.progress != nil {
-		dsc.progress.SetHeadlineMsg("Building Docker image 🏗....️")
-	}
-	dsc.imageTag = "audittag"
-	log.Info("Building docker image... ")
-	var stderr bytes.Buffer
-	dockerBuildCommand := exec.Command("docker", "build", ".", "-f", ".dockerfile", "-t", dsc.imageTag)
-	dockerBuildCommand.Stderr = &stderr
-	if err = dockerBuildCommand.Run(); err != nil {
-		return fmt.Errorf("failed to build docker image. Is docker running on your computer? error: %s", err.Error())
-	}
-	log.Info("Successfully build image from dockerfile")
-	return
 }
 
 func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layersMapping map[string]services.DockerfileCommandDetails, err error) {

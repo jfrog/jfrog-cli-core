@@ -711,12 +711,12 @@ func TestShouldDisqualifyEvidence(t *testing.T) {
 			disqualify: false,
 		},
 	}
-	for _, tc := range testCases {
+	for i, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			locationObject := &sarif.Location{
 				PhysicalLocation: &sarif.PhysicalLocation{
 					ArtifactLocation: &sarif.ArtifactLocation{
-						URI: &tc.filePath,
+						URI: &testCases[i].filePath,
 					},
 				},
 			}

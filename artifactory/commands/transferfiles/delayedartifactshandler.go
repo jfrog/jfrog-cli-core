@@ -152,7 +152,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	delayAction := func(pBase phaseBase, addedDelayFiles []string) error {
 		// We call this method as a recursion in order to have inner order base on the comparison function list.
 		// Remove the first delay comparison function one by one to no longer delay it until the list is empty.
-		if len(filesToConsume) > 0 && len(delayUploadComparisonFunctions) > 0 {
+		if len(addedDelayFiles) > 0 && len(delayUploadComparisonFunctions) > 0 {
 			return handleDelayedArtifactsFiles(addedDelayFiles, pBase, delayUploadComparisonFunctions[1:])
 		}
 		return nil

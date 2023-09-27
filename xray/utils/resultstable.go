@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
-	"path/filepath"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -1034,7 +1034,7 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 		if dependencyName == "" {
 			continue
 		}
-		if disqualify = strings.Contains(*fullPath, filepath.Join(modulesFolderName, dependencyName)); disqualify {
+		if disqualify = strings.Contains(*fullPath, path.Join(modulesFolderName, dependencyName)); disqualify {
 			return
 		}
 	}

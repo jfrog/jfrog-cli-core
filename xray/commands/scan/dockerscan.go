@@ -21,15 +21,16 @@ import (
 const (
 	indexerEnvPrefix         = "JFROG_INDEXER_"
 	DockerScanMinXrayVersion = "3.40.0"
-	maxDisplayCommandLength  = 60
 	layerDigestPrefix        = "sha256:"
-	buildKitSuffix           = " # buildkit"
+	// Suffix added while analyzing docker layers, remove it for better readability.
+	buildKitSuffix = " # buildkit"
 )
 
 type DockerScanCommand struct {
 	ScanCommand
-	imageTag       string
-	targetRepoPath string
+	imageTag              string
+	targetRepoPath        string
+	dockerCommandsMapping map[string]services.DockerCommandDetails
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -84,8 +85,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}
 
 	// Map layers sha to build commands
-	dockerCommandsMapping, err := dsc.mapDockerLayerToCommand()
-	if err != nil {
+	if err = dsc.mapDockerLayerToCommand(); err != nil {
 		return
 	}
 
@@ -118,14 +118,14 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetIncludeLicenses(dsc.includeLicenses).
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
-		SetDockerCommandsMapping(dockerCommandsMapping).
+		SetDockerCommandsMapping(dsc.dockerCommandsMapping).
 		SetScanType(services.Docker).
 		PrintScanResults()
 
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
 }
 
-func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layersMapping map[string]services.DockerfileCommandDetails, err error) {
+func (dsc *DockerScanCommand) mapDockerLayerToCommand() (err error) {
 	log.Debug("Mapping docker layers into commands ")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
@@ -136,24 +136,25 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layersMapping map[strin
 		return
 	}
 	// Create mapping between sha256 hash to dockerfile Command.
-	layersMapping = make(map[string]services.DockerfileCommandDetails)
+	layersMapping := make(map[string]services.DockerCommandDetails)
 	for _, layer := range dockerImage.Layers {
 		layerHash := strings.TrimPrefix(layer.Digest, layerDigestPrefix)
-		layersMapping[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: formatCommand(layer)}
+		layersMapping[layerHash] = services.DockerCommandDetails{LayerHash: layer.Digest, Command: formatCommand(layer)}
 	}
-	return layersMapping, nil
+	dsc.dockerCommandsMapping = layersMapping
+	return
 }
 
 func formatCommand(layer *image.Layer) string {
-	command := trimMiddleSpaces(layer.Command)
-	command = strings.TrimSuffix(command, buildKitSuffix)
-	if len(command) > maxDisplayCommandLength {
-		command = command[:maxDisplayCommandLength] + " ..."
-	}
-	return command
+	command := trimDoubleSpaces(layer.Command)
+	return strings.TrimSuffix(command, buildKitSuffix)
 }
 
-func trimMiddleSpaces(input string) string {
+// Docker command could potentiality have double spaces,
+// Reconstruct the command with only one space between arguments.
+// Example RUN apt-get install &&     apt-get install.
+// Will resolve to a cleaner command RUN apt-get install && apt-get install
+func trimDoubleSpaces(input string) string {
 	parts := strings.Fields(input)
 	return strings.Join(parts, " ")
 }

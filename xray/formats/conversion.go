@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+const (
+	maxDockerCommandLength = 60
+)
+
 func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRows []vulnerabilityTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, vulnerabilityTableRow{
@@ -56,9 +60,9 @@ func ConvertToLicenseViolationTableRow(rows []LicenseRow) (tableRows []licenseVi
 	return
 }
 
-func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]services.DockerfileCommandDetails) (tableRows []vulnerabilityDockerScanTableRow) {
+func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]services.DockerCommandDetails) (tableRows []vulnerabilityDockerScanTableRow) {
 	for i := range rows {
-		dockerCommand := dockerCommandsMapping[strings.TrimSuffix(strings.TrimPrefix(rows[i].Components[0].Name, "sha256__"), ".tar")]
+		dockerCommand := prepareDockerCommand(rows[i].Components[0].Name, dockerCommandsMapping)
 		tableRows = append(tableRows, vulnerabilityDockerScanTableRow{
 			severity:               rows[i].Severity,
 			severityNumValue:       rows[i].SeverityNumValue,
@@ -228,4 +232,14 @@ func convertToShortCveTableRow(rows []CveRow) (tableRows []cveShortTableRow) {
 		})
 	}
 	return
+}
+
+func prepareDockerCommand(component string, dockerCommandsMapping map[string]services.DockerCommandDetails) services.DockerCommandDetails {
+	// Trim suffix and prefix of layer from binary scan.
+	dockerCommand := dockerCommandsMapping[strings.TrimSuffix(strings.TrimPrefix(component, "sha256__"), ".tar")]
+	// Trim length for better readability.
+	if len(dockerCommand.Command) > maxDockerCommandLength {
+		dockerCommand.Command = dockerCommand.Command[:maxDockerCommandLength]
+	}
+	return dockerCommand
 }

@@ -37,21 +37,21 @@ var CurationOutputFormats = []string{string(Table), string(Json)}
 type ResultsWriter struct {
 	// The scan results.
 	results *ExtendedScanResults
-	// simpleJsonError  Errors to be added to output of the SimpleJson format.
+	// SimpleJsonError  Errors to be added to output of the SimpleJson format.
 	simpleJsonError []formats.SimpleJsonError
-	// format  The output format.
+	// Format  The output format.
 	format OutputFormat
-	// includeVulnerabilities  If true, include all vulnerabilities as part of the output. Else, include violations only.
+	// IncludeVulnerabilities  If true, include all vulnerabilities as part of the output. Else, include violations only.
 	includeVulnerabilities bool
-	// includeLicenses  If true, also include license violations as part of the output.
+	// IncludeLicenses  If true, also include license violations as part of the output.
 	includeLicenses bool
-	// isMultipleRoots  multipleRoots is set to true, in case the given results array contains (or may contain) results of several projects (like in binary scan).
+	// IsMultipleRoots  multipleRoots is set to true, in case the given results array contains (or may contain) results of several projects (like in binary scan).
 	isMultipleRoots bool
-	// printExtended, If true, show extended results.
+	// PrintExtended, If true, show extended results.
 	printExtended bool
 	// The scanType (binary,docker,dependency)
 	scanType services.ScanType
-	// messages - Option array of messages, to be displayed if the format is Table
+	// Messages - Option array of messages, to be displayed if the format is Table
 	messages []string
 	// Maps layer hash to command,used for docker scan.
 	dockerCommandsMapping map[string]services.DockerfileCommandDetails
@@ -96,16 +96,17 @@ func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWrite
 	return rw
 }
 
-func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
-	rw.messages = messages
-	return rw
-}
-
 func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]services.DockerfileCommandDetails, dockerFileScan bool) *ResultsWriter {
 	rw.dockerCommandsMapping = mapping
 	// Extended will show line numbers, enable only if a dockerfile was scanned and not docker image.
 	rw.printExtended = dockerFileScan
 	return rw
+}
+
+func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
+	rw.messages = messages
+	return rw
+
 }
 
 // PrintScanResults prints the scan results in the specified format.
@@ -115,7 +116,7 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	case Table:
 		return rw.printScanResultsTables()
 	case SimpleJson:
-		jsonTable, err := rw.convertScanToSimpleJson(false)
+		jsonTable, err := rw.convertScanToSimpleJson()
 		if err != nil {
 			return err
 		}
@@ -336,8 +337,8 @@ func (rw *ResultsWriter) convertXrayScanToSimpleJson(simplifiedOutput bool) (for
 	return jsonTable, nil
 }
 
-func (rw *ResultsWriter) convertScanToSimpleJson(simplifiedOutput bool) (formats.SimpleJsonResults, error) {
-	jsonTable, err := rw.convertXrayScanToSimpleJson(simplifiedOutput)
+func (rw *ResultsWriter) convertScanToSimpleJson() (formats.SimpleJsonResults, error) {
+	jsonTable, err := rw.convertXrayScanToSimpleJson(false)
 	if err != nil {
 		return formats.SimpleJsonResults{}, err
 	}

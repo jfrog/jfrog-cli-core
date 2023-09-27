@@ -116,6 +116,7 @@ func (auditCmd *AuditCommand) Run() (err error) {
 			SetOutputFormat(auditCmd.OutputFormat()).
 			SetPrintExtendedTable(auditCmd.PrintExtendedTable).
 			SetExtraMessages(messages).
+			SetScanType(services.Dependency).
 			PrintScanResults(); err != nil {
 			return
 		}

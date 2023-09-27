@@ -1030,33 +1030,33 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 		return
 	}
 	for key := range components {
-		dependencyName, envLocationPath, supported := parseComponent(key)
-		if !supported {
+		dependencyName, modulesFolderName := getNameAndModulesNameFromComponent(key)
+		if dependencyName == "" {
 			continue
 		}
-		if disqualify = strings.Contains(*fullPath, filepath.Join(envLocationPath, dependencyName)); disqualify {
+		if disqualify = strings.Contains(*fullPath, filepath.Join(modulesFolderName, dependencyName)); disqualify {
 			return
 		}
 	}
 	return
 }
 
-func parseComponent(key string) (dependencyName string, envLocationPath string, supported bool) {
+func getNameAndModulesNameFromComponent(key string) (dependencyName string, modulesFolderName string) {
 	split := strings.Split(key, "://")
 	if len(split) < 1 {
 		return
 	}
 	tech := split[0]
 	switch tech {
-	case "npm":
-		envLocationPath = nodeModules
-	case "pypi":
-		envLocationPath = pipEnvFolder
+	case coreutils.Npm.String():
+		modulesFolderName = nodeModules
+	case coreutils.Pypi, coreutils.Pip.String():
+		modulesFolderName = pipEnvFolder
 	default:
 		// Not supported tech
 		return
 	}
 	// Split name and version.
 	dependencyName = strings.Split(split[1], ":")[0]
-	return dependencyName, envLocationPath, true
+	return
 }

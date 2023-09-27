@@ -150,13 +150,12 @@ func (dsc *DockerScanCommand) buildDockerImage() (err error) {
 		dsc.progress.SetHeadlineMsg("Building Docker image 🏗....️")
 	}
 	dsc.imageTag = "audittag"
-	// TODO this could take a while, need to update progress bar.
 	log.Info("Building docker image... ")
 	var stderr bytes.Buffer
 	dockerBuildCommand := exec.Command("docker", "build", ".", "-f", ".dockerfile", "-t", dsc.imageTag)
 	dockerBuildCommand.Stderr = &stderr
 	if err = dockerBuildCommand.Run(); err != nil {
-		return fmt.Errorf("failed to build docker image,error: %s", err.Error())
+		return fmt.Errorf("failed to build docker image. Is docker running on your computer? error: %s", err.Error())
 	}
 	log.Info("Successfully build image from dockerfile")
 	return

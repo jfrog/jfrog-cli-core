@@ -56,7 +56,7 @@ func createTreeDepsParam(params utils.AuditParams) biutils.NpmTreeDepListParam {
 	}
 	if npmParams, ok := params.(utils.AuditNpmParams); ok {
 		npmTreeDepParam.IgnoreNodeModules = npmParams.NpmIgnoreNodeModules()
-		npmTreeDepParam.OverWritePackageLock = npmParams.NpmOverwritePackageLock()
+		npmTreeDepParam.OverwritePackageLock = npmParams.NpmOverwritePackageLock()
 	}
 	return npmTreeDepParam
 }

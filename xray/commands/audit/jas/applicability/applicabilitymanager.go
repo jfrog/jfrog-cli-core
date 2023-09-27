@@ -45,10 +45,15 @@ type ApplicabilityScanManager struct {
 // error: An error object (if any).
 func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencies []string,
 	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (results []*sarif.Run, err error) {
-	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, scannedTechnologies, thirdPartyContextualAnalysis)
+	applicabilityScanManager := newApplicabilityScanManager(xrayResults, directDependencies, scanner, thirdPartyContextualAnalysis)
 	if !applicabilityScanManager.shouldRunApplicabilityScan(scannedTechnologies) {
 		log.Debug("The technologies that have been scanned are currently not supported for contextual analysis scanning, or we couldn't find any vulnerable direct dependencies. Skipping....")
 		return
+	}
+
+	// Add python modules folders if needed
+	if thirdPartyContextualAnalysis && slices.Contains(scannedTechnologies, coreutils.Pip) {
+		appendPipModulesToScanWorkingDir(applicabilityScanManager)
 	}
 
 	if err = applicabilityScanManager.scanner.Run(applicabilityScanManager); err != nil {
@@ -59,7 +64,7 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
-func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, technologies []coreutils.Technology, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
+func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	applicabilityManager := &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
@@ -67,10 +72,6 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
 		thirdPartyScan:           thirdPartyScan,
-		techs:                    technologies,
-	}
-	if thirdPartyScan && slices.Contains(technologies, coreutils.Pip) {
-		appendPipEnvToScanWorkingDir(applicabilityManager)
 	}
 	return applicabilityManager
 }
@@ -200,13 +201,13 @@ func removeElementFromSlice(skipDirs []string, element string) []string {
 	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
 }
 
-func appendPipEnvToScanWorkingDir(applicabilityManager *ApplicabilityScanManager) {
-	extraPythonRoot, pythonErr := getPipRoot()
-	if pythonErr != nil {
-		log.Warn(fmt.Sprintf("failed trying to get pip env folder path, error:%s ", pythonErr.Error()))
+func appendPipModulesToScanWorkingDir(applicabilityManager *ApplicabilityScanManager) {
+	pythonModulesPath, err := getPipRoot()
+	if err != nil {
+		log.Warn(fmt.Sprintf("failed trying to get pip env folder path, error:%s ", err.Error()))
 		return
 	}
-	applicabilityManager.scanner.WorkingDirs = append(applicabilityManager.scanner.WorkingDirs, extraPythonRoot)
+	applicabilityManager.scanner.WorkingDirs = append(applicabilityManager.scanner.WorkingDirs, pythonModulesPath)
 }
 
 func getPipRoot() (path string, err error) {

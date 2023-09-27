@@ -1030,7 +1030,7 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 		return
 	}
 	for key := range components {
-		dependencyName, modulesFolderName := getNameAndModulesNameFromComponent(key)
+		dependencyName, modulesFolderName := getDependencyAndModulesFolderFromComponent(key)
 		if dependencyName == "" {
 			continue
 		}
@@ -1041,7 +1041,7 @@ func shouldDisqualifyEvidence(components map[string]services.Component, evidence
 	return
 }
 
-func getNameAndModulesNameFromComponent(key string) (dependencyName string, modulesFolderName string) {
+func getDependencyAndModulesFolderFromComponent(key string) (dependencyName string, modulesFolderName string) {
 	split := strings.Split(key, "://")
 	if len(split) < 1 {
 		return
@@ -1050,7 +1050,7 @@ func getNameAndModulesNameFromComponent(key string) (dependencyName string, modu
 	switch tech {
 	case coreutils.Npm.String():
 		modulesFolderName = nodeModules
-	case coreutils.Pypi, coreutils.Pip.String():
+	case coreutils.Pypi:
 		modulesFolderName = pipEnvFolder
 	default:
 		// Not supported tech

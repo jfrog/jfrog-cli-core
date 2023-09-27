@@ -33,7 +33,7 @@ type ApplicabilityScanManager struct {
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
 	thirdPartyScan           bool
-	techs                    []coreutils.Technology
+	technologies             []coreutils.Technology
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -164,7 +164,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
 				CveWhitelist: asm.directDependenciesCves,
-				SkippedDirs:  asm.getSkipDirsAndAppendWdIfNeeded(),
+				SkippedDirs:  asm.getSkipDirs(),
 			},
 		},
 	}
@@ -177,15 +177,15 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
 }
 
-// When thirdPartyScan is enabled we need to remove ignore patterns based on technologies.
-func (asm *ApplicabilityScanManager) getSkipDirsAndAppendWdIfNeeded() (skipDirs []string) {
+// When thirdPartyScan is enabled we may need to remove ignore patterns based on technologies.
+func (asm *ApplicabilityScanManager) getSkipDirs() (skipDirs []string) {
 	if !asm.thirdPartyScan {
 		return jas.SkippedDirs
 	}
-	if slices.Contains(asm.techs, coreutils.Npm) {
+	if slices.Contains(asm.technologies, coreutils.Npm) {
 		skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.NodeModulesPattern)
 	}
-	if slices.Contains(asm.techs, coreutils.Pip) {
+	if slices.Contains(asm.technologies, coreutils.Pip) {
 		skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.VirtualEnvPattern)
 	}
 	return

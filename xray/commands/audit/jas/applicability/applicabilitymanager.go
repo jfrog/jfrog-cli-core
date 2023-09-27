@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -23,6 +24,7 @@ import (
 const (
 	applicabilityScanType    = "analyze-applicability"
 	applicabilityScanCommand = "ca"
+	pipVirtualEnvVariable    = "VIRTUAL_ENV"
 )
 
 type ApplicabilityScanManager struct {
@@ -51,7 +53,7 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 		return
 	}
 
-	// Add python modules folders if needed
+	// Add python modules folders path to working dirs if needed.
 	if thirdPartyContextualAnalysis && slices.Contains(scannedTechnologies, coreutils.Pip) {
 		appendPipModulesToScanWorkingDir(applicabilityScanManager)
 	}
@@ -66,14 +68,13 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
 	directDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
-	applicabilityManager := &ApplicabilityScanManager{
+	return &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
 		directDependenciesCves:   directDependenciesCves,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
 		thirdPartyScan:           thirdPartyScan,
 	}
-	return applicabilityManager
 }
 
 // This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns only direct
@@ -176,19 +177,16 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
 }
 
-// When thirdPartyScan is enabled we need to remove ignore patterns based on technologies
-// and add extra working dir paths to be scanned.
+// When thirdPartyScan is enabled we need to remove ignore patterns based on technologies.
 func (asm *ApplicabilityScanManager) getSkipDirsAndAppendWdIfNeeded() (skipDirs []string) {
 	if !asm.thirdPartyScan {
 		return jas.SkippedDirs
 	}
-	for _, tech := range asm.techs {
-		switch tech {
-		case coreutils.Npm:
-			skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.NodeModulesPattern)
-		case coreutils.Pip:
-			skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.VirtualEnvPattern)
-		}
+	if slices.Contains(asm.techs, coreutils.Npm) {
+		skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.NodeModulesPattern)
+	}
+	if slices.Contains(asm.techs, coreutils.Pip) {
+		skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.VirtualEnvPattern)
 	}
 	return
 }
@@ -211,6 +209,12 @@ func appendPipModulesToScanWorkingDir(applicabilityManager *ApplicabilityScanMan
 }
 
 func getPipRoot() (path string, err error) {
+	// When virtual env is active, we can get the path from the env variable.
+	virtualEnvPath := os.Getenv(pipVirtualEnvVariable)
+	if virtualEnvPath != "" {
+		return virtualEnvPath, nil
+	}
+	// Get modules location
 	pythonExe, _ := pythonutils.GetPython3Executable()
 	command := exec.Command(pythonExe, "-m", "pip", "-V")
 	outBuffer := bytes.NewBuffer([]byte{})
@@ -218,12 +222,12 @@ func getPipRoot() (path string, err error) {
 	if err = command.Run(); err != nil {
 		return
 	}
-	// Define a regular expression to match the path based on the returned output.
+	// Extract path from output
 	re := regexp.MustCompile(`from (.+) \(python`)
 	output := outBuffer.String()
 	match := re.FindStringSubmatch(output)
 	if len(match) >= 2 {
-		// Scan the parent of the result dir.
+		// Modules are located at the parent directory of pip.
 		path = strings.TrimSuffix(match[1], "/pip")
 	} else {
 		err = fmt.Errorf("failed to get pip env root folder, pip -V outout : %s", output)

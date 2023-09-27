@@ -284,17 +284,6 @@ func (scanCmd *ScanCommand) binaryScan() (extendedScanResults *xrutils.ExtendedS
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
 	extendedScanResults = &xrutils.ExtendedScanResults{XrayResults: flatResults}
 
-	if err = xrutils.NewResultsWriter(extendedScanResults).
-		SetOutputFormat(scanCmd.outputFormat).
-		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
-		SetIncludeLicenses(scanCmd.includeLicenses).
-		SetPrintExtendedTable(scanCmd.printExtendedTable).
-		SetIsMultipleRootProject(true).
-		SetScanType(services.Binary).
-		PrintScanResults(); err != nil {
-		return
-	}
-
 	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
 	// If user provided --fail=false, don't fail the build.
 	if scanCmd.fail && !scanCmd.includeVulnerabilities {

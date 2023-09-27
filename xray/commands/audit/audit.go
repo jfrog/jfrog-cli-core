@@ -109,15 +109,15 @@ func (auditCmd *AuditCommand) Run() (err error) {
 	// Print Scan results on all cases except if errors accrued on SCA scan and no security/license issues found.
 	printScanResults := !(auditResults.ScaError != nil && xrayutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
 	if printScanResults {
-		err = xrayutils.PrintScanResults(auditResults.ExtendedScanResults,
-			nil,
-			auditCmd.OutputFormat(),
-			auditCmd.IncludeVulnerabilities,
-			auditCmd.IncludeLicenses,
-			auditResults.IsMultipleRootProject,
-			auditCmd.PrintExtendedTable, false, messages,
-		)
-		if err != nil {
+		if err = xrayutils.NewResultsWriter(auditResults.ExtendedScanResults).
+			SetIsMultipleRootProject(auditResults.IsMultipleRootProject).
+			SetIncludeVulnerabilities(auditCmd.IncludeVulnerabilities).
+			SetIncludeLicenses(auditCmd.IncludeLicenses).
+			SetOutputFormat(auditCmd.OutputFormat()).
+			SetPrintExtendedTable(auditCmd.PrintExtendedTable).
+			SetExtraMessages(messages).
+			SetScanType(services.Dependency).
+			PrintScanResults(); err != nil {
 			return
 		}
 	}

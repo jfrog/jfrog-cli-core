@@ -177,7 +177,7 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (layersMapping map[strin
 		layerHash := strings.TrimPrefix(layer.Digest, layerDigestPrefix)
 		layersMapping[layerHash] = services.DockerfileCommandDetails{LayerHash: layer.Digest, Command: formatCommand(layer)}
 	}
-	return dsc.mapDockerfileCommands(layersMapping)
+	return layersMapping, nil
 }
 
 func formatCommand(layer *image.Layer) string {

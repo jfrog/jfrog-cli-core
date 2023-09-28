@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"os"
 	"os/exec"
@@ -36,6 +37,24 @@ type ApplicabilityScanManager struct {
 	technologies             []coreutils.Technology
 }
 
+func (asm *ApplicabilityScanManager) handleThirdPartyScan() {
+	switch {
+	case slices.Contains(asm.technologies, coreutils.Npm):
+		asm.removeFromExcludePatternInAllModules(jas.NodeModulesPattern)
+	case slices.Contains(asm.technologies, coreutils.Pip):
+		asm.removeFromExcludePatternInAllModules(jas.VirtualEnvPattern)
+		pythonModulesPath, err := getPipRoot()
+		if err != nil {
+			log.Warn(fmt.Sprintf("failed trying to get pip env folder path, error:%s ", err.Error()))
+			return
+		}
+		// Append a new module root, This can only be added once.
+		asm.appendModule(pythonModulesPath)
+	default:
+		return
+	}
+}
+
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
 // Creating an ApplicabilityScanManager object.
 // Checking if the scanned project is eligible for applicability scan.
@@ -53,9 +72,8 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 		return
 	}
 
-	// Add python modules folders path to working dirs if needed.
-	if thirdPartyContextualAnalysis && slices.Contains(scannedTechnologies, coreutils.Pip) {
-		appendPipModulesToScanWorkingDir(applicabilityScanManager)
+	if thirdPartyContextualAnalysis {
+		applicabilityScanManager.handleThirdPartyScan()
 	}
 
 	if err = applicabilityScanManager.scanner.Run(applicabilityScanManager); err != nil {
@@ -114,19 +132,22 @@ func isDirectComponents(components []string, directDependencies []string) bool {
 	return false
 }
 
-func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
-	if len(asm.scanner.WorkingDirs) > 1 {
-		log.Info("Running applicability scanning in the", wd, "directory...")
+func (asm *ApplicabilityScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Applicability) {
+		return
+	}
+	if len(asm.scanner.JFrogAppsConfig.Modules) > 1 {
+		log.Info("Running applicability scanning in the", module.SourceRoot, "directory...")
 	} else {
 		log.Info("Running applicability scanning...")
 	}
-	if err = asm.createConfigFile(wd); err != nil {
+	if err = asm.createConfigFile(module); err != nil {
 		return
 	}
 	if err = asm.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, wd)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, module.SourceRoot)
 	if err != nil {
 		return
 	}
@@ -155,20 +176,25 @@ type scanConfiguration struct {
 	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
-func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
+func (asm *ApplicabilityScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	roots, err := jas.GetSourceRoots(module, nil)
+	if err != nil {
+		return err
+	}
+	excludePatterns := jas.GetExcludePatterns(module, nil)
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
-				Roots:        []string{workingDir},
+				Roots:        roots,
 				Output:       asm.scanner.ResultsFileName,
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
 				CveWhitelist: asm.directDependenciesCves,
-				SkippedDirs:  asm.getSkipDirs(),
+				SkippedDirs:  excludePatterns,
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(asm.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(asm.scanner.ConfigFileName, configFileContent, utils.Applicability)
 }
 
 // Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for
@@ -177,18 +203,14 @@ func (asm *ApplicabilityScanManager) runAnalyzerManager() error {
 	return asm.scanner.AnalyzerManager.Exec(asm.scanner.ConfigFileName, applicabilityScanCommand, filepath.Dir(asm.scanner.AnalyzerManager.AnalyzerManagerFullPath), asm.scanner.ServerDetails)
 }
 
-// When thirdPartyScan is enabled we may need to remove ignore patterns based on technologies.
-func (asm *ApplicabilityScanManager) getSkipDirs() (skipDirs []string) {
-	if !asm.thirdPartyScan {
-		return jas.SkippedDirs
+func (asm *ApplicabilityScanManager) removeFromExcludePatternInAllModules(pattern string) {
+	for _, md := range asm.scanner.JFrogAppsConfig.Modules {
+		md.ExcludePatterns = removeElementFromSlice(md.ExcludePatterns, pattern)
 	}
-	if slices.Contains(asm.technologies, coreutils.Npm) {
-		skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.NodeModulesPattern)
-	}
-	if slices.Contains(asm.technologies, coreutils.Pip) {
-		skipDirs = removeElementFromSlice(jas.SkippedDirs, jas.VirtualEnvPattern)
-	}
-	return
+}
+
+func (asm *ApplicabilityScanManager) appendModule(path string) {
+	asm.scanner.JFrogAppsConfig.Modules = append(asm.scanner.JFrogAppsConfig.Modules, jfrogappsconfig.Module{SourceRoot: path})
 }
 
 func removeElementFromSlice(skipDirs []string, element string) []string {
@@ -197,15 +219,6 @@ func removeElementFromSlice(skipDirs []string, element string) []string {
 		return skipDirs
 	}
 	return slices.Delete(skipDirs, deleteIndex, deleteIndex+1)
-}
-
-func appendPipModulesToScanWorkingDir(applicabilityManager *ApplicabilityScanManager) {
-	pythonModulesPath, err := getPipRoot()
-	if err != nil {
-		log.Warn(fmt.Sprintf("failed trying to get pip env folder path, error:%s ", err.Error()))
-		return
-	}
-	applicabilityManager.scanner.WorkingDirs = append(applicabilityManager.scanner.WorkingDirs, pythonModulesPath)
 }
 
 func getPipRoot() (path string, err error) {

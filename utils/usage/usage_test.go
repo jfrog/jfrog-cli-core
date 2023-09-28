@@ -10,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	ecosysusage "github.com/jfrog/jfrog-client-go/utils/usage"
-	xrayusage "github.com/jfrog/jfrog-client-go/xray/usage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -39,28 +38,6 @@ var (
 		},
 		{FeatureId: "featureId", ClientId: "clientId2"},
 		{FeatureId: "featureId"},
-	}
-	xrayEvents = []xrayusage.ReportXrayEventData{
-		{
-			ProductId: productName,
-			EventId:   "server_" + productName + "_featureId2",
-			Attributes: map[string]string{
-				"clientId":  "clientId",
-				"attribute": "value",
-			},
-			Origin: "API_CLI",
-		},
-		{
-			ProductId:  productName,
-			EventId:    "server_" + productName + "_featureId",
-			Attributes: map[string]string{"clientId": "clientId2"},
-			Origin:     "API_CLI",
-		},
-		{
-			ProductId: productName,
-			EventId:   "server_" + productName + "_featureId",
-			Origin:    "API_CLI",
-		},
 	}
 	ecosystemData = []ecosysusage.ReportEcosystemUsageData{
 		{

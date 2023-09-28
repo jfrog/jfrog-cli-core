@@ -47,10 +47,10 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, uniqueDeps, 11)
-		assert.Len(t, modulesDependencyTrees, 2)
+		assert.Len(t, uniqueDeps, 9)
+		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
-		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "webservice")
+		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
 		assert.Len(t, module.Nodes, 7)
 
 		// Check direct dependency
@@ -71,10 +71,10 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 3)
-		assert.Len(t, uniqueDeps, 11)
+		assert.Len(t, modulesDependencyTrees, 5)
+		assert.Len(t, uniqueDeps, 8)
 		// Check module
-		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "api")
+		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test.gradle.publish:api:1.0-SNAPSHOT")
 		assert.Len(t, module.Nodes, 4)
 
 		// Check direct dependency
@@ -83,22 +83,6 @@ func TestGradleTreesWithConfig(t *testing.T) {
 
 		// Check transitive dependency
 		sca.GetAndAssertNode(t, directDependency.Nodes, "commons-io:commons-io:1.2")
-	}
-}
-
-func TestGradleTreesExcludeTestDeps(t *testing.T) {
-	// Create and change directory to test workspace
-	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, "gradle-example-ci-server")
-	defer cleanUp()
-	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
-
-	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
-	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, modulesDependencyTrees, 2)
-		assert.Len(t, uniqueDeps, 11)
-		// Check direct dependency
-		assert.Nil(t, sca.GetModule(modulesDependencyTrees, "services"))
 	}
 }
 

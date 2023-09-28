@@ -23,7 +23,7 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 		return
 	}
 	if remoteGoRepo != "" {
-		if err = SetGoProxy(server, remoteGoRepo); err != nil {
+		if err = setGoProxy(server, remoteGoRepo); err != nil {
 			return
 		}
 	}
@@ -62,7 +62,7 @@ func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dep
 	return
 }
 
-func SetGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
+func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
 	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo)
 	if err != nil {
 		return err

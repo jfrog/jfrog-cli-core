@@ -47,8 +47,6 @@ const (
 		"   jf docker scan <image name>:<image tag>"
 )
 
-var trueValue = true
-
 type EnvSetupCommand struct {
 	registrationURL string
 	// In case encodedConnectionDetails were provided - we have a registered user that was invited to the platform.
@@ -268,7 +266,7 @@ func GenerateNewLongTermRefreshableAccessToken(server *config.ServerDetails) (er
 func createLongExpirationRefreshableTokenParams() *services.CreateTokenParams {
 	params := services.CreateTokenParams{}
 	params.ExpiresIn = nonExpiredTokenValue
-	params.Refreshable = &trueValue
+	params.Refreshable = clientUtils.Pointer(true)
 	params.Audience = "*@*"
 	return &params
 }

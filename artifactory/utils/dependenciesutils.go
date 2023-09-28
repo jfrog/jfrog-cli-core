@@ -215,7 +215,7 @@ func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
 		return err
 	}
-	err = coreutils.SetPermissionsRecursively(tempDirPath, 0700)
+	err = coreutils.SetPermissionsRecursively(tempDirPath, 0755)
 	if err != nil {
 		return err
 	}

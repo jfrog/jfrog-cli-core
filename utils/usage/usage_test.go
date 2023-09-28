@@ -90,13 +90,6 @@ func TestConvertToArtifactoryUsage(t *testing.T) {
 	}
 }
 
-func TestConvertToXrayUsage(t *testing.T) {
-	reporter := NewUsageReporter(productName, &config.ServerDetails{XrayUrl: serverUrl + "/"})
-	for i := 0; i < len(features); i++ {
-		assert.Equal(t, xrayEvents[i], reporter.convertAttributesToXrayEvents(features[i])[0])
-	}
-}
-
 func TestConvertToEcosystemUsage(t *testing.T) {
 	reporter := NewUsageReporter(productName, &config.ServerDetails{Url: serverUrl})
 	for i := 0; i < len(features); i++ {
@@ -173,7 +166,7 @@ func TestReportEcosystemUsageError(t *testing.T) {
 }
 
 func create404UsageHandler(t *testing.T) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}
 }

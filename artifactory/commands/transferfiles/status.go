@@ -78,6 +78,7 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2)
 	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 2)
 	addString(output, "⌛", "Estimated time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
+	addString(output, "✋", "Delayed files", strconv.FormatUint(uint64(stateManager.DelayedFiles), 10), 2)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {
 		failureTxt += " (" + "In Phase 3 and in subsequent executions, we'll retry transferring the failed files." + ")"

@@ -174,6 +174,11 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 			return err
 		}
 
+		base.progressBar.changeNumberOfDelayedFiles(-1 * len(delayedArtifactsFile.DelayedArtifacts))
+		if err = base.stateManager.ChangeDelayedFilesCountBy(uint(len(delayedArtifactsFile.DelayedArtifacts)), false); err != nil {
+			log.Warn("Couldn't decrease the delayed files counter", err.Error())
+		}
+
 		// Remove the file, so it won't be consumed again.
 		if err = os.Remove(filePath); err != nil {
 			return errorutils.CheckError(err)
@@ -201,6 +206,23 @@ func readDelayFile(path string) (DelayedArtifactsFile, error) {
 // Gets a list of all delay files from the CLI's cache for a specific repo
 func getDelayFiles(repoKeys []string) (filesPaths []string, err error) {
 	return getErrorOrDelayFiles(repoKeys, getJfrogTransferRepoDelaysDir)
+}
+
+func getDelayedFilesCount(repoKeys []string) (int, error) {
+	files, err := getDelayFiles(repoKeys)
+	if err != nil {
+		return -1, err
+	}
+
+	count := 0
+	for _, file := range files {
+		delayedFiles, err := readDelayFile(file)
+		if err != nil {
+			return -1, err
+		}
+		count += len(delayedFiles.DelayedArtifacts)
+	}
+	return count, nil
 }
 
 const (
@@ -256,6 +278,10 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, fil
 		if shouldDelay(file.Name) {
 			delayed = true
 			delayHelper.delayedArtifactsChannelMng.add(file)
+			phase.progressBar.changeNumberOfDelayedFiles(1)
+			if err := phase.stateManager.ChangeDelayedFilesCountBy(1, true); err != nil {
+				log.Warn("Couldn't increase the delayed files counter", err.Error())
+			}
 		}
 	}
 	return

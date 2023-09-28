@@ -69,6 +69,7 @@ func TestShowStatus(t *testing.T) {
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
 	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Delayed files:		20")
 	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files.)")
 
 	// Check repository status
@@ -99,6 +100,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
 	assert.Contains(t, results, "Estimated time remaining:	Not available in this phase")
+	assert.Contains(t, results, "Delayed files:		20")
 	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
@@ -129,6 +131,7 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		Not available while transferring a build-info repository")
 	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Delayed files:		20")
 	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
@@ -174,6 +177,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool, staleChunks
 	stateManager.TotalRepositories.TotalUnits = 1111
 	stateManager.TotalRepositories.TransferredUnits = 15
 	stateManager.WorkingThreads = 16
+	stateManager.DelayedFiles = 20
 	stateManager.TransferFailures = 223
 
 	stateManager.TimeEstimationManager.LastSpeeds = []float64{12}

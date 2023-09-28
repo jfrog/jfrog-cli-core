@@ -167,7 +167,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(module jfrogappsconfig.Mod
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(asm.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(asm.scanner.ConfigFileName, configFileContent, utils.Applicability)
 }
 
 // Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for

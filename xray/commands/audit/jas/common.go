@@ -177,12 +177,12 @@ func convertToScore(severity string) string {
 	return ""
 }
 
-func CreateScannersConfigFile(fileName string, fileContent interface{}) error {
+func CreateScannersConfigFile(fileName string, fileContent interface{}, scanType utils.JasScanType) error {
 	yamlData, err := yaml.Marshal(&fileContent)
 	if errorutils.CheckError(err) != nil {
 		return err
 	}
-	log.Debug("Input YAML:\n" + string(yamlData))
+	log.Debug(scanType.String() + " scanner input YAML:\n" + string(yamlData))
 	err = os.WriteFile(fileName, yamlData, 0644)
 	return errorutils.CheckError(err)
 }

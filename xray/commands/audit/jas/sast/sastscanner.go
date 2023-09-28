@@ -96,7 +96,7 @@ func (ssm *SastScanManager) createConfigFile(module jfrogappsconfig.Module) erro
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(ssm.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(ssm.scanner.ConfigFileName, configFileContent, utils.Sast)
 }
 
 func (ssm *SastScanManager) runAnalyzerManager(wd string) error {

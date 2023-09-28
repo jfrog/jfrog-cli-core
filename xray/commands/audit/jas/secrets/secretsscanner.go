@@ -93,7 +93,7 @@ func (s *SecretScanManager) createConfigFile(module jfrogappsconfig.Module) erro
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(s.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(s.scanner.ConfigFileName, configFileContent, utils.Secrets)
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {

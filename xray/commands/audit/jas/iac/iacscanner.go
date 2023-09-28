@@ -94,7 +94,7 @@ func (iac *IacScanManager) createConfigFile(module jfrogappsconfig.Module) error
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(iac.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(iac.scanner.ConfigFileName, configFileContent, utils.IaC)
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {

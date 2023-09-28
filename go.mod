@@ -17,7 +17,7 @@ require (
 	github.com/jfrog/jfrog-client-go v1.32.3
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
-	github.com/owenrumney/go-sarif/v2 v2.2.0
+	github.com/owenrumney/go-sarif/v2 v2.2.2
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
@@ -93,3 +93,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
+
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20230928084830-478bd49f5d3e

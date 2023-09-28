@@ -2,7 +2,6 @@ package usage
 
 import (
 	"fmt"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -12,7 +11,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	ecosysusage "github.com/jfrog/jfrog-client-go/utils/usage"
-	xrayusage "github.com/jfrog/jfrog-client-go/xray/usage"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -47,7 +46,6 @@ func NewUsageReporter(productId string, serverDetails *config.ServerDetails) *Us
 		serverDetails:     serverDetails,
 		reportWaitGroup:   new(errgroup.Group),
 		sendToEcosystem:   true,
-		sendToXray:        true,
 		sendToArtifactory: true,
 	}
 }
@@ -110,12 +108,15 @@ func (ur *UsageReporter) WaitForResponses() (err error) {
 
 func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error) {
 	if ur.serverDetails.Url == "" {
-		err = errorutils.CheckErrorf("platform Url is not set")
+		err = errorutils.CheckErrorf("platform URL is not set")
 		return
 	}
 	reports, err := ur.convertAttributesToEcosystemReports(features...)
-	if len(reports) == 0 || err != nil {
-		err = errorutils.CheckErrorf("Nothing to send.")
+	if err != nil {
+		return
+	}
+	if len(reports) == 0 {
+		err = errorutils.CheckErrorf("nothing to send")
 		return
 	}
 	return ecosysusage.SendEcosystemUsageReports(reports...)
@@ -123,7 +124,7 @@ func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error
 
 func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err error) {
 	if ur.serverDetails.ArtifactoryUrl == "" {
-		err = errorutils.CheckErrorf("Artifactory Url is not set..")
+		err = errorutils.CheckErrorf("Artifactory URL is not set")
 		return
 	}
 	serviceManager, err := utils.CreateServiceManager(ur.serverDetails, -1, 0, false)
@@ -132,7 +133,7 @@ func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err err
 	}
 	converted := ur.convertAttributesToArtifactoryFeatures(features...)
 	if len(converted) == 0 {
-		err = errorutils.CheckErrorf("Nothing to send.")
+		err = errorutils.CheckErrorf("nothing to send")
 		return
 	}
 	return usage.ReportUsageToArtifactory(ur.ProductId, serviceManager, converted...)
@@ -159,29 +160,6 @@ func (ur *UsageReporter) convertAttributesToArtifactoryFeatures(reportFeatures .
 			Attributes: convertAttributesToMap(feature),
 		}
 		features = append(features, featureInfo)
-	}
-	return
-}
-
-func (ur *UsageReporter) convertAttributesToXrayEvents(reportFeatures ...ReportFeature) (events []xrayusage.ReportXrayEventData) {
-	for _, feature := range reportFeatures {
-		convertedAttributes := []xrayusage.ReportUsageAttribute{}
-		for _, attribute := range feature.Attributes {
-			convertedAttributes = append(convertedAttributes, xrayusage.ReportUsageAttribute{
-				AttributeName:  attribute.AttributeName,
-				AttributeValue: attribute.AttributeValue,
-			})
-		}
-		if feature.ClientId != "" {
-			// Add clientId as attribute
-			convertedAttributes = append(convertedAttributes, xrayusage.ReportUsageAttribute{
-				AttributeName:  clientIdAttributeName,
-				AttributeValue: feature.ClientId,
-			})
-		}
-		events = append(events, xrayusage.CreateUsageEvent(
-			ur.ProductId, feature.FeatureId, convertedAttributes...,
-		))
 	}
 	return
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/access"
 	accessservices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 
@@ -73,20 +74,18 @@ func (ic *InviteCommand) Run() (err error) {
 }
 
 func (ic *InviteCommand) createNewInvitedUser() *services.User {
-	var trueValue = true
-	var falseValue = false
 	userDetails := services.User{}
 	// Parameters "name" and "email" should both be with the email value for internal reasons in access.
 	userDetails.Email = ic.invitedEmail
 	userDetails.Name = ic.invitedEmail
 	// Random valid password - information won't be used in access.
 	userDetails.Password = "Password1!"
-	userDetails.Admin = &trueValue
-	userDetails.ShouldInvite = &trueValue
+	userDetails.Admin = clientutils.Pointer(true)
+	userDetails.ShouldInvite = clientutils.Pointer(true)
 	userDetails.Source = accessservices.InviteCliSourceName
 
-	userDetails.ProfileUpdatable = &trueValue
-	userDetails.DisableUIAccess = &falseValue
-	userDetails.InternalPasswordDisabled = &falseValue
+	userDetails.ProfileUpdatable = clientutils.Pointer(true)
+	userDetails.DisableUIAccess = clientutils.Pointer(false)
+	userDetails.InternalPasswordDisabled = clientutils.Pointer(false)
 	return &userDetails
 }

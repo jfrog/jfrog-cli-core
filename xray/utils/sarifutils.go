@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -115,24 +114,6 @@ func GetResultsLocationCount(runs ...*sarif.Run) (count int) {
 	return
 }
 
-func GetLevelResultsLocationCount(run *sarif.Run, level SarifLevel) (count int) {
-	for _, result := range run.Results {
-		if level == SarifLevel(*result.Level) {
-			count += len(result.Locations)
-		}
-	}
-	return
-}
-
-func GetResultsByRuleId(run *sarif.Run, ruleId string) (results []*sarif.Result) {
-	for _, result := range run.Results {
-		if *result.RuleID == ruleId {
-			results = append(results, result)
-		}
-	}
-	return
-}
-
 func GetResultMsgText(result *sarif.Result) string {
 	if result.Message.Text != nil {
 		return *result.Message.Text
@@ -141,19 +122,11 @@ func GetResultMsgText(result *sarif.Result) string {
 }
 
 func GetLocationSnippet(location *sarif.Location) string {
-	snippet := GetLocationSnippetPointer(location)
-	if snippet == nil {
-		return ""
-	}
-	return *snippet
-}
-
-func GetLocationSnippetPointer(location *sarif.Location) *string {
 	region := getLocationRegion(location)
 	if region != nil && region.Snippet != nil {
-		return region.Snippet.Text
+		return *region.Snippet.Text
 	}
-	return nil
+	return ""
 }
 
 func SetLocationSnippet(location *sarif.Location, snippet string) {
@@ -163,9 +136,8 @@ func SetLocationSnippet(location *sarif.Location, snippet string) {
 }
 
 func GetLocationFileName(location *sarif.Location) string {
-	filePath := location.PhysicalLocation.ArtifactLocation.URI
-	if filePath != nil {
-		return *filePath
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.ArtifactLocation != nil && location.PhysicalLocation.ArtifactLocation.URI != nil {
+		return *location.PhysicalLocation.ArtifactLocation.URI
 	}
 	return ""
 }
@@ -228,15 +200,6 @@ func GetLocationEndColumn(location *sarif.Location) int {
 	return 0
 }
 
-func GetStartLocationInFile(location *sarif.Location) string {
-	startLine := location.PhysicalLocation.Region.StartLine
-	startColumn := location.PhysicalLocation.Region.StartColumn
-	if startLine != nil && startColumn != nil {
-		return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
-	}
-	return ""
-}
-
 func ExtractRelativePath(resultPath string, projectRoot string) string {
 	// Remove OS-specific file prefix
 	resultPath = strings.TrimPrefix(resultPath, "file:///private")
@@ -291,8 +254,69 @@ func GetRunRules(run *sarif.Run) []*sarif.ReportingDescriptor {
 }
 
 func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {
-	if invocation.WorkingDirectory != nil && invocation.WorkingDirectory.URI != nil {
+	if invocation != nil && invocation.WorkingDirectory != nil && invocation.WorkingDirectory.URI != nil {
 		return *invocation.WorkingDirectory.URI
 	}
 	return ""
+}
+
+func CreateRunWithDummyResults(results ...*sarif.Result) *sarif.Run {
+	run := sarif.NewRunWithInformationURI("", "")
+	for _, result := range results {
+		if result.RuleID != nil {
+			run.AddRule(*result.RuleID)
+		}
+		run.AddResult(result)
+	}
+	return run
+}
+
+func CreateResultWithLocations(msg, ruleId, level string, locations ...*sarif.Location) *sarif.Result {
+	return &sarif.Result{
+		Message:   *sarif.NewTextMessage(msg),
+		Locations: locations,
+		Level:     &level,
+		RuleID:    &ruleId,
+	}
+}
+
+func CreateLocation(fileName string, startLine, startCol, endLine, endCol int, snippet string) *sarif.Location {
+	return &sarif.Location{
+		PhysicalLocation: &sarif.PhysicalLocation{
+			ArtifactLocation: &sarif.ArtifactLocation{URI: &fileName},
+			Region: &sarif.Region{
+				StartLine:   &startLine,
+				StartColumn: &startCol,
+				EndLine:     &endLine,
+				EndColumn:   &endCol,
+				Snippet:     &sarif.ArtifactContent{Text: &snippet}}},
+	}
+}
+
+func CreateDummyPassingResult(ruleId string) *sarif.Result {
+	kind := "pass"
+	return &sarif.Result{
+		Kind:   &kind,
+		RuleID: &ruleId,
+	}
+}
+
+func CreateResultWithOneLocation(fileName string, startLine, startCol, endLine, endCol int, snippet, ruleId, level string) *sarif.Result {
+	return CreateResultWithLocations("", ruleId, level, CreateLocation(fileName, startLine, startCol, endLine, endCol, snippet))
+}
+
+func CreateCodeFlow(threadFlows ...*sarif.ThreadFlow) *sarif.CodeFlow {
+	flow := sarif.NewCodeFlow()
+	for _, threadFlow := range threadFlows {
+		flow.AddThreadFlow(threadFlow)
+	}
+	return flow
+}
+
+func CreateThreadFlow(locations ...*sarif.Location) *sarif.ThreadFlow {
+	stackStrace := sarif.NewThreadFlow()
+	for _, location := range locations {
+		stackStrace.AddLocation(sarif.NewThreadFlowLocation().WithLocation(location))
+	}
+	return stackStrace
 }

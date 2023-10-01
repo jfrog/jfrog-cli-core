@@ -194,8 +194,7 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 
 func (ca *CurationAuditCommand) getAuditParamsByTech(tech coreutils.Technology) utils.AuditParams {
 	if tech == coreutils.Npm {
-		return utils.AuditNpmParams{
-			AuditParams: ca.AuditParams}.
+		return utils.AuditNpmParams{AuditParams: ca.AuditParams}.
 			SetNpmIgnoreNodeModules(true).
 			SetNpmOverwritePackageLock(true)
 	}

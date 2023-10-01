@@ -28,12 +28,9 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 	if err != nil {
 		return
 	}
-	treeDepsParam := biutils.NpmTreeDepListParam{
-		Args: addIgnoreScriptsFlag([]string{}),
-	}
-	if params != nil {
-		treeDepsParam = createTreeDepsParam(params)
-	}
+
+	treeDepsParam := createTreeDepsParam(params)
+
 	// Calculate npm dependencies
 	dependenciesMap, err := biutils.CalculateDependenciesMap(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), treeDepsParam, log.Logger)
 	if err != nil {
@@ -51,6 +48,11 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 }
 
 func createTreeDepsParam(params utils.AuditParams) biutils.NpmTreeDepListParam {
+	if params == nil {
+		return biutils.NpmTreeDepListParam{
+			Args: addIgnoreScriptsFlag([]string{}),
+		}
+	}
 	npmTreeDepParam := biutils.NpmTreeDepListParam{
 		Args: addIgnoreScriptsFlag(params.Args()),
 	}

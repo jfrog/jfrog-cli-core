@@ -122,7 +122,7 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	case Json:
 		return PrintJson(rw.results.getXrayScanResults())
 	case Sarif:
-		sarifFile, err := rw.generateSarifContentFromResults(false)
+		sarifFile, err := GenerateSarifContentFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses, false)
 		if err != nil {
 			return err
 		}
@@ -179,21 +179,21 @@ func printMessage(message string) {
 	log.Output("💬" + message)
 }
 
-func (rw *ResultsWriter) generateSarifContentFromResults(markdownOutput bool) (sarifStr string, err error) {
+func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (sarifStr string, err error) {
 	report, err := NewReport()
 	if err != nil {
 		return
 	}
-	xrayRun, err := rw.convertXrayResponsesToSarifRun(markdownOutput)
+	xrayRun, err := convertXrayResponsesToSarifRun(extendedResults, isMultipleRoots, includeLicenses, markdownOutput)
 	if err != nil {
 		return
 	}
 
 	report.Runs = append(report.Runs, xrayRun)
-	report.Runs = append(report.Runs, rw.results.ApplicabilityScanResults...)
-	report.Runs = append(report.Runs, rw.results.IacScanResults...)
-	report.Runs = append(report.Runs, rw.results.SecretsScanResults...)
-	report.Runs = append(report.Runs, rw.results.SastScanResults...)
+	report.Runs = append(report.Runs, extendedResults.ApplicabilityScanResults...)
+	report.Runs = append(report.Runs, extendedResults.IacScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
+	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
 
 	out, err := json.Marshal(report)
 	if err != nil {
@@ -203,13 +203,13 @@ func (rw *ResultsWriter) generateSarifContentFromResults(markdownOutput bool) (s
 	return clientUtils.IndentJson(out), nil
 }
 
-func (rw *ResultsWriter) convertXrayResponsesToSarifRun(markdownOutput bool) (run *sarif.Run, err error) {
-	xrayJson, err := rw.convertXrayScanToSimpleJson(true)
+func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {
+	xrayJson, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, true)
 	if err != nil {
 		return
 	}
 	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray Sca", "https://jfrog.com/xray/")
-	xrayRun.Tool.Driver.Version = &rw.results.XrayVersion
+	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
 	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
 		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {
 			return
@@ -305,18 +305,18 @@ func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location
 	return
 }
 
-func (rw *ResultsWriter) convertXrayScanToSimpleJson(simplifiedOutput bool) (formats.SimpleJsonResults, error) {
-	violations, vulnerabilities, licenses := SplitScanResults(rw.results.XrayResults)
+func convertXrayScanToSimpleJson(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+	violations, vulnerabilities, licenses := SplitScanResults(extendedResults.XrayResults)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
-		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, rw.results, rw.isMultipleRoots, simplifiedOutput)
+		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, extendedResults, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
 		jsonTable.Vulnerabilities = vulJsonTable
 	}
 	if len(violations) > 0 {
-		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, rw.results, rw.isMultipleRoots, simplifiedOutput)
+		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, extendedResults, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
@@ -324,7 +324,7 @@ func (rw *ResultsWriter) convertXrayScanToSimpleJson(simplifiedOutput bool) (for
 		jsonTable.LicensesViolations = licViolationsJsonTable
 		jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 	}
-	if rw.includeLicenses {
+	if includeLicenses {
 		licJsonTable, err := PrepareLicenses(licenses)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
@@ -336,7 +336,7 @@ func (rw *ResultsWriter) convertXrayScanToSimpleJson(simplifiedOutput bool) (for
 }
 
 func (rw *ResultsWriter) convertScanToSimpleJson() (formats.SimpleJsonResults, error) {
-	jsonTable, err := rw.convertXrayScanToSimpleJson(false)
+	jsonTable, err := convertXrayScanToSimpleJson(rw.results, rw.isMultipleRoots, rw.includeLicenses, false)
 	if err != nil {
 		return formats.SimpleJsonResults{}, err
 	}

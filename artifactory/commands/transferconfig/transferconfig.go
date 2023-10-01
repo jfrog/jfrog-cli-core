@@ -347,13 +347,11 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory() (string, func() erro
 	}
 
 	// Do export
-	trueValue := true
-	falseValue := false
 	exportParams := services.ExportParams{
 		ExportPath:      exportPath,
-		IncludeMetadata: &falseValue,
+		IncludeMetadata: clientutils.Pointer(false),
 		Verbose:         &tcc.verbose,
-		ExcludeContent:  &trueValue,
+		ExcludeContent:  clientutils.Pointer(true),
 	}
 	cleanUp := func() error { return fileutils.RemoveTempDir(exportPath) }
 	if err = tcc.SourceArtifactoryManager.Export(exportParams); err != nil {

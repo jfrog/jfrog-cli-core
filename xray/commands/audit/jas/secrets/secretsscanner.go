@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -49,19 +50,21 @@ func newSecretsScanManager(scanner *jas.JasScanner) (manager *SecretScanManager)
 	}
 }
 
-func (s *SecretScanManager) Run(wd string) (err error) {
-	scanner := s.scanner
-	if err = s.createConfigFile(wd); err != nil {
+func (ssm *SecretScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Secrets) {
 		return
 	}
-	if err = s.runAnalyzerManager(); err != nil {
+	if err = ssm.createConfigFile(module); err != nil {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd, secretsDocsUrlSuffix)
+	if err = ssm.runAnalyzerManager(); err != nil {
+		return
+	}
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(ssm.scanner.ResultsFileName, module.SourceRoot, secretsDocsUrlSuffix)
 	if err != nil {
 		return
 	}
-	s.secretsScannerResults = append(s.secretsScannerResults, processSecretScanRuns(workingDirRuns)...)
+	ssm.secretsScannerResults = append(ssm.secretsScannerResults, processSecretScanRuns(workingDirRuns)...)
 	return
 }
 
@@ -76,18 +79,22 @@ type secretsScanConfiguration struct {
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (s *SecretScanManager) createConfigFile(currentWd string) error {
+func (s *SecretScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	roots, err := jas.GetSourceRoots(module, module.Scanners.Secrets)
+	if err != nil {
+		return err
+	}
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:       []string{currentWd},
+				Roots:       roots,
 				Output:      s.scanner.ResultsFileName,
 				Type:        secretsScannerType,
-				SkippedDirs: jas.SkippedDirs,
+				SkippedDirs: jas.GetExcludePatterns(module, module.Scanners.Secrets),
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(s.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(s.scanner.ConfigFileName, configFileContent, utils.Secrets)
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {

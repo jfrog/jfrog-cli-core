@@ -21,7 +21,7 @@ func TestNewSastScanManager(t *testing.T) {
 	if assert.NotNil(t, sastScanManager) {
 		assert.NotEmpty(t, sastScanManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, sastScanManager.scanner.ResultsFileName)
-		assert.NotEmpty(t, sastScanManager.scanner.WorkingDirs)
+		assert.NotEmpty(t, sastScanManager.scanner.JFrogAppsConfig.Modules[0].SourceRoot)
 		assert.Equal(t, &jas.FakeServerDetails, sastScanManager.scanner.ServerDetails)
 	}
 }
@@ -36,7 +36,7 @@ func TestSastParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	sastScanManager.sastScannerResults, err = jas.ReadJasScanRunsFromFile(sastScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], sastDocsUrlSuffix)
+	sastScanManager.sastScannerResults, err = jas.ReadJasScanRunsFromFile(sastScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, sastDocsUrlSuffix)
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, sastScanManager.sastScannerResults) {
@@ -57,7 +57,7 @@ func TestSastParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	sastScanManager.sastScannerResults, err = jas.ReadJasScanRunsFromFile(sastScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], sastDocsUrlSuffix)
+	sastScanManager.sastScannerResults, err = jas.ReadJasScanRunsFromFile(sastScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, sastDocsUrlSuffix)
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, sastScanManager.sastScannerResults) {

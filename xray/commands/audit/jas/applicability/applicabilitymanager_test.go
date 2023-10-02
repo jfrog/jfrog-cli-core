@@ -1,13 +1,15 @@
 package applicability
 
 import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"path/filepath"
-	"testing"
 )
 
 var mockDirectDependencies = []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}
@@ -36,7 +38,7 @@ func TestNewApplicabilityScanManager_DependencyTreeDoesntExist(t *testing.T) {
 	// Assert
 	if assert.NotNil(t, applicabilityManager) {
 		assert.NotNil(t, applicabilityManager.scanner.ScannerDirCleanupFunc)
-		assert.Len(t, applicabilityManager.scanner.WorkingDirs, 1)
+		assert.Len(t, applicabilityManager.scanner.JFrogAppsConfig.Modules, 1)
 		assert.NotEmpty(t, applicabilityManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, applicabilityManager.scanner.ResultsFileName)
 		assert.Empty(t, applicabilityManager.directDependenciesCves)
@@ -49,13 +51,13 @@ func TestNewApplicabilityScanManager_NoDirectDependenciesInScan(t *testing.T) {
 		{
 			ScanId: "scanId_1",
 			Vulnerabilities: []services.Vulnerability{
-				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_1", Technology: coreutils.Pipenv.String(),
 					Cves: []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
 					Components: map[string]services.Component{
 						"issueId_1_non_direct_dependency": {}}},
 			},
 			Violations: []services.Violation{
-				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves: []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
 					Components: map[string]services.Component{
 						"issueId_2_non_direct_dependency": {}}},
@@ -105,7 +107,7 @@ func TestNewApplicabilityScanManager_ViolationsDontExistInResults(t *testing.T) 
 		{
 			ScanId: "scanId_1",
 			Vulnerabilities: []services.Vulnerability{
-				{IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_1", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "test_cve_1"}, {Id: "test_cve_2"}, {Id: "test_cve_3"}},
 					Components: map[string]services.Component{"issueId_1_direct_dependency": {}}},
 			},
@@ -131,7 +133,7 @@ func TestNewApplicabilityScanManager_VulnerabilitiesDontExist(t *testing.T) {
 		{
 			ScanId: "scanId_1",
 			Violations: []services.Violation{
-				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "test_cve_3"}, {Id: "test_cve_4"}},
 					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
 			},
@@ -178,7 +180,7 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	var xrayResponseForDirectViolationsTest = []services.ScanResponse{
 		{
 			Violations: []services.Violation{
-				{IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+				{IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
 					Components: map[string]services.Component{"issueId_2_direct_dependency": {}}},
 			},
@@ -212,12 +214,12 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 			ScanId: "scanId_1",
 			Vulnerabilities: []services.Vulnerability{
 				{
-					IssueId: "issueId_1", Technology: coreutils.Pipenv.ToString(),
+					IssueId: "issueId_1", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}, {Id: "testCve3"}},
 					Components: map[string]services.Component{"issueId_1_direct_dependency": {}},
 				},
 				{
-					IssueId: "issueId_2", Technology: coreutils.Pipenv.ToString(),
+					IssueId: "issueId_2", Technology: coreutils.Pipenv.String(),
 					Cves:       []services.Cve{{Id: "testCve4"}, {Id: "testCve5"}},
 					Components: map[string]services.Component{"issueId_2_direct_dependency": {}},
 				},
@@ -255,7 +257,7 @@ func TestCreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)
-	err = applicabilityManager.createConfigFile(currWd)
+	err = applicabilityManager.createConfigFile(jfrogappsconfig.Module{SourceRoot: currWd})
 	assert.NoError(t, err)
 
 	defer func() {
@@ -280,7 +282,7 @@ func TestParseResults_EmptyResults_AllCvesShouldGetUnknown(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot)
 
 	if assert.NoError(t, err) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
@@ -297,7 +299,7 @@ func TestParseResults_ApplicableCveExist(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot)
 
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)
@@ -314,7 +316,7 @@ func TestParseResults_AllCvesNotApplicable(t *testing.T) {
 
 	// Act
 	var err error
-	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	applicabilityManager.applicabilityScanResults, err = jas.ReadJasScanRunsFromFile(applicabilityManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot)
 
 	if assert.NoError(t, err) && assert.NotNil(t, applicabilityManager.applicabilityScanResults) {
 		assert.Len(t, applicabilityManager.applicabilityScanResults, 1)

@@ -37,13 +37,13 @@ const (
 // In case one (or more) of the violations contains the field FailBuild set to true, CliError with exit code 3 will be returned.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
+func PrintViolationsTable(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, printExtended bool, scanType services.ScanType) error {
 	securityViolationsRows, licenseViolationsRows, operationalRiskViolationsRows, err := prepareViolations(violations, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 	// Print tables, if scan is true; print the scan tables.
-	if isBinaryScan {
+	if scanType == services.Binary {
 		err = coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(securityViolationsRows), "Security Violations", "No security violations were found", printExtended)
 		if err != nil {
 			return err
@@ -72,16 +72,16 @@ func PrintViolationsTable(violations []services.Violation, extendedResults *Exte
 }
 
 // Prepare violations for all non-table formats (without style or emoji)
-func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func PrepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseRow, []formats.OperationalRiskViolationRow, error) {
 	return prepareViolations(violations, extendedResults, multipleRoots, false, simplifiedOutput)
 }
 
-func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseViolationRow, []formats.OperationalRiskViolationRow, error) {
+func prepareViolations(violations []services.Violation, extendedResults *ExtendedScanResults, multipleRoots, isTable, simplifiedOutput bool) ([]formats.VulnerabilityOrViolationRow, []formats.LicenseRow, []formats.OperationalRiskViolationRow, error) {
 	if simplifiedOutput {
 		violations = simplifyViolations(violations, multipleRoots)
 	}
 	var securityViolationsRows []formats.VulnerabilityOrViolationRow
-	var licenseViolationsRows []formats.LicenseViolationRow
+	var licenseViolationsRows []formats.LicenseRow
 	var operationalRiskViolationsRows []formats.OperationalRiskViolationRow
 	for _, violation := range violations {
 		impactedPackagesNames, impactedPackagesVersions, impactedPackagesTypes, fixedVersions, components, impactPaths, err := splitComponents(violation.Components)
@@ -102,21 +102,22 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				securityViolationsRows = append(securityViolationsRows,
 					formats.VulnerabilityOrViolationRow{
-						Summary:                   violation.Summary,
-						Severity:                  currSeverity.printableTitle(isTable),
-						SeverityNumValue:          currSeverity.numValue,
-						ImpactedDependencyName:    impactedPackagesNames[compIndex],
-						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-						FixedVersions:             fixedVersions[compIndex],
-						Components:                components[compIndex],
-						Cves:                      cves,
-						IssueId:                   violation.IssueId,
-						References:                violation.References,
-						JfrogResearchInformation:  jfrogResearchInfo,
-						ImpactPaths:               impactPaths[compIndex],
-						Technology:                coreutils.Technology(violation.Technology),
-						Applicable:                printApplicableCveValue(applicabilityStatus, isTable),
+						Summary: violation.Summary,
+						ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+							SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+							ImpactedDependencyName:    impactedPackagesNames[compIndex],
+							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+							Components:                components[compIndex],
+						},
+						FixedVersions:            fixedVersions[compIndex],
+						Cves:                     cves,
+						IssueId:                  violation.IssueId,
+						References:               violation.References,
+						JfrogResearchInformation: jfrogResearchInfo,
+						ImpactPaths:              impactPaths[compIndex],
+						Technology:               coreutils.Technology(violation.Technology),
+						Applicable:               printApplicabilityCveValue(applicabilityStatus, isTable),
 					},
 				)
 			}
@@ -124,14 +125,15 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			currSeverity := GetSeverity(violation.Severity, ApplicabilityUndetermined)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				licenseViolationsRows = append(licenseViolationsRows,
-					formats.LicenseViolationRow{
-						LicenseKey:                violation.LicenseKey,
-						Severity:                  currSeverity.printableTitle(isTable),
-						SeverityNumValue:          currSeverity.numValue,
-						ImpactedDependencyName:    impactedPackagesNames[compIndex],
-						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-						Components:                components[compIndex],
+					formats.LicenseRow{
+						LicenseKey: violation.LicenseKey,
+						ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+							SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+							ImpactedDependencyName:    impactedPackagesNames[compIndex],
+							ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+							ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+							Components:                components[compIndex],
+						},
 					},
 				)
 			}
@@ -140,20 +142,21 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 			violationOpRiskData := getOperationalRiskViolationReadableData(violation)
 			for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 				operationalRiskViolationsRow := &formats.OperationalRiskViolationRow{
-					Severity:                  currSeverity.printableTitle(isTable),
-					SeverityNumValue:          currSeverity.numValue,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					Components:                components[compIndex],
-					IsEol:                     violationOpRiskData.isEol,
-					Cadence:                   violationOpRiskData.cadence,
-					Commits:                   violationOpRiskData.commits,
-					Committers:                violationOpRiskData.committers,
-					NewerVersions:             violationOpRiskData.newerVersions,
-					LatestVersion:             violationOpRiskData.latestVersion,
-					RiskReason:                violationOpRiskData.riskReason,
-					EolMessage:                violationOpRiskData.eolMessage,
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
+					IsEol:         violationOpRiskData.isEol,
+					Cadence:       violationOpRiskData.cadence,
+					Commits:       violationOpRiskData.commits,
+					Committers:    violationOpRiskData.committers,
+					NewerVersions: violationOpRiskData.newerVersions,
+					LatestVersion: violationOpRiskData.latestVersion,
+					RiskReason:    violationOpRiskData.riskReason,
+					EolMessage:    violationOpRiskData.eolMessage,
 				}
 				operationalRiskViolationsRows = append(operationalRiskViolationsRows, *operationalRiskViolationsRow)
 			}
@@ -179,13 +182,13 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended, isBinaryScan bool) error {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended bool, scanType services.ScanType) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
 
-	if isBinaryScan {
+	if scanType == services.Binary {
 		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
 	}
 	var emptyTableMessage string
@@ -224,21 +227,22 @@ func prepareVulnerabilities(vulnerabilities []services.Vulnerability, extendedRe
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			vulnerabilitiesRows = append(vulnerabilitiesRows,
 				formats.VulnerabilityOrViolationRow{
-					Summary:                   vulnerability.Summary,
-					Severity:                  currSeverity.printableTitle(isTable),
-					SeverityNumValue:          currSeverity.numValue,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					FixedVersions:             fixedVersions[compIndex],
-					Components:                components[compIndex],
-					Cves:                      cves,
-					IssueId:                   vulnerability.IssueId,
-					References:                vulnerability.References,
-					JfrogResearchInformation:  jfrogResearchInfo,
-					ImpactPaths:               impactPaths[compIndex],
-					Technology:                coreutils.Technology(vulnerability.Technology),
-					Applicable:                printApplicableCveValue(applicabilityStatus, isTable),
+					Summary: vulnerability.Summary,
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails:           formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
+					FixedVersions:            fixedVersions[compIndex],
+					Cves:                     cves,
+					IssueId:                  vulnerability.IssueId,
+					References:               vulnerability.References,
+					JfrogResearchInformation: jfrogResearchInfo,
+					ImpactPaths:              impactPaths[compIndex],
+					Technology:               coreutils.Technology(vulnerability.Technology),
+					Applicable:               printApplicabilityCveValue(applicabilityStatus, isTable),
 				},
 			)
 		}
@@ -262,12 +266,12 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintLicensesTable(licenses []services.License, printExtended, isBinaryScan bool) error {
+func PrintLicensesTable(licenses []services.License, printExtended bool, scanType services.ScanType) error {
 	licensesRows, err := PrepareLicenses(licenses)
 	if err != nil {
 		return err
 	}
-	if isBinaryScan {
+	if scanType == services.Binary {
 		return coreutils.PrintTable(formats.ConvertToLicenseScanTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
 	}
 	return coreutils.PrintTable(formats.ConvertToLicenseTableRow(licensesRows), "Licenses", "No licenses were found", printExtended)
@@ -283,12 +287,14 @@ func PrepareLicenses(licenses []services.License) ([]formats.LicenseRow, error) 
 		for compIndex := 0; compIndex < len(impactedPackagesNames); compIndex++ {
 			licensesRows = append(licensesRows,
 				formats.LicenseRow{
-					LicenseKey:                license.Key,
-					ImpactedDependencyName:    impactedPackagesNames[compIndex],
-					ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
-					ImpactedDependencyType:    impactedPackagesTypes[compIndex],
-					Components:                components[compIndex],
-					ImpactPaths:               impactPaths[compIndex],
+					LicenseKey:  license.Key,
+					ImpactPaths: impactPaths[compIndex],
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						ImpactedDependencyName:    impactedPackagesNames[compIndex],
+						ImpactedDependencyVersion: impactedPackagesVersions[compIndex],
+						ImpactedDependencyType:    impactedPackagesTypes[compIndex],
+						Components:                components[compIndex],
+					},
 				},
 			)
 		}
@@ -310,9 +316,8 @@ func prepareSecrets(secrets []*sarif.Run, isTable bool) []formats.SourceCodeRow 
 			for _, location := range secretResult.Locations {
 				secretsRows = append(secretsRows,
 					formats.SourceCodeRow{
-						Severity:         currSeverity.printableTitle(isTable),
-						Finding:          GetResultMsgText(secretResult),
-						SeverityNumValue: currSeverity.numValue,
+						SeverityDetails: formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
+						Finding:         GetResultMsgText(secretResult),
 						Location: formats.Location{
 							File:        GetRelativeLocationFileName(location, secretRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
@@ -361,10 +366,9 @@ func prepareIacs(iacs []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 			for _, location := range iacResult.Locations {
 				iacRows = append(iacRows,
 					formats.SourceCodeRow{
-						Severity:           currSeverity.printableTitle(isTable),
+						SeverityDetails:    formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
 						Finding:            GetResultMsgText(iacResult),
 						ScannerDescription: scannerDescription,
-						SeverityNumValue:   currSeverity.numValue,
 						Location: formats.Location{
 							File:        GetRelativeLocationFileName(location, iacRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
@@ -414,10 +418,9 @@ func prepareSast(sasts []*sarif.Run, isTable bool) []formats.SourceCodeRow {
 				codeFlows := GetLocationRelatedCodeFlowsFromResult(location, sastResult)
 				sastRows = append(sastRows,
 					formats.SourceCodeRow{
-						Severity:           currSeverity.printableTitle(isTable),
-						Finding:            GetResultMsgText(sastResult),
+						SeverityDetails:    formats.SeverityDetails{Severity: currSeverity.printableTitle(isTable), SeverityNumValue: currSeverity.NumValue()},
 						ScannerDescription: scannerDescription,
-						SeverityNumValue:   currSeverity.numValue,
+						Finding:            GetResultMsgText(sastResult),
 						Location: formats.Location{
 							File:        GetRelativeLocationFileName(location, sastRun.Invocations),
 							StartLine:   GetLocationStartLine(location),
@@ -489,7 +492,7 @@ func convertJfrogResearchInformation(extendedInfo *services.ExtendedInformation)
 	return &formats.JfrogResearchInformation{
 		Summary:         extendedInfo.ShortDescription,
 		Details:         extendedInfo.FullDescription,
-		Severity:        extendedInfo.JfrogResearchSeverity,
+		SeverityDetails: formats.SeverityDetails{Severity: extendedInfo.JfrogResearchSeverity},
 		SeverityReasons: severityReasons,
 		Remediation:     extendedInfo.Remediation,
 	}
@@ -628,53 +631,52 @@ func getDirectComponentsAndImpactPaths(impactPaths [][]services.ImpactPathNode) 
 	return
 }
 
-type Severity struct {
-	title    string
-	numValue int
-	style    color.Style
-	emoji    string
+type TableSeverity struct {
+	formats.SeverityDetails
+	style color.Style
+	emoji string
 }
 
-func (s *Severity) printableTitle(isTable bool) string {
+func (s *TableSeverity) printableTitle(isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		return s.style.Render(s.emoji + s.title)
+		return s.style.Render(s.emoji + s.Severity)
 	}
-	return s.title
+	return s.Severity
 }
 
-var Severities = map[string]map[ApplicabilityStatus]*Severity{
+var Severities = map[string]map[ApplicabilityStatus]*TableSeverity{
 	"Critical": {
-		Applicable:                {emoji: "💀", title: "Critical", numValue: 15, style: color.New(color.BgLightRed, color.LightWhite)},
-		ApplicabilityUndetermined: {emoji: "💀", title: "Critical", numValue: 14, style: color.New(color.BgLightRed, color.LightWhite)},
-		NotApplicable:             {emoji: "💀", title: "Critical", numValue: 5, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 15}, emoji: "💀", style: color.New(color.BgLightRed, color.LightWhite)},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 14}, emoji: "💀", style: color.New(color.BgLightRed, color.LightWhite)},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Critical", SeverityNumValue: 5}, emoji: "💀", style: color.New(color.Gray)},
 	},
 	"High": {
-		Applicable:                {emoji: "🔥", title: "High", numValue: 13, style: color.New(color.Red)},
-		ApplicabilityUndetermined: {emoji: "🔥", title: "High", numValue: 12, style: color.New(color.Red)},
-		NotApplicable:             {emoji: "🔥", title: "High", numValue: 4, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 13}, emoji: "🔥", style: color.New(color.Red)},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 12}, emoji: "🔥", style: color.New(color.Red)},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "High", SeverityNumValue: 4}, emoji: "🔥", style: color.New(color.Gray)},
 	},
 	"Medium": {
-		Applicable:                {emoji: "🎃", title: "Medium", numValue: 11, style: color.New(color.Yellow)},
-		ApplicabilityUndetermined: {emoji: "🎃", title: "Medium", numValue: 10, style: color.New(color.Yellow)},
-		NotApplicable:             {emoji: "🎃", title: "Medium", numValue: 3, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 11}, emoji: "🎃", style: color.New(color.Yellow)},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 10}, emoji: "🎃", style: color.New(color.Yellow)},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Medium", SeverityNumValue: 3}, emoji: "🎃", style: color.New(color.Gray)},
 	},
 	"Low": {
-		Applicable:                {emoji: "👻", title: "Low", numValue: 9},
-		ApplicabilityUndetermined: {emoji: "👻", title: "Low", numValue: 8},
-		NotApplicable:             {emoji: "👻", title: "Low", numValue: 2, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 9}, emoji: "👻"},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 8}, emoji: "👻"},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Low", SeverityNumValue: 2}, emoji: "👻", style: color.New(color.Gray)},
 	},
 	"Unknown": {
-		Applicable:                {emoji: "😐", title: "Unknown", numValue: 7},
-		ApplicabilityUndetermined: {emoji: "😐", title: "Unknown", numValue: 6},
-		NotApplicable:             {emoji: "😐", title: "Unknown", numValue: 1, style: color.New(color.Gray)},
+		Applicable:                {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 7}, emoji: "😐"},
+		ApplicabilityUndetermined: {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 6}, emoji: "😐"},
+		NotApplicable:             {SeverityDetails: formats.SeverityDetails{Severity: "Unknown", SeverityNumValue: 1}, emoji: "😐", style: color.New(color.Gray)},
 	},
 }
 
-func (s *Severity) NumValue() int {
-	return s.numValue
+func (s *TableSeverity) NumValue() int {
+	return s.SeverityNumValue
 }
 
-func (s *Severity) Emoji() string {
+func (s *TableSeverity) Emoji() string {
 	return s.emoji
 }
 
@@ -687,9 +689,9 @@ func GetSeveritiesFormat(severity string) (string, error) {
 	return formattedSeverity, nil
 }
 
-func GetSeverity(severityTitle string, applicable ApplicabilityStatus) *Severity {
+func GetSeverity(severityTitle string, applicable ApplicabilityStatus) *TableSeverity {
 	if Severities[severityTitle] == nil {
-		return &Severity{title: severityTitle}
+		return &TableSeverity{SeverityDetails: formats.SeverityDetails{Severity: severityTitle}}
 	}
 
 	switch applicable {
@@ -999,15 +1001,15 @@ func getCveApplicabilityField(cve formats.CveRow, applicabilityScanResults []*sa
 	return &applicability
 }
 
-func printApplicableCveValue(applicableValue ApplicabilityStatus, isTable bool) string {
+func printApplicabilityCveValue(applicabilityStatus ApplicabilityStatus, isTable bool) string {
 	if isTable && (log.IsStdOutTerminal() && log.IsColorsSupported() || os.Getenv("GITLAB_CI") != "") {
-		if applicableValue == Applicable {
-			return color.New(color.Red).Render(applicableValue)
-		} else if applicableValue == NotApplicable {
-			return color.New(color.Green).Render(applicableValue)
+		if applicabilityStatus == Applicable {
+			return color.New(color.Red).Render(applicabilityStatus)
+		} else if applicabilityStatus == NotApplicable {
+			return color.New(color.Green).Render(applicabilityStatus)
 		}
 	}
-	return string(applicableValue)
+	return applicabilityStatus.String()
 }
 
 // Relevant only when "third-party-contextual-analysis" flag is on,

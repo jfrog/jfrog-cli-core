@@ -23,7 +23,7 @@ const (
 	EntitlementsMinVersion                    = "3.66.5"
 	ApplicabilityFeatureId                    = "contextual_analysis"
 	AnalyzerManagerZipName                    = "analyzerManager.zip"
-	defaultAnalyzerManagerVersion             = "1.3.2.2005632"
+	defaultAnalyzerManagerVersion             = "1.3.2.2019257"
 	minAnalyzerManagerVersionForSast          = "1.3"
 	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName                    = "analyzerManager"
@@ -50,6 +50,10 @@ const (
 	NotScanned                ApplicabilityStatus = ""
 )
 
+func (as ApplicabilityStatus) String() string {
+	return string(as)
+}
+
 type JasScanType string
 
 const (
@@ -59,9 +63,13 @@ const (
 	Sast          JasScanType = "Sast"
 )
 
-func (st JasScanType) FormattedError(err error) error {
+func (jst JasScanType) String() string {
+	return string(jst)
+}
+
+func (jst JasScanType) FormattedError(err error) error {
 	if err != nil {
-		return fmt.Errorf(ErrFailedScannerRun, st, err.Error())
+		return fmt.Errorf(ErrFailedScannerRun, jst, err.Error())
 	}
 	return nil
 }
@@ -94,10 +102,21 @@ type AnalyzerManager struct {
 }
 
 func (am *AnalyzerManager) Exec(configFile, scanCommand, workingDir string, serverDetails *config.ServerDetails) (err error) {
+	return am.ExecWithOutputFile(configFile, scanCommand, workingDir, "", serverDetails)
+}
+
+func (am *AnalyzerManager) ExecWithOutputFile(configFile, scanCommand, workingDir, outputFile string, serverDetails *config.ServerDetails) (err error) {
 	if err = SetAnalyzerManagerEnvVariables(serverDetails); err != nil {
 		return
 	}
-	cmd := exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
+	var cmd *exec.Cmd
+	if len(outputFile) > 0 {
+		log.Debug("Executing", am.AnalyzerManagerFullPath, scanCommand, configFile, outputFile, am.MultiScanId)
+		cmd = exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, outputFile, am.MultiScanId)
+	} else {
+		log.Debug("Executing", am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
+		cmd = exec.Command(am.AnalyzerManagerFullPath, scanCommand, configFile, am.MultiScanId)
+	}
 	defer func() {
 		if cmd.ProcessState != nil && !cmd.ProcessState.Exited() {
 			if killProcessError := cmd.Process.Kill(); errorutils.CheckError(killProcessError) != nil {

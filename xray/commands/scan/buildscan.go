@@ -128,22 +128,30 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 
 	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: scanResponse}
 
+	resultsPrinter := xrutils.NewResultsWriter(extendedScanResults).
+		SetOutputFormat(bsc.outputFormat).
+		SetIncludeVulnerabilities(bsc.includeVulnerabilities).
+		SetIncludeLicenses(false).
+		SetIsMultipleRootProject(true).
+		SetPrintExtendedTable(bsc.printExtendedTable).
+		SetScanType(services.Binary).
+		SetExtraMessages(nil)
+
 	if bsc.outputFormat != xrutils.Table {
 		// Print the violations and/or vulnerabilities as part of one JSON.
-		err = xrutils.PrintScanResults(extendedScanResults, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable, true, nil)
+		err = resultsPrinter.PrintScanResults()
 	} else {
 		// Print two different tables for violations and vulnerabilities (if needed)
 
 		// If "No Xray Fail build policy...." error received, no need to print violations
 		if !noFailBuildPolicy {
-			err = xrutils.PrintScanResults(extendedScanResults, nil, bsc.outputFormat, false, false, false, bsc.printExtendedTable, true, nil)
-			if err != nil {
+			if err = resultsPrinter.PrintScanResults(); err != nil {
 				return false, err
 			}
 		}
 		if bsc.includeVulnerabilities {
-			err = xrutils.PrintScanResults(extendedScanResults, nil, bsc.outputFormat, true, false, false, bsc.printExtendedTable, true, nil)
-			if err != nil {
+			resultsPrinter.SetIncludeVulnerabilities(true)
+			if err = resultsPrinter.PrintScanResults(); err != nil {
 				return false, err
 			}
 		}

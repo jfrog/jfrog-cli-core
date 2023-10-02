@@ -239,7 +239,7 @@ func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
 		return
 	}
 	curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)
-	if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
+	if curUploadChunk.IsChunkFull() {
 		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, *curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	sastScannerType = "sast"
+	sastScannerType   = "sast"
 	sastScanCommand   = "zd"
 	sastDocsUrlSuffix = "sast"
 )

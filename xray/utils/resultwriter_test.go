@@ -142,6 +142,7 @@ func TestFindMaxCVEScore(t *testing.T) {
 
 func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
 	testDir, done := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer done()
 	invocation := sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation(testDir))
 	file, err := os.Create(filepath.Join(testDir, "go.mod"))
 	assert.NoError(t, err)
@@ -201,5 +202,4 @@ func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
 			}
 		})
 	}
-	done()
 }

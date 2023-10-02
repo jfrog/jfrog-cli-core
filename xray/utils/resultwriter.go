@@ -309,9 +309,7 @@ func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, e
 func getDescriptorPath(tech coreutils.Technology) string {
 	descriptors := tech.GetPackageDescriptor()
 	for _, descriptor := range descriptors {
-		if strings.TrimSpace(descriptor) != "" {
-			return strings.TrimSpace(descriptor)
-		}
+		return descriptor
 	}
 	return ""
 }

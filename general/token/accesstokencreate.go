@@ -1,4 +1,4 @@
-package generic
+package token
 
 import (
 	"encoding/json"
@@ -103,7 +103,7 @@ func (atc *AccessTokenCreateCommand) ServerDetails() (*config.ServerDetails, err
 }
 
 func (atc *AccessTokenCreateCommand) CommandName() string {
-	return "access_token_create"
+	return "jf_access_token_create"
 }
 
 func (atc *AccessTokenCreateCommand) Run() error {

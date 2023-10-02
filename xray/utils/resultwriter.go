@@ -294,13 +294,13 @@ func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, e
 		// Generate the full path
 		return GetFullLocationFileName(strings.TrimSpace(descriptors[0]), run.Invocations), nil
 	}
-	for _, optional := range descriptors {
+	for _, descriptor := range descriptors {
 		// If multiple options return first to match
-		full := GetFullLocationFileName(strings.TrimSpace(optional), run.Invocations)
-		if exists, err := fileutils.IsFileExists(full, false); err != nil {
+		absolutePath := GetFullLocationFileName(strings.TrimSpace(descriptor), run.Invocations)
+		if exists, err := fileutils.IsFileExists(absolutePath, false); err != nil {
 			return "", err
 		} else if exists {
-			return full, nil
+			return absolutePath, nil
 		}
 	}
 	return "", nil

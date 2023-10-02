@@ -217,7 +217,7 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 			vulnerability.Cves,
 			vulnerability.IssueId,
 			vulnerability.Severity,
-			vulnerability.Technology.GetPackageDescriptor(),
+			vulnerability.Technology,
 			vulnerability.Components,
 			vulnerability.Applicable,
 			vulnerability.ImpactedDependencyName,
@@ -235,7 +235,7 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 			violation.Cves,
 			violation.IssueId,
 			violation.Severity,
-			violation.Technology.GetPackageDescriptor(),
+			violation.Technology,
 			violation.Components,
 			violation.Applicable,
 			violation.ImpactedDependencyName,
@@ -257,14 +257,14 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 	return nil
 }
 
-func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file string, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, markdownOutput bool, run *sarif.Run) error {
+func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, tech coreutils.Technology, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, markdownOutput bool, run *sarif.Run) error {
 	maxCveScore, err := findMaxCVEScore(cves)
 	if err != nil {
 		return err
 	}
 	cveId := GetIssueIdentifier(cves, issueId)
 	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
-	location, err := getXrayIssueLocationIfValidExists(file, run, markdownOutput)
+	location, err := getXrayIssueLocationIfValidExists(tech, run, markdownOutput)
 	if err != nil {
 		return err
 	}
@@ -288,30 +288,52 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file st
 	return nil
 }
 
-// Xray GetPackageDescriptor can return multiple types of content.
-// This could cause the sarif content not to be valid. if not override, we should handle all those situations:
-// Full path - should be used as is
-// Relative path - should be converted to full path
-// Non path - should not be used as location
-func getXrayIssueLocationIfValidExists(file string, run *sarif.Run, override bool) (location *sarif.Location, err error) {
-	location = sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
-	if override {
-		// Use the content as is
+func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, error) {
+	descriptors := tech.GetPackageDescriptor()
+	if len(descriptors) == 1 {
+		// Generate the full path
+		return GetFullLocationFileName(strings.TrimSpace(descriptors[0]), run.Invocations), nil
+	}
+	for _, optional := range descriptors {
+		// If multiple options return first to match
+		full := GetFullLocationFileName(strings.TrimSpace(optional), run.Invocations)
+		if exists, err := fileutils.IsFileExists(full, false); err != nil {
+			return "", err
+		} else if exists {
+			return full, nil
+		}
+	}
+	return "", nil
+}
+
+func getDescriptorPath(tech coreutils.Technology) string {
+	descriptors := tech.GetPackageDescriptor()
+	for _, descriptor := range descriptors {
+		if strings.TrimSpace(descriptor) != "" {
+			return strings.TrimSpace(descriptor)
+		}
+	}
+	return ""
+}
+
+// Get the descriptor location with the Xray issues if exists.
+// If location not exists and markdown provided, will return a string with: "<formal_tech_name> Package Descriptor" else nil
+func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run, markdown bool) (location *sarif.Location, err error) {
+	descriptorPath := getDescriptorPath(tech)
+	if !markdown {
+		descriptorPath, err = getDescriptorFullPath(tech, run)
+		if err != nil {
+			return
+		}
+	}
+	if strings.TrimSpace(descriptorPath) == "" {
+		// Can't calculate actual file location
+		if markdown {
+			return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(tech.ToFormal() + " Package Descriptor"))), nil
+		}
 		return
 	}
-	// Check if full path
-	exists, err := fileutils.IsFileExists(file, false)
-	if err != nil || exists {
-		return
-	}
-	// Check if relative path
-	fullPath := GetFullLocationFileName(file, run.Invocations)
-	location = sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + fullPath)))
-	if exists, err = fileutils.IsFileExists(fullPath, false); err != nil || exists {
-		return
-	}
-	// Not usable content
-	return nil, nil
+	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil	
 }
 
 func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {

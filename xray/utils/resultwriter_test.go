@@ -1,9 +1,14 @@
 package utils
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -133,4 +138,69 @@ func TestFindMaxCVEScore(t *testing.T) {
 			assert.Equal(t, tc.expectedOutput, output)
 		})
 	}
+}
+
+func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
+	testDir, done := tests.CreateTempDirWithCallbackAndAssert(t)
+	invocation := sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation(testDir))
+	file, err := os.Create(filepath.Join(testDir, "go.mod"))
+	assert.NoError(t, err)
+	assert.NotNil(t, file)
+	file, err = os.Create(filepath.Join(testDir, "build.gradle.kts"))
+	assert.NoError(t, err)
+	assert.NotNil(t, file)
+
+	testCases := []struct {
+		name string
+		tech           coreutils.Technology
+		run   *sarif.Run
+		markdown bool
+		expectedOutput *sarif.Location
+	}{
+		{
+			name: "No descriptor information",
+			tech: coreutils.Pip,
+			run: CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			markdown: false,
+			expectedOutput: nil,
+		},
+		{
+			name: "No descriptor information - markdown",
+			tech: coreutils.Poetry,
+			run: CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			markdown: true,
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(coreutils.Poetry.ToFormal() + " Package Descriptor"))),
+		},
+		{
+			name: "One descriptor information",
+			tech: coreutils.Go,
+			run: CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			markdown: false,
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filepath.Join(testDir, "go.mod")))),
+		},
+		{
+			name: "One descriptor information - markdown",
+			tech: coreutils.Maven,
+			run: CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			markdown: true,
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://pom.xml"))),
+		},
+		{
+			name: "Multiple descriptor information",
+			tech: coreutils.Gradle,
+			run: CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			markdown: false,
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filepath.Join(testDir, "build.gradle.kts")))),
+		},
+		
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := getXrayIssueLocationIfValidExists(tc.tech, tc.run, tc.markdown)
+			if assert.NoError(t, err) {
+				assert.Equal(t, tc.expectedOutput, output)
+			}
+		})
+	}
+	done()
 }

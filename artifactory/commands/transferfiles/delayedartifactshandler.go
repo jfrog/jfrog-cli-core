@@ -161,6 +161,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 }
 
 func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunk, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	log.Debug(fmt.Sprintf("Starting to handle delayed artifacts files. Found %d files.", len(filesToConsume)))
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		delayedArtifactsFile, err := readDelayFile(filePath)

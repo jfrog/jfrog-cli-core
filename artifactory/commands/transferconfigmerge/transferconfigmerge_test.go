@@ -3,6 +3,7 @@ package transferconfigmerge
 import (
 	"github.com/jfrog/jfrog-client-go/access/services"
 	artifactoryServices "github.com/jfrog/jfrog-client-go/artifactory/services"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
@@ -62,17 +63,15 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 	if !sameDescription {
 		targetDescription = sourceDescription + "Target"
 	}
-	trueValue := true
-	falseValue := false
 	if !sameAdmin {
-		targetAdmin.ManageMembers = &trueValue
-		targetAdmin.IndexResources = &trueValue
+		targetAdmin.ManageMembers = clientutils.Pointer(true)
+		targetAdmin.IndexResources = clientutils.Pointer(true)
 	}
-	var sourceSoftLimit = &falseValue
-	var targetSoftLimit = &falseValue
+	var sourceSoftLimit = clientutils.Pointer(false)
+	var targetSoftLimit = clientutils.Pointer(false)
 
 	if !sameSoftLimit {
-		targetSoftLimit = &trueValue
+		targetSoftLimit = clientutils.Pointer(true)
 	}
 	if !sameQuotaBytes {
 		targetQuotaBytes += 125
@@ -83,24 +82,21 @@ func createProjects(sameKey, sameName, sameDescription, sameAdmin, sameQuotaByte
 }
 
 func TestCompareInterfaces(t *testing.T) {
-	trueValue := true
-	falseValue := false
-
 	first := artifactoryServices.DockerRemoteRepositoryParams{}
 	first.RemoteRepositoryBaseParams = artifactoryServices.RemoteRepositoryBaseParams{Password: "ppppp"}
 	first.Key = "string1"
-	first.BlackedOut = &trueValue
-	first.AssumedOfflinePeriodSecs = 1111
+	first.BlackedOut = clientutils.Pointer(true)
+	first.AssumedOfflinePeriodSecs = clientutils.Pointer(1111)
 	first.Environments = []string{"111", "aaa"}
-	first.ContentSynchronisation = &artifactoryServices.ContentSynchronisation{Enabled: &trueValue}
+	first.ContentSynchronisation = &artifactoryServices.ContentSynchronisation{Enabled: clientutils.Pointer(true)}
 
 	second := artifactoryServices.DockerRemoteRepositoryParams{}
 	second.RemoteRepositoryBaseParams = artifactoryServices.RemoteRepositoryBaseParams{Password: "sssss"}
 	second.Key = "string2"
-	second.BlackedOut = &falseValue
-	second.AssumedOfflinePeriodSecs = 2222
+	second.BlackedOut = clientutils.Pointer(false)
+	second.AssumedOfflinePeriodSecs = clientutils.Pointer(2222)
 	second.Environments = []string{"222", "bbb"}
-	second.ContentSynchronisation = &artifactoryServices.ContentSynchronisation{Enabled: &falseValue}
+	second.ContentSynchronisation = &artifactoryServices.ContentSynchronisation{Enabled: clientutils.Pointer(false)}
 
 	diff, err := compareInterfaces(first, second, filteredRepoKeys...)
 	assert.NoError(t, err)

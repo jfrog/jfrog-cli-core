@@ -141,15 +141,17 @@ func TestFindMaxCVEScore(t *testing.T) {
 }
 
 func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
-	testDir, done := tests.CreateTempDirWithCallbackAndAssert(t)
-	defer done()
+	testDir, cleanup := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer cleanup()
 	invocation := sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation(testDir))
 	file, err := os.Create(filepath.Join(testDir, "go.mod"))
 	assert.NoError(t, err)
 	assert.NotNil(t, file)
-	file, err = os.Create(filepath.Join(testDir, "build.gradle.kts"))
+	defer func() { assert.NoError(t, file.Close()) }()
+	file2, err := os.Create(filepath.Join(testDir, "build.gradle.kts"))
 	assert.NoError(t, err)
-	assert.NotNil(t, file)
+	assert.NotNil(t, file2)
+	defer func() { assert.NoError(t, file2.Close()) }()
 
 	testCases := []struct {
 		name           string

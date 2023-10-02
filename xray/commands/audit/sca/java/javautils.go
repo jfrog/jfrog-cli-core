@@ -208,15 +208,15 @@ func getGraphFromDepTree(depTreeOutput []byte) (depsGraph []*xrayUtils.GraphNode
 }
 
 func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, moduleTree *moduleDepTree, uniqueDepsSet *datastructures.Set[string]) {
+	if currNode.NodeHasLoop() {
+		return
+	}
 	for _, childId := range moduleTree.Nodes[currNodeId].Children {
 		childGav := GavPackageTypeIdentifier + childId
 		childNode := &xrayUtils.GraphNode{
 			Id:     childGav,
 			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
-		}
-		if currNode.NodeHasLoop() {
-			return
 		}
 		uniqueDepsSet.Add(childGav)
 		populateDependencyTree(childNode, childId, moduleTree, uniqueDepsSet)

@@ -152,7 +152,7 @@ func formatCommand(layer *image.Layer) string {
 
 // Docker command could potentiality have double spaces,
 // Reconstruct the command with only one space between arguments.
-// Example RUN apt-get install &&     apt-get install.
+// Example: command from dive: "RUN apt-get install &&     apt-get install #builtkit".
 // Will resolve to a cleaner command RUN apt-get install && apt-get install
 func trimDoubleSpaces(input string) string {
 	parts := strings.Fields(input)

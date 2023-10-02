@@ -45,6 +45,10 @@ type vulnerabilityDockerScanTableRow struct {
 	cves                   []cveShortTableRow `embed-table:"true"`
 }
 
+type cveShortTableRow struct {
+	id string `col-name:"CVE"`
+}
+
 type licenseTableRow struct {
 	licenseKey                string                       `col-name:"License"`
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`
@@ -133,10 +137,6 @@ type cveTableRow struct {
 	id     string `col-name:"CVE"`
 	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
 	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
-}
-
-type cveShortTableRow struct {
-	id string `col-name:"CVE"`
 }
 
 type secretsTableRow struct {

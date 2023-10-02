@@ -53,7 +53,7 @@ type ResultsWriter struct {
 	scanType services.ScanType
 	// Messages - Option array of messages, to be displayed if the format is Table
 	messages []string
-	// Maps layer hash to command,used for docker scan.
+	// Maps layer hash to docker command.
 	dockerCommandsMapping map[string]services.DockerCommandDetails
 }
 

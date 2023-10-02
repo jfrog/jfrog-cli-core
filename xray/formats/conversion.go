@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	// Max length of docker command to display on the results table.
 	maxDockerCommandLength = 60
 )
 

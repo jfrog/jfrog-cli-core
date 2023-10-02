@@ -238,6 +238,9 @@ func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadSta
 }
 
 func logWritingArtifact(e ExtendedFileUploadStatusResponse, errorsFilePath string) {
+	if log.GetLogger().GetLogLevel() != log.DEBUG {
+		return
+	}
 	msg := fmt.Sprintf("Writing artifact '%s' to errors file '%s'.", path.Join(e.Repo, e.Path, e.Name), errorsFilePath)
 	if e.Reason != "" {
 		msg += fmt.Sprintf(" Reason: '%s'.", e.Reason)

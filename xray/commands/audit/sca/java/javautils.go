@@ -136,7 +136,7 @@ func hasLoop(idsAdded []string, idToAdd string) bool {
 	return false
 }
 
-func BuildDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
+func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return nil, nil, err

@@ -311,17 +311,12 @@ func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, e
 }
 
 // Get the descriptor location with the Xray issues if exists.
-// If location not exists and markdown provided, will return a string with: "<formal_tech_name> Package Descriptor" else nil
 func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run) (location *sarif.Location, err error) {
 	descriptorPath, err := getDescriptorFullPath(tech, run)
 	if err != nil {
 		return
 	}
 	if strings.TrimSpace(descriptorPath) == "" {
-		// Can't calculate actual file location
-		// if markdown {
-		// 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(tech.ToFormal() + " Package Descriptor"))), nil
-		// }
 		return
 	}
 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil

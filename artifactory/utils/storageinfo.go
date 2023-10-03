@@ -35,7 +35,7 @@ type StorageInfoManager struct {
 }
 
 func NewStorageInfoManager(ctx context.Context, serverDetails *config.ServerDetails) (*StorageInfoManager, error) {
-	serviceManager, err := CreateServiceManagerWithContext(ctx, serverDetails, false, 0, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequestMilliSecs)
+	serviceManager, err := CreateServiceManagerWithContext(ctx, serverDetails, false, 0, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequestMilliSecs, time.Minute)
 	if err != nil {
 		return nil, err
 	}

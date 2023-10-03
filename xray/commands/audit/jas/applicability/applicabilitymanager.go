@@ -3,6 +3,7 @@ package applicability
 import (
 	"path/filepath"
 
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/jfrog/gofrog/datastructures"
@@ -16,8 +17,9 @@ import (
 )
 
 const (
-	applicabilityScanType    = "analyze-applicability"
-	applicabilityScanCommand = "ca"
+	applicabilityScanType      = "analyze-applicability"
+	applicabilityScanCommand   = "ca"
+	applicabilityDocsUrlSuffix = "contextual-analysis"
 )
 
 type ApplicabilityScanManager struct {
@@ -100,19 +102,22 @@ func isDirectComponents(components []string, directDependencies []string) bool {
 	return false
 }
 
-func (asm *ApplicabilityScanManager) Run(wd string) (err error) {
-	if len(asm.scanner.WorkingDirs) > 1 {
-		log.Info("Running applicability scanning in the", wd, "directory...")
+func (asm *ApplicabilityScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Applicability) {
+		return
+	}
+	if len(asm.scanner.JFrogAppsConfig.Modules) > 1 {
+		log.Info("Running applicability scanning in the", module.SourceRoot, "directory...")
 	} else {
 		log.Info("Running applicability scanning...")
 	}
-	if err = asm.createConfigFile(wd); err != nil {
+	if err = asm.createConfigFile(module); err != nil {
 		return
 	}
 	if err = asm.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, wd)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, module.SourceRoot, applicabilityDocsUrlSuffix)
 	if err != nil {
 		return
 	}
@@ -141,25 +146,29 @@ type scanConfiguration struct {
 	SkippedDirs  []string `yaml:"skipped-folders"`
 }
 
-func (asm *ApplicabilityScanManager) createConfigFile(workingDir string) error {
-	skipDirs := jas.SkippedDirs
+func (asm *ApplicabilityScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	roots, err := jas.GetSourceRoots(module, nil)
+	if err != nil {
+		return err
+	}
+	excludePatterns := jas.GetExcludePatterns(module, nil)
 	if asm.thirdPartyScan {
 		log.Info("Including node modules folder in applicability scan")
-		skipDirs = removeElementFromSlice(skipDirs, jas.NodeModulesPattern)
+		excludePatterns = removeElementFromSlice(excludePatterns, jas.NodeModulesPattern)
 	}
 	configFileContent := applicabilityScanConfig{
 		Scans: []scanConfiguration{
 			{
-				Roots:        []string{workingDir},
+				Roots:        roots,
 				Output:       asm.scanner.ResultsFileName,
 				Type:         applicabilityScanType,
 				GrepDisable:  false,
 				CveWhitelist: asm.directDependenciesCves,
-				SkippedDirs:  skipDirs,
+				SkippedDirs:  excludePatterns,
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(asm.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(asm.scanner.ConfigFileName, configFileContent, utils.Applicability)
 }
 
 // Runs the analyzerManager app and returns a boolean to indicate whether the user is entitled for

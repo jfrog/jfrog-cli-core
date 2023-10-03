@@ -133,9 +133,9 @@ func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []
 	return directDependencies.ToSlice()
 }
 
-func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
+func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
 	logMessage := fmt.Sprintf("Calculating %s dependencies", tech.ToFormal())
-	log.Info(logMessage)
+	log.Info(logMessage + "...")
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(logMessage)
 	}
@@ -149,7 +149,7 @@ func GetTechDependencyTree(params *xrayutils.AuditBasicParams, tech coreutils.Te
 	case coreutils.Maven, coreutils.Gradle:
 		fullDependencyTrees, uniqueDeps, err = java.BuildDependencyTree(params, tech)
 	case coreutils.Npm:
-		fullDependencyTrees, uniqueDeps, err = npm.BuildDependencyTree(params.Args())
+		fullDependencyTrees, uniqueDeps, err = npm.BuildDependencyTree(params)
 	case coreutils.Yarn:
 		fullDependencyTrees, uniqueDeps, err = yarn.BuildDependencyTree()
 	case coreutils.Go:

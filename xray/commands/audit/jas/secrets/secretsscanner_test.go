@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -29,7 +30,7 @@ func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)
-	err = secretScanManager.createConfigFile(currWd)
+	err = secretScanManager.createConfigFile(jfrogappsconfig.Module{SourceRoot: currWd})
 	assert.NoError(t, err)
 
 	defer func() {
@@ -65,7 +66,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, secretsDocsUrlSuffix)
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, secretScanManager.secretsScannerResults) {
@@ -88,7 +89,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 
 	// Act
 	var err error
-	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0])
+	secretScanManager.secretsScannerResults, err = jas.ReadJasScanRunsFromFile(secretScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, secretsDocsUrlSuffix)
 
 	// Assert
 	if assert.NoError(t, err) && assert.NotNil(t, secretScanManager.secretsScannerResults) {

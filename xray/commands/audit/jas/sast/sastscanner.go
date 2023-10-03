@@ -1,6 +1,11 @@
 package sast
 
 import (
+	"fmt"
+
+	"path/filepath"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -9,7 +14,9 @@ import (
 )
 
 const (
-	sastScanCommand = "zd"
+	sastScannerType   = "sast"
+	sastScanCommand   = "zd"
+	sastDocsUrlSuffix = "sast"
 )
 
 type SastScanManager struct {
@@ -38,27 +45,69 @@ func newSastScanManager(scanner *jas.JasScanner) (manager *SastScanManager) {
 	}
 }
 
-func (ssm *SastScanManager) Run(wd string) (err error) {
-	scanner := ssm.scanner
-	if err = ssm.runAnalyzerManager(wd); err != nil {
+func (ssm *SastScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Sast) {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	if err = ssm.createConfigFile(module); err != nil {
+		return
+	}
+	scanner := ssm.scanner
+	if err = ssm.runAnalyzerManager(filepath.Dir(ssm.scanner.AnalyzerManager.AnalyzerManagerFullPath)); err != nil {
+		return
+	}
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, module.SourceRoot, sastDocsUrlSuffix)
 	if err != nil {
 		return
 	}
-	ssm.sastScannerResults = append(ssm.sastScannerResults, groupResultsByLocation(workingDirRuns)...)
+	groupResultsByLocation(workingDirRuns)
+	ssm.sastScannerResults = append(ssm.sastScannerResults, workingDirRuns...)
 	return
 }
 
+type sastScanConfig struct {
+	Scans []scanConfiguration `yaml:"scans,omitempty"`
+}
+
+type scanConfiguration struct {
+	Roots           []string `yaml:"roots,omitempty"`
+	Type            string   `yaml:"type,omitempty"`
+	Language        string   `yaml:"language,omitempty"`
+	ExcludePatterns []string `yaml:"exclude_patterns,omitempty"`
+	ExcludedRules   []string `yaml:"excluded-rules,omitempty"`
+}
+
+func (ssm *SastScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	sastScanner := module.Scanners.Sast
+	if sastScanner == nil {
+		sastScanner = &jfrogappsconfig.SastScanner{}
+	}
+	roots, err := jas.GetSourceRoots(module, &sastScanner.Scanner)
+	if err != nil {
+		return err
+	}
+	configFileContent := sastScanConfig{
+		Scans: []scanConfiguration{
+			{
+				Type:            sastScannerType,
+				Roots:           roots,
+				Language:        sastScanner.Language,
+				ExcludedRules:   sastScanner.ExcludedRules,
+				ExcludePatterns: jas.GetExcludePatterns(module, &sastScanner.Scanner),
+			},
+		},
+	}
+	return jas.CreateScannersConfigFile(ssm.scanner.ConfigFileName, configFileContent, utils.Sast)
+}
+
 func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
-	return ssm.scanner.AnalyzerManager.Exec(ssm.scanner.ResultsFileName, sastScanCommand, wd, ssm.scanner.ServerDetails)
+	return ssm.scanner.AnalyzerManager.ExecWithOutputFile(ssm.scanner.ConfigFileName, sastScanCommand, wd, ssm.scanner.ResultsFileName, ssm.scanner.ServerDetails)
 }
 
 // In the Sast scanner, there can be multiple results with the same location.
 // The only difference is that their CodeFlow values are different.
 // We combine those under the same result location value
-func groupResultsByLocation(sarifRuns []*sarif.Run) []*sarif.Run {
+func groupResultsByLocation(sarifRuns []*sarif.Run) {
 	for _, sastRun := range sarifRuns {
 		locationToResult := map[string]*sarif.Result{}
 		for _, sastResult := range sastRun.Results {
@@ -71,25 +120,28 @@ func groupResultsByLocation(sarifRuns []*sarif.Run) []*sarif.Run {
 		}
 		sastRun.Results = maps.Values(locationToResult)
 	}
-	return sarifRuns
 }
 
-// In Sast there is only one location for each result
-func getResultFileName(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		return utils.GetLocationFileName(result.Locations[0])
+func getResultLocationStr(result *sarif.Result) string {
+	if len(result.Locations) == 0 {
+		return ""
 	}
-	return ""
+	location := result.Locations[0]
+	return fmt.Sprintf("%s%d%d%d%d",
+		utils.GetLocationFileName(location),
+		utils.GetLocationStartLine(location),
+		utils.GetLocationStartColumn(location),
+		utils.GetLocationEndLine(location),
+		utils.GetLocationEndColumn(location))
 }
 
-// In Sast there is only one location for each result
-func getResultStartLocationInFile(result *sarif.Result) string {
-	if len(result.Locations) > 0 {
-		return utils.GetStartLocationInFile(result.Locations[0])
+func getResultRuleId(result *sarif.Result) string {
+	if result.RuleID == nil {
+		return ""
 	}
-	return ""
+	return *result.RuleID
 }
 
 func getResultId(result *sarif.Result) string {
-	return getResultFileName(result) + getResultStartLocationInFile(result) + utils.GetResultSeverity(result) + utils.GetResultMsgText(result)
+	return getResultRuleId(result) + utils.GetResultSeverity(result) + utils.GetResultMsgText(result) + getResultLocationStr(result)
 }

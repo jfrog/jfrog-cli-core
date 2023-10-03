@@ -157,42 +157,24 @@ func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
 		name           string
 		tech           coreutils.Technology
 		run            *sarif.Run
-		markdown       bool
 		expectedOutput *sarif.Location
 	}{
 		{
 			name:           "No descriptor information",
 			tech:           coreutils.Pip,
 			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
-			markdown:       false,
 			expectedOutput: nil,
-		},
-		{
-			name:           "No descriptor information - markdown",
-			tech:           coreutils.Poetry,
-			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
-			markdown:       true,
-			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(coreutils.Poetry.ToFormal() + " Package Descriptor"))),
 		},
 		{
 			name:           "One descriptor information",
 			tech:           coreutils.Go,
 			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
-			markdown:       false,
 			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filepath.Join(testDir, "go.mod")))),
-		},
-		{
-			name:           "One descriptor information - markdown",
-			tech:           coreutils.Maven,
-			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
-			markdown:       true,
-			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://pom.xml"))),
 		},
 		{
 			name:           "Multiple descriptor information",
 			tech:           coreutils.Gradle,
 			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
-			markdown:       false,
 			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filepath.Join(testDir, "build.gradle.kts")))),
 		},
 	}

@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	secretsScanCommand = "sec"
-	secretsScannerType = "secrets-scan"
+	secretsScanCommand   = "sec"
+	secretsScannerType   = "secrets-scan"
+	secretsDocsUrlSuffix = "secrets"
 )
 
 type SecretScanManager struct {
@@ -59,7 +60,7 @@ func (ssm *SecretScanManager) Run(module jfrogappsconfig.Module) (err error) {
 	if err = ssm.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(ssm.scanner.ResultsFileName, module.SourceRoot)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(ssm.scanner.ResultsFileName, module.SourceRoot, secretsDocsUrlSuffix)
 	if err != nil {
 		return
 	}

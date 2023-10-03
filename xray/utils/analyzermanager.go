@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path"
@@ -24,7 +23,6 @@ const (
 	ApplicabilityFeatureId                    = "contextual_analysis"
 	AnalyzerManagerZipName                    = "analyzerManager.zip"
 	defaultAnalyzerManagerVersion             = "1.3.2.2019257"
-	minAnalyzerManagerVersionForSast          = "1.3"
 	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName                    = "analyzerManager"
 	analyzerManagerExecutableName             = "analyzerManager"
@@ -148,10 +146,6 @@ func GetAnalyzerManagerVersion() string {
 		return analyzerManagerVersion
 	}
 	return defaultAnalyzerManagerVersion
-}
-
-func IsSastSupported() bool {
-	return version.NewVersion(GetAnalyzerManagerVersion()).AtLeast(minAnalyzerManagerVersionForSast)
 }
 
 func GetAnalyzerManagerDirAbsolutePath() (string, error) {

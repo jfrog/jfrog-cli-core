@@ -25,6 +25,8 @@ const (
 	Json       OutputFormat = "json"
 	SimpleJson OutputFormat = "simple-json"
 	Sarif      OutputFormat = "sarif"
+
+	BaseDocumentationURL = "https://docs.jfrog-applications.jfrog.io/jfrog-security-features/"
 )
 
 const MissingCveScore = "0"
@@ -115,7 +117,11 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	case Json:
 		return PrintJson(rw.results.getXrayScanResults())
 	case Sarif:
-		sarifFile, err := GenerateSarifContentFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses, false)
+		sarifReport, err := GenereateSarifReportFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses)
+		if err != nil {
+			return err
+		}
+		sarifFile, err := ConvertSarifReportToString(sarifReport)
 		if err != nil {
 			return err
 		}
@@ -153,9 +159,6 @@ func (rw *ResultsWriter) printScanResultsTables() (err error) {
 	if err = PrintIacTable(rw.results.IacScanResults, rw.results.EntitledForJas); err != nil {
 		return
 	}
-	if !IsSastSupported() {
-		return
-	}
 	return PrintSastTable(rw.results.SastScanResults, rw.results.EntitledForJas)
 }
 
@@ -172,12 +175,12 @@ func printMessage(message string) {
 	log.Output("💬" + message)
 }
 
-func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (sarifStr string, err error) {
-	report, err := NewReport()
+func GenereateSarifReportFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses bool) (report *sarif.Report, err error) {
+	report, err = NewReport()
 	if err != nil {
 		return
 	}
-	xrayRun, err := convertXrayResponsesToSarifRun(extendedResults, isMultipleRoots, includeLicenses, markdownOutput)
+	xrayRun, err := convertXrayResponsesToSarifRun(extendedResults, isMultipleRoots, includeLicenses)
 	if err != nil {
 		return
 	}
@@ -188,23 +191,26 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
 	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
 
+	return
+}
+
+func ConvertSarifReportToString(report *sarif.Report) (sarifStr string, err error) {
 	out, err := json.Marshal(report)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {
+func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses bool) (run *sarif.Run, err error) {
 	xrayJson, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, true)
 	if err != nil {
 		return
 	}
-	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray Sca", "https://jfrog.com/xray/")
+	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", BaseDocumentationURL+"sca")
 	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
 	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
-		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {
+		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson); err != nil {
 			return
 		}
 	}
@@ -212,20 +218,19 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 	return
 }
 
-func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults, markdownOutput bool) error {
+func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults) error {
 	for _, vulnerability := range xrayJson.Vulnerabilities {
 		if err := addXrayCveIssueToSarifRun(
 			vulnerability.Cves,
 			vulnerability.IssueId,
 			vulnerability.Severity,
-			vulnerability.Technology.GetPackageDescriptor(),
+			vulnerability.Technology,
 			vulnerability.Components,
 			vulnerability.Applicable,
 			vulnerability.ImpactedDependencyName,
 			vulnerability.ImpactedDependencyVersion,
 			vulnerability.Summary,
 			vulnerability.FixedVersions,
-			markdownOutput,
 			run,
 		); err != nil {
 			return err
@@ -236,14 +241,13 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 			violation.Cves,
 			violation.IssueId,
 			violation.Severity,
-			violation.Technology.GetPackageDescriptor(),
+			violation.Technology,
 			violation.Components,
 			violation.Applicable,
 			violation.ImpactedDependencyName,
 			violation.ImpactedDependencyVersion,
 			violation.Summary,
 			violation.FixedVersions,
-			markdownOutput,
 			run,
 		); err != nil {
 			return err
@@ -258,33 +262,64 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 	return nil
 }
 
-func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file string, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, markdownOutput bool, run *sarif.Run) error {
+func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, tech coreutils.Technology, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, run *sarif.Run) error {
 	maxCveScore, err := findMaxCVEScore(cves)
 	if err != nil {
 		return err
 	}
 	cveId := GetIssueIdentifier(cves, issueId)
 	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
-	location := sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
-
+	location, err := getXrayIssueLocationIfValidExists(tech, run)
+	if err != nil {
+		return err
+	}
 	if rule, isNewRule := addResultToSarifRun(cveId, msg, severity, location, run); isNewRule {
 		cveRuleProperties := sarif.NewPropertyBag()
 		if maxCveScore != MissingCveScore {
 			cveRuleProperties.Add("security-severity", maxCveScore)
 		}
 		rule.WithProperties(cveRuleProperties.Properties)
-		if markdownOutput {
-			formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
-			if err != nil {
-				return err
-			}
-			markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
-			rule.WithMarkdownHelp(markdownDescription)
-		} else {
-			rule.WithDescription(summary)
+		formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
+		if err != nil {
+			return err
 		}
+		markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
+		rule.WithHelp(&sarif.MultiformatMessageString{
+			Text:     &summary,
+			Markdown: &markdownDescription,
+		})
 	}
 	return nil
+}
+
+func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, error) {
+	descriptors := tech.GetPackageDescriptor()
+	if len(descriptors) == 1 {
+		// Generate the full path
+		return GetFullLocationFileName(strings.TrimSpace(descriptors[0]), run.Invocations), nil
+	}
+	for _, descriptor := range descriptors {
+		// If multiple options return first to match
+		absolutePath := GetFullLocationFileName(strings.TrimSpace(descriptor), run.Invocations)
+		if exists, err := fileutils.IsFileExists(absolutePath, false); err != nil {
+			return "", err
+		} else if exists {
+			return absolutePath, nil
+		}
+	}
+	return "", nil
+}
+
+// Get the descriptor location with the Xray issues if exists.
+func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run) (location *sarif.Location, err error) {
+	descriptorPath, err := getDescriptorFullPath(tech, run)
+	if err != nil {
+		return
+	}
+	if strings.TrimSpace(descriptorPath) == "" {
+		return
+	}
+	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil
 }
 
 func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {

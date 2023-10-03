@@ -59,7 +59,7 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot)
+	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, iacDocsUrlSuffix)
 	if assert.NoError(t, err) && assert.NotNil(t, iacScanManager.iacScannerResults) {
 		assert.Len(t, iacScanManager.iacScannerResults, 1)
 		assert.Empty(t, iacScanManager.iacScannerResults[0].Results)
@@ -75,7 +75,7 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot)
+	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, iacDocsUrlSuffix)
 	if assert.NoError(t, err) && assert.NotNil(t, iacScanManager.iacScannerResults) {
 		assert.Len(t, iacScanManager.iacScannerResults, 1)
 		assert.Len(t, iacScanManager.iacScannerResults[0].Results, 4)

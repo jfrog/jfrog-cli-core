@@ -172,6 +172,12 @@ func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
 			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filepath.Join(testDir, "go.mod")))),
 		},
 		{
+			name:           "One descriptor information - no invocation",
+			tech:           coreutils.Go,
+			run:            CreateRunWithDummyResults(),
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://go.mod"))),
+		},
+		{
 			name:           "Multiple descriptor information",
 			tech:           coreutils.Gradle,
 			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),

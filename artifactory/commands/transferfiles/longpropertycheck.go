@@ -3,23 +3,24 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"sync"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"golang.org/x/exp/slices"
-	"io"
-	"sync"
 
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"time"
+
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 const (
@@ -112,7 +113,7 @@ func (lpc *LongPropertyCheck) ExecuteCheck(args cmdutils.RunArguments) (passed b
 // Returns the number of long properties found
 func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args cmdutils.RunArguments) int {
 	// Init
-	serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs)
+	serviceManager, err := createTransferServiceManager(args.Context, args.ServerDetails)
 	if err != nil {
 		return 0
 	}
@@ -174,7 +175,7 @@ func getSearchAllPropertiesQuery(pageNumber int) string {
 // We keep only the files that are at the requested repos and pass them at the files channel
 func createSearchPropertyTask(property Property, repos []string, args cmdutils.RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
 	return func(threadId int) (err error) {
-		serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs)
+		serviceManager, err := createTransferServiceManager(args.Context, args.ServerDetails)
 		if err != nil {
 			return
 		}

@@ -117,7 +117,11 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	case Json:
 		return PrintJson(rw.results.getXrayScanResults())
 	case Sarif:
-		sarifFile, err := GenerateSarifContentFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses, false)
+		sarifReport, err := GenereateSarifReportFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses)
+		if err != nil {
+			return err
+		}
+		sarifFile, err := ConvertSarifReportToString(sarifReport)
 		if err != nil {
 			return err
 		}
@@ -171,12 +175,12 @@ func printMessage(message string) {
 	log.Output("💬" + message)
 }
 
-func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (sarifStr string, err error) {
-	report, err := NewReport()
+func GenereateSarifReportFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses bool) (report *sarif.Report, err error) {
+	report, err = NewReport()
 	if err != nil {
 		return
 	}
-	xrayRun, err := convertXrayResponsesToSarifRun(extendedResults, isMultipleRoots, includeLicenses, markdownOutput)
+	xrayRun, err := convertXrayResponsesToSarifRun(extendedResults, isMultipleRoots, includeLicenses)
 	if err != nil {
 		return
 	}
@@ -187,15 +191,18 @@ func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMul
 	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
 	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
 
+	return
+}
+
+func ConvertSarifReportToString(report *sarif.Report) (sarifStr string, err error) {
 	out, err := json.Marshal(report)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {
+func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses bool) (run *sarif.Run, err error) {
 	xrayJson, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, true)
 	if err != nil {
 		return
@@ -203,7 +210,7 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", BaseDocumentationURL+"sca")
 	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
 	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
-		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {
+		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson); err != nil {
 			return
 		}
 	}
@@ -211,7 +218,7 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 	return
 }
 
-func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults, markdownOutput bool) error {
+func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults) error {
 	for _, vulnerability := range xrayJson.Vulnerabilities {
 		if err := addXrayCveIssueToSarifRun(
 			vulnerability.Cves,
@@ -224,7 +231,6 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 			vulnerability.ImpactedDependencyVersion,
 			vulnerability.Summary,
 			vulnerability.FixedVersions,
-			markdownOutput,
 			run,
 		); err != nil {
 			return err
@@ -242,7 +248,6 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 			violation.ImpactedDependencyVersion,
 			violation.Summary,
 			violation.FixedVersions,
-			markdownOutput,
 			run,
 		); err != nil {
 			return err
@@ -257,14 +262,14 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 	return nil
 }
 
-func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, tech coreutils.Technology, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, markdownOutput bool, run *sarif.Run) error {
+func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, tech coreutils.Technology, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, run *sarif.Run) error {
 	maxCveScore, err := findMaxCVEScore(cves)
 	if err != nil {
 		return err
 	}
 	cveId := GetIssueIdentifier(cves, issueId)
 	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
-	location, err := getXrayIssueLocationIfValidExists(tech, run, markdownOutput)
+	location, err := getXrayIssueLocationIfValidExists(tech, run)
 	if err != nil {
 		return err
 	}
@@ -274,16 +279,15 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, 
 			cveRuleProperties.Add("security-severity", maxCveScore)
 		}
 		rule.WithProperties(cveRuleProperties.Properties)
-		if markdownOutput {
-			formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
-			if err != nil {
+		formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
+		if err != nil {
 				return err
-			}
-			markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
-			rule.WithMarkdownHelp(markdownDescription)
-		} else {
-			rule.WithDescription(summary)
 		}
+		markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
+		rule.WithHelp(&sarif.MultiformatMessageString{
+			Text: &summary,
+			Markdown: &markdownDescription,
+		})
 	}
 	return nil
 }
@@ -306,29 +310,18 @@ func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, e
 	return "", nil
 }
 
-func getDescriptorPath(tech coreutils.Technology) string {
-	descriptors := tech.GetPackageDescriptor()
-	for _, descriptor := range descriptors {
-		return descriptor
-	}
-	return ""
-}
-
 // Get the descriptor location with the Xray issues if exists.
 // If location not exists and markdown provided, will return a string with: "<formal_tech_name> Package Descriptor" else nil
-func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run, markdown bool) (location *sarif.Location, err error) {
-	descriptorPath := getDescriptorPath(tech)
-	if !markdown {
-		descriptorPath, err = getDescriptorFullPath(tech, run)
-		if err != nil {
-			return
-		}
+func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run) (location *sarif.Location, err error) {
+	descriptorPath, err := getDescriptorFullPath(tech, run)
+	if err != nil {
+		return
 	}
 	if strings.TrimSpace(descriptorPath) == "" {
 		// Can't calculate actual file location
-		if markdown {
-			return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(tech.ToFormal() + " Package Descriptor"))), nil
-		}
+		// if markdown {
+		// 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(tech.ToFormal() + " Package Descriptor"))), nil
+		// }
 		return
 	}
 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil

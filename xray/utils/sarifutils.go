@@ -162,7 +162,7 @@ func GetFullLocationFileName(relative string, invocations []*sarif.Invocation) s
 }
 
 func SetLocationFileName(location *sarif.Location, fileName string) {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.ArtifactLocation != nil {
 		location.PhysicalLocation.ArtifactLocation.URI = &fileName
 	}
 }

@@ -198,7 +198,7 @@ func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			output, err := getXrayIssueLocationIfValidExists(tc.tech, tc.run, tc.markdown)
+			output, err := getXrayIssueLocationIfValidExists(tc.tech, tc.run)
 			if assert.NoError(t, err) {
 				assert.Equal(t, tc.expectedOutput, output)
 			}

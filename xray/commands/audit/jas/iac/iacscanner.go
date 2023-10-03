@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	iacScannerType = "iac-scan-modules"
-	iacScanCommand = "iac"
+	iacScannerType   = "iac-scan-modules"
+	iacScanCommand   = "iac"
+	iacDocsUrlSuffix = "infrastructure-as-code-iac"
 )
 
 type IacScanManager struct {
@@ -60,7 +61,7 @@ func (iac *IacScanManager) Run(module jfrogappsconfig.Module) (err error) {
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(iac.scanner.ResultsFileName, module.SourceRoot)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(iac.scanner.ResultsFileName, module.SourceRoot, iacDocsUrlSuffix)
 	if err != nil {
 		return
 	}

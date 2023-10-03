@@ -52,9 +52,6 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if err != nil {
 		return
 	}
-	if !utils.IsSastSupported() {
-		return
-	}
 	if progress != nil {
 		progress.SetHeadlineMsg("Running SAST scanning")
 	}

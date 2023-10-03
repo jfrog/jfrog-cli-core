@@ -281,11 +281,11 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, 
 		rule.WithProperties(cveRuleProperties.Properties)
 		formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
 		if err != nil {
-				return err
+			return err
 		}
 		markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
 		rule.WithHelp(&sarif.MultiformatMessageString{
-			Text: &summary,
+			Text:     &summary,
 			Markdown: &markdownDescription,
 		})
 	}

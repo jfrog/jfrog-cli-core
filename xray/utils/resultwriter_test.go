@@ -1,9 +1,14 @@
 package utils
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -131,6 +136,60 @@ func TestFindMaxCVEScore(t *testing.T) {
 			output, err := findMaxCVEScore(tc.cves)
 			assert.False(t, tc.expectedError && err == nil)
 			assert.Equal(t, tc.expectedOutput, output)
+		})
+	}
+}
+
+func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
+	testDir, cleanup := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer cleanup()
+	invocation := sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation(testDir))
+	file, err := os.Create(filepath.Join(testDir, "go.mod"))
+	assert.NoError(t, err)
+	assert.NotNil(t, file)
+	defer func() { assert.NoError(t, file.Close()) }()
+	file2, err := os.Create(filepath.Join(testDir, "build.gradle.kts"))
+	assert.NoError(t, err)
+	assert.NotNil(t, file2)
+	defer func() { assert.NoError(t, file2.Close()) }()
+
+	testCases := []struct {
+		name           string
+		tech           coreutils.Technology
+		run            *sarif.Run
+		expectedOutput *sarif.Location
+	}{
+		{
+			name:           "No descriptor information",
+			tech:           coreutils.Pip,
+			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			expectedOutput: nil,
+		},
+		{
+			name:           "One descriptor information",
+			tech:           coreutils.Go,
+			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filepath.Join(testDir, "go.mod")))),
+		},
+		{
+			name:           "One descriptor information - no invocation",
+			tech:           coreutils.Go,
+			run:            CreateRunWithDummyResults(),
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://go.mod"))),
+		},
+		{
+			name:           "Multiple descriptor information",
+			tech:           coreutils.Gradle,
+			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filepath.Join(testDir, "build.gradle.kts")))),
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := getXrayIssueLocationIfValidExists(tc.tech, tc.run)
+			if assert.NoError(t, err) {
+				assert.Equal(t, tc.expectedOutput, output)
+			}
 		})
 	}
 }

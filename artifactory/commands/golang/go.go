@@ -219,7 +219,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 		return fmt.Errorf("couldn't find suitable package files: %s", packageFilesPath)
 	}
 	// Set permission recursively
-	return coreutils.SetPermissionsRecursively(destPath, 0700)
+	return coreutils.SetPermissionsRecursively(destPath, 0755)
 }
 
 // getPackageFilePathFromArtifactory returns a string that represents the package files cache path.

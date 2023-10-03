@@ -135,7 +135,7 @@ func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []
 
 func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
 	logMessage := fmt.Sprintf("Calculating %s dependencies", tech.ToFormal())
-	log.Info(logMessage)
+	log.Info(logMessage + "...")
 	if params.Progress() != nil {
 		params.Progress().SetHeadlineMsg(logMessage)
 	}

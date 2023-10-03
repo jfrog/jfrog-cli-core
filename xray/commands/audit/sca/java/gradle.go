@@ -2,11 +2,8 @@ package java
 
 import (
 	_ "embed"
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/datastructures"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,58 +55,10 @@ allprojects {
 var gradleDepTreeJar []byte
 
 type depTreeManager struct {
-	dependenciesTree
 	server       *config.ServerDetails
 	releasesRepo string
 	depsRepo     string
 	useWrapper   bool
-}
-
-// dependenciesTree represents a map between dependencies to their children dependencies in multiple projects.
-type dependenciesTree struct {
-	tree map[string][]dependenciesPaths
-}
-
-// dependenciesPaths represents a map between dependencies to their children dependencies in a single project.
-type dependenciesPaths struct {
-	Paths map[string]dependenciesPaths `json:"children"`
-}
-
-// The gradle-dep-tree generates a JSON representation for the dependencies for each gradle build file in the project.
-// parseDepTreeFiles iterates over those JSONs, and append them to the map of dependencies in dependenciesTree struct.
-func (dtp *depTreeManager) parseDepTreeFiles(jsonFiles []byte) error {
-	outputFiles := strings.Split(strings.TrimSpace(string(jsonFiles)), "\n")
-	for _, path := range outputFiles {
-		tree, err := os.ReadFile(strings.TrimSpace(path))
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
-
-		encodedFileName := path[strings.LastIndex(path, string(os.PathSeparator))+1:]
-		decodedFileName, err := base64.StdEncoding.DecodeString(encodedFileName)
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
-
-		if err = dtp.appendDependenciesPaths(tree, string(decodedFileName)); err != nil {
-			return errorutils.CheckError(err)
-		}
-	}
-	return nil
-}
-
-func (dtp *depTreeManager) appendDependenciesPaths(jsonDepTree []byte, fileName string) error {
-	var deps dependenciesPaths
-	if err := json.Unmarshal(jsonDepTree, &deps); err != nil {
-		return errorutils.CheckError(err)
-	}
-	if dtp.tree == nil {
-		dtp.tree = make(map[string][]dependenciesPaths)
-	}
-	if len(deps.Paths) > 0 {
-		dtp.tree[fileName] = append(dtp.tree[fileName], deps)
-	}
-	return nil
 }
 
 func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
@@ -130,7 +79,7 @@ func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*
 	if err != nil {
 		return
 	}
-	dependencyTree, uniqueDeps, err = manager.getGraphFromDepTree(outputFileContent)
+	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFileContent)
 	return
 }
 
@@ -163,7 +112,7 @@ func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err er
 	if err != nil {
 		return
 	}
-	gradleDepTreeJarPath := filepath.Join(tmpDir, string(gradleDepTreeJarFile))
+	gradleDepTreeJarPath := filepath.Join(tmpDir, gradleDepTreeJarFile)
 	if err = errorutils.CheckError(os.WriteFile(gradleDepTreeJarPath, gradleDepTreeJar, 0666)); err != nil {
 		return
 	}
@@ -235,42 +184,6 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 	outputFileContent, err = os.ReadFile(outputFilePath)
 	err = errorutils.CheckError(err)
 	return
-}
-
-// Assuming we ran gradle-dep-tree, getGraphFromDepTree receives the content of the depTreeOutputFile as input
-func (dtp *depTreeManager) getGraphFromDepTree(outputFileContent []byte) ([]*xrayUtils.GraphNode, []string, error) {
-	if err := dtp.parseDepTreeFiles(outputFileContent); err != nil {
-		return nil, nil, err
-	}
-	var depsGraph []*xrayUtils.GraphNode
-	uniqueDepsSet := datastructures.MakeSet[string]()
-	for dependency, children := range dtp.tree {
-		directDependency := &xrayUtils.GraphNode{
-			Id:    GavPackageTypeIdentifier + dependency,
-			Nodes: []*xrayUtils.GraphNode{},
-		}
-		for _, childPath := range children {
-			populateGradleDependencyTree(directDependency, childPath, uniqueDepsSet)
-		}
-		depsGraph = append(depsGraph, directDependency)
-	}
-	return depsGraph, uniqueDepsSet.ToSlice(), nil
-}
-
-func populateGradleDependencyTree(currNode *xrayUtils.GraphNode, currNodeChildren dependenciesPaths, uniqueDepsSet *datastructures.Set[string]) {
-	uniqueDepsSet.Add(currNode.Id)
-	for gav, children := range currNodeChildren.Paths {
-		childNode := &xrayUtils.GraphNode{
-			Id:     GavPackageTypeIdentifier + gav,
-			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: currNode,
-		}
-		if currNode.NodeHasLoop() {
-			return
-		}
-		populateGradleDependencyTree(childNode, children, uniqueDepsSet)
-		currNode.Nodes = append(currNode.Nodes, childNode)
-	}
 }
 
 func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDetails) (string, error) {

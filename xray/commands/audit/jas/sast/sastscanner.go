@@ -3,6 +3,9 @@ package sast
 import (
 	"fmt"
 
+	"path/filepath"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -11,7 +14,9 @@ import (
 )
 
 const (
-	sastScanCommand = "zd"
+	sastScannerType   = "sast"
+	sastScanCommand   = "zd"
+	sastDocsUrlSuffix = "sast"
 )
 
 type SastScanManager struct {
@@ -40,12 +45,18 @@ func newSastScanManager(scanner *jas.JasScanner) (manager *SastScanManager) {
 	}
 }
 
-func (ssm *SastScanManager) Run(wd string) (err error) {
-	scanner := ssm.scanner
-	if err = ssm.runAnalyzerManager(wd); err != nil {
+func (ssm *SastScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Sast) {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, wd)
+	if err = ssm.createConfigFile(module); err != nil {
+		return
+	}
+	scanner := ssm.scanner
+	if err = ssm.runAnalyzerManager(filepath.Dir(ssm.scanner.AnalyzerManager.AnalyzerManagerFullPath)); err != nil {
+		return
+	}
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, module.SourceRoot, sastDocsUrlSuffix)
 	if err != nil {
 		return
 	}
@@ -54,8 +65,43 @@ func (ssm *SastScanManager) Run(wd string) (err error) {
 	return
 }
 
+type sastScanConfig struct {
+	Scans []scanConfiguration `yaml:"scans,omitempty"`
+}
+
+type scanConfiguration struct {
+	Roots           []string `yaml:"roots,omitempty"`
+	Type            string   `yaml:"type,omitempty"`
+	Language        string   `yaml:"language,omitempty"`
+	ExcludePatterns []string `yaml:"exclude_patterns,omitempty"`
+	ExcludedRules   []string `yaml:"excluded-rules,omitempty"`
+}
+
+func (ssm *SastScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	sastScanner := module.Scanners.Sast
+	if sastScanner == nil {
+		sastScanner = &jfrogappsconfig.SastScanner{}
+	}
+	roots, err := jas.GetSourceRoots(module, &sastScanner.Scanner)
+	if err != nil {
+		return err
+	}
+	configFileContent := sastScanConfig{
+		Scans: []scanConfiguration{
+			{
+				Type:            sastScannerType,
+				Roots:           roots,
+				Language:        sastScanner.Language,
+				ExcludedRules:   sastScanner.ExcludedRules,
+				ExcludePatterns: jas.GetExcludePatterns(module, &sastScanner.Scanner),
+			},
+		},
+	}
+	return jas.CreateScannersConfigFile(ssm.scanner.ConfigFileName, configFileContent, utils.Sast)
+}
+
 func (ssm *SastScanManager) runAnalyzerManager(wd string) error {
-	return ssm.scanner.AnalyzerManager.Exec(ssm.scanner.ResultsFileName, sastScanCommand, wd, ssm.scanner.ServerDetails)
+	return ssm.scanner.AnalyzerManager.ExecWithOutputFile(ssm.scanner.ConfigFileName, sastScanCommand, wd, ssm.scanner.ResultsFileName, ssm.scanner.ServerDetails)
 }
 
 // In the Sast scanner, there can be multiple results with the same location.

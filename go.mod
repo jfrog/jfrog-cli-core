@@ -15,7 +15,7 @@ require (
 	github.com/jfrog/build-info-go v1.9.12
 	github.com/jfrog/gofrog v1.3.0
 	github.com/jfrog/jfrog-apps-config v1.0.1
-	github.com/jfrog/jfrog-client-go v1.34.1
+	github.com/jfrog/jfrog-client-go v1.34.2
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.2.2

@@ -1,7 +1,6 @@
 package formats
 
 import (
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"strconv"
 	"strings"
 )
@@ -56,7 +55,7 @@ func ConvertToLicenseViolationTableRow(rows []LicenseRow) (tableRows []licenseVi
 	return
 }
 
-func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]services.DockerCommandDetails) (tableRows []vulnerabilityDockerScanTableRow) {
+func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]string) (tableRows []vulnerabilityDockerScanTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, vulnerabilityDockerScanTableRow{
 			severity:               rows[i].Severity,
@@ -212,10 +211,9 @@ func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 	return
 }
 
-func prepareDockerCommand(component string, dockerCommandsMapping map[string]services.DockerCommandDetails) string {
+func prepareDockerCommand(component string, dockerCommandsMapping map[string]string) string {
 	// Trim suffix and prefix of layer resulted from binary scan.
 	component = strings.TrimPrefix(component, "sha256__")
 	component = strings.TrimSuffix(component, ".tar")
-	dockerCommand := dockerCommandsMapping[component]
-	return dockerCommand.Command
+	return dockerCommandsMapping[component]
 }

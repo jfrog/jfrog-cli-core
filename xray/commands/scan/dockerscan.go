@@ -9,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/wagoodman/dive/dive"
 	"os"
 	"os/exec"
@@ -27,9 +26,10 @@ const (
 
 type DockerScanCommand struct {
 	ScanCommand
-	imageTag              string
-	targetRepoPath        string
-	dockerCommandsMapping map[string]services.DockerCommandDetails
+	imageTag       string
+	targetRepoPath string
+	// Maps layer hash to dockerfile command
+	dockerfileCommandsMapping map[string]string
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -119,7 +119,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetIncludeLicenses(dsc.includeLicenses).
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
-		SetDockerCommandsMapping(dsc.dockerCommandsMapping).
+		SetDockerCommandsMapping(dsc.dockerfileCommandsMapping).
 		PrintScanResults()
 
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
@@ -136,12 +136,12 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (err error) {
 		return
 	}
 	// Create mapping between sha256 hash to dockerfile Command.
-	layersMapping := make(map[string]services.DockerCommandDetails)
+	layersMapping := make(map[string]string)
 	for _, layer := range dockerImage.Layers {
 		layerHash := strings.TrimPrefix(layer.Digest, layerDigestPrefix)
-		layersMapping[layerHash] = services.DockerCommandDetails{LayerHash: layer.Digest, Command: cleanDockerfileCommand(layer.Command)}
+		layersMapping[layerHash] = cleanDockerfileCommand(layer.Command)
 	}
-	dsc.dockerCommandsMapping = layersMapping
+	dsc.dockerfileCommandsMapping = layersMapping
 	return
 }
 

@@ -105,7 +105,9 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}()
 	// Preform binary scan.
 	extendedScanResults, cleanup, scanErrors, err := dsc.ScanCommand.binaryScan()
-	defer cleanup()
+	if cleanup != nil {
+		defer cleanup()
+	}
 	if err != nil {
 		return
 	}

@@ -3,8 +3,10 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +25,7 @@ func TestPrintViolationsTable(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		err := PrintViolationsTable(test.violations, &ExtendedScanResults{}, false, true, true)
+		err := PrintViolationsTable(test.violations, &ExtendedScanResults{}, false, true, services.Binary)
 		assert.NoError(t, err)
 		if CheckIfFailBuild([]services.ScanResponse{{Violations: test.violations}}) {
 			err = NewFailBuildError()
@@ -426,38 +428,110 @@ func TestGetSeveritiesFormat(t *testing.T) {
 func TestGetApplicableCveValue(t *testing.T) {
 	testCases := []struct {
 		scanResults    *ExtendedScanResults
-		cves           []formats.CveRow
-		expectedResult string
+		cves           []services.Cve
+		expectedResult ApplicabilityStatus
+		expectedCves   []formats.CveRow
 	}{
-		{scanResults: &ExtendedScanResults{EntitledForJas: false}, expectedResult: ""},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": ApplicableStringValue, "testCve2": NotApplicableStringValue},
-			EntitledForJas:           true},
-			cves: nil, expectedResult: ApplicabilityUndeterminedStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve2"}}, expectedResult: ApplicableStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve3"}}, expectedResult: ApplicabilityUndeterminedStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": NotApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: NotApplicableStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicableStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicableStringValue},
-		{scanResults: &ExtendedScanResults{
-			ApplicabilityScanResults: map[string]string{"testCve1": NotApplicableStringValue, "testCve2": ApplicabilityUndeterminedStringValue},
-			EntitledForJas:           true},
-			cves: []formats.CveRow{{Id: "testCve1"}, {Id: "testCve2"}}, expectedResult: ApplicabilityUndeterminedStringValue},
+		{
+			scanResults:    &ExtendedScanResults{EntitledForJas: false},
+			expectedResult: NotScanned,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run{
+					CreateRunWithDummyResults(
+						CreateResultWithOneLocation("fileName1", 0, 1, 0, 0, "snippet1", "applic_testCve1", "info"),
+						CreateDummyPassingResult("applic_testCve2"),
+					),
+				},
+				EntitledForJas: true,
+			},
+			cves:           nil,
+			expectedResult: ApplicabilityUndetermined,
+			expectedCves:   nil,
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run{
+					CreateRunWithDummyResults(
+						CreateDummyPassingResult("applic_testCve1"),
+						CreateResultWithOneLocation("fileName2", 1, 0, 0, 0, "snippet2", "applic_testCve2", "warning"),
+					),
+				},
+				EntitledForJas: true,
+			},
+			cves:           []services.Cve{{Id: "testCve2"}},
+			expectedResult: Applicable,
+			expectedCves:   []formats.CveRow{{Id: "testCve2", Applicability: &formats.Applicability{Status: string(Applicable)}}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run{
+					CreateRunWithDummyResults(
+						CreateDummyPassingResult("applic_testCve1"),
+						CreateResultWithOneLocation("fileName3", 0, 1, 0, 0, "snippet3", "applic_testCve2", "info"),
+					),
+				},
+				EntitledForJas: true,
+			},
+			cves:           []services.Cve{{Id: "testCve3"}},
+			expectedResult: ApplicabilityUndetermined,
+			expectedCves:   []formats.CveRow{{Id: "testCve3"}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run{
+					CreateRunWithDummyResults(
+						CreateDummyPassingResult("applic_testCve1"),
+						CreateDummyPassingResult("applic_testCve2"),
+					),
+				},
+				EntitledForJas: true,
+			},
+			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: NotApplicable,
+			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: string(NotApplicable)}}, {Id: "testCve2", Applicability: &formats.Applicability{Status: string(NotApplicable)}}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run{
+					CreateRunWithDummyResults(
+						CreateDummyPassingResult("applic_testCve1"),
+						CreateResultWithOneLocation("fileName4", 1, 0, 0, 0, "snippet", "applic_testCve2", "warning"),
+					),
+				},
+				EntitledForJas: true,
+			},
+			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: Applicable,
+			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: string(NotApplicable)}}, {Id: "testCve2", Applicability: &formats.Applicability{Status: string(Applicable)}}},
+		},
+		{
+			scanResults: &ExtendedScanResults{
+				ApplicabilityScanResults: []*sarif.Run{
+					CreateRunWithDummyResults(CreateDummyPassingResult("applic_testCve1")),
+				},
+				EntitledForJas: true},
+			cves:           []services.Cve{{Id: "testCve1"}, {Id: "testCve2"}},
+			expectedResult: ApplicabilityUndetermined,
+			expectedCves:   []formats.CveRow{{Id: "testCve1", Applicability: &formats.Applicability{Status: string(NotApplicable)}}, {Id: "testCve2"}},
+		},
 	}
 
 	for _, testCase := range testCases {
-		assert.Equal(t, testCase.expectedResult, getApplicableCveValue(testCase.scanResults, testCase.cves))
+		cves := convertCves(testCase.cves)
+		for i := range cves {
+			cves[i].Applicability = getCveApplicabilityField(cves[i], testCase.scanResults.ApplicabilityScanResults, nil)
+		}
+		applicableValue := getApplicableCveStatus(testCase.scanResults.EntitledForJas, testCase.scanResults.ApplicabilityScanResults, cves)
+		assert.Equal(t, testCase.expectedResult, applicableValue)
+		if assert.True(t, len(testCase.expectedCves) == len(cves)) {
+			for i := range cves {
+				if testCase.expectedCves[i].Applicability != nil && assert.NotNil(t, cves[i].Applicability) {
+					assert.Equal(t, testCase.expectedCves[i].Applicability.Status, cves[i].Applicability.Status)
+				}
+			}
+		}
 	}
 }
 
@@ -471,28 +545,40 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 			name: "Sort by severity with different severity values",
 			rows: []formats.VulnerabilityOrViolationRow{
 				{
-					Summary:                   "Summary 1",
-					Severity:                  "High",
-					SeverityNumValue:          9,
-					FixedVersions:             []string{},
-					ImpactedDependencyName:    "Dependency 1",
-					ImpactedDependencyVersion: "1.0.0",
+					Summary: "Summary 1",
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "High",
+							SeverityNumValue: 9,
+						},
+						ImpactedDependencyName:    "Dependency 1",
+						ImpactedDependencyVersion: "1.0.0",
+					},
+					FixedVersions: []string{},
 				},
 				{
-					Summary:                   "Summary 2",
-					Severity:                  "Critical",
-					SeverityNumValue:          12,
-					FixedVersions:             []string{"1.0.0"},
-					ImpactedDependencyName:    "Dependency 2",
-					ImpactedDependencyVersion: "2.0.0",
+					Summary: "Summary 2",
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "Critical",
+							SeverityNumValue: 12,
+						},
+						ImpactedDependencyName:    "Dependency 2",
+						ImpactedDependencyVersion: "2.0.0",
+					},
+					FixedVersions: []string{"1.0.0"},
 				},
 				{
-					Summary:                   "Summary 3",
-					Severity:                  "Medium",
-					SeverityNumValue:          6,
-					FixedVersions:             []string{},
-					ImpactedDependencyName:    "Dependency 3",
-					ImpactedDependencyVersion: "3.0.0",
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "Medium",
+							SeverityNumValue: 6,
+						},
+						ImpactedDependencyName:    "Dependency 3",
+						ImpactedDependencyVersion: "3.0.0",
+					},
+					Summary:       "Summary 3",
+					FixedVersions: []string{},
 				},
 			},
 			expectedOrder: []string{"Dependency 2", "Dependency 1", "Dependency 3"},
@@ -501,20 +587,28 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 			name: "Sort by severity with same severity values, but different fixed versions",
 			rows: []formats.VulnerabilityOrViolationRow{
 				{
-					Summary:                   "Summary 1",
-					Severity:                  "Critical",
-					SeverityNumValue:          12,
-					FixedVersions:             []string{"1.0.0"},
-					ImpactedDependencyName:    "Dependency 1",
-					ImpactedDependencyVersion: "1.0.0",
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "Critical",
+							SeverityNumValue: 12,
+						},
+						ImpactedDependencyName:    "Dependency 1",
+						ImpactedDependencyVersion: "1.0.0",
+					},
+					Summary:       "Summary 1",
+					FixedVersions: []string{"1.0.0"},
 				},
 				{
-					Summary:                   "Summary 2",
-					Severity:                  "Critical",
-					SeverityNumValue:          12,
-					FixedVersions:             []string{},
-					ImpactedDependencyName:    "Dependency 2",
-					ImpactedDependencyVersion: "2.0.0",
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "Critical",
+							SeverityNumValue: 12,
+						},
+						ImpactedDependencyName:    "Dependency 2",
+						ImpactedDependencyVersion: "2.0.0",
+					},
+					Summary:       "Summary 2",
+					FixedVersions: []string{},
 				},
 			},
 			expectedOrder: []string{"Dependency 1", "Dependency 2"},
@@ -523,29 +617,41 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 			name: "Sort by severity with same severity values different applicability",
 			rows: []formats.VulnerabilityOrViolationRow{
 				{
-					Summary:                   "Summary 1",
-					Severity:                  "Critical",
-					Applicable:                ApplicableStringValue,
-					SeverityNumValue:          13,
-					FixedVersions:             []string{"1.0.0"},
-					ImpactedDependencyName:    "Dependency 1",
-					ImpactedDependencyVersion: "1.0.0",
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "Critical",
+							SeverityNumValue: 13,
+						},
+						ImpactedDependencyName:    "Dependency 1",
+						ImpactedDependencyVersion: "1.0.0",
+					},
+					Summary:       "Summary 1",
+					Applicable:    Applicable.String(),
+					FixedVersions: []string{"1.0.0"},
 				},
 				{
-					Summary:                   "Summary 2",
-					Applicable:                NotApplicableStringValue,
-					Severity:                  "Critical",
-					SeverityNumValue:          11,
-					ImpactedDependencyName:    "Dependency 2",
-					ImpactedDependencyVersion: "2.0.0",
+					Summary:    "Summary 2",
+					Applicable: NotApplicable.String(),
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "Critical",
+							SeverityNumValue: 11,
+						},
+						ImpactedDependencyName:    "Dependency 2",
+						ImpactedDependencyVersion: "2.0.0",
+					},
 				},
 				{
-					Summary:                   "Summary 3",
-					Applicable:                ApplicabilityUndeterminedStringValue,
-					Severity:                  "Critical",
-					SeverityNumValue:          12,
-					ImpactedDependencyName:    "Dependency 3",
-					ImpactedDependencyVersion: "2.0.0",
+					Summary:    "Summary 3",
+					Applicable: ApplicabilityUndetermined.String(),
+					ImpactedDependencyDetails: formats.ImpactedDependencyDetails{
+						SeverityDetails: formats.SeverityDetails{
+							Severity:         "Critical",
+							SeverityNumValue: 12,
+						},
+						ImpactedDependencyName:    "Dependency 3",
+						ImpactedDependencyVersion: "2.0.0",
+					},
 				},
 			},
 			expectedOrder: []string{"Dependency 1", "Dependency 3", "Dependency 2"},
@@ -559,6 +665,381 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 			for i, row := range tc.rows {
 				assert.Equal(t, tc.expectedOrder[i], row.ImpactedDependencyName)
 			}
+		})
+	}
+}
+
+func TestShouldDisqualifyEvidence(t *testing.T) {
+	testCases := []struct {
+		name       string
+		component  map[string]services.Component
+		filePath   string
+		disqualify bool
+	}{
+		{
+			name:       "package folders",
+			component:  map[string]services.Component{"npm://protobufjs:6.11.2": {}},
+			filePath:   "file:///Users/jfrog/test/node_modules/protobufjs/src/badCode.js",
+			disqualify: true,
+		}, {
+			name:       "nested folders",
+			component:  map[string]services.Component{"npm://protobufjs:6.11.2": {}},
+			filePath:   "file:///Users/jfrog/test/node_modules/someDep/node_modules/protobufjs/src/badCode.js",
+			disqualify: true,
+		}, {
+			name:       "applicability in node modules",
+			component:  map[string]services.Component{"npm://protobufjs:6.11.2": {}},
+			filePath:   "file:///Users/jfrog/test/node_modules/mquery/src/badCode.js",
+			disqualify: false,
+		}, {
+			// Only npm supported
+			name:       "not npm",
+			component:  map[string]services.Component{"yarn://protobufjs:6.11.2": {}},
+			filePath:   "file:///Users/jfrog/test/node_modules/protobufjs/src/badCode.js",
+			disqualify: false,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.disqualify, shouldDisqualifyEvidence(tc.component, tc.filePath))
+		})
+	}
+}
+
+func TestPrepareIac(t *testing.T) {
+	testCases := []struct {
+		name           string
+		input          []*sarif.Run
+		expectedOutput []formats.SourceCodeRow
+	}{
+		{
+			name:           "No Iac run",
+			input:          []*sarif.Run{},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Iac run - no results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+			},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Iac run - with results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(
+					CreateResultWithLocations("iac finding", "rule1", "info",
+						CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(
+					CreateResultWithLocations("other iac finding", "rule2", "error",
+						CreateLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+				}),
+			},
+			expectedOutput: []formats.SourceCodeRow{
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "High",
+						SeverityNumValue: 13,
+					},
+					Finding: "other iac finding",
+					Location: formats.Location{
+						File:        "file3",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:     3,
+						EndColumn:   4,
+						Snippet:     "snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "iac finding",
+					Location: formats.Location{
+						File:        "file",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:     3,
+						EndColumn:   4,
+						Snippet:     "snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "iac finding",
+					Location: formats.Location{
+						File:        "file2",
+						StartLine:   5,
+						StartColumn: 6,
+						EndLine:     7,
+						EndColumn:   8,
+						Snippet:     "other-snippet",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expectedOutput, prepareIacs(tc.input, false))
+		})
+	}
+}
+
+func TestPrepareSecrets(t *testing.T) {
+	testCases := []struct {
+		name           string
+		input          []*sarif.Run
+		expectedOutput []formats.SourceCodeRow
+	}{
+		{
+			name:           "No Secret run",
+			input:          []*sarif.Run{},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Secret run - no results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+			},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Secret run - with results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(
+					CreateResultWithLocations("secret finding", "rule1", "info",
+						CreateLocation("file://wd/file", 1, 2, 3, 4, "some-secret-snippet"),
+						CreateLocation("file://wd/file2", 5, 6, 7, 8, "other-secret-snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(
+					CreateResultWithLocations("other secret finding", "rule2", "note",
+						CreateLocation("file://wd2/file3", 1, 2, 3, 4, "some-secret-snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+				}),
+			},
+			expectedOutput: []formats.SourceCodeRow{
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Low",
+						SeverityNumValue: 9,
+					},
+					Finding: "other secret finding",
+					Location: formats.Location{
+						File:        "file3",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:     3,
+						EndColumn:   4,
+						Snippet:     "some-secret-snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "secret finding",
+					Location: formats.Location{
+						File:        "file",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:     3,
+						EndColumn:   4,
+						Snippet:     "some-secret-snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "secret finding",
+					Location: formats.Location{
+						File:        "file2",
+						StartLine:   5,
+						StartColumn: 6,
+						EndLine:     7,
+						EndColumn:   8,
+						Snippet:     "other-secret-snippet",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expectedOutput, prepareSecrets(tc.input, false))
+		})
+	}
+}
+
+func TestPrepareSast(t *testing.T) {
+	testCases := []struct {
+		name           string
+		input          []*sarif.Run
+		expectedOutput []formats.SourceCodeRow
+	}{
+		{
+			name:           "No Sast run",
+			input:          []*sarif.Run{},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Sast run - no results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(),
+			},
+			expectedOutput: []formats.SourceCodeRow{},
+		},
+		{
+			name: "Prepare Sast run - with results",
+			input: []*sarif.Run{
+				CreateRunWithDummyResults(),
+				CreateRunWithDummyResults(
+					CreateResultWithLocations("sast finding", "rule1", "info",
+						CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						CreateLocation("file://wd/file2", 5, 6, 7, 8, "other-snippet"),
+					).WithCodeFlows([]*sarif.CodeFlow{
+						CreateCodeFlow(CreateThreadFlow(
+							CreateLocation("file://wd/file2", 0, 2, 0, 2, "snippetA"),
+							CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						)),
+						CreateCodeFlow(CreateThreadFlow(
+							CreateLocation("file://wd/file4", 1, 0, 1, 8, "snippetB"),
+							CreateLocation("file://wd/file", 1, 2, 3, 4, "snippet"),
+						)),
+					}),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd")),
+				}),
+				CreateRunWithDummyResults(
+					CreateResultWithLocations("other sast finding", "rule2", "error",
+						CreateLocation("file://wd2/file3", 1, 2, 3, 4, "snippet"),
+					),
+				).WithInvocations([]*sarif.Invocation{
+					sarif.NewInvocation().WithWorkingDirectory(sarif.NewSimpleArtifactLocation("wd2")),
+				}),
+			},
+			expectedOutput: []formats.SourceCodeRow{
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "High",
+						SeverityNumValue: 13,
+					},
+					Finding: "other sast finding",
+					Location: formats.Location{
+						File:        "file3",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:     3,
+						EndColumn:   4,
+						Snippet:     "snippet",
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "sast finding",
+					Location: formats.Location{
+						File:        "file",
+						StartLine:   1,
+						StartColumn: 2,
+						EndLine:     3,
+						EndColumn:   4,
+						Snippet:     "snippet",
+					},
+					CodeFlow: [][]formats.Location{
+						{
+							{
+								File:        "file2",
+								StartLine:   0,
+								StartColumn: 2,
+								EndLine:     0,
+								EndColumn:   2,
+								Snippet:     "snippetA",
+							},
+							{
+								File:        "file",
+								StartLine:   1,
+								StartColumn: 2,
+								EndLine:     3,
+								EndColumn:   4,
+								Snippet:     "snippet",
+							},
+						},
+						{
+							{
+								File:        "file4",
+								StartLine:   1,
+								StartColumn: 0,
+								EndLine:     1,
+								EndColumn:   8,
+								Snippet:     "snippetB",
+							},
+							{
+								File:        "file",
+								StartLine:   1,
+								StartColumn: 2,
+								EndLine:     3,
+								EndColumn:   4,
+								Snippet:     "snippet",
+							},
+						},
+					},
+				},
+				{
+					SeverityDetails: formats.SeverityDetails{
+						Severity:         "Medium",
+						SeverityNumValue: 11,
+					},
+					Finding: "sast finding",
+					Location: formats.Location{
+						File:        "file2",
+						StartLine:   5,
+						StartColumn: 6,
+						EndLine:     7,
+						EndColumn:   8,
+						Snippet:     "other-snippet",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ElementsMatch(t, tc.expectedOutput, prepareSast(tc.input, false))
 		})
 	}
 }

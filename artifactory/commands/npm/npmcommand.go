@@ -2,6 +2,7 @@ package npm
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/build/utils"
@@ -62,153 +63,153 @@ func NewNpmCiCommand() *NpmCommand {
 	return &NpmCommand{cmdName: "ci", internalCommandName: "rt_npm_ci"}
 }
 
-func (ca *NpmCommand) CommandName() string {
-	return ca.internalCommandName
+func (nc *NpmCommand) CommandName() string {
+	return nc.internalCommandName
 }
 
-func (ca *NpmCommand) SetConfigFilePath(configFilePath string) *NpmCommand {
-	ca.configFilePath = configFilePath
-	return ca
+func (nc *NpmCommand) SetConfigFilePath(configFilePath string) *NpmCommand {
+	nc.configFilePath = configFilePath
+	return nc
 }
 
-func (ca *NpmCommand) SetArgs(args []string) *NpmCommand {
-	ca.npmArgs = args
-	return ca
+func (nc *NpmCommand) SetArgs(args []string) *NpmCommand {
+	nc.npmArgs = args
+	return nc
 }
 
-func (ca *NpmCommand) SetRepoConfig(conf *utils.RepositoryConfig) *NpmCommand {
+func (nc *NpmCommand) SetRepoConfig(conf *utils.RepositoryConfig) *NpmCommand {
 	serverDetails, _ := conf.ServerDetails()
-	ca.SetRepo(conf.TargetRepo()).SetServerDetails(serverDetails)
-	return ca
+	nc.SetRepo(conf.TargetRepo()).SetServerDetails(serverDetails)
+	return nc
 }
 
-func (ca *NpmCommand) SetServerDetails(serverDetails *config.ServerDetails) *NpmCommand {
-	ca.serverDetails = serverDetails
-	return ca
+func (nc *NpmCommand) SetServerDetails(serverDetails *config.ServerDetails) *NpmCommand {
+	nc.serverDetails = serverDetails
+	return nc
 }
 
-func (ca *NpmCommand) SetRepo(repo string) *NpmCommand {
-	ca.repo = repo
-	return ca
+func (nc *NpmCommand) SetRepo(repo string) *NpmCommand {
+	nc.repo = repo
+	return nc
 }
 
-func (ca *NpmCommand) Init() error {
+func (nc *NpmCommand) Init() error {
 	// Read config file.
-	log.Debug("Preparing to read the config file", ca.configFilePath)
-	vConfig, err := utils.ReadConfigFile(ca.configFilePath, utils.YAML)
+	log.Debug("Preparing to read the config file", nc.configFilePath)
+	vConfig, err := utils.ReadConfigFile(nc.configFilePath, utils.YAML)
 	if err != nil {
 		return err
 	}
 	// Extract resolution params.
-	resolverParams, err := utils.GetRepoConfigByPrefix(ca.configFilePath, utils.ProjectConfigResolverPrefix, vConfig)
+	resolverParams, err := utils.GetRepoConfigByPrefix(nc.configFilePath, utils.ProjectConfigResolverPrefix, vConfig)
 	if err != nil {
 		return err
 	}
-	_, _, _, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(ca.npmArgs)
+	_, _, _, filteredNpmArgs, buildConfiguration, err := commandUtils.ExtractNpmOptionsFromArgs(nc.npmArgs)
 	if err != nil {
 		return err
 	}
-	ca.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetBuildConfiguration(buildConfiguration)
+	nc.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetBuildConfiguration(buildConfiguration)
 	return nil
 }
 
-func (ca *NpmCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *NpmCommand {
-	ca.buildConfiguration = buildConfiguration
-	return ca
+func (nc *NpmCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *NpmCommand {
+	nc.buildConfiguration = buildConfiguration
+	return nc
 }
 
-func (ca *NpmCommand) ServerDetails() (*config.ServerDetails, error) {
-	return ca.serverDetails, nil
+func (nc *NpmCommand) ServerDetails() (*config.ServerDetails, error) {
+	return nc.serverDetails, nil
 }
 
-func (ca *NpmCommand) RestoreNpmrcFunc() func() error {
-	return ca.restoreNpmrcFunc
+func (nc *NpmCommand) RestoreNpmrcFunc() func() error {
+	return nc.restoreNpmrcFunc
 }
 
-func (ca *NpmCommand) PreparePrerequisites(repo string) error {
+func (nc *NpmCommand) PreparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites...")
 	var err error
-	ca.npmVersion, ca.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
+	nc.npmVersion, nc.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
 	}
-	if ca.npmVersion.Compare(minSupportedNpmVersion) > 0 {
+	if nc.npmVersion.Compare(minSupportedNpmVersion) > 0 {
 		return errorutils.CheckErrorf(
-			"JFrog CLI npm %s command requires npm client version %s or higher. The Current version is: %s", ca.cmdName, minSupportedNpmVersion, ca.npmVersion.GetVersion())
+			"JFrog CLI npm %s command requires npm client version %s or higher. The Current version is: %s", nc.cmdName, minSupportedNpmVersion, nc.npmVersion.GetVersion())
 	}
 
-	if err := ca.setJsonOutput(); err != nil {
+	if err = nc.setJsonOutput(); err != nil {
 		return err
 	}
 
-	ca.workingDirectory, err = coreutils.GetWorkingDirectory()
+	nc.workingDirectory, err = coreutils.GetWorkingDirectory()
 	if err != nil {
 		return err
 	}
-	log.Debug("Working directory set to:", ca.workingDirectory)
-	if err = ca.setArtifactoryAuth(); err != nil {
+	log.Debug("Working directory set to:", nc.workingDirectory)
+	if err = nc.setArtifactoryAuth(); err != nil {
 		return err
 	}
 
-	ca.npmAuth, ca.registry, err = commandUtils.GetArtifactoryNpmRepoDetails(repo, &ca.authArtDetails)
+	nc.npmAuth, nc.registry, err = commandUtils.GetArtifactoryNpmRepoDetails(repo, &nc.authArtDetails)
 	if err != nil {
 		return err
 	}
 
-	return ca.setRestoreNpmrcFunc()
+	return nc.setRestoreNpmrcFunc()
 }
 
-func (ca *NpmCommand) setRestoreNpmrcFunc() error {
-	restoreNpmrcFunc, err := commandUtils.BackupFile(filepath.Join(ca.workingDirectory, npmrcFileName), filepath.Join(ca.workingDirectory, npmrcBackupFileName))
+func (nc *NpmCommand) setRestoreNpmrcFunc() error {
+	restoreNpmrcFunc, err := commandUtils.BackupFile(filepath.Join(nc.workingDirectory, npmrcFileName), npmrcBackupFileName)
 	if err != nil {
 		return err
 	}
-	ca.restoreNpmrcFunc = func() error {
+	nc.restoreNpmrcFunc = func() error {
 		if unsetEnvErr := os.Unsetenv(npmConfigAuthEnv); unsetEnvErr != nil {
 			return unsetEnvErr
 		}
 		return restoreNpmrcFunc()
 	}
-	return err
+	return nil
 }
 
-func (ca *NpmCommand) setArtifactoryAuth() error {
-	authArtDetails, err := ca.serverDetails.CreateArtAuthConfig()
+func (nc *NpmCommand) setArtifactoryAuth() error {
+	authArtDetails, err := nc.serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return err
 	}
 	if authArtDetails.GetSshAuthHeaders() != nil {
 		return errorutils.CheckErrorf("SSH authentication is not supported in this command")
 	}
-	ca.authArtDetails = authArtDetails
+	nc.authArtDetails = authArtDetails
 	return nil
 }
 
-func (ca *NpmCommand) setJsonOutput() error {
-	jsonOutput, err := npm.ConfigGet(ca.npmArgs, "json", ca.executablePath)
+func (nc *NpmCommand) setJsonOutput() error {
+	jsonOutput, err := npm.ConfigGet(nc.npmArgs, "json", nc.executablePath)
 	if err != nil {
 		return err
 	}
 
 	// In case of --json=<not boolean>, the value of json is set to 'true', but the result from the command is not 'true'
-	ca.jsonOutput = jsonOutput != "false"
+	nc.jsonOutput = jsonOutput != "false"
 	return nil
 }
 
-func (ca *NpmCommand) processConfigLine(configLine string) (filteredLine string, err error) {
+func (nc *NpmCommand) processConfigLine(configLine string) (filteredLine string, err error) {
 	splitOption := strings.SplitN(configLine, "=", 2)
 	key := strings.TrimSpace(splitOption[0])
 	validLine := len(splitOption) == 2 && isValidKey(key)
 	if !validLine {
 		if strings.HasPrefix(splitOption[0], "@") {
 			// Override scoped registries (@scope = xyz)
-			return fmt.Sprintf("%s = %s\n", splitOption[0], ca.registry), nil
+			return fmt.Sprintf("%s = %s\n", splitOption[0], nc.registry), nil
 		}
 		return
 	}
 	value := strings.TrimSpace(splitOption[1])
 	if key == "_auth" {
-		return "", ca.setNpmConfigAuthEnv(value)
+		return "", nc.setNpmConfigAuthEnv(value)
 	}
 	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 		return addArrayConfigs(key, value), nil
@@ -217,11 +218,11 @@ func (ca *NpmCommand) processConfigLine(configLine string) (filteredLine string,
 	return fmt.Sprintf("%s\n", configLine), err
 }
 
-func (ca *NpmCommand) setNpmConfigAuthEnv(value string) error {
+func (nc *NpmCommand) setNpmConfigAuthEnv(value string) error {
 	// Check if the npm version is bigger or equal to 9.3.1
-	if ca.npmVersion.Compare(npmVersionForLegacyEnv) <= 0 {
+	if nc.npmVersion.Compare(npmVersionForLegacyEnv) <= 0 {
 		// Get registry name without the protocol name but including the '//'
-		registryWithoutProtocolName := ca.registry[strings.Index(ca.registry, "://")+1:]
+		registryWithoutProtocolName := nc.registry[strings.Index(nc.registry, "://")+1:]
 		// Set "npm_config_//<registry-url>:_auth" environment variable to allow authentication with Artifactory
 		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
 		return os.Setenv(scopedRegistryEnv, value)
@@ -231,16 +232,16 @@ func (ca *NpmCommand) setNpmConfigAuthEnv(value string) error {
 	return os.Setenv(npmLegacyConfigAuthEnv, value)
 }
 
-func (ca *NpmCommand) prepareConfigData(data []byte) ([]byte, error) {
+func (nc *NpmCommand) prepareConfigData(data []byte) ([]byte, error) {
 	var filteredConf []string
-	configString := string(data) + "\n" + ca.npmAuth
+	configString := string(data) + "\n" + nc.npmAuth
 	scanner := bufio.NewScanner(strings.NewReader(configString))
 	for scanner.Scan() {
 		currOption := scanner.Text()
 		if currOption == "" {
 			continue
 		}
-		filteredLine, err := ca.processConfigLine(currOption)
+		filteredLine, err := nc.processConfigLine(currOption)
 		if err != nil {
 			return nil, errorutils.CheckError(err)
 		}
@@ -252,94 +253,87 @@ func (ca *NpmCommand) prepareConfigData(data []byte) ([]byte, error) {
 		return nil, errorutils.CheckError(err)
 	}
 
-	filteredConf = append(filteredConf, "json = ", strconv.FormatBool(ca.jsonOutput), "\n")
-	filteredConf = append(filteredConf, "registry = ", ca.registry, "\n")
+	filteredConf = append(filteredConf, "json = ", strconv.FormatBool(nc.jsonOutput), "\n")
+	filteredConf = append(filteredConf, "registry = ", nc.registry, "\n")
 	return []byte(strings.Join(filteredConf, "")), nil
 }
 
-func (ca *NpmCommand) CreateTempNpmrc() error {
-	log.Debug("Creating project .npmrc file.")
-	data, err := npm.GetConfigList(ca.npmArgs, ca.executablePath)
+func (nc *NpmCommand) CreateTempNpmrc() error {
+	data, err := npm.GetConfigList(nc.npmArgs, nc.executablePath)
 	if err != nil {
 		return err
 	}
-	configData, err := ca.prepareConfigData(data)
+	configData, err := nc.prepareConfigData(data)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 
-	if err = removeNpmrcIfExists(ca.workingDirectory); err != nil {
+	if err = removeNpmrcIfExists(nc.workingDirectory); err != nil {
 		return err
 	}
-
-	return errorutils.CheckError(os.WriteFile(filepath.Join(ca.workingDirectory, npmrcFileName), configData, 0600))
+	log.Debug("Creating temporary .npmrc file.")
+	return errorutils.CheckError(os.WriteFile(filepath.Join(nc.workingDirectory, npmrcFileName), configData, 0755))
 }
 
-func (ca *NpmCommand) Run() (err error) {
-	if err = ca.PreparePrerequisites(ca.repo); err != nil {
+func (nc *NpmCommand) Run() (err error) {
+	if err = nc.PreparePrerequisites(nc.repo); err != nil {
 		return
 	}
 	defer func() {
-		e := ca.restoreNpmrcFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, nc.restoreNpmrcFunc())
 	}()
-	if err = ca.CreateTempNpmrc(); err != nil {
+	if err = nc.CreateTempNpmrc(); err != nil {
 		return
 	}
 
-	if err = ca.prepareBuildInfoModule(); err != nil {
+	if err = nc.prepareBuildInfoModule(); err != nil {
 		return
 	}
 
-	if err = ca.collectDependencies(); err != nil {
-		return
-	}
-	log.Info(fmt.Sprintf("npm %s finished successfully.", ca.cmdName))
+	err = nc.collectDependencies()
 	return
 }
 
-func (ca *NpmCommand) prepareBuildInfoModule() error {
+func (nc *NpmCommand) prepareBuildInfoModule() error {
 	var err error
-	if ca.collectBuildInfo {
-		ca.collectBuildInfo, err = ca.buildConfiguration.IsCollectBuildInfo()
+	if nc.collectBuildInfo {
+		nc.collectBuildInfo, err = nc.buildConfiguration.IsCollectBuildInfo()
 		if err != nil {
 			return err
 		}
 	}
 	// Build-info should not be created when installing a single package (npm install <package name>).
-	if ca.collectBuildInfo && len(filterFlags(ca.npmArgs)) > 0 {
+	if nc.collectBuildInfo && len(filterFlags(nc.npmArgs)) > 0 {
 		log.Info("Build-info dependencies collection is not supported for installations of single packages. Build-info creation is skipped.")
-		ca.collectBuildInfo = false
+		nc.collectBuildInfo = false
 	}
-	buildName, err := ca.buildConfiguration.GetBuildName()
+	buildName, err := nc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err
 	}
-	buildNumber, err := ca.buildConfiguration.GetBuildNumber()
+	buildNumber, err := nc.buildConfiguration.GetBuildNumber()
 	if err != nil {
 		return err
 	}
 	buildInfoService := utils.CreateBuildInfoService()
-	npmBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, ca.buildConfiguration.GetProject())
+	npmBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, nc.buildConfiguration.GetProject())
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	ca.buildInfoModule, err = npmBuild.AddNpmModule(ca.workingDirectory)
+	nc.buildInfoModule, err = npmBuild.AddNpmModule(nc.workingDirectory)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	ca.buildInfoModule.SetCollectBuildInfo(ca.collectBuildInfo)
-	if ca.buildConfiguration.GetModule() != "" {
-		ca.buildInfoModule.SetName(ca.buildConfiguration.GetModule())
+	nc.buildInfoModule.SetCollectBuildInfo(nc.collectBuildInfo)
+	if nc.buildConfiguration.GetModule() != "" {
+		nc.buildInfoModule.SetName(nc.buildConfiguration.GetModule())
 	}
 	return nil
 }
 
-func (ca *NpmCommand) collectDependencies() error {
-	ca.buildInfoModule.SetNpmArgs(append([]string{ca.cmdName}, ca.npmArgs...))
-	return errorutils.CheckError(ca.buildInfoModule.Build())
+func (nc *NpmCommand) collectDependencies() error {
+	nc.buildInfoModule.SetNpmArgs(append([]string{nc.cmdName}, nc.npmArgs...))
+	return errorutils.CheckError(nc.buildInfoModule.Build())
 }
 
 // Gets a config with value which is an array
@@ -367,7 +361,7 @@ func removeNpmrcIfExists(workingDirectory string) error {
 		return errorutils.CheckError(err)
 	}
 
-	log.Debug("Removing Existing .npmrc file")
+	log.Debug("Removing existing .npmrc file")
 	return errorutils.CheckError(os.Remove(filepath.Join(workingDirectory, npmrcFileName)))
 }
 

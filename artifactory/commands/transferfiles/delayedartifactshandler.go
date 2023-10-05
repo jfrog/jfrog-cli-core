@@ -152,7 +152,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	delayAction := func(pBase phaseBase, addedDelayFiles []string) error {
 		// We call this method as a recursion in order to have inner order base on the comparison function list.
 		// Remove the first delay comparison function one by one to no longer delay it until the list is empty.
-		if len(filesToConsume) > 0 && len(delayUploadComparisonFunctions) > 0 {
+		if len(addedDelayFiles) > 0 && len(delayUploadComparisonFunctions) > 0 {
 			return handleDelayedArtifactsFiles(addedDelayFiles, pBase, delayUploadComparisonFunctions[1:])
 		}
 		return nil
@@ -161,6 +161,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 }
 
 func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunk, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	log.Debug(fmt.Sprintf("Starting to handle delayed artifacts files. Found %d files.", len(filesToConsume)))
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		delayedArtifactsFile, err := readDelayFile(filePath)
@@ -220,7 +221,7 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 	switch packageType {
 	case maven, gradle, ivy:
 		return []shouldDelayUpload{func(fileName string) bool {
-			return filepath.Ext(fileName) == ".pom"
+			return filepath.Ext(fileName) == ".pom" || fileName == "pom.xml"
 		}}
 	case docker:
 		return []shouldDelayUpload{func(fileName string) bool {

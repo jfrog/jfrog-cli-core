@@ -174,7 +174,7 @@ func (cc *ConfigCommand) config() error {
 	cc.addTrailingSlashes()
 	cc.lowerUsername()
 	cc.setDefaultIfNeeded(configurations)
-	if err = checkSingleAuthMethod(cc.details); err != nil {
+	if err = assertSingleAuthMethod(cc.details); err != nil {
 		return err
 	}
 	if err = cc.assertUrlsSafe(); err != nil {
@@ -276,27 +276,26 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 		return configurations, err
 	}
 
-	// Get default server details
-	if cc.defaultDetails == nil {
-		cc.defaultDetails, err = config.GetDefaultConfiguredConf(configurations)
-		if err != nil {
-			return configurations, errorutils.CheckError(err)
-		}
-	}
-
 	// Get server id
 	if cc.interactive && cc.serverId == "" {
-		ioutils.ScanFromConsole("Choose a server ID", &cc.serverId, cc.defaultDetails.ServerId)
+		defaultServerId := ""
+		if cc.defaultDetails != nil {
+			defaultServerId = cc.defaultDetails.ServerId
+		}
+		ioutils.ScanFromConsole("Enter a unique server identifier", &cc.serverId, defaultServerId)
 	}
 	cc.details.ServerId = cc.resolveServerId()
 
 	// Remove and get the server details from the configurations list
 	tempConfiguration, configurations := config.GetAndRemoveConfiguration(cc.details.ServerId, configurations)
 
-	// Change default server details if the server existed in the configurations list
+	// Set default server details if the server existed in the configurations list.
+	// Otherwise, if default details were not set, initialize empty default details.
 	if tempConfiguration != nil {
 		cc.defaultDetails = tempConfiguration
 		cc.details.IsDefault = tempConfiguration.IsDefault
+	} else if cc.defaultDetails == nil {
+		cc.defaultDetails = new(config.ServerDetails)
 	}
 
 	// Append the configuration to the configurations list
@@ -316,47 +315,56 @@ func (cc *ConfigCommand) resolveServerId() string {
 	if cc.details.ServerId != "" {
 		return cc.details.ServerId
 	}
-	if cc.defaultDetails.ServerId != "" {
+	if cc.defaultDetails != nil && cc.defaultDetails.ServerId != "" {
 		return cc.defaultDetails.ServerId
 	}
 	return config.DefaultServerId
 }
 
 func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
+	if cc.disablePrompts {
+		cc.fillSpecificUrlsFromPlatform()
+		return nil
+	}
+
+	// If using web login on existing server with platform URL, avoid prompts and skip directly to login.
+	if cc.useWebLogin && cc.defaultDetails.Url != "" {
+		cc.fillSpecificUrlsFromPlatform()
+		return cc.handleWebLogin()
+	}
+
 	if cc.details.Url == "" {
 		ioutils.ScanFromConsole("JFrog Platform URL", &cc.details.Url, cc.defaultDetails.Url)
 	}
 
-	var disallowUsingSavedPassword bool
-	if fileutils.IsSshUrl(cc.details.Url) {
-		coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
-	} else {
-		disallowUsingSavedPassword = cc.fillUrlsPrePrompting()
+	if fileutils.IsSshUrl(cc.details.Url) || fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
+		return cc.handleSsh()
 	}
 
-	if fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
-		if err = getSshKeyPath(cc.details); err != nil {
-			return
+	disallowUsingSavedPassword := cc.fillSpecificUrlsFromPlatform()
+	if err = cc.promptUrls(&disallowUsingSavedPassword); err != nil {
+		return
+	}
+
+	var clientCertChecked bool
+	if cc.details.Password == "" && cc.details.AccessToken == "" {
+		clientCertChecked, err = cc.promptForCredentials(disallowUsingSavedPassword)
+		if err != nil {
+			return err
 		}
-	} else if !cc.disablePrompts {
-		if err = cc.promptUrls(&disallowUsingSavedPassword); err != nil {
-			return
-		}
-		var clientCertChecked bool
-		if cc.details.Password == "" && cc.details.AccessToken == "" {
-			clientCertChecked, err = cc.promptForCredentials(disallowUsingSavedPassword)
-			if err != nil {
-				return err
-			}
-		}
-		if !clientCertChecked {
-			cc.checkClientCertForReverseProxy()
-		}
+	}
+	if !clientCertChecked {
+		cc.checkClientCertForReverseProxy()
 	}
 	return
 }
 
-func (cc *ConfigCommand) fillUrlsPrePrompting() (disallowUsingSavedPassword bool) {
+func (cc *ConfigCommand) handleSsh() error {
+	coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url)
+	return getSshKeyPath(cc.details)
+}
+
+func (cc *ConfigCommand) fillSpecificUrlsFromPlatform() (disallowUsingSavedPassword bool) {
 	cc.details.Url = clientUtils.AddTrailingSlashIfNeeded(cc.details.Url)
 	disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.DistributionUrl, cc.details.Url+"distribution/") || disallowUsingSavedPassword
 	disallowUsingSavedPassword = coreutils.SetIfEmpty(&cc.details.ArtifactoryUrl, cc.details.Url+"artifactory/") || disallowUsingSavedPassword
@@ -383,7 +391,7 @@ func (cc *ConfigCommand) promptAuthMethods() (selectedMethod AuthenticationMetho
 		BasicAuth,
 		AccessToken,
 		MTLS,
-		// WebLogin, // TODO uncomment when Artifactory 7.63.1 is released to self-hosted
+		WebLogin,
 	}
 	var selectableItems []ioutils.PromptItem
 	for _, curMethod := range authMethods {
@@ -803,7 +811,7 @@ func isUrlSafe(urlToCheck string) bool {
 	return false
 }
 
-func checkSingleAuthMethod(details *config.ServerDetails) error {
+func assertSingleAuthMethod(details *config.ServerDetails) error {
 	authMethods := []bool{
 		details.User != "" && details.Password != "",
 		details.AccessToken != "" && details.ArtifactoryRefreshToken == "",

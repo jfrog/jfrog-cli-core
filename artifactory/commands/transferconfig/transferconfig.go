@@ -347,13 +347,11 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory() (string, func() erro
 	}
 
 	// Do export
-	trueValue := true
-	falseValue := false
 	exportParams := services.ExportParams{
 		ExportPath:      exportPath,
-		IncludeMetadata: &falseValue,
+		IncludeMetadata: clientutils.Pointer(false),
 		Verbose:         &tcc.verbose,
-		ExcludeContent:  &trueValue,
+		ExcludeContent:  clientutils.Pointer(true),
 	}
 	cleanUp := func() error { return fileutils.RemoveTempDir(exportPath) }
 	if err = tcc.SourceArtifactoryManager.Export(exportParams); err != nil {
@@ -474,6 +472,10 @@ func (tcc *TransferConfigCommand) createImportPollingAction(rtDetails *httputils
 		if err != nil {
 			return true, nil, err
 		}
+		tcc.TargetAccessManager, err = utils.CreateAccessServiceManager(newServerDetails, false)
+		if err != nil {
+			return true, nil, err
+		}
 		rtDetails, err = commandsUtils.CreateArtifactoryClientDetails(tcc.TargetArtifactoryManager)
 		if err != nil {
 			return true, nil, err
@@ -527,39 +529,49 @@ func (tcc *TransferConfigCommand) getWorkingDirParam() string {
 
 // Make sure that the source Artifactory version is sufficient.
 // Returns the source Artifactory version.
-func (tcc *TransferConfigCommand) validateMinVersion() error {
+func (tcc *TransferConfigCommand) validateMinVersion() (sourceArtifactoryVersion string, err error) {
 	log.Info("Verifying minimum version of the source server...")
-	sourceArtifactoryVersion, err := tcc.SourceArtifactoryManager.GetVersion()
+	sourceArtifactoryVersion, err = tcc.SourceArtifactoryManager.GetVersion()
 	if err != nil {
-		return err
+		return
 	}
-	targetArtifactoryVersion, err := tcc.TargetArtifactoryManager.GetVersion()
+	var targetArtifactoryVersion string
+	targetArtifactoryVersion, err = tcc.TargetArtifactoryManager.GetVersion()
 	if err != nil {
-		return err
+		return
 	}
 
 	// Validate minimal Artifactory version in the source server
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Validate that the target Artifactory server version is >= than the source Artifactory server version
 	if !version.NewVersion(targetArtifactoryVersion).AtLeast(sourceArtifactoryVersion) {
-		return errorutils.CheckErrorf("The source Artifactory version (%s) can't be higher than the target Artifactory version (%s).", sourceArtifactoryVersion, targetArtifactoryVersion)
+		err = errorutils.CheckErrorf("The source Artifactory version (%s) can't be higher than the target Artifactory version (%s).", sourceArtifactoryVersion, targetArtifactoryVersion)
 	}
 
-	return nil
+	return
 }
 
-func (tcc *TransferConfigCommand) validateServerPrerequisites() error {
+func (tcc *TransferConfigCommand) validateServerPrerequisites() (err error) {
+	var sourceArtifactoryVersion string
 	// Make sure that the source Artifactory version is sufficient.
-	if err := tcc.validateMinVersion(); err != nil {
-		return err
+	if sourceArtifactoryVersion, err = tcc.validateMinVersion(); err != nil {
+		return
 	}
+
+	// Check connectivity to JFrog Access if the source Artifactory version is >= 7.0.0
+	if versionErr := clientutils.ValidateMinimumVersion(clientutils.Projects, sourceArtifactoryVersion, commandsUtils.MinJFrogProjectsArtifactoryVersion); versionErr == nil {
+		if err = tcc.ValidateAccessServerConnection(tcc.SourceServerDetails, tcc.SourceAccessManager); err != nil {
+			return
+		}
+	}
+
 	// Make sure source and target Artifactory URLs are different
-	if err := tcc.ValidateDifferentServers(); err != nil {
-		return err
+	if err = tcc.ValidateDifferentServers(); err != nil {
+		return
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
 	return tcc.validateTargetServer()

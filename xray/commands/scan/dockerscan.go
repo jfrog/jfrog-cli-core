@@ -11,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/wagoodman/dive/dive"
-	"github.com/wagoodman/dive/dive/image"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,7 +83,7 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		return fmt.Errorf("failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String())
 	}
 
-	// Map layers sha to build commands
+	// Map layers sha256 checksum names to dockerfile line commands
 	if err = dsc.mapDockerLayerToCommand(); err != nil {
 		return
 	}
@@ -129,7 +128,7 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (err error) {
 	log.Debug("Mapping docker layers into commands...")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
-		return
+		return errorutils.CheckErrorf("failed to map docker layers, is docker running on your machine? error message: ", err)
 	}
 	dockerImage, err := resolver.Fetch(dsc.imageTag)
 	if err != nil {
@@ -139,24 +138,20 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (err error) {
 	layersMapping := make(map[string]services.DockerCommandDetails)
 	for _, layer := range dockerImage.Layers {
 		layerHash := strings.TrimPrefix(layer.Digest, layerDigestPrefix)
-		layersMapping[layerHash] = services.DockerCommandDetails{LayerHash: layer.Digest, Command: formatCommand(layer)}
+		layersMapping[layerHash] = services.DockerCommandDetails{LayerHash: layer.Digest, Command: cleanDockerfileCommand(layer.Command)}
 	}
 	dsc.dockerCommandsMapping = layersMapping
 	return
-}
-
-func formatCommand(layer *image.Layer) string {
-	command := trimDoubleSpaces(layer.Command)
-	return strings.TrimSuffix(command, buildKitSuffix)
 }
 
 // DockerScan command could potentiality have double spaces,
 // Reconstruct the command with only one space between arguments.
 // Example: command from dive: "RUN apt-get install &&     apt-get install #builtkit".
 // Will resolve to a cleaner command RUN apt-get install && apt-get install
-func trimDoubleSpaces(input string) string {
-	parts := strings.Fields(input)
-	return strings.Join(parts, " ")
+func cleanDockerfileCommand(rawCommand string) string {
+	fields := strings.Fields(rawCommand)
+	command := strings.Join(fields, " ")
+	return strings.TrimSuffix(command, buildKitSuffix)
 }
 
 // When indexing RPM files inside the docker container, the indexer-app needs to connect to the Xray Server.

@@ -209,10 +209,7 @@ func (scanCmd *ScanCommand) prepareScanCommand() (xrayVersion string, threads in
 		return
 	}
 	cleanup = func() {
-		e := fileutils.RemoveTempDir(scanCmd.indexerTempDir)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, fileutils.RemoveTempDir(scanCmd.indexerTempDir))
 	}
 	threads = 1
 	if scanCmd.threads > 1 {

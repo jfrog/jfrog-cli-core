@@ -521,7 +521,7 @@ func splitComponents(impactedPackages map[string]services.Component) (impactedPa
 
 var packageTypes = map[string]string{
 	"gav":      "Maven",
-	"docker":   "DockerScan",
+	"docker":   "Docker",
 	"rpm":      "RPM",
 	"deb":      "Debian",
 	"nuget":    "NuGet",

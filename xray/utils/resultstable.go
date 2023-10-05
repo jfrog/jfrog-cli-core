@@ -182,12 +182,14 @@ func prepareViolations(violations []services.Violation, extendedResults *Extende
 // In case multipleRoots is true, the field Component will show the root of each impact path, otherwise it will show the root's child.
 // Set printExtended to true to print fields with 'extended' tag.
 // If the scan argument is set to true, print the scan tables.
-func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended bool, scanType services.ScanType) error {
+func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extendedResults *ExtendedScanResults, multipleRoots, printExtended bool, scanType services.ScanType, dockerCommandsMapping map[string]string) error {
 	vulnerabilitiesRows, err := prepareVulnerabilities(vulnerabilities, extendedResults, multipleRoots, true, true)
 	if err != nil {
 		return err
 	}
-
+	if dockerCommandsMapping != nil {
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityDockerScanTableRow(vulnerabilitiesRows, dockerCommandsMapping), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
+	}
 	if scanType == services.Binary {
 		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
 	}
@@ -257,7 +259,11 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 		if rows[i].SeverityNumValue != rows[j].SeverityNumValue {
 			return rows[i].SeverityNumValue > rows[j].SeverityNumValue
 		}
-		return len(rows[i].FixedVersions) > 0 && len(rows[j].FixedVersions) > 0
+		// No fix versions available should appear higher.
+		if len(rows[i].FixedVersions) != len(rows[j].FixedVersions) {
+			return len(rows[i].FixedVersions) < len(rows[j].FixedVersions)
+		}
+		return rows[i].ImpactedDependencyName > rows[j].ImpactedDependencyName
 	})
 }
 

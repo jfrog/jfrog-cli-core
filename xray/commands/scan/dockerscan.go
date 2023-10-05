@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/wagoodman/dive/dive"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,12 +19,17 @@ import (
 const (
 	indexerEnvPrefix         = "JFROG_INDEXER_"
 	DockerScanMinXrayVersion = "3.40.0"
+	layerDigestPrefix        = "sha256:"
+	// Suffix added while analyzing docker layers, remove it for better readability.
+	buildKitSuffix = " # buildkit"
 )
 
 type DockerScanCommand struct {
 	ScanCommand
 	imageTag       string
 	targetRepoPath string
+	// Maps layer hash to dockerfile command
+	dockerfileCommandsMapping map[string]string
 }
 
 func NewDockerScanCommand() *DockerScanCommand {
@@ -40,6 +46,7 @@ func (dsc *DockerScanCommand) SetTargetRepoPath(repoPath string) *DockerScanComm
 	return dsc
 }
 
+// DockerScan scan will save a docker image as .tar file and will prefore binary scan on it.
 func (dsc *DockerScanCommand) Run() (err error) {
 	// Validate Xray minimum version
 	_, xrayVersion, err := xrayutils.CreateXrayServiceManagerAndGetVersion(dsc.ScanCommand.serverDetails)
@@ -68,12 +75,17 @@ func (dsc *DockerScanCommand) Run() (err error) {
 	}
 	log.Info("Creating image archive...")
 	imageTarPath := filepath.Join(tempDirPath, "image.tar")
+
 	dockerSaveCmd := exec.Command("docker", "save", dsc.imageTag, "-o", imageTarPath)
 	var stderr bytes.Buffer
 	dockerSaveCmd.Stderr = &stderr
-	err = dockerSaveCmd.Run()
-	if err != nil {
+	if err = dockerSaveCmd.Run(); err != nil {
 		return fmt.Errorf("failed running command: '%s' with error: %s - %s", strings.Join(dockerSaveCmd.Args, " "), err.Error(), stderr.String())
+	}
+
+	// Map layers sha256 checksum names to dockerfile line commands
+	if err = dsc.mapDockerLayerToCommand(); err != nil {
+		return
 	}
 
 	// Perform scan on image.tar
@@ -81,8 +93,8 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		Pattern(imageTarPath).
 		Target(dsc.targetRepoPath).
 		BuildSpec()).SetThreads(1)
-	err = dsc.setCredentialEnvsForIndexerApp()
-	if err != nil {
+
+	if err = dsc.setCredentialEnvsForIndexerApp(); err != nil {
 		return errorutils.CheckError(err)
 	}
 	defer func() {
@@ -91,7 +103,56 @@ func (dsc *DockerScanCommand) Run() (err error) {
 			err = errorutils.CheckError(e)
 		}
 	}()
-	return dsc.ScanCommand.Run()
+	// Preform binary scan.
+	extendedScanResults, cleanup, scanErrors, err := dsc.ScanCommand.binaryScan()
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		return
+	}
+
+	// Print results with docker commands mapping.
+	err = xrayutils.NewResultsWriter(extendedScanResults).
+		SetOutputFormat(dsc.outputFormat).
+		SetIncludeVulnerabilities(dsc.includeVulnerabilities).
+		SetIncludeLicenses(dsc.includeLicenses).
+		SetPrintExtendedTable(dsc.printExtendedTable).
+		SetIsMultipleRootProject(true).
+		SetDockerCommandsMapping(dsc.dockerfileCommandsMapping).
+		PrintScanResults()
+
+	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
+}
+
+func (dsc *DockerScanCommand) mapDockerLayerToCommand() (err error) {
+	log.Debug("Mapping docker layers into commands...")
+	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
+	if err != nil {
+		return errorutils.CheckErrorf("failed to map docker layers, is docker running on your machine? error message: %s", err.Error())
+	}
+	dockerImage, err := resolver.Fetch(dsc.imageTag)
+	if err != nil {
+		return
+	}
+	// Create mapping between sha256 hash to dockerfile Command.
+	layersMapping := make(map[string]string)
+	for _, layer := range dockerImage.Layers {
+		layerHash := strings.TrimPrefix(layer.Digest, layerDigestPrefix)
+		layersMapping[layerHash] = cleanDockerfileCommand(layer.Command)
+	}
+	dsc.dockerfileCommandsMapping = layersMapping
+	return
+}
+
+// DockerScan command could potentiality have double spaces,
+// Reconstruct the command with only one space between arguments.
+// Example: command from dive: "RUN apt-get install &&     apt-get install #builtkit".
+// Will resolve to a cleaner command RUN apt-get install && apt-get install
+func cleanDockerfileCommand(rawCommand string) string {
+	fields := strings.Fields(rawCommand)
+	command := strings.Join(fields, " ")
+	return strings.TrimSuffix(command, buildKitSuffix)
 }
 
 // When indexing RPM files inside the docker container, the indexer-app needs to connect to the Xray Server.

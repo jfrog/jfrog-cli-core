@@ -51,7 +51,7 @@ type ResultsWriter struct {
 	isMultipleRoots bool
 	// PrintExtended, If true, show extended results.
 	printExtended bool
-	// The scanType (binary, docker, dependency)
+	// The scanType (binary, dependency)
 	scanType services.ScanType
 	// Messages - Option array of messages, to be displayed if the format is Table
 	messages []string

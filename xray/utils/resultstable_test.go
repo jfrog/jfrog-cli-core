@@ -42,7 +42,7 @@ func TestSplitComponentId(t *testing.T) {
 		expectedCompType    string
 	}{
 		{"gav://antparent:ant:1.6.5", "antparent:ant", "1.6.5", "Maven"},
-		{"docker://jfrog/artifactory-oss:latest", "jfrog/artifactory-oss", "latest", "DockerScan"},
+		{"docker://jfrog/artifactory-oss:latest", "jfrog/artifactory-oss", "latest", "Docker"},
 		{"rpm://7:rpm-python:7:4.11.3-43.el7", "rpm-python", "7:4.11.3-43.el7", "RPM"},
 		{"rpm://rpm-python:7:4.11.3-43.el7", "rpm-python", "7:4.11.3-43.el7", "RPM"},
 		{"deb://ubuntu:trustee:acl:2.2.49-2", "ubuntu:trustee:acl", "2.2.49-2", "Debian"},

@@ -259,8 +259,9 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 		if rows[i].SeverityNumValue != rows[j].SeverityNumValue {
 			return rows[i].SeverityNumValue > rows[j].SeverityNumValue
 		}
+		// No fix versions available should appear higher.
 		if len(rows[i].FixedVersions) != len(rows[j].FixedVersions) {
-			return len(rows[i].FixedVersions) > len(rows[j].FixedVersions)
+			return len(rows[i].FixedVersions) < len(rows[j].FixedVersions)
 		}
 		return rows[i].ImpactedDependencyName > rows[j].ImpactedDependencyName
 	})

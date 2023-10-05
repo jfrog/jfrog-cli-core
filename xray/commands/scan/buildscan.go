@@ -4,7 +4,6 @@ import (
 	"errors"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -72,7 +71,7 @@ func (bsc *BuildScanCommand) SetRescan(rescan bool) *BuildScanCommand {
 
 // Scan published builds with Xray
 func (bsc *BuildScanCommand) Run() (err error) {
-	xrayManager, xrayVersion, err := utils.CreateXrayServiceManagerAndGetVersion(bsc.serverDetails)
+	xrayManager, xrayVersion, err := xrutils.CreateXrayServiceManagerAndGetVersion(bsc.serverDetails)
 	if err != nil {
 		return err
 	}

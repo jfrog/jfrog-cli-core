@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os/exec"
@@ -15,7 +16,6 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
@@ -158,56 +158,96 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.BinaryGraphNo
 }
 
 func (scanCmd *ScanCommand) Run() (err error) {
-	defer func() {
-		if err != nil {
-			var e *exec.ExitError
-			if errors.As(err, &e) {
-				if e.ExitCode() != coreutils.ExitCodeVulnerableBuild.Code {
-					err = errors.New("Scan command failed. " + err.Error())
-				}
-			}
-		}
-	}()
+	// Preform Binary scan
+	extendedScanResults, cleanup, scanErrors, err := scanCmd.binaryScan()
+	defer cleanup()
+	if err != nil {
+		return
+	}
+	// Print results
+	if err = xrutils.NewResultsWriter(extendedScanResults).
+		SetOutputFormat(scanCmd.outputFormat).
+		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
+		SetIncludeLicenses(scanCmd.includeLicenses).
+		SetPrintExtendedTable(scanCmd.printExtendedTable).
+		SetIsMultipleRootProject(true).
+		PrintScanResults(); err != nil {
+		return
+	}
+	return scanCmd.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
+}
+
+// Validate Xray version, download indexer if needed and prepare temp folders
+func (scanCmd *ScanCommand) prepareScanCommand() (xrayVersion string, threads int, cleanup func(), err error) {
 	xrayManager, xrayVersion, err := xrutils.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Validate Xray minimum version for graph scan command
 	err = clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, scangraph.GraphScanMinXrayVersion)
 	if err != nil {
-		return err
+		return
 	}
 
 	if scanCmd.bypassArchiveLimits {
 		// Validate Xray minimum version for BypassArchiveLimits flag for indexer
 		err = clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, BypassArchiveLimitsMinXrayVersion)
 		if err != nil {
-			return err
+			return
 		}
 	}
 	log.Info("JFrog Xray version is:", xrayVersion)
 	// First download Xray Indexer if needed
 	scanCmd.indexerPath, err = DownloadIndexerIfNeeded(xrayManager, xrayVersion)
 	if err != nil {
-		return err
+		return
 	}
 	// Create Temp dir for Xray Indexer
 	scanCmd.indexerTempDir, err = fileutils.CreateTempDir()
 	if err != nil {
-		return err
+		return
 	}
-	defer func() {
-		e := fileutils.RemoveTempDir(scanCmd.indexerTempDir)
-		if err == nil {
-			err = e
-		}
-	}()
-	threads := 1
+	cleanup = func() {
+		err = errors.Join(err, fileutils.RemoveTempDir(scanCmd.indexerTempDir))
+	}
+	threads = 1
 	if scanCmd.threads > 1 {
 		threads = scanCmd.threads
 	}
+	return
+}
 
+func (scanCmd *ScanCommand) handlePossibleErrors(flatResults []services.ScanResponse, scanErrors []formats.SimpleJsonError, err error) error {
+	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
+	// If user provided --fail=false, don't fail the build.
+	if scanCmd.fail && !scanCmd.includeVulnerabilities {
+		if xrutils.CheckIfFailBuild(flatResults) {
+			return xrutils.NewFailBuildError()
+		}
+	}
+	if len(scanErrors) > 0 {
+		return errorutils.CheckErrorf(scanErrors[0].ErrorMessage)
+	}
+
+	if err != nil {
+		var e *exec.ExitError
+		if errors.As(err, &e) {
+			if e.ExitCode() != coreutils.ExitCodeVulnerableBuild.Code {
+				err = errors.New("Scan command failed. " + err.Error())
+			}
+		}
+	}
+
+	log.Info("Scan completed successfully.")
+	return err
+}
+
+func (scanCmd *ScanCommand) binaryScan() (extendedScanResults *xrutils.ExtendedScanResults, cleanup func(), scanErrors []formats.SimpleJsonError, err error) {
+	xrayVersion, threads, cleanup, err := scanCmd.prepareScanCommand()
+	if err != nil {
+		return
+	}
 	// resultsArr is a two-dimensional array. Each array in it contains a list of ScanResponses that were requested and collected by a specific thread.
 	resultsArr := make([][]*services.ScanResponse, threads)
 	fileProducerConsumer := parallel.NewRunner(scanCmd.threads, 20000, false)
@@ -229,46 +269,32 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	if scanCmd.progress != nil {
 		if err = scanCmd.progress.Quit(); err != nil {
-			return err
+			return
 		}
-
 	}
 
 	fileCollectingErr := fileCollectingErrorsQueue.GetError()
-	var scanErrors []formats.SimpleJsonError
 	if fileCollectingErr != nil {
 		scanErrors = append(scanErrors, formats.SimpleJsonError{ErrorMessage: fileCollectingErr.Error()})
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults}
+	extendedScanResults = &xrutils.ExtendedScanResults{XrayResults: flatResults}
 
-	if err = xrutils.NewResultsWriter(extendedScanResults).
-		SetOutputFormat(scanCmd.outputFormat).
-		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
-		SetIncludeLicenses(scanCmd.includeLicenses).
-		SetPrintExtendedTable(scanCmd.printExtendedTable).
-		SetIsMultipleRootProject(true).
-		SetScanType(services.Binary).
-		PrintScanResults(); err != nil {
-		return
-	}
-
-	if err != nil {
-		return err
-	}
 	// If includeVulnerabilities is false it means that context was provided, so we need to check for build violations.
 	// If user provided --fail=false, don't fail the build.
 	if scanCmd.fail && !scanCmd.includeVulnerabilities {
 		if xrutils.CheckIfFailBuild(flatResults) {
-			return xrutils.NewFailBuildError()
+			err = xrutils.NewFailBuildError()
+			return
 		}
 	}
 	if len(scanErrors) > 0 {
-		return errorutils.CheckErrorf(scanErrors[0].ErrorMessage)
+		err = errorutils.CheckErrorf(scanErrors[0].ErrorMessage)
+		return
 	}
 	log.Info("Scan completed successfully.")
-	return nil
+	return
 }
 
 func NewScanCommand() *ScanCommand {

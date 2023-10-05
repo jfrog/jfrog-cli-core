@@ -228,6 +228,8 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	go func() {
 		// Wait till notified that the builder has no additional tasks, and close the builder producer consumer.
 		<-pcWrapper.chunkBuilderProducerConsumer.GetFinishedNotification()
+		log.Debug("Chunk builder producer consumer has completed all tasks. " +
+			"All files relevant to this phase were found and added to chunks that are being uploaded...")
 		pcWrapper.chunkBuilderProducerConsumer.Done()
 	}()
 
@@ -261,6 +263,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 	}
 	for i := 0; ; i++ {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
+			log.Debug("Stop signal received while polling on uploads...")
 			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
@@ -284,6 +287,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// it will be written to the error channel
 		if chunksLifeCycleManager.totalChunks == 0 {
 			if shouldStopPolling(doneChan) {
+				log.Debug("Stopping to poll on uploads...")
 				return
 			}
 			continue
@@ -386,6 +390,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
+				log.Debug("Stop signal received while handling chunks statuses...")
 				return true
 			}
 			err = setChunkCompletedInRepoSnapshot(phase.stateManager, chunk.Files)

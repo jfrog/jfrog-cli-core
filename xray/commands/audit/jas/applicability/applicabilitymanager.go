@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	applicabilityScanType    = "analyze-applicability"
-	applicabilityScanCommand = "ca"
+	applicabilityScanType      = "analyze-applicability"
+	applicabilityScanCommand   = "ca"
+	applicabilityDocsUrlSuffix = "contextual-analysis"
 )
 
 type ApplicabilityScanManager struct {
@@ -116,7 +117,7 @@ func (asm *ApplicabilityScanManager) Run(module jfrogappsconfig.Module) (err err
 	if err = asm.runAnalyzerManager(); err != nil {
 		return
 	}
-	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, module.SourceRoot)
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(asm.scanner.ResultsFileName, module.SourceRoot, applicabilityDocsUrlSuffix)
 	if err != nil {
 		return
 	}

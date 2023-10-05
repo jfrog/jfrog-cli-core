@@ -44,8 +44,8 @@ type TechData struct {
 	ciSetupSupport bool
 	// Whether Contextual Analysis supported in this technology.
 	applicabilityScannable bool
-	// The file that handles the project's dependencies.
-	packageDescriptor string
+	// The files that handle the project's dependencies.
+	packageDescriptors []string
 	// Formal name of the technology
 	formal string
 	// The executable name of the technology
@@ -60,21 +60,21 @@ var technologiesData = map[Technology]TechData{
 	Maven: {
 		indicators:             []string{"pom.xml"},
 		ciSetupSupport:         true,
-		packageDescriptor:      "pom.xml",
+		packageDescriptors:     []string{"pom.xml"},
 		execCommand:            "mvn",
 		applicabilityScannable: true,
 	},
 	Gradle: {
 		indicators:             []string{".gradle", ".gradle.kts"},
 		ciSetupSupport:         true,
-		packageDescriptor:      "build.gradle, build.gradle.kts",
+		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		applicabilityScannable: true,
 	},
 	Npm: {
 		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:             true,
-		packageDescriptor:          "package.json",
+		packageDescriptors:         []string{"package.json"},
 		formal:                     string(Npm),
 		packageVersionOperator:     "@",
 		packageInstallationCommand: "install",
@@ -82,26 +82,27 @@ var technologiesData = map[Technology]TechData{
 	},
 	Yarn: {
 		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptor:      "package.json",
+		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,
 	},
 	Go: {
 		indicators:                 []string{"go.mod"},
-		packageDescriptor:          "go.mod",
+		packageDescriptors:         []string{"go.mod"},
 		packageVersionOperator:     "@v",
 		packageInstallationCommand: "get",
 	},
 	Pip: {
 		packageType:            Pypi,
 		indicators:             []string{"setup.py", "requirements.txt"},
+		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 		applicabilityScannable: true,
 	},
 	Pipenv: {
 		packageType:                Pypi,
 		indicators:                 []string{"Pipfile", "Pipfile.lock"},
-		packageDescriptor:          "Pipfile",
+		packageDescriptors:         []string{"Pipfile"},
 		packageVersionOperator:     "==",
 		packageInstallationCommand: "install",
 		applicabilityScannable:     true,
@@ -153,11 +154,8 @@ func (tech Technology) GetPackageType() string {
 	return technologiesData[tech].packageType
 }
 
-func (tech Technology) GetPackageDescriptor() string {
-	if technologiesData[tech].packageDescriptor == "" {
-		return tech.ToFormal() + " Package Descriptor"
-	}
-	return technologiesData[tech].packageDescriptor
+func (tech Technology) GetPackageDescriptor() []string {
+	return technologiesData[tech].packageDescriptors
 }
 
 func (tech Technology) IsCiSetup() bool {

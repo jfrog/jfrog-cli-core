@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	sastScannerType = "sast"
-	sastScanCommand = "zd"
+	sastScannerType   = "sast"
+	sastScanCommand   = "zd"
+	sastDocsUrlSuffix = "sast"
 )
 
 type SastScanManager struct {
@@ -55,7 +56,7 @@ func (ssm *SastScanManager) Run(module jfrogappsconfig.Module) (err error) {
 	if err = ssm.runAnalyzerManager(filepath.Dir(ssm.scanner.AnalyzerManager.AnalyzerManagerFullPath)); err != nil {
 		return
 	}
-	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, module.SourceRoot)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(scanner.ResultsFileName, module.SourceRoot, sastDocsUrlSuffix)
 	if err != nil {
 		return
 	}

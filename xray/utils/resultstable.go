@@ -187,20 +187,19 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extende
 	if err != nil {
 		return err
 	}
-	switch scanType {
-	case services.Binary:
-		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
-	case services.DockerScan:
-		return coreutils.PrintTable(formats.ConvertToVulnerabilityDockerScanTableRow(vulnerabilitiesRows, dockerCommandsMapping), "Vulnerable DockerScan Components", "✨ No vulnerable docker components were found ✨", printExtended)
-	default:
-		var emptyTableMessage string
-		if len(extendedResults.ScannedTechnologies) > 0 {
-			emptyTableMessage = "✨ No vulnerable dependencies were found ✨"
-		} else {
-			emptyTableMessage = coreutils.PrintYellow("🔧 Couldn't determine a package manager or build tool used by this project 🔧")
-		}
-		return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerable Dependencies", emptyTableMessage, printExtended)
+	if dockerCommandsMapping != nil {
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityDockerScanTableRow(vulnerabilitiesRows, dockerCommandsMapping), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
 	}
+	if scanType == services.Binary {
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
+	}
+	var emptyTableMessage string
+	if len(extendedResults.ScannedTechnologies) > 0 {
+		emptyTableMessage = "✨ No vulnerable dependencies were found ✨"
+	} else {
+		emptyTableMessage = coreutils.PrintYellow("🔧 Couldn't determine a package manager or build tool used by this project 🔧")
+	}
+	return coreutils.PrintTable(formats.ConvertToVulnerabilityTableRow(vulnerabilitiesRows), "Vulnerable Dependencies", emptyTableMessage, printExtended)
 }
 
 // Prepare vulnerabilities for all non-table formats (without style or emoji)
@@ -260,7 +259,10 @@ func sortVulnerabilityOrViolationRows(rows []formats.VulnerabilityOrViolationRow
 		if rows[i].SeverityNumValue != rows[j].SeverityNumValue {
 			return rows[i].SeverityNumValue > rows[j].SeverityNumValue
 		}
-		return len(rows[i].FixedVersions) > 0 && len(rows[j].FixedVersions) > 0
+		if len(rows[i].FixedVersions) != len(rows[j].FixedVersions) {
+			return len(rows[i].FixedVersions) > len(rows[j].FixedVersions)
+		}
+		return rows[i].ImpactedDependencyName > rows[j].ImpactedDependencyName
 	})
 }
 

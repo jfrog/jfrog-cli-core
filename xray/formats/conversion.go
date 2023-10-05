@@ -6,11 +6,6 @@ import (
 	"strings"
 )
 
-const (
-	// Max length of docker command to display on the results table.
-	maxDockerCommandLength = 60
-)
-
 func ConvertToVulnerabilityTableRow(rows []VulnerabilityOrViolationRow) (tableRows []vulnerabilityTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, vulnerabilityTableRow{
@@ -63,27 +58,18 @@ func ConvertToLicenseViolationTableRow(rows []LicenseRow) (tableRows []licenseVi
 
 func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]services.DockerCommandDetails) (tableRows []vulnerabilityDockerScanTableRow) {
 	for i := range rows {
-		dockerCommand := prepareDockerCommand(rows[i].Components[0].Name, dockerCommandsMapping)
 		tableRows = append(tableRows, vulnerabilityDockerScanTableRow{
 			severity:               rows[i].Severity,
 			severityNumValue:       rows[i].SeverityNumValue,
 			impactedPackageName:    rows[i].ImpactedDependencyName,
 			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
 			ImpactedPackageType:    rows[i].ImpactedDependencyType,
-			fixedVersions:          fixedVersionsFallback(rows[i].FixedVersions),
-			cves:                   convertToShortCveTableRow(rows[i].Cves),
-			dockerCommand:          dockerCommand.Command,
-			dockerfileLine:         strings.Join(dockerCommand.Line, ","),
+			fixedVersions:          strings.Join(rows[i].FixedVersions, "\n"),
+			cves:                   convertToCveTableRow(rows[i].Cves),
+			dockerCommand:          prepareDockerCommand(rows[i].Components[0].Name, dockerCommandsMapping),
 		})
 	}
 	return
-}
-
-func fixedVersionsFallback(fixVersions []string) string {
-	if len(fixVersions) == 0 {
-		return "N/A"
-	}
-	return strings.Join(fixVersions, "\n")
 }
 
 func ConvertToLicenseViolationScanTableRow(rows []LicenseRow) (tableRows []licenseViolationScanTableRow) {
@@ -226,23 +212,10 @@ func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 	return
 }
 
-func convertToShortCveTableRow(rows []CveRow) (tableRows []cveShortTableRow) {
-	for i := range rows {
-		tableRows = append(tableRows, cveShortTableRow{
-			id: rows[i].Id,
-		})
-	}
-	return
-}
-
-func prepareDockerCommand(component string, dockerCommandsMapping map[string]services.DockerCommandDetails) services.DockerCommandDetails {
+func prepareDockerCommand(component string, dockerCommandsMapping map[string]services.DockerCommandDetails) string {
 	// Trim suffix and prefix of layer resulted from binary scan.
 	component = strings.TrimPrefix(component, "sha256__")
 	component = strings.TrimSuffix(component, ".tar")
 	dockerCommand := dockerCommandsMapping[component]
-	// Trim length for better readability.
-	if len(dockerCommand.Command) > maxDockerCommandLength {
-		dockerCommand.Command = dockerCommand.Command[:maxDockerCommandLength]
-	}
-	return dockerCommand
+	return dockerCommand.Command
 }

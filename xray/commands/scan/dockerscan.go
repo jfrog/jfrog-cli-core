@@ -118,7 +118,6 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
 		SetDockerCommandsMapping(dsc.dockerCommandsMapping).
-		SetScanType(services.DockerScan).
 		PrintScanResults()
 
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
@@ -128,7 +127,7 @@ func (dsc *DockerScanCommand) mapDockerLayerToCommand() (err error) {
 	log.Debug("Mapping docker layers into commands...")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
-		return errorutils.CheckErrorf("failed to map docker layers, is docker running on your machine? error message: ", err)
+		return errorutils.CheckErrorf("failed to map docker layers, is docker running on your machine? error message: %s", err.Error())
 	}
 	dockerImage, err := resolver.Fetch(dsc.imageTag)
 	if err != nil {

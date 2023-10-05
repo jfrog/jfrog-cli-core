@@ -190,8 +190,8 @@ func PrintVulnerabilitiesTable(vulnerabilities []services.Vulnerability, extende
 	switch scanType {
 	case services.Binary:
 		return coreutils.PrintTable(formats.ConvertToVulnerabilityScanTableRow(vulnerabilitiesRows), "Vulnerable Components", "✨ No vulnerable components were found ✨", printExtended)
-	case services.Docker:
-		return coreutils.PrintTable(formats.ConvertToVulnerabilityDockerScanTableRow(vulnerabilitiesRows, dockerCommandsMapping), "Vulnerable Docker Components", "✨ No vulnerable docker components were found ✨", printExtended)
+	case services.DockerScan:
+		return coreutils.PrintTable(formats.ConvertToVulnerabilityDockerScanTableRow(vulnerabilitiesRows, dockerCommandsMapping), "Vulnerable DockerScan Components", "✨ No vulnerable docker components were found ✨", printExtended)
 	default:
 		var emptyTableMessage string
 		if len(extendedResults.ScannedTechnologies) > 0 {
@@ -521,7 +521,7 @@ func splitComponents(impactedPackages map[string]services.Component) (impactedPa
 
 var packageTypes = map[string]string{
 	"gav":      "Maven",
-	"docker":   "Docker",
+	"docker":   "DockerScan",
 	"rpm":      "RPM",
 	"deb":      "Debian",
 	"nuget":    "NuGet",

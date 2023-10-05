@@ -236,8 +236,10 @@ func convertToShortCveTableRow(rows []CveRow) (tableRows []cveShortTableRow) {
 }
 
 func prepareDockerCommand(component string, dockerCommandsMapping map[string]services.DockerCommandDetails) services.DockerCommandDetails {
-	// Trim suffix and prefix of layer from binary scan.
-	dockerCommand := dockerCommandsMapping[strings.TrimSuffix(strings.TrimPrefix(component, "sha256__"), ".tar")]
+	// Trim suffix and prefix of layer resulted from binary scan.
+	component = strings.TrimPrefix(component, "sha256__")
+	component = strings.TrimSuffix(component, ".tar")
+	dockerCommand := dockerCommandsMapping[component]
 	// Trim length for better readability.
 	if len(dockerCommand.Command) > maxDockerCommandLength {
 		dockerCommand.Command = dockerCommand.Command[:maxDockerCommandLength]

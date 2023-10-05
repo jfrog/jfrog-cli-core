@@ -47,7 +47,7 @@ func (dsc *DockerScanCommand) SetTargetRepoPath(repoPath string) *DockerScanComm
 	return dsc
 }
 
-// Docker scan will save a docker image as .tar file and will prefore binary scan on it.
+// DockerScan scan will save a docker image as .tar file and will prefore binary scan on it.
 func (dsc *DockerScanCommand) Run() (err error) {
 	// Validate Xray minimum version
 	_, xrayVersion, err := xrayutils.CreateXrayServiceManagerAndGetVersion(dsc.ScanCommand.serverDetails)
@@ -119,14 +119,14 @@ func (dsc *DockerScanCommand) Run() (err error) {
 		SetPrintExtendedTable(dsc.printExtendedTable).
 		SetIsMultipleRootProject(true).
 		SetDockerCommandsMapping(dsc.dockerCommandsMapping).
-		SetScanType(services.Docker).
+		SetScanType(services.DockerScan).
 		PrintScanResults()
 
 	return dsc.ScanCommand.handlePossibleErrors(extendedScanResults.XrayResults, scanErrors, err)
 }
 
 func (dsc *DockerScanCommand) mapDockerLayerToCommand() (err error) {
-	log.Debug("Mapping docker layers into commands ")
+	log.Debug("Mapping docker layers into commands...")
 	resolver, err := dive.GetImageResolver(dive.SourceDockerEngine)
 	if err != nil {
 		return
@@ -150,7 +150,7 @@ func formatCommand(layer *image.Layer) string {
 	return strings.TrimSuffix(command, buildKitSuffix)
 }
 
-// Docker command could potentiality have double spaces,
+// DockerScan command could potentiality have double spaces,
 // Reconstruct the command with only one space between arguments.
 // Example: command from dive: "RUN apt-get install &&     apt-get install #builtkit".
 // Will resolve to a cleaner command RUN apt-get install && apt-get install

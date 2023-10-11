@@ -32,18 +32,6 @@ type vulnerabilityScanTableRow struct {
 	issueId                string                   `col-name:"Issue ID" extended:"true"`
 }
 
-type vulnerabilityDockerScanTableRow struct {
-	severity string `col-name:"Severity"`
-	// For sorting
-	severityNumValue       int
-	dockerCommand          string        `col-name:"Command\n"`
-	impactedPackageName    string        `col-name:"Impacted\nPackage\nName"`
-	impactedPackageVersion string        `col-name:"Impacted\nPackage\nVersion"`
-	fixedVersions          string        `col-name:"Fixed\nVersions"`
-	ImpactedPackageType    string        `col-name:"Type"`
-	cves                   []cveTableRow `embed-table:"true"`
-}
-
 type licenseTableRow struct {
 	licenseKey                string                       `col-name:"License"`
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`

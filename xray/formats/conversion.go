@@ -55,22 +55,6 @@ func ConvertToLicenseViolationTableRow(rows []LicenseRow) (tableRows []licenseVi
 	return
 }
 
-func ConvertToVulnerabilityDockerScanTableRow(rows []VulnerabilityOrViolationRow, dockerCommandsMapping map[string]string) (tableRows []vulnerabilityDockerScanTableRow) {
-	for i := range rows {
-		tableRows = append(tableRows, vulnerabilityDockerScanTableRow{
-			severity:               rows[i].Severity,
-			severityNumValue:       rows[i].SeverityNumValue,
-			impactedPackageName:    rows[i].ImpactedDependencyName,
-			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
-			ImpactedPackageType:    rows[i].ImpactedDependencyType,
-			fixedVersions:          strings.Join(rows[i].FixedVersions, "\n"),
-			cves:                   convertToCveTableRow(rows[i].Cves),
-			dockerCommand:          prepareDockerCommand(rows[i].Components[0].Name, dockerCommandsMapping),
-		})
-	}
-	return
-}
-
 func ConvertToLicenseViolationScanTableRow(rows []LicenseRow) (tableRows []licenseViolationScanTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseViolationScanTableRow{
@@ -209,11 +193,4 @@ func convertToCveTableRow(rows []CveRow) (tableRows []cveTableRow) {
 		})
 	}
 	return
-}
-
-func prepareDockerCommand(component string, dockerCommandsMapping map[string]string) string {
-	// Trim suffix and prefix of layer resulted from binary scan.
-	component = strings.TrimPrefix(component, "sha256__")
-	component = strings.TrimSuffix(component, ".tar")
-	return dockerCommandsMapping[component]
 }

@@ -51,12 +51,10 @@ type ResultsWriter struct {
 	isMultipleRoots bool
 	// PrintExtended, If true, show extended results.
 	printExtended bool
-	// The scanType (binary, dependency)
+	// The scanType (binary,dependency)
 	scanType services.ScanType
 	// Messages - Option array of messages, to be displayed if the format is Table
 	messages []string
-	// Maps layer hash to docker command.
-	dockerCommandsMapping map[string]string
 }
 
 func NewResultsWriter(extendedScanResults *ExtendedScanResults) *ResultsWriter {
@@ -95,11 +93,6 @@ func (rw *ResultsWriter) SetIsMultipleRootProject(isMultipleRootProject bool) *R
 
 func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWriter {
 	rw.printExtended = extendedTable
-	return rw
-}
-
-func (rw *ResultsWriter) SetDockerCommandsMapping(mapping map[string]string) *ResultsWriter {
-	rw.dockerCommandsMapping = mapping
 	return rw
 }
 
@@ -148,7 +141,7 @@ func (rw *ResultsWriter) printScanResultsTables() (err error) {
 	}
 	log.Output()
 	if rw.includeVulnerabilities {
-		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType, rw.dockerCommandsMapping)
+		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
 	} else {
 		err = PrintViolationsTable(violations, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
 	}

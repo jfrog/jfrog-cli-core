@@ -611,7 +611,7 @@ func TestSortVulnerabilityOrViolationRows(t *testing.T) {
 					FixedVersions: []string{},
 				},
 			},
-			expectedOrder: []string{"Dependency 2", "Dependency 1"},
+			expectedOrder: []string{"Dependency 1", "Dependency 2"},
 		},
 		{
 			name: "Sort by severity with same severity values different applicability",

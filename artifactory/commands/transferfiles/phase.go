@@ -79,8 +79,8 @@ func (pb *phaseBase) StopGracefully() {
 		pb.progressBar.StopGracefully()
 	}
 	if pb.pcDetails != nil {
-		pb.pcDetails.chunkBuilderProducerConsumer.Cancel()
-		pb.pcDetails.chunkUploaderProducerConsumer.Cancel()
+		pb.pcDetails.chunkBuilderProducerConsumer.Cancel(true)
+		pb.pcDetails.chunkUploaderProducerConsumer.Cancel(true)
 	}
 }
 

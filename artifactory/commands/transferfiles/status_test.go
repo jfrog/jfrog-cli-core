@@ -69,8 +69,8 @@ func TestShowStatus(t *testing.T) {
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
 	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
-	assert.Contains(t, results, "Delayed files:		20")
-	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files.)")
+	assert.Contains(t, results, "Delayed files:		20 (Files to be transferred last, after all other files)")
+	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files)")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -100,8 +100,8 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
 	assert.Contains(t, results, "Estimated time remaining:	Not available in this phase")
-	assert.Contains(t, results, "Delayed files:		20")
-	assert.Contains(t, results, "Transfer failures:		223")
+	assert.Contains(t, results, "Delayed files:		20 (Files to be transferred last, after all other files)")
+	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files)")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -131,7 +131,7 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		Not available while transferring a build-info repository")
 	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
-	assert.Contains(t, results, "Delayed files:		20")
+	assert.Contains(t, results, "Delayed files:		20 (Files to be transferred last, after all other files)")
 	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
@@ -180,9 +180,9 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool, staleChunks
 	stateManager.DelayedFiles = 20
 	stateManager.TransferFailures = 223
 
-	stateManager.TimeEstimationManager.LastSpeeds = []float64{12}
-	stateManager.TimeEstimationManager.LastSpeedsSum = 12
-	stateManager.TimeEstimationManager.SpeedsAverage = 12
+	stateManager.LastSpeeds = []float64{12}
+	stateManager.LastSpeedsSum = 12
+	stateManager.SpeedsAverage = 12
 
 	if staleChunks {
 		stateManager.StaleChunks = append(stateManager.StaleChunks, state.StaleChunks{

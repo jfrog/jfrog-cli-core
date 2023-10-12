@@ -13,7 +13,7 @@ require (
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.4.7
 	github.com/jfrog/build-info-go v1.9.12
-	github.com/jfrog/gofrog v1.3.0
+	github.com/jfrog/gofrog v1.3.1
 	github.com/jfrog/jfrog-apps-config v1.0.1
 	github.com/jfrog/jfrog-client-go v1.34.2
 	github.com/magiconair/properties v1.8.7

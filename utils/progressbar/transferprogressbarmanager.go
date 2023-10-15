@@ -14,8 +14,8 @@ import (
 const (
 	phase1HeadLine          = "Phase 1: Transferring all files in the repository"
 	phase2HeadLine          = "Phase 2: Transferring newly created and modified files"
-	delayedFilesContentNote = "Files to be transferred last, after all other files"
-	retryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files"
+	DelayedFilesContentNote = "Files to be transferred last, after all other files"
+	RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files"
 )
 
 type transferLabels struct {
@@ -315,7 +315,7 @@ func (tpm *TransferProgressMng) NewDelayedBar() *TasksProgressBar {
 		}
 		return int(tpm.stateMng.DelayedFiles), nil
 	}
-	counterDescription := func() string { return delayedFilesContentNote }
+	counterDescription := func() string { return DelayedFilesContentNote }
 	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.DelayedFiles, tpm.createCounterDescription(counterDescription))
 }
 
@@ -330,7 +330,7 @@ func (tpm *TransferProgressMng) NewErrorBar() *TasksProgressBar {
 		if tpm.ignoreState || tpm.stateMng.TransferFailures == 0 {
 			return ""
 		}
-		return retryFailureContentNote
+		return RetryFailureContentNote
 	}
 	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.TransferFailures, tpm.createCounterDescription(counterDescription))
 }

@@ -174,7 +174,9 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 			return err
 		}
 
-		base.progressBar.changeNumberOfDelayedFiles(-1 * len(delayedArtifactsFile.DelayedArtifacts))
+		if base.progressBar != nil {
+			base.progressBar.changeNumberOfDelayedFiles(-1 * len(delayedArtifactsFile.DelayedArtifacts))
+		}
 		if err = base.stateManager.ChangeDelayedFilesCountBy(uint(len(delayedArtifactsFile.DelayedArtifacts)), false); err != nil {
 			log.Warn("Couldn't decrease the delayed files counter", err.Error())
 		}
@@ -278,7 +280,9 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, fil
 		if shouldDelay(file.Name) {
 			delayed = true
 			delayHelper.delayedArtifactsChannelMng.add(file)
-			phase.progressBar.changeNumberOfDelayedFiles(1)
+			if phase.progressBar != nil {
+				phase.progressBar.changeNumberOfDelayedFiles(1)
+			}
 			if err := phase.stateManager.ChangeDelayedFilesCountBy(1, true); err != nil {
 				log.Warn("Couldn't increase the delayed files counter", err.Error())
 			}

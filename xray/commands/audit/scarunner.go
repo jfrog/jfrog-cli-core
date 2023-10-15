@@ -24,6 +24,71 @@ import (
 	"time"
 )
 
+type ScaScanResult struct {
+	workingDir string
+	Te
+	err        error
+}
+
+func scaScan(params *AuditParams, results *Results) (err error) {
+	currentWorkingDir, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	defer func() {
+		// Make sure to return to the original working directory, each scan may change it.
+		err = errors.Join(err, os.Chdir(currentWorkingDir))
+	}()
+	for _, wd := range getDirectoriesToScan(currentWorkingDir, params) {
+		log.Info("Running SCA scan for vulnerable dependencies scan in", wd, "directory...")
+		wdScanErr := runScaScanInWorkingDir(params, results, wd)
+		if wdScanErr != nil {
+			err = errors.Join(err, fmt.Errorf("audit command in '%s' failed:\n%s\n", wd, wdScanErr.Error()))
+			continue
+		}
+	}
+	return
+}
+
+func getDirectoriesToScan(currentWorkingDir string, params *AuditParams) []string {
+	workingDirs := datastructures.MakeSet[string]()
+	if len(params.workingDirs) == 0 {
+		workingDirs.Add(currentWorkingDir)
+	}
+	for _, wd := range params.workingDirs {
+		workingDirs.Add(wd)
+	}
+	return workingDirs.ToSlice()
+}
+
+func runScaScanInWorkingDir(params *AuditParams, results *Results, workingDir string) (err error) {
+	// Change to the working directory.
+	err = os.Chdir(workingDir)
+	if err != nil {
+		return
+	}
+	// Prepare the working directory information for the scan.
+	technologies := getWorkingDirTechnologies(workingDir, params)
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return
+	}
+}
+
+func getWorkingDirTechnologies(workingDir string, params *AuditParams) (technologies []string) {
+	//coreutils.Technology
+	requestedTechnologies := params.Technologies()
+	if len(requestedTechnologies) != 0 {
+		technologies = requestedTechnologies
+	} else {
+		technologies = coreutils.DetectedTechnologiesList()
+	}
+	if len(technologies) == 0 {
+		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
+		return
+	}
+}
+
 func runScaScan(params *AuditParams, results *Results) (err error) {
 	rootDir, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {

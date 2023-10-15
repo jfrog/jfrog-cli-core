@@ -263,6 +263,17 @@ func (ts *TransferStateManager) GetDiffHandlingRange() (start, end time.Time, er
 	})
 }
 
+func (ts *TransferStateManager) ChangeDelayedFilesCountBy(count uint, increase bool) error {
+	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+		if increase {
+			transferRunStatus.DelayedFiles += count
+		} else {
+			transferRunStatus.DelayedFiles -= count
+		}
+		return nil
+	})
+}
+
 func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint, increase bool) error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		if increase {

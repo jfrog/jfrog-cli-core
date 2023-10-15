@@ -31,10 +31,10 @@ type TransferProgressMng struct {
 	speedBar *progressbar.TasksProgressBar
 	// A bar showing the estimated remaining time for the transfer
 	timeEstBar *progressbar.TasksProgressBar
+	// A bar showing the number of delayed artifacts in the process
+	delayedBar *progressbar.TasksProgressBar
 	// A bar showing the number of transfer failures in the process
 	errorBar *progressbar.TasksProgressBar
-	// shows a note to the user if errors exists
-	errorNote *progressbar.TasksProgressBar
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
@@ -71,9 +71,9 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.runningTime = transfer.transferMng.NewRunningTimeProgressBar()
 	transfer.speedBar = transfer.transferMng.NewSpeedProgBar()
 	transfer.timeEstBar = transfer.transferMng.NewTimeEstBar()
+	transfer.delayedBar = transfer.transferMng.NewDelayedBar()
 	// Init global error count for the process
 	transfer.errorBar = transfer.transferMng.NewErrorBar()
-	transfer.errorNote = transfer.transferMng.NewErrorNote()
 	tdc.progressbar = &transfer
 	return nil
 }
@@ -220,6 +220,13 @@ func (t *TransferProgressMng) RemoveRepository() {
 	time.Sleep(progressbar.ProgressRefreshRate)
 }
 
+func (t *TransferProgressMng) changeNumberOfDelayedFiles(n int) {
+	if t.ShouldDisplay() {
+		diff := int64(n)
+		t.errorBar.SetGeneralProgressTotal(t.delayedBar.GetTotal() + diff)
+	}
+}
+
 func (t *TransferProgressMng) changeNumberOfFailuresBy(n int) {
 	if t.ShouldDisplay() {
 		diff := int64(n)
@@ -244,7 +251,7 @@ func (t *TransferProgressMng) StopGracefully() {
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.errorNote, t.speedBar, t.timeEstBar, t.totalSize} {
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.delayedBar, t.errorBar, t.speedBar, t.timeEstBar, t.totalSize} {
 		if barPtr != nil {
 			barPtr.GetBar().Abort(true)
 		}

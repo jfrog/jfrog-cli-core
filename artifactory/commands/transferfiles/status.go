@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -78,9 +79,14 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2)
 	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 2)
 	addString(output, "⌛", "Estimated time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
+	delayedTxt := strconv.FormatUint(uint64(stateManager.DelayedFiles), 10)
+	if stateManager.DelayedFiles > 0 {
+		delayedTxt += " (" + progressbar.DelayedFilesContentNote + ")"
+	}
+	addString(output, "✋", "Delayed files", delayedTxt, 2)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {
-		failureTxt += " (" + "In Phase 3 and in subsequent executions, we'll retry transferring the failed files." + ")"
+		failureTxt += " (" + progressbar.RetryFailureContentNote + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 2)
 }

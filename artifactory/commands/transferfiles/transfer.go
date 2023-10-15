@@ -228,8 +228,15 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 			return e
 		}
 		tdc.stateManager.TransferFailures = uint(numberInitialErrors)
+
+		numberInitialDelays, e := getDelayedFilesCount(allSourceLocalRepos)
+		if e != nil {
+			return e
+		}
+		tdc.stateManager.DelayedFiles = uint(numberInitialDelays)
 	} else {
 		tdc.stateManager.TransferFailures = 0
+		tdc.stateManager.DelayedFiles = 0
 	}
 	return nil
 }

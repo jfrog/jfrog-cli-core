@@ -86,7 +86,7 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "✋", "Delayed files", delayedTxt, 2)
 	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
 	if stateManager.TransferFailures > 0 {
-		failureTxt += "(" + progressbar.RetryFailureContentNote + ")"
+		failureTxt += " (" + progressbar.RetryFailureContentNote + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 2)
 }

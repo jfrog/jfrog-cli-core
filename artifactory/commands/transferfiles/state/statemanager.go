@@ -67,7 +67,7 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // buildInfoRepo  - True if build info repository
 // reset          - Delete the repository's previous transfer info
 func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
-	err := ts.TransferState.Action(func(state *TransferState) error {
+	err := ts.Action(func(*TransferState) error {
 		transferState, repoTransferSnapshot, err := getTransferStateAndSnapshot(repoKey, reset)
 		if err != nil {
 			return err
@@ -82,9 +82,10 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 	if err != nil {
 		return err
 	}
-	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+	return ts.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.CurrentRepoKey = repoKey
 		transferRunStatus.BuildInfoRepo = buildInfoRepo
+		transferRunStatus.VisitedDirectories = 0
 
 		transferRunStatus.OverallTransfer.TransferredUnits += ts.CurrentRepo.Phase1Info.TransferredUnits
 		transferRunStatus.OverallTransfer.TransferredSizeBytes += ts.CurrentRepo.Phase1Info.TransferredSizeBytes
@@ -263,7 +264,14 @@ func (ts *TransferStateManager) GetDiffHandlingRange() (start, end time.Time, er
 	})
 }
 
-func (ts *TransferStateManager) ChangeDelayedFilesCountBy(count uint, increase bool) error {
+func (ts *TransferStateManager) IncVisitedDirectories() error {
+	return ts.action(func(transferRunStatus *TransferRunStatus) error {
+		transferRunStatus.VisitedDirectories++
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) ChangeDelayedFilesCountBy(count uint64, increase bool) error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		if increase {
 			transferRunStatus.DelayedFiles += count

@@ -25,6 +25,7 @@ type transferLabels struct {
 	Note             string
 	TransferSpeed    string
 	EstimatedTime    string
+	VisitedDirs      string
 	DelayedFiles     string
 	TransferFailures string
 	WorkingThreads   string
@@ -53,6 +54,7 @@ func initSProgressBarLabels(windows bool) transferLabels {
 	pbs.Note = formatString(" 🟠", " Note: ", windows)
 	pbs.TransferSpeed = formatString(" ⚡", " Transfer speed: ", windows)
 	pbs.EstimatedTime = formatString(" ⌛", " Estimated time remaining: ", windows)
+	pbs.VisitedDirs = formatString(" 📁", " Visited directories: ", windows)
 	pbs.DelayedFiles = formatString(" ✋", " Delayed files: ", windows)
 	pbs.TransferFailures = formatString(" ❌", " Transfer failures: ", windows)
 	pbs.WorkingThreads = formatString(" 🧵", " Working threads: ", windows)
@@ -306,6 +308,16 @@ func (tpm *TransferProgressMng) NewTimeEstBar() *TasksProgressBar {
 	return tpm.barMng.NewStringProgressBar(tpm.transferLabels.EstimatedTime, func() string {
 		return color.Green.Render(tpm.stateMng.GetEstimatedRemainingTimeString())
 	})
+}
+
+func (tpm *TransferProgressMng) NewVisitedDirsBar() *TasksProgressBar {
+	getVals := func() (int, error) {
+		if tpm.ignoreState {
+			return 0, nil
+		}
+		return int(tpm.stateMng.VisitedDirectories), nil
+	}
+	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.VisitedDirs, nil)
 }
 
 func (tpm *TransferProgressMng) NewDelayedBar() *TasksProgressBar {

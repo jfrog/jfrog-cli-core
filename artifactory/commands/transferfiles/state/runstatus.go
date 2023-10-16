@@ -33,11 +33,12 @@ type TransferRunStatus struct {
 	Version        int    `json:"version,omitempty"`
 	CurrentRepoKey string `json:"current_repo,omitempty"`
 	// True if currently transferring a build info repository.
-	BuildInfoRepo         bool `json:"build_info_repo,omitempty"`
-	CurrentRepoPhase      int  `json:"current_repo_phase,omitempty"`
-	WorkingThreads        int  `json:"working_threads,omitempty"`
-	DelayedFiles          uint `json:"delayed_files,omitempty"`
-	TransferFailures      uint `json:"transfer_failures,omitempty"`
+	BuildInfoRepo         bool   `json:"build_info_repo,omitempty"`
+	CurrentRepoPhase      int    `json:"current_repo_phase,omitempty"`
+	WorkingThreads        int    `json:"working_threads,omitempty"`
+	VisitedDirectories    uint64 `json:"visited_dirs,omitempty"`
+	DelayedFiles          uint64 `json:"delayed_files,omitempty"`
+	TransferFailures      uint   `json:"transfer_failures,omitempty"`
 	TimeEstimationManager `json:"time_estimation,omitempty"`
 	StaleChunks           []StaleChunks `json:"stale_chunks,omitempty"`
 }

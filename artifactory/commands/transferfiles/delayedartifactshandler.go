@@ -177,7 +177,7 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 		if base.progressBar != nil {
 			base.progressBar.changeNumberOfDelayedFiles(-1 * len(delayedArtifactsFile.DelayedArtifacts))
 		}
-		if err = base.stateManager.ChangeDelayedFilesCountBy(uint(len(delayedArtifactsFile.DelayedArtifacts)), false); err != nil {
+		if err = base.stateManager.ChangeDelayedFilesCountBy(uint64(len(delayedArtifactsFile.DelayedArtifacts)), false); err != nil {
 			log.Warn("Couldn't decrease the delayed files counter", err.Error())
 		}
 

@@ -250,14 +250,14 @@ func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denomina
 }
 
 // Initializing a counter progress bar
-func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err error), headLine string) *TasksProgressBar {
+func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err error), headLine string, counterDescription decor.Decorator) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(0,
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
 			decor.Name(headLine),
-			decor.Any(func(statistics decor.Statistics) string {
+			decor.Any(func(decor.Statistics) string {
 				value, err := getVal()
 				if err != nil {
 					log.Error(err)
@@ -266,6 +266,7 @@ func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err er
 				return color.Green.Render(s1)
 			}),
 		),
+		mpb.AppendDecorators(counterDescription),
 	)
 	return pb
 }

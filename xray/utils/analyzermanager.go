@@ -14,8 +14,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
-	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
@@ -78,21 +76,22 @@ var exitCodeErrorsMap = map[int]string{
 	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
 }
 
-type ExtendedScanResults struct {
-	XrayResults         []services.ScanResponse
-	XrayVersion         string
-	ScannedTechnologies []coreutils.Technology
+// type ExtendedScanResults struct {
+// 	XrayResults         []services.ScanResponse
+// 	XrayVersion         string
+// 	ScannedTechnologies []coreutils.Technology
 
-	ApplicabilityScanResults []*sarif.Run
-	SecretsScanResults       []*sarif.Run
-	IacScanResults           []*sarif.Run
-	SastScanResults          []*sarif.Run
-	EntitledForJas           bool
-}
+// 	// DependenciesResults []
+// 	ApplicabilityScanResults []*sarif.Run
+// 	SecretsScanResults       []*sarif.Run
+// 	IacScanResults           []*sarif.Run
+// 	SastScanResults          []*sarif.Run
+// 	EntitledForJas           bool
+// }
 
-func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
-	return e.XrayResults
-}
+// func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
+// 	return e.XrayResults
+// }
 
 type AnalyzerManager struct {
 	AnalyzerManagerFullPath string

@@ -191,6 +191,10 @@ func DetectedTechnologiesList() (technologies []string) {
 	return techStringsList
 }
 
+func DetectTechnologiesDescriptors(path string, requestedTechnologies []Technology) (t map[Technology][]string) {
+	return 
+}
+
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
 // 'isCiSetup' will limit the search of possible techs to Maven, Gradle, and npm.
 // 'recursive' will determine if the search will be limited to files in the root path or not.

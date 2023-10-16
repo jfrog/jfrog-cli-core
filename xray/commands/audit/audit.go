@@ -136,23 +136,31 @@ func (auditCmd *AuditCommand) CommandName() string {
 	return "generic_audit"
 }
 
-type Results struct {
-	IsMultipleRootProject bool
-	ScaError              error
-	JasError              error
-	ExtendedScanResults   *xrayutils.ExtendedScanResults
-}
+// type ScaScanResult struct {
+// 	Technology  coreutils.Technology
+// 	XrayResults []services.ScanResponse
+// 	Descriptors []string
+// }
 
-func NewAuditResults() *Results {
-	return &Results{ExtendedScanResults: &xrayutils.ExtendedScanResults{}}
-}
+// type Results struct {
+// 	ScaResults []ScaScanResult
+// 	IsMultipleRootProject bool
+// 	ScaError              error
+
+// 	ExtendedScanResults   *xrayutils.ExtendedScanResults
+// 	JasError              error
+// }
+
+// func NewAuditResults() *Results {
+// 	return &Results{ExtendedScanResults: &xrayutils.ExtendedScanResults{}}
+// }
 
 // Runs an audit scan based on the provided auditParams.
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
-func RunAudit(auditParams *AuditParams) (results *Results, err error) {
+func RunAudit(auditParams *AuditParams) (results *xrayutils.Results, err error) {
 	// Initialize Results struct
-	results = NewAuditResults()
+	results = xrayutils.NewAuditResults()
 
 	serverDetails, err := auditParams.ServerDetails()
 	if err != nil {

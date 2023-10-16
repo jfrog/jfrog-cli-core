@@ -85,7 +85,7 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 	return ts.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.CurrentRepoKey = repoKey
 		transferRunStatus.BuildInfoRepo = buildInfoRepo
-		transferRunStatus.VisitedDirectories = 0
+		transferRunStatus.VisitedFolders = 0
 
 		transferRunStatus.OverallTransfer.TransferredUnits += ts.CurrentRepo.Phase1Info.TransferredUnits
 		transferRunStatus.OverallTransfer.TransferredSizeBytes += ts.CurrentRepo.Phase1Info.TransferredSizeBytes
@@ -264,9 +264,9 @@ func (ts *TransferStateManager) GetDiffHandlingRange() (start, end time.Time, er
 	})
 }
 
-func (ts *TransferStateManager) IncVisitedDirectories() error {
+func (ts *TransferStateManager) IncVisitedFolders() error {
 	return ts.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.VisitedDirectories++
+		transferRunStatus.VisitedFolders++
 		return nil
 	})
 }

@@ -36,7 +36,7 @@ type TransferRunStatus struct {
 	BuildInfoRepo         bool   `json:"build_info_repo,omitempty"`
 	CurrentRepoPhase      int    `json:"current_repo_phase,omitempty"`
 	WorkingThreads        int    `json:"working_threads,omitempty"`
-	VisitedDirectories    uint64 `json:"visited_dirs,omitempty"`
+	VisitedFolders        uint64 `json:"visited_folders,omitempty"`
 	DelayedFiles          uint64 `json:"delayed_files,omitempty"`
 	TransferFailures      uint   `json:"transfer_failures,omitempty"`
 	TimeEstimationManager `json:"time_estimation,omitempty"`

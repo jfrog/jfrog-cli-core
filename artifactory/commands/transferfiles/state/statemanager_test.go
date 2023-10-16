@@ -160,18 +160,18 @@ func TestChangeDelayedFilesCountBy(t *testing.T) {
 	assert.Equal(t, uint64(3), stateManager.DelayedFiles)
 }
 
-func TestVisitedDirectories(t *testing.T) {
+func TestVisitedFolders(t *testing.T) {
 	stateManager, cleanUp := InitStateTest(t)
 	defer cleanUp()
 
-	// Increase visited directories count
-	assert.NoError(t, stateManager.IncVisitedDirectories())
-	assert.NoError(t, stateManager.IncVisitedDirectories())
-	assert.Equal(t, uint64(2), stateManager.VisitedDirectories)
+	// Increase visited folders count
+	assert.NoError(t, stateManager.IncVisitedFolders())
+	assert.NoError(t, stateManager.IncVisitedFolders())
+	assert.Equal(t, uint64(2), stateManager.VisitedFolders)
 
-	// Set repository state and ensure the visited directories became 0
+	// Set repository state and ensure the visited folders became 0
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
-	assert.Zero(t, stateManager.VisitedDirectories)
+	assert.Zero(t, stateManager.VisitedFolders)
 }
 
 func TestChangeTransferFailureCountBy(t *testing.T) {

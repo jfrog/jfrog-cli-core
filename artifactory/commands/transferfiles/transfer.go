@@ -235,7 +235,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 		}
 		tdc.stateManager.DelayedFiles = uint64(numberInitialDelays)
 	} else {
-		tdc.stateManager.VisitedDirectories = 0
+		tdc.stateManager.VisitedFolders = 0
 		tdc.stateManager.TransferFailures = 0
 		tdc.stateManager.DelayedFiles = 0
 	}

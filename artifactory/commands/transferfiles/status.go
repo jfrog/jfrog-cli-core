@@ -110,7 +110,7 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 3)
 	}
 	if stateManager.CurrentRepoPhase == api.Phase1 {
-		addString(output, "📁", "Visited directories", strconv.FormatUint(stateManager.VisitedDirectories, 10), 2)
+		addString(output, "📁", "Visited folders", strconv.FormatUint(stateManager.VisitedFolders, 10), 2)
 	}
 	delayedTxt := strconv.FormatUint(stateManager.DelayedFiles, 10)
 	if stateManager.DelayedFiles > 0 {

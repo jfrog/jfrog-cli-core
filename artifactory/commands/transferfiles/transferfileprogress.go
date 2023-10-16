@@ -31,8 +31,8 @@ type TransferProgressMng struct {
 	speedBar *progressbar.TasksProgressBar
 	// A bar showing the estimated remaining time for the transfer
 	timeEstBar *progressbar.TasksProgressBar
-	// A bar showing the number of visited directories
-	visitedDirsBar *progressbar.TasksProgressBar
+	// A bar showing the number of visited folders
+	visitedFoldersBar *progressbar.TasksProgressBar
 	// A bar showing the number of delayed artifacts in the process
 	delayedBar *progressbar.TasksProgressBar
 	// A bar showing the number of transfer failures in the process
@@ -73,7 +73,7 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.runningTime = transfer.transferMng.NewRunningTimeProgressBar()
 	transfer.speedBar = transfer.transferMng.NewSpeedProgBar()
 	transfer.timeEstBar = transfer.transferMng.NewTimeEstBar()
-	transfer.visitedDirsBar = transfer.transferMng.NewVisitedDirsBar()
+	transfer.visitedFoldersBar = transfer.transferMng.NewVisitedFoldersBar()
 	transfer.delayedBar = transfer.transferMng.NewDelayedBar()
 	// Init global error count for the process
 	transfer.errorBar = transfer.transferMng.NewErrorBar()
@@ -223,9 +223,9 @@ func (t *TransferProgressMng) RemoveRepository() {
 	time.Sleep(progressbar.ProgressRefreshRate)
 }
 
-func (t *TransferProgressMng) incNumberOfVisitedDirs() {
+func (t *TransferProgressMng) incNumberOfVisitedFolders() {
 	if t.ShouldDisplay() {
-		t.visitedDirsBar.SetGeneralProgressTotal(t.visitedDirsBar.GetTotal() + 1)
+		t.visitedFoldersBar.SetGeneralProgressTotal(t.visitedFoldersBar.GetTotal() + 1)
 	}
 }
 
@@ -260,7 +260,7 @@ func (t *TransferProgressMng) StopGracefully() {
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.visitedDirsBar, t.delayedBar, t.errorBar, t.speedBar, t.timeEstBar, t.totalSize} {
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.visitedFoldersBar, t.delayedBar, t.errorBar, t.speedBar, t.timeEstBar, t.totalSize} {
 		if barPtr != nil {
 			barPtr.GetBar().Abort(true)
 		}

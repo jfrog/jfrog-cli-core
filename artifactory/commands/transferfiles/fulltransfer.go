@@ -133,9 +133,9 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 
 	// Increment progress number of folders
 	if m.progressBar != nil {
-		m.progressBar.incNumberOfVisitedDirs()
+		m.progressBar.incNumberOfVisitedFolders()
 	}
-	if err = m.stateManager.IncVisitedDirectories(); err != nil {
+	if err = m.stateManager.IncVisitedFolders(); err != nil {
 		return
 	}
 

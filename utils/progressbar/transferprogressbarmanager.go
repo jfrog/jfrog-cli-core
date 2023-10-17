@@ -1,6 +1,7 @@
 package progressbar
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 const (
 	phase1HeadLine          = "Phase 1: Transferring all files in the repository"
 	phase2HeadLine          = "Phase 2: Transferring newly created and modified files"
+	phase3HeadLine          = "Phase 3: Retrying transfer failures"
 	DelayedFilesContentNote = "Files to be transferred last, after all other files"
 	RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files"
 )
@@ -25,6 +27,7 @@ type transferLabels struct {
 	Note             string
 	TransferSpeed    string
 	EstimatedTime    string
+	VisitedFolders   string
 	DelayedFiles     string
 	TransferFailures string
 	WorkingThreads   string
@@ -53,6 +56,7 @@ func initSProgressBarLabels(windows bool) transferLabels {
 	pbs.Note = formatString(" 🟠", " Note: ", windows)
 	pbs.TransferSpeed = formatString(" ⚡", " Transfer speed: ", windows)
 	pbs.EstimatedTime = formatString(" ⌛", " Estimated time remaining: ", windows)
+	pbs.VisitedFolders = formatString(" 📁", " Visited folders: ", windows)
 	pbs.DelayedFiles = formatString(" ✋", " Delayed files: ", windows)
 	pbs.TransferFailures = formatString(" ❌", " Transfer failures: ", windows)
 	pbs.WorkingThreads = formatString(" 🧵", " Working threads: ", windows)
@@ -114,7 +118,7 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 			if tpm.currentRepoShouldStop {
 				return
 			}
-			ptr1, ptr2, _, _, err := getVals()
+			transferredStorage, totalStorage, _, _, err := getVals()
 			if err != nil {
 				log.Error("Error: Couldn't get needed information about transfer status from state")
 			}
@@ -123,8 +127,10 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 				return
 			}
 			if pb.GetTasksProgressBar() != nil {
-				pb.GetTasksProgressBar().SetGeneralProgressTotal(*ptr2)
-				pb.GetTasksProgressBar().GetBar().SetCurrent(*ptr1)
+				pb.GetTasksProgressBar().SetGeneralProgressTotal(*totalStorage)
+				if pb.GetTasksProgressBar().GetBar().Current() < math.MaxInt64 {
+					pb.GetTasksProgressBar().GetBar().SetCurrent(*transferredStorage)
+				}
 			}
 			time.Sleep(1 * time.Second)
 		}
@@ -181,7 +187,7 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 		})
 		return transferredStorage, totalStorage, transferredFiles, totalFiles, err
 	}
-	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase2HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
+	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase3HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
 	tpm.wg.Add(1)
 	go func() {
@@ -306,6 +312,16 @@ func (tpm *TransferProgressMng) NewTimeEstBar() *TasksProgressBar {
 	return tpm.barMng.NewStringProgressBar(tpm.transferLabels.EstimatedTime, func() string {
 		return color.Green.Render(tpm.stateMng.GetEstimatedRemainingTimeString())
 	})
+}
+
+func (tpm *TransferProgressMng) NewVisitedFoldersBar() *TasksProgressBar {
+	getVals := func() (int, error) {
+		if tpm.ignoreState {
+			return 0, nil
+		}
+		return int(tpm.stateMng.VisitedFolders), nil
+	}
+	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.VisitedFolders, nil)
 }
 
 func (tpm *TransferProgressMng) NewDelayedBar() *TasksProgressBar {

@@ -14,6 +14,7 @@ import (
 const (
 	phase1HeadLine          = "Phase 1: Transferring all files in the repository"
 	phase2HeadLine          = "Phase 2: Transferring newly created and modified files"
+	phase3HeadLine          = "Phase 3: Retrying transfer failures"
 	DelayedFilesContentNote = "Files to be transferred last, after all other files"
 	RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files"
 )
@@ -183,7 +184,7 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 		})
 		return transferredStorage, totalStorage, transferredFiles, totalFiles, err
 	}
-	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase2HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
+	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase3HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
 	tpm.wg.Add(1)
 	go func() {

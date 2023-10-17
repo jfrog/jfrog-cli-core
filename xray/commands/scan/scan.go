@@ -241,7 +241,7 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults}
+	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults, XrayVersion: xrayVersion}
 
 	if err = xrutils.NewResultsWriter(extendedScanResults).
 		SetOutputFormat(scanCmd.outputFormat).

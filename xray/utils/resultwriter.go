@@ -220,74 +220,90 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 
 func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults) error {
 	for _, vulnerability := range xrayJson.Vulnerabilities {
-		if err := addXrayCveIssueToSarifRun(
-			vulnerability.Cves,
-			vulnerability.IssueId,
-			vulnerability.Severity,
-			vulnerability.Technology,
-			vulnerability.Components,
-			vulnerability.Applicable,
-			vulnerability.ImpactedDependencyName,
-			vulnerability.ImpactedDependencyVersion,
-			vulnerability.Summary,
-			vulnerability.FixedVersions,
-			run,
-		); err != nil {
+		if err := addXrayCveIssueToSarifRun(vulnerability, run); err != nil {
 			return err
 		}
 	}
 	for _, violation := range xrayJson.SecurityViolations {
-		if err := addXrayCveIssueToSarifRun(
-			violation.Cves,
-			violation.IssueId,
-			violation.Severity,
-			violation.Technology,
-			violation.Components,
-			violation.Applicable,
-			violation.ImpactedDependencyName,
-			violation.ImpactedDependencyVersion,
-			violation.Summary,
-			violation.FixedVersions,
-			run,
-		); err != nil {
+		if err := addXrayCveIssueToSarifRun(violation, run); err != nil {
 			return err
 		}
 	}
 	for _, license := range xrayJson.LicensesViolations {
-		msg := getVulnerabilityOrViolationSarifHeadline(license.LicenseKey, license.ImpactedDependencyName, license.ImpactedDependencyVersion)
-		if rule, isNewRule := addResultToSarifRun(license.LicenseKey, msg, license.Severity, nil, run); isNewRule {
-			rule.WithDescription("License watch violations")
+		if err := addXrayLicenseViolationToSarifRun(license, run); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, tech coreutils.Technology, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, run *sarif.Run) error {
-	maxCveScore, err := findMaxCVEScore(cves)
+func addXrayCveIssueToSarifRun(issue formats.VulnerabilityOrViolationRow, run *sarif.Run) (err error) {
+	maxCveScore, err := findMaxCVEScore(issue.Cves)
 	if err != nil {
-		return err
+		return
 	}
-	location, err := getXrayIssueLocationIfValidExists(tech, run)
+	location, err := getXrayIssueLocationIfValidExists(issue.Technology, run)
 	if err != nil {
-		return err
+		return
 	}
-	formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
+	formattedDirectDependencies, err := getDirectDependenciesFormatted(issue.Components)
 	if err != nil {
-		return err
+		return
 	}
-	cveId := GetIssueIdentifier(cves, issueId)
-	ruleId := getVulnerabilityOrViolationSarifRuleId(impactedDependencyName, impactedDependencyVersion, cveId)
+	cveId := GetIssueIdentifier(issue.Cves, issue.IssueId)
+	markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, issue.Applicable, issue.FixedVersions)
+	addXrayIssueToSarifRun(
+		cveId,
+		issue.ImpactedDependencyName,
+		issue.ImpactedDependencyVersion,
+		issue.Severity,
+		maxCveScore,
+		issue.Summary,
+		markdownDescription,
+		issue.Components,
+		location,
+		run,
+	)
+	return
+}
 
+func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Run) (err error) {
+	formattedDirectDependencies, err := getDirectDependenciesFormatted(license.Components)
+	if err != nil {
+		return
+	}
+	licenseViolationSummary := fmt.Sprint("Dependency %s version %s is using a license (%s) that is not allowed.", license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey)
+	licenseViolationMarkdownDescription := fmt.Sprint("**The following direct dependencies are utilizing the `%s %s` dependency with a `%s` license violation:**\n%s", formattedDirectDependencies)
+	addXrayIssueToSarifRun(
+		license.LicenseKey,
+		license.ImpactedDependencyName,
+		license.ImpactedDependencyVersion,
+		license.Severity,
+		MissingCveScore,
+		licenseViolationSummary,
+		licenseViolationMarkdownDescription,
+		license.Components,
+		nil,
+		run,
+	)
+	return
+}
+
+func addXrayIssueToSarifRun(issueId, impactedDependencyName, impactedDependencyVersion, severity, severityScore, summary, markdownDescription string, components []formats.ComponentRow, location *sarif.Location, run *sarif.Run) {
+	// Add rule if not exists
+	ruleId := getXrayIssueSarifRuleId(impactedDependencyName, impactedDependencyVersion, issueId)
 	if rule, _ := run.GetRuleById(ruleId); rule == nil {
-		ruleDescription := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
-		markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions)
-		addXrayCveRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription, run)
+		ruleDescription := getXrayIssueSarifHeadline(impactedDependencyName, impactedDependencyVersion, issueId)
+		addXrayRule(ruleId, ruleDescription, severityScore, summary, markdownDescription, run)
 	}
+	// Add result for each component
 	for _, directDependency := range components {
-		msg := getVulnerabilityOrViolationSarifHeadline(directDependency.Name, directDependency.Version, cveId)
-		addResultToSarifRun(ruleId, msg, severity, location, run)
+		msg := getXrayIssueSarifHeadline(directDependency.Name, directDependency.Version, issueId)
+		if result := run.CreateResultForRule(ruleId).WithMessage(sarif.NewTextMessage(msg)).WithLevel(ConvertToSarifLevel(severity)); location != nil {
+			result.AddLocation(location)
+		}
 	}
-	return nil
+
 }
 
 func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, error) {
@@ -320,29 +336,20 @@ func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run
 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil
 }
 
-func addXrayCveRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription string, run *sarif.Run) {
+func addXrayRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription string, run *sarif.Run) {
 	rule := run.AddRule(ruleId)
-	cveRuleProperties := sarif.NewPropertyBag()
+
 	if maxCveScore != MissingCveScore {
+		cveRuleProperties := sarif.NewPropertyBag()
 		cveRuleProperties.Add("security-severity", maxCveScore)
+		rule.WithProperties(cveRuleProperties.Properties)
 	}
-	rule.WithProperties(cveRuleProperties.Properties)
+
 	rule.WithDescription(ruleDescription)
 	rule.WithHelp(&sarif.MultiformatMessageString{
 		Text:     &summary,
 		Markdown: &markdownDescription,
 	})
-}
-
-func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {
-	if rule, _ = run.GetRuleById(issueId); rule == nil {
-		isNewRule = true
-		rule = run.AddRule(issueId)
-	}
-	if result := run.CreateResultForRule(issueId).WithMessage(sarif.NewTextMessage(msg)).WithLevel(ConvertToSarifLevel(severity)); location != nil {
-		result.AddLocation(location)
-	}
-	return
 }
 
 func convertXrayScanToSimpleJson(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
@@ -410,11 +417,11 @@ func GetIssueIdentifier(cvesRow []formats.CveRow, issueId string) string {
 	return identifier
 }
 
-func getVulnerabilityOrViolationSarifRuleId(depName, version, key string) string {
+func getXrayIssueSarifRuleId(depName, version, key string) string {
 	return fmt.Sprintf("%s_%s_%s", key, depName, version)
 }
 
-func getVulnerabilityOrViolationSarifHeadline(depName, version, key string) string {
+func getXrayIssueSarifHeadline(depName, version, key string) string {
 	return fmt.Sprintf("[%s] %s %s", key, depName, version)
 }
 

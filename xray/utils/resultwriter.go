@@ -276,10 +276,16 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, 
 		return err
 	}
 	cveId := GetIssueIdentifier(cves, issueId)
-	ruleId := getXrayCveRuleId(cveId, applicable, impactedDependencyName, impactedDependencyVersion, maxCveScore, formattedDirectDependencies, summary, fixedVersions, run)
+	ruleId := getVulnerabilityOrViolationSarifRuleId(impactedDependencyName, impactedDependencyVersion, cveId)
 
+	if rule, _ := run.GetRuleById(ruleId); rule == nil {
+		ruleDescription := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
+		markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions)
+		addXrayCveRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription, run)
+	}
 	for _, directDependency := range components {
-		addResultToSarifRun(ruleId, getVulnerabilityOrViolationSarifHeadline(directDependency.Name, directDependency.Version, cveId), severity, location, run)
+		msg := getVulnerabilityOrViolationSarifHeadline(directDependency.Name, directDependency.Version, cveId)
+		addResultToSarifRun(ruleId, msg, severity, location, run)
 	}
 	return nil
 }
@@ -314,21 +320,14 @@ func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run
 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil
 }
 
-func getXrayCveRuleId(cveId, applicable, impactedDependencyName, impactedDependencyVersion, maxCveScore, formattedDirectDependencies, summary string, fixedVersions []string, run *sarif.Run) (ruleId string) {
-	ruleId = fmt.Sprintf("%s_%s_%s", cveId, impactedDependencyName, impactedDependencyVersion)
-	rule, _ := run.GetRuleById(ruleId)
-	if rule != nil {
-		return
-	}
-	// Add new rule with the information
-	rule = run.AddRule(ruleId)
+func addXrayCveRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription string, run *sarif.Run) {
+	rule := run.AddRule(ruleId)
 	cveRuleProperties := sarif.NewPropertyBag()
 	if maxCveScore != MissingCveScore {
 		cveRuleProperties.Add("security-severity", maxCveScore)
 	}
 	rule.WithProperties(cveRuleProperties.Properties)
-	rule.WithDescription(getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId))
-	markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions)
+	rule.WithDescription(ruleDescription)
 	rule.WithHelp(&sarif.MultiformatMessageString{
 		Text:     &summary,
 		Markdown: &markdownDescription,
@@ -411,6 +410,10 @@ func GetIssueIdentifier(cvesRow []formats.CveRow, issueId string) string {
 	}
 
 	return identifier
+}
+
+func getVulnerabilityOrViolationSarifRuleId(depName, version, key string) string {
+	return fmt.Sprintf("%s_%s_%s", key, depName, version)
 }
 
 func getVulnerabilityOrViolationSarifHeadline(depName, version, key string) string {

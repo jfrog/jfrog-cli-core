@@ -279,7 +279,7 @@ func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Ru
 		license.Severity,
 		MissingCveScore,
 		getLicenseViolationSummary(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
-		getLicenseViolationMarkdown(formattedDirectDependencies),
+		getLicenseViolationMarkdown(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey, formattedDirectDependencies),
 		license.Components,
 		nil,
 		run,
@@ -427,8 +427,8 @@ func getLicenseViolationSummary(depName, version, key string) string {
 	return fmt.Sprintf("Dependency %s version %s is using a license (%s) that is not allowed.", depName, version, key)
 }
 
-func getLicenseViolationMarkdown(formattedDirectDependencies string) string {
-	return fmt.Sprintf("**The following direct dependencies are utilizing the `%s %s` dependency with a `%s` license violation:**\n%s", formattedDirectDependencies)
+func getLicenseViolationMarkdown(depName, version, key, formattedDirectDependencies string) string {
+	return fmt.Sprintf("**The following direct dependencies are utilizing the `%s %s` dependency with `%s` license violation:**\n%s", depName, version, key, formattedDirectDependencies)
 }
 
 func getDirectDependenciesFormatted(directDependencies []formats.ComponentRow) (string, error) {

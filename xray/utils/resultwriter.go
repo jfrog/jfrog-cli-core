@@ -267,27 +267,19 @@ func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity string, 
 	if err != nil {
 		return err
 	}
-	cveId := GetIssueIdentifier(cves, issueId)
-	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
 	location, err := getXrayIssueLocationIfValidExists(tech, run)
 	if err != nil {
 		return err
 	}
-	if rule, isNewRule := addResultToSarifRun(cveId, msg, severity, location, run); isNewRule {
-		cveRuleProperties := sarif.NewPropertyBag()
-		if maxCveScore != MissingCveScore {
-			cveRuleProperties.Add("security-severity", maxCveScore)
-		}
-		rule.WithProperties(cveRuleProperties.Properties)
-		formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
-		if err != nil {
-			return err
-		}
-		markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
-		rule.WithHelp(&sarif.MultiformatMessageString{
-			Text:     &summary,
-			Markdown: &markdownDescription,
-		})
+	formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
+	if err != nil {
+		return err
+	}
+	cveId := GetIssueIdentifier(cves, issueId)
+	ruleId := getXrayCveRuleId(cveId, applicable, impactedDependencyName, impactedDependencyVersion, maxCveScore, formattedDirectDependencies, summary, fixedVersions, run)
+
+	for _, directDependency := range components {
+		addResultToSarifRun(ruleId, getVulnerabilityOrViolationSarifHeadline(directDependency.Name, directDependency.Version, cveId), severity, location, run)
 	}
 	return nil
 }
@@ -320,6 +312,29 @@ func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run
 		return
 	}
 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil
+}
+
+func getXrayCveRuleId(cveId, applicable, impactedDependencyName, impactedDependencyVersion, maxCveScore, formattedDirectDependencies, summary string, fixedVersions []string, run *sarif.Run) (ruleId string) {
+	ruleId = fmt.Sprintf("%s_%s_%s", cveId, impactedDependencyName, impactedDependencyVersion)
+	rule, _ := run.GetRuleById(ruleId)
+	if rule != nil {
+		return
+	}
+	// Add new rule with the information
+	rule = run.AddRule(ruleId)
+	cveRuleProperties := sarif.NewPropertyBag()
+	if maxCveScore != MissingCveScore {
+		cveRuleProperties.Add("security-severity", maxCveScore)
+	}
+	rule.WithProperties(cveRuleProperties.Properties)
+	rule.WithDescription(getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId))
+	markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions)
+	rule.WithHelp(&sarif.MultiformatMessageString{
+		Text:     &summary,
+		Markdown: &markdownDescription,
+	})
+
+	return
 }
 
 func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {

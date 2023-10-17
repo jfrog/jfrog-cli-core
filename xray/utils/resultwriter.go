@@ -332,8 +332,6 @@ func addXrayCveRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescr
 		Text:     &summary,
 		Markdown: &markdownDescription,
 	})
-
-	return
 }
 
 func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {

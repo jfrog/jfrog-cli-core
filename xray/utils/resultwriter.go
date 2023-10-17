@@ -272,16 +272,14 @@ func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Ru
 	if err != nil {
 		return
 	}
-	licenseViolationSummary := fmt.Sprint("Dependency %s version %s is using a license (%s) that is not allowed.", license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey)
-	licenseViolationMarkdownDescription := fmt.Sprint("**The following direct dependencies are utilizing the `%s %s` dependency with a `%s` license violation:**\n%s", formattedDirectDependencies)
 	addXrayIssueToSarifRun(
 		license.LicenseKey,
 		license.ImpactedDependencyName,
 		license.ImpactedDependencyVersion,
 		license.Severity,
 		MissingCveScore,
-		licenseViolationSummary,
-		licenseViolationMarkdownDescription,
+		getLicenseViolationSummary(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
+		getLicenseViolationMarkdown(formattedDirectDependencies),
 		license.Components,
 		nil,
 		run,
@@ -423,6 +421,14 @@ func getXrayIssueSarifRuleId(depName, version, key string) string {
 
 func getXrayIssueSarifHeadline(depName, version, key string) string {
 	return fmt.Sprintf("[%s] %s %s", key, depName, version)
+}
+
+func getLicenseViolationSummary(depName, version, key string) string {
+	return fmt.Sprint("Dependency %s version %s is using a license (%s) that is not allowed.", depName, version, key)
+}
+
+func getLicenseViolationMarkdown(formattedDirectDependencies string) string {
+	return fmt.Sprint("**The following direct dependencies are utilizing the `%s %s` dependency with a `%s` license violation:**\n%s", formattedDirectDependencies)
 }
 
 func getDirectDependenciesFormatted(directDependencies []formats.ComponentRow) (string, error) {

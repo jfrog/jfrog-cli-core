@@ -259,6 +259,7 @@ func addXrayCveIssueToSarifRun(issue formats.VulnerabilityOrViolationRow, run *s
 		issue.Severity,
 		maxCveScore,
 		issue.Summary,
+		getXrayIssueSarifHeadline(issue.ImpactedDependencyName, issue.ImpactedDependencyVersion, cveId),
 		markdownDescription,
 		issue.Components,
 		location,
@@ -279,6 +280,7 @@ func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Ru
 		license.Severity,
 		MissingCveScore,
 		getLicenseViolationSummary(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
+		getXrayLicenseSarifHeadline(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
 		getLicenseViolationMarkdown(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey, formattedDirectDependencies),
 		license.Components,
 		nil,
@@ -287,12 +289,11 @@ func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Ru
 	return
 }
 
-func addXrayIssueToSarifRun(issueId, impactedDependencyName, impactedDependencyVersion, severity, severityScore, summary, markdownDescription string, components []formats.ComponentRow, location *sarif.Location, run *sarif.Run) {
+func addXrayIssueToSarifRun(issueId, impactedDependencyName, impactedDependencyVersion, severity, severityScore, summary, title, markdownDescription string, components []formats.ComponentRow, location *sarif.Location, run *sarif.Run) {
 	// Add rule if not exists
 	ruleId := getXrayIssueSarifRuleId(impactedDependencyName, impactedDependencyVersion, issueId)
 	if rule, _ := run.GetRuleById(ruleId); rule == nil {
-		ruleDescription := getXrayIssueSarifHeadline(impactedDependencyName, impactedDependencyVersion, issueId)
-		addXrayRule(ruleId, ruleDescription, severityScore, summary, markdownDescription, run)
+		addXrayRule(ruleId, title, severityScore, summary, markdownDescription, run)
 	}
 	// Add result for each component
 	for _, directDependency := range components {
@@ -421,6 +422,10 @@ func getXrayIssueSarifRuleId(depName, version, key string) string {
 
 func getXrayIssueSarifHeadline(depName, version, key string) string {
 	return fmt.Sprintf("[%s] %s %s", key, depName, version)
+}
+
+func getXrayLicenseSarifHeadline(depName, version, key string) string {
+	return fmt.Sprintf("License violation [%s] %s %s", key, depName, version)
 }
 
 func getLicenseViolationSummary(depName, version, key string) string {

@@ -424,11 +424,11 @@ func getXrayIssueSarifHeadline(depName, version, key string) string {
 }
 
 func getLicenseViolationSummary(depName, version, key string) string {
-	return fmt.Sprint("Dependency %s version %s is using a license (%s) that is not allowed.", depName, version, key)
+	return fmt.Sprintf("Dependency %s version %s is using a license (%s) that is not allowed.", depName, version, key)
 }
 
 func getLicenseViolationMarkdown(formattedDirectDependencies string) string {
-	return fmt.Sprint("**The following direct dependencies are utilizing the `%s %s` dependency with a `%s` license violation:**\n%s", formattedDirectDependencies)
+	return fmt.Sprintf("**The following direct dependencies are utilizing the `%s %s` dependency with a `%s` license violation:**\n%s", formattedDirectDependencies)
 }
 
 func getDirectDependenciesFormatted(directDependencies []formats.ComponentRow) (string, error) {

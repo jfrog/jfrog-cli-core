@@ -64,10 +64,11 @@ func scaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []xrayutils.ScaScanResult) {
 	directories := getDirectoriesToScan(currentWorkingDir, params)
 	for _, wd := range directories {
-		technologiesToDescriptors := coreutils.DetectTechnologiesDescriptors(wd, getTechnologiesToDetect(params))
+		// technologiesToDescriptors := coreutils.DetectTechnologiesDescriptors(wd, getTechnologiesToDetect(params))
 
 		scansToPreform = append(scansToPreform, xrayutils.ScaScanResult{WorkingDirectory: wd})
 	}
+	return
 }
 
 func getDirectoriesToScan(currentWorkingDir string, params *AuditParams) []string {

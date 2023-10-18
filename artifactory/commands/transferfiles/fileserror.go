@@ -3,13 +3,14 @@ package transferfiles
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strings"
-	"time"
 )
 
 type errorFileHandlerFunc func() parallel.TaskFunc
@@ -150,6 +151,19 @@ func (e *errorsRetryPhase) initProgressBar() error {
 		filesCount += len(failedFiles.Errors)
 	}
 	// The progress bar will also be responsible to display the number of delayed items for this repository.
+	// Those delayed artifacts will be handled at the end of this phase in case they exist.
+	delayFiles, err := getDelayFiles([]string{e.repoKey})
+	if err != nil {
+		return err
+	}
+	delayCount, delayStorage, err := countDelayFilesContent(delayFiles)
+	if err != nil {
+		return err
+	}
+	err = e.stateManager.SetTotalSizeAndFilesPhase3(int64(filesCount)+int64(delayCount), storage+delayStorage)
+	if err != nil {
+		return err
+	}
 	e.progressBar.AddPhase3()
 	return nil
 }

@@ -13,8 +13,8 @@ import (
 )
 
 func TestGetVulnerabilityOrViolationSarifHeadline(t *testing.T) {
-	assert.Equal(t, "[CVE-2022-1234] loadsh 1.4.1", getVulnerabilityOrViolationSarifHeadline("loadsh", "1.4.1", "CVE-2022-1234"))
-	assert.NotEqual(t, "[CVE-2022-1234] loadsh 1.4.1", getVulnerabilityOrViolationSarifHeadline("loadsh", "1.2.1", "CVE-2022-1234"))
+	assert.Equal(t, "[CVE-2022-1234] loadsh 1.4.1", getXrayIssueSarifHeadline("loadsh", "1.4.1", "CVE-2022-1234"))
+	assert.NotEqual(t, "[CVE-2022-1234] loadsh 1.4.1", getXrayIssueSarifHeadline("loadsh", "1.2.1", "CVE-2022-1234"))
 }
 
 func TestGetIssueIdentifier(t *testing.T) {

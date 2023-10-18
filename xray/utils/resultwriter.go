@@ -209,7 +209,7 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 	}
 	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", BaseDocumentationURL+"sca")
 	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
-	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 || len(xrayJson.LicensesViolations) > 0  {
+	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 || len(xrayJson.LicensesViolations) > 0 {
 		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson); err != nil {
 			return
 		}

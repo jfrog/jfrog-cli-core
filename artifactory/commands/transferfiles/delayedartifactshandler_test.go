@@ -2,17 +2,18 @@ package transferfiles
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 )
 
 var delayTestRepoKey = "delay-local-repo"
@@ -52,7 +53,7 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	go func() {
 		defer writeWaitGroup.Done()
 		for i := 0; i < artifactsNumber; i++ {
-			artifactsChannelMng.channel <- api.FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i)}
+			artifactsChannelMng.channel <- api.FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("name%d", i), Size: int64(i)}
 		}
 	}()
 
@@ -71,8 +72,9 @@ func TestDelayedArtifactsMng(t *testing.T) {
 	expectedNumberOfFiles := int(math.Ceil(float64(artifactsNumber) / float64(maxDelayedArtifactsInFile)))
 	validateDelayedArtifactsFiles(t, delayFiles, expectedNumberOfFiles, artifactsNumber)
 
-	delayCount, err := countDelayFilesContent(delayFiles)
+	delayCount, storage, err := countDelayFilesContent(delayFiles)
 	assert.NoError(t, err)
+	assert.Equal(t, int64(1225), storage)
 	assert.Equal(t, delayCount, artifactsNumber)
 }
 

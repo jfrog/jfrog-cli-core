@@ -95,18 +95,17 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerato
 				if err != nil {
 					log.Error(err)
 				}
-				numeratorString := artifactoryutils.ConvertIntToStorageSizeString(getProgressNumerator(statistics, *firstNumerator, *firstDenominator))
-				denominatorString := artifactoryutils.ConvertIntToStorageSizeString(*firstDenominator)
-				return color.Green.Render(numeratorString + "/" + denominatorString)
-			}),
-			decor.Name(" "+secondValueLine+": "), decor.Any(func(statistics decor.Statistics) string {
+				s1 := artifactoryutils.ConvertIntToStorageSizeString(*firstNumerator)
+				s2 := artifactoryutils.ConvertIntToStorageSizeString(*firstDenominator)
+				return color.Green.Render(s1 + "/" + s2)
+			}), decor.Name(" "+secondValueLine+": "), decor.Any(func(statistics decor.Statistics) string {
 				_, _, secondNumerator, secondDenominator, err := getVal()
 				if err != nil {
 					log.Error(err)
 				}
-				numeratorString := strconv.FormatInt(getProgressNumerator(statistics, *secondNumerator, *secondDenominator), 10)
-				denominatorString := strconv.Itoa(int(*secondDenominator))
-				return color.Green.Render(numeratorString + "/" + denominatorString)
+				s1 := strconv.Itoa(int(*secondNumerator))
+				s2 := strconv.Itoa(int(*secondDenominator))
+				return color.Green.Render(s1 + "/" + s2)
 			}),
 		),
 	)
@@ -189,9 +188,7 @@ func (bm *ProgressBarMng) NewHeadlineBar(msg string) *mpb.Bar {
 func (bm *ProgressBarMng) Increment(prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
-	if prog.tasksProgressBar.bar.Current() < math.MaxInt64 {
-		prog.tasksProgressBar.bar.Increment()
-	}
+	prog.tasksProgressBar.bar.Increment()
 	prog.tasksProgressBar.tasksCount++
 }
 
@@ -199,9 +196,7 @@ func (bm *ProgressBarMng) Increment(prog *TasksWithHeadlineProg) {
 func (bm *ProgressBarMng) IncBy(n int, prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
-	if prog.tasksProgressBar.bar.Current() < math.MaxInt64 {
-		prog.tasksProgressBar.bar.IncrBy(n)
-	}
+	prog.tasksProgressBar.bar.IncrBy(n)
 	prog.tasksProgressBar.tasksCount += int64(n)
 }
 
@@ -209,7 +204,12 @@ func (bm *ProgressBarMng) IncBy(n int, prog *TasksWithHeadlineProg) {
 func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
-	prog.tasksProgressBar.bar.SetCurrent(math.MaxInt64)
+	diff := prog.tasksProgressBar.total - prog.tasksProgressBar.tasksCount
+	// diff is int64, but we can increase the progress up to math.MaxInt in a time
+	for ; diff > math.MaxInt; diff -= math.MaxInt {
+		prog.tasksProgressBar.bar.IncrBy(math.MaxInt)
+	}
+	prog.tasksProgressBar.bar.IncrBy(int(diff))
 }
 
 func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, taskType string) *TasksProgressBar {
@@ -240,7 +240,7 @@ func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denomina
 		mpb.AppendDecorators(
 			decor.Name(" "+headLine+": "),
 			decor.Any(func(statistics decor.Statistics) string {
-				numeratorString := strconv.FormatInt(getProgressNumerator(statistics, *numerator, *denominator), 10)
+				numeratorString := strconv.Itoa(int(*numerator))
 				denominatorString := strconv.Itoa(int(*denominator))
 				return color.Green.Render(numeratorString + "/" + denominatorString)
 			}),
@@ -352,11 +352,4 @@ func setTerminalWidthVar() error {
 		terminalWidth = 5
 	}
 	return err
-}
-
-func getProgressNumerator(statistics decor.Statistics, numerator, denominator int64) int64 {
-	if statistics.Current == math.MaxInt64 {
-		return denominator
-	}
-	return numerator
 }

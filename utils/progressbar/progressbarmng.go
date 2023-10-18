@@ -205,7 +205,7 @@ func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
 	diff := prog.tasksProgressBar.total - prog.tasksProgressBar.tasksCount
-	// Handle large number of total tasks
+	// diff is int64, but we can increase the progress up to math.MaxInt in a time
 	for ; diff > math.MaxInt; diff -= math.MaxInt {
 		prog.tasksProgressBar.bar.IncrBy(math.MaxInt)
 	}

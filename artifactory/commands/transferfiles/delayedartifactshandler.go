@@ -129,9 +129,7 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	return nil
 }
 
-func countDelayFilesContent(filePaths []string) (int, int64, error) {
-	count := 0
-	var storage int64 = 0
+func countDelayFilesContent(filePaths []string) (count int, storage int64, err error) {
 	for _, file := range filePaths {
 		delayFile, err := readDelayFile(file)
 		if err != nil {
@@ -142,7 +140,7 @@ func countDelayFilesContent(filePaths []string) (int, int64, error) {
 			storage += delay.Size
 		}
 	}
-	return count, storage, nil
+	return
 }
 
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {

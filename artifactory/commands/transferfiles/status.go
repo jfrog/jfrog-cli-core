@@ -102,7 +102,7 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 		if stateManager.CurrentRepoPhase == api.Phase1 {
 			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 3)
 		} else {
-			addString(output, "🔢", "Phase", "Retrying transfer failures and deploy delayed files (3/3)", 3)
+			addString(output, "🔢", "Phase", "Retrying transfer failures and transfer delayed files (3/3)", 3)
 		}
 		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.Phase1Info.TransferredSizeBytes)+" / "+sizeToString(currentRepo.Phase1Info.TotalSizeBytes)+calcPercentageInt64(currentRepo.Phase1Info.TransferredSizeBytes, currentRepo.Phase1Info.TotalSizeBytes), 3)
 		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits)+calcPercentageInt64(currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits), 3)

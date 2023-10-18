@@ -1,34 +1,40 @@
 package progressbar
 
 import (
+	"sync"
+	"time"
+
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"sync"
-	"time"
+	"github.com/vbauerster/mpb/v7/decor"
 )
 
 const (
-	phase1HeadLine = "Phase 1: Transferring all files in the repository"
-	phase2HeadLine = "Phase 2: Transferring newly created and modified files"
+	phase1HeadLine          = "Phase 1: Transferring all files in the repository"
+	phase2HeadLine          = "Phase 2: Transferring newly created and modified files"
+	phase3HeadLine          = "Phase 3: Retrying transfer failures and transfer delayed files"
+	DelayedFilesContentNote = "Files to be transferred last, after all other files"
+	RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files"
 )
 
 type transferLabels struct {
-	Repositories            string
-	Files                   string
-	Storage                 string
-	Note                    string
-	RetryFailureContentNote string
-	TransferSpeed           string
-	EstimatedTime           string
-	TransferFailures        string
-	WorkingThreads          string
-	RunningFor              string
-	DiffStorage             string
-	DiffFiles               string
-	FailedStorage           string
-	FailedFiles             string
+	Repositories     string
+	Files            string
+	Storage          string
+	Note             string
+	TransferSpeed    string
+	EstimatedTime    string
+	VisitedFolders   string
+	DelayedFiles     string
+	TransferFailures string
+	WorkingThreads   string
+	RunningFor       string
+	DiffStorage      string
+	DiffFiles        string
+	FailedStorage    string
+	FailedFiles      string
 }
 
 func formatString(emoji, key string, windows bool) string {
@@ -43,13 +49,14 @@ func formatString(emoji, key string, windows bool) string {
 
 func initSProgressBarLabels(windows bool) transferLabels {
 	pbs := transferLabels{}
-	pbs.RetryFailureContentNote = "In Phase 3 and in subsequent executions, we'll retry transferring the failed files."
 	pbs.Repositories = formatString("📦", " Repositories", windows)
 	pbs.Files = formatString("📄", " Files", windows)
 	pbs.Storage = formatString("🗄 ", " Storage", windows)
 	pbs.Note = formatString(" 🟠", " Note: ", windows)
 	pbs.TransferSpeed = formatString(" ⚡", " Transfer speed: ", windows)
 	pbs.EstimatedTime = formatString(" ⌛", " Estimated time remaining: ", windows)
+	pbs.VisitedFolders = formatString(" 📁", " Visited folders: ", windows)
+	pbs.DelayedFiles = formatString(" ✋", " Delayed files: ", windows)
 	pbs.TransferFailures = formatString(" ❌", " Transfer failures: ", windows)
 	pbs.WorkingThreads = formatString(" 🧵", " Working threads: ", windows)
 	pbs.RunningFor = formatString(" 🏃🏼", " Running for: ", windows)
@@ -91,15 +98,15 @@ func (tpm *TransferProgressMng) StopGlobalProgressBars() {
 }
 
 func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
-	getVals := func() (transferredStorage, totalStorage, transferresFiles, totalFiles *int64, err error) {
-		err = tpm.stateMng.Action(func(state *state.TransferState) error {
+	getVals := func() (transferredStorage, totalStorage, transferredFiles, totalFiles *int64, err error) {
+		err = tpm.stateMng.Action(func(*state.TransferState) error {
 			transferredStorage = &tpm.stateMng.CurrentRepo.Phase1Info.TransferredSizeBytes
 			totalStorage = &tpm.stateMng.CurrentRepo.Phase1Info.TotalSizeBytes
-			transferresFiles = &tpm.stateMng.CurrentRepo.Phase1Info.TransferredUnits
+			transferredFiles = &tpm.stateMng.CurrentRepo.Phase1Info.TransferredUnits
 			totalFiles = &tpm.stateMng.CurrentRepo.Phase1Info.TotalUnits
 			return nil
 		})
-		return transferredStorage, totalStorage, transferresFiles, totalFiles, err
+		return transferredStorage, totalStorage, transferredFiles, totalFiles, err
 	}
 	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase1HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
@@ -130,7 +137,7 @@ func (tpm *TransferProgressMng) NewPhase1ProgressBar() *TasksWithHeadlineProg {
 
 func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 	getVals := func() (transferresStorage, totalStorage, transferredFiles, totalFiles *int64, err error) {
-		err = tpm.stateMng.Action(func(state *state.TransferState) error {
+		err = tpm.stateMng.Action(func(*state.TransferState) error {
 			transferresStorage = &tpm.stateMng.CurrentRepo.Phase2Info.TransferredSizeBytes
 			totalStorage = &tpm.stateMng.CurrentRepo.Phase2Info.TotalSizeBytes
 			transferredFiles = &tpm.stateMng.CurrentRepo.Phase2Info.TransferredUnits
@@ -168,7 +175,7 @@ func (tpm *TransferProgressMng) NewPhase2ProgressBar() *TasksWithHeadlineProg {
 
 func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 	getVals := func() (transferredStorage, totalStorage, transferredFiles, totalFiles *int64, err error) {
-		err = tpm.stateMng.Action(func(state *state.TransferState) error {
+		err = tpm.stateMng.Action(func(*state.TransferState) error {
 			transferredStorage = &tpm.stateMng.CurrentRepo.Phase3Info.TransferredSizeBytes
 			totalStorage = &tpm.stateMng.CurrentRepo.Phase3Info.TotalSizeBytes
 			transferredFiles = &tpm.stateMng.CurrentRepo.Phase3Info.TransferredUnits
@@ -177,7 +184,7 @@ func (tpm *TransferProgressMng) NewPhase3ProgressBar() *TasksWithHeadlineProg {
 		})
 		return transferredStorage, totalStorage, transferredFiles, totalFiles, err
 	}
-	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase2HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
+	pb := tpm.barMng.newDoubleHeadLineProgressBar(phase3HeadLine, tpm.transferLabels.Storage, tpm.transferLabels.Files, getVals)
 
 	tpm.wg.Add(1)
 	go func() {
@@ -236,8 +243,8 @@ func (tpm *TransferProgressMng) NewRepositoriesProgressBar() *TasksWithHeadlineP
 
 func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 	getVals := func() (transferredStorage, totalStorage, transferredFiles, totalFiles *int64, err error) {
-		err = tpm.stateMng.Action(func(state *state.TransferState) error {
-			transferredStorage = &tpm.stateMng.TransferRunStatus.OverallTransfer.TransferredSizeBytes
+		err = tpm.stateMng.Action(func(*state.TransferState) error {
+			transferredStorage = &tpm.stateMng.OverallTransfer.TransferredSizeBytes
 			totalStorage = &tpm.stateMng.OverallTransfer.TotalSizeBytes
 			transferredFiles = &tpm.stateMng.OverallTransfer.TransferredUnits
 			totalFiles = &tpm.stateMng.OverallTransfer.TotalUnits
@@ -268,14 +275,14 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 
 func (tpm *TransferProgressMng) NewWorkingThreadsProg() *TasksProgressBar {
 	getVal := func() (workingThreadsNum int, err error) {
-		err = tpm.stateMng.Action(func(state *state.TransferState) error {
+		err = tpm.stateMng.Action(func(*state.TransferState) error {
 			workingThreadsNum = tpm.stateMng.WorkingThreads
 			return nil
 		})
 		return workingThreadsNum, err
 	}
 
-	return tpm.barMng.newCounterProgressBar(getVal, tpm.transferLabels.WorkingThreads)
+	return tpm.barMng.newCounterProgressBar(getVal, tpm.transferLabels.WorkingThreads, nil)
 }
 
 func (tpm *TransferProgressMng) GetBarMng() *ProgressBarMng {
@@ -283,52 +290,68 @@ func (tpm *TransferProgressMng) GetBarMng() *ProgressBarMng {
 }
 
 func (tpm *TransferProgressMng) NewRunningTimeProgressBar() *TasksProgressBar {
-	pb := tpm.barMng.NewStringProgressBar(tpm.transferLabels.RunningFor, func() string {
+	return tpm.barMng.NewStringProgressBar(tpm.transferLabels.RunningFor, func() string {
 		runningTime, isRunning, err := state.GetRunningTime()
 		if err != nil || !isRunning {
 			runningTime = "Running time not available"
 		}
 		return color.Green.Render(runningTime)
 	})
-	return pb
 }
 
 func (tpm *TransferProgressMng) NewSpeedProgBar() *TasksProgressBar {
-	pb := tpm.barMng.NewStringProgressBar(tpm.transferLabels.TransferSpeed, func() string {
-		return color.Green.Render(tpm.stateMng.TimeEstimationManager.GetSpeedString())
+	return tpm.barMng.NewStringProgressBar(tpm.transferLabels.TransferSpeed, func() string {
+		return color.Green.Render(tpm.stateMng.GetSpeedString())
 	})
-	return pb
 }
 
 func (tpm *TransferProgressMng) NewTimeEstBar() *TasksProgressBar {
-	pb := tpm.barMng.NewStringProgressBar(tpm.transferLabels.EstimatedTime, func() string {
-		return color.Green.Render(tpm.stateMng.TimeEstimationManager.GetEstimatedRemainingTimeString())
+	return tpm.barMng.NewStringProgressBar(tpm.transferLabels.EstimatedTime, func() string {
+		return color.Green.Render(tpm.stateMng.GetEstimatedRemainingTimeString())
 	})
-	return pb
+}
+
+func (tpm *TransferProgressMng) NewVisitedFoldersBar() *TasksProgressBar {
+	getVals := func() (int, error) {
+		if tpm.ignoreState {
+			return 0, nil
+		}
+		return int(tpm.stateMng.VisitedFolders), nil
+	}
+	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.VisitedFolders, nil)
+}
+
+func (tpm *TransferProgressMng) NewDelayedBar() *TasksProgressBar {
+	getVals := func() (int, error) {
+		if tpm.ignoreState {
+			return 0, nil
+		}
+		return int(tpm.stateMng.DelayedFiles), nil
+	}
+	counterDescription := func() string { return DelayedFilesContentNote }
+	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.DelayedFiles, tpm.createCounterDescription(counterDescription))
 }
 
 func (tpm *TransferProgressMng) NewErrorBar() *TasksProgressBar {
-	getVals := func() (errnums int, err error) {
-		errnums = 0
-		if !tpm.ignoreState {
-			errnums = int(tpm.stateMng.TransferFailures)
+	getVals := func() (transferFailures int, err error) {
+		if tpm.ignoreState {
+			return 0, nil
 		}
-		return errnums, err
+		return int(tpm.stateMng.TransferFailures), nil
 	}
-	pb := tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.TransferFailures)
-	return pb
+	counterDescription := func() string {
+		if tpm.ignoreState || tpm.stateMng.TransferFailures == 0 {
+			return ""
+		}
+		return RetryFailureContentNote
+	}
+	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.TransferFailures, tpm.createCounterDescription(counterDescription))
 }
 
-func (tpm *TransferProgressMng) NewErrorNote() *TasksProgressBar {
-	getString := func() (s string) {
-		s = ""
-		if tpm.stateMng.TransferFailures > 0 {
-			s = tpm.transferLabels.RetryFailureContentNote
-		}
-		return s
-	}
-	pb := tpm.barMng.NewStringProgressBar("", getString)
-	return pb
+func (tpm *TransferProgressMng) createCounterDescription(getVal func() (value string)) decor.Decorator {
+	return decor.Any(func(decor.Statistics) string {
+		return color.Gray.Render(getVal())
+	})
 }
 
 func (tpm *TransferProgressMng) WaitForPhasesGoRoutinesToFinish() {

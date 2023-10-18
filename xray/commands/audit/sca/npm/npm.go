@@ -24,7 +24,7 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 	if err != nil {
 		return
 	}
-	packageInfo, err := biutils.ReadPackageInfoFromPackageJson(currentDir, npmVersion)
+	packageInfo, err := biutils.ReadPackageInfoFromPackageJsonIfExist(currentDir, npmVersion)
 	if err != nil {
 		return
 	}

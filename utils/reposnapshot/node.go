@@ -52,20 +52,26 @@ func (node *Node) action(action ActionOnNodeFunc) error {
 
 // Convert node to wrapper in order to save it to file.
 func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
+	var children []*Node
 	err = node.action(func(node *Node) error {
 		wrapper = &NodeExportWrapper{
 			Name:      node.name,
 			Completed: node.NodeStatus == Completed,
 		}
-		for i := range node.children {
-			converted, err := node.children[i].convertToWrapper()
-			if err != nil {
-				return err
-			}
-			wrapper.Children = append(wrapper.Children, converted)
-		}
+		children = node.children
 		return nil
 	})
+	if err != nil {
+		return
+	}
+
+	for i := range children {
+		converted, err := children[i].convertToWrapper()
+		if err != nil {
+			return nil, err
+		}
+		wrapper.Children = append(wrapper.Children, converted)
+	}
 	return
 }
 
@@ -107,17 +113,19 @@ func (node *Node) getActualPath() (actualPath string, err error) {
 }
 
 // Sets node as completed, clear its contents, notifies parent to check completion.
-func (node *Node) setCompleted() error {
-	return node.action(func(node *Node) error {
+func (node *Node) setCompleted() (err error) {
+	var parent *Node
+	err = node.action(func(node *Node) error {
 		node.NodeStatus = Completed
 		node.children = nil
-		parent := node.parent
+		parent = node.parent
 		node.parent = nil
-		if parent != nil {
-			return parent.CheckCompleted()
-		}
 		return nil
 	})
+	if err == nil && parent != nil {
+		return parent.CheckCompleted()
+	}
+	return
 }
 
 // Check if node completed - if done exploring, done handling files, children are completed.

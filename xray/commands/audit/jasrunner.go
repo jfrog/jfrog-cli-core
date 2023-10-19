@@ -13,7 +13,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directDependencies []string,
+func runJasScannersAndSetResults(scanResults *utils.Results, directDependencies []string,
 	serverDetails *config.ServerDetails, workingDirs []string, progress io.ProgressMgr, multiScanId string, thirdPartyApplicabilityScan bool) (err error) {
 	if serverDetails == nil || len(serverDetails.Url) == 0 {
 		log.Warn("To include 'Advanced Security' scan as part of the audit output, please run the 'jf c add' command before running this command.")
@@ -30,7 +30,11 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if progress != nil {
 		progress.SetHeadlineMsg("Running applicability scanning")
 	}
-	scanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.XrayResults, directDependencies, scanResults.ScannedTechnologies, scanner, thirdPartyApplicabilityScan)
+	// for _, scaResult := range scanResults.ScaResults {
+	// 	// Do ny working dir, collect techs to save scanning
+	// 	scanResults.ExtendedScanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.GetScaScansXrayResults(), directDependencies, scanResults.GetScaScannedTechnologies(), scanner, thirdPartyApplicabilityScan)
+	// }
+	scanResults.ExtendedScanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.GetScaScansXrayResults(), directDependencies, scanResults.GetScaScannedTechnologies(), scanner, thirdPartyApplicabilityScan)
 	if err != nil {
 		return
 	}
@@ -41,20 +45,20 @@ func runJasScannersAndSetResults(scanResults *utils.ExtendedScanResults, directD
 	if progress != nil {
 		progress.SetHeadlineMsg("Running secrets scanning")
 	}
-	scanResults.SecretsScanResults, err = secrets.RunSecretsScan(scanner)
+	scanResults.ExtendedScanResults.SecretsScanResults, err = secrets.RunSecretsScan(scanner)
 	if err != nil {
 		return
 	}
 	if progress != nil {
 		progress.SetHeadlineMsg("Running IaC scanning")
 	}
-	scanResults.IacScanResults, err = iac.RunIacScan(scanner)
+	scanResults.ExtendedScanResults.IacScanResults, err = iac.RunIacScan(scanner)
 	if err != nil {
 		return
 	}
 	if progress != nil {
 		progress.SetHeadlineMsg("Running SAST scanning")
 	}
-	scanResults.SastScanResults, err = sast.RunSastScan(scanner)
+	scanResults.ExtendedScanResults.SastScanResults, err = sast.RunSastScan(scanner)
 	return
 }

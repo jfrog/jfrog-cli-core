@@ -2,11 +2,15 @@ package coreutils
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+
+	"golang.org/x/exp/maps"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -110,6 +114,7 @@ var technologiesData = map[Technology]TechData{
 	Poetry: {
 		packageType:                Pypi,
 		indicators:                 []string{"pyproject.toml", "poetry.lock"},
+		packageDescriptors:			[]string{"pyproject.toml"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
 		applicabilityScannable:     true,
@@ -179,7 +184,11 @@ func DetectedTechnologiesList() (technologies []string) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	detectedTechnologies, err := DetectTechnologies(wd, false, false)
+	return DetectedTechnologiesListInPath(wd, false)
+}
+
+func DetectedTechnologiesListInPath(path string, recursive bool) (technologies []string) {
+	detectedTechnologies, err := DetectTechnologies(path, false, recursive)
 	if err != nil {
 		return
 	}
@@ -191,9 +200,108 @@ func DetectedTechnologiesList() (technologies []string) {
 	return techStringsList
 }
 
-func DetectTechnologiesDescriptors(path string, requestedTechnologies []Technology) (t map[Technology][]string) {
+// If recursive is true, the search will not be limited to files in the root path.
+// If requestedTechs is empty, all technologies will be checked.
+// If excludePathPattern is not empty, files/directories that match the wildcard pattern will be excluded from the search.
+func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs []string, excludePathPattern string) (technologiesDetected map[Technology]map[string][]string) {
+	filesList, err := fspatterns.ListFiles(path, recursive, false, true, excludePathPattern)
+	if err != nil {
+		return
+	}
+	technologiesDetected = mapIndicatorsToTechnologies(mapWorkingDirectoriesToIndicators(filesList), ToTechnologies(requestedTechs))
+	log.Debug(fmt.Sprintf("Detected %d technologies at %s: %s.", len(technologiesDetected), path, maps.Keys(technologiesDetected)))
 	return 
 }
+
+func mapWorkingDirectoriesToIndicators(files []string) (workingDirectoryToIndicators map[string][]string) {
+	workingDirectoryToIndicators = make(map[string][]string)
+	for _, path := range files {
+		directory := filepath.Dir(path)
+		for _, techData := range technologiesData {
+			for _, indicator := range techData.indicators {
+				if strings.HasSuffix(path, indicator) {
+					workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
+				}
+			}
+			if isDescriptor(path, techData) {
+				workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
+			}
+		}
+	}
+	log.Debug(fmt.Sprintf("mapped indicators:\n%s", workingDirectoryToIndicators))
+	return 
+}
+
+func isDescriptor(path string, techData TechData) bool {
+	for _, descriptor := range techData.packageDescriptors {
+		if strings.HasSuffix(path, descriptor) {
+			return true
+		}
+	}
+	return false
+}
+
+func mapIndicatorsToTechnologies(workingDirectoryToIndicators map[string][]string, requestedTechs []Technology) (technologiesDetected map[Technology]map[string][]string) {
+
+	technologies := requestedTechs
+	if len(technologies) == 0 {
+		technologies = GetAllTechnologiesList()
+	}
+	technologiesDetected = make(map[Technology]map[string][]string)
+	
+	for _, tech := range technologies {
+		techWorkingDirs := make(map[string][]string)
+		for wd, indicators := range workingDirectoryToIndicators {
+		
+			
+			// What to do about no descriptors found and only indicators?
+			// Implement exclude
+			// Collect only descriptors
+			
+			// Map tech for indicators/descriptors to tech
+			for _, indicator := range indicators {
+				// Don't allow working directory if sub directory already exists as key
+				if isDescriptor(indicator, technologiesData[tech]) && !hasSubDirKey(wd, techWorkingDirs) {
+					techWorkingDirs[wd] = append(techWorkingDirs[wd], indicator)
+				}
+			}
+		}
+		if len(techWorkingDirs) > 0 {
+			// Found indicators/descriptors for technology, add to detected.
+			technologiesDetected[tech] = techWorkingDirs
+		}
+	}
+
+	for _, tech := range requestedTechs {
+		if _, exist := technologiesDetected[tech]; !exist {
+			// Requested (forced with flag) technology and not found any indicators/descriptors in detection, add as detected.
+			technologiesDetected[tech] = map[string][]string{}
+		}
+	}
+	return
+}
+
+func hasSubDirKey(path string, workingDirectoryToIndicators map[string][]string) bool {
+	for wd := range workingDirectoryToIndicators {
+		if strings.HasPrefix(path, wd) {
+			return true
+		}
+	}
+	return false
+}
+
+// func detectTechnologiesDescriptorsByFilePaths(paths []string) (technologiesToDescriptors map[Technology][]string) {
+// 	detected := make(map[Technology][]string)
+// 	for _, path := range paths {
+// 		for techName, techData := range technologiesData {
+// 			for _, descriptor := range techData.packageDescriptors {
+// 				if strings.HasSuffix(path, descriptor) {
+// 					detected[techName] = append(detected[techName], path)
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
 // 'isCiSetup' will limit the search of possible techs to Maven, Gradle, and npm.
@@ -209,6 +317,7 @@ func DetectTechnologies(path string, isCiSetup, recursive bool) (map[Technology]
 	if err != nil {
 		return nil, err
 	}
+	log.Info(fmt.Sprintf("Scanning %d file(s):%s", len(filesList), filesList))
 	detectedTechnologies := detectTechnologiesByFilePaths(filesList, isCiSetup)
 	return detectedTechnologies, nil
 }
@@ -244,6 +353,24 @@ func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map
 	}
 	return detected
 }
+
+// func t(path string, techData TechData) (exclude bool, detected bool) {
+// 	// If the project contains a file/directory with a name that ends with an excluded suffix, then this technology is excluded.
+// 	for _, excludeFile := range techData.exclude {
+// 		if strings.HasSuffix(path, excludeFile) {
+// 			return true, false
+// 		}
+// 	}
+// 	// If this technology was already excluded, there's no need to look for indicator files/directories.
+// 	if _, exist := exclude[techName]; !exist {
+// 		// If the project contains a file/directory with a name that ends with the indicator suffix, then the project probably uses this technology.
+// 		for _, indicator := range techData.indicators {
+// 			if strings.HasSuffix(path, indicator) {
+// 				return false, true
+// 			}
+// 		}
+// 	}
+// }
 
 // DetectedTechnologiesToSlice returns a string slice that includes all the names of the detected technologies.
 func DetectedTechnologiesToSlice(detected map[Technology]bool) []string {

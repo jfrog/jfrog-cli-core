@@ -241,9 +241,10 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults, XrayVersion: xrayVersion}
 
-	if err = xrutils.NewResultsWriter(extendedScanResults).
+	scanResults := &xrutils.Results{ScaResults: []xrutils.ScaScanResult{{XrayResults: flatResults}}, XrayVersion: xrayVersion}
+
+	if err = xrutils.NewResultsWriter(scanResults).
 		SetOutputFormat(scanCmd.outputFormat).
 		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
 		SetIncludeLicenses(scanCmd.includeLicenses).

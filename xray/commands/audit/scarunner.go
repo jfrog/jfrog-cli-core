@@ -42,36 +42,58 @@ func scaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
 		return
 	}
-	// Make sure to return to the original working directory, executeScaScan may change it.
 	defer func() {
+		// Make sure to return to the original working directory, executeScaScan may change it
 		err = errors.Join(err, os.Chdir(currentWorkingDir))
 	}()
+
+	printScansInformation(scans)
 	for _, scan := range scans {
-		// Run the scan.
-		log.Info("Running SCA scan for vulnerable dependencies in", scan.WorkingDirectory, "directory...")
+		// Run the scan
+		log.Info("Running SCA scan for", scan.Technology ,"vulnerable dependencies in", scan.WorkingDirectory, "directory...")
 		if wdScanErr := executeScaScan(serverDetails, params, &scan); wdScanErr != nil {
-			err = errors.Join(err, fmt.Errorf("audit command in '%s' failed:\n%s\n", scan.WorkingDirectory, wdScanErr.Error()))
+			err = errors.Join(err, fmt.Errorf("audit command in '%s' failed:\n%s", scan.WorkingDirectory, wdScanErr.Error()))
 			continue
 		}
-		if len(scan.XrayResults) > 0 {
-			// Add the scan results to the results.
-			results.ScaResults = append(results.ScaResults, scan)
-		}
+		// Add the scan to the results
+		results.ScaResults = append(results.ScaResults, scan)
 	}
 	return
 }
 
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []xrayutils.ScaScanResult) {
-	directories := getDirectoriesToScan(currentWorkingDir, params)
-	for _, wd := range directories {
-		// technologiesToDescriptors := coreutils.DetectTechnologiesDescriptors(wd, getTechnologiesToDetect(params))
-
-		scansToPreform = append(scansToPreform, xrayutils.ScaScanResult{WorkingDirectory: wd})
+	isRecursive := true
+	excludePattern := ""
+	
+	for _, requestedDirectory := range getRequestedDirectoriesToScan(currentWorkingDir, params) {
+		// Detect descriptors from files
+		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, isRecursive, params.Technologies(), excludePattern)
+		// Create scans to preform
+		for tech, workingDirs := range techToWorkingDirs {
+			if tech == coreutils.Dotnet {
+				// We detect Dotnet and Nuget the same way, if one detected so does the other.
+				// We don't need to scan for both and get duplicate results.
+				continue
+			}
+			if len(workingDirs) == 0 {
+				// Requested technology (from params) descriptors was not found, scan only requested directory for this technology.
+				scansToPreform = append(scansToPreform, xrayutils.ScaScanResult{WorkingDirectory: requestedDirectory, Technology: tech})
+			}
+			for workingDir, descriptors := range workingDirs {
+				// Add scan for each detected working directory.
+				scansToPreform = append(scansToPreform, xrayutils.ScaScanResult{WorkingDirectory: workingDir, Technology: tech, Descriptors: descriptors})
+			}
+		}
 	}
 	return
 }
 
-func getDirectoriesToScan(currentWorkingDir string, params *AuditParams) []string {
+func printScansInformation(scans []xrayutils.ScaScanResult) {
+	scansJson, _ := json.MarshalIndent(scans, "", "  ")
+	log.Info(fmt.Sprintf("Preforming %d SCA scans:\n%s", len(scans), string(scansJson)))
+}
+
+func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams) []string {
 	workingDirs := datastructures.MakeSet[string]()
 	for _, wd := range params.workingDirs {
 		workingDirs.Add(wd)
@@ -85,16 +107,13 @@ func getDirectoriesToScan(currentWorkingDir string, params *AuditParams) []strin
 // Preform the SCA scan for the given scan information.
 // This method may change the working directory to the scan's working directory.
 func executeScaScan(serverDetails *config.ServerDetails, params *AuditParams, scan *xrayutils.ScaScanResult) (err error) {
-	if scan.Technology == coreutils.Dotnet {
-		return
-	}
 	// Get the dependency tree for the technology in the working directory.
 	if err = os.Chdir(scan.WorkingDirectory); err != nil {
 		return
 	}
 	flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, scan.Technology)
 	if techErr != nil {
-		return fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", scan.Technology, techErr.Error())
+		return fmt.Errorf("failed while building '%s' dependency tree:\n%s", scan.Technology, techErr.Error())
 	}
 	if flattenTree == nil || len(flattenTree.Nodes) == 0 {
 		return errors.New("no dependencies were found. Please try to build your project and re-run the audit command")
@@ -102,9 +121,9 @@ func executeScaScan(serverDetails *config.ServerDetails, params *AuditParams, sc
 	// Scan the dependency tree.
 	scanResults, xrayErr := runScaWithTech(scan.Technology, params, serverDetails, flattenTree, fullDependencyTrees)
 	if xrayErr != nil {
-		err = errors.Join(err, )
-		return fmt.Errorf("'%s' Xray dependency tree scan request failed:\n%s\n", scan.Technology, xrayErr.Error())
+		return fmt.Errorf("'%s' Xray dependency tree scan request failed:\n%s", scan.Technology, xrayErr.Error())
 	}
+	scan.IsMultipleRootProject = clientutils.Pointer(len(fullDependencyTrees) > 1)
 	addThirdPartyDependenciesToParams(params, scan.Technology, flattenTree, fullDependencyTrees)
 	scan.XrayResults = append(scan.XrayResults, scanResults...)
 	return
@@ -125,43 +144,43 @@ func runScaWithTech(tech coreutils.Technology, params *AuditParams, serverDetail
 	return
 }
 
-func runScaScanInWorkingDir(params *AuditParams, results *xrayutils.Results, workingDir string) (err error) {
-	// Prepare the working directory information for the scan.
-	technologies := coreutils.DetectTechnologiesDescriptors(workingDir, getTechnologiesToDetect(params))
-	if len(technologies) == 0 {
-		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
-		return
-	}
-	serverDetails, err := params.ServerDetails()
-	if err != nil {
-		return
-	}
-	// Run the scan for each technology.
-	for tech, detectedDescriptors := range technologies {
-		if tech == coreutils.Dotnet {
-			continue
-		}
-		// Get the dependency tree for the technology.
-		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, tech)
-		if techErr != nil {
-			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
-			continue
-		}
-		if flattenTree == nil || len(flattenTree.Nodes) == 0 {
-			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
-			continue
-		}
-		// Scan the dependency tree.
-		scanResults, xrayErr := runScaOnTech(tech, params, serverDetails, flattenTree, fullDependencyTrees, results)
-		if xrayErr != nil {
-			err = errors.Join(err, fmt.Errorf("'%s' Xray dependency tree scan request failed:\n%s\n", tech, xrayErr.Error()))
-			continue
-		}
-		addThirdPartyDependenciesToParams(params, tech, flattenTree, fullDependencyTrees)
-		results.ScaResults = append(results.ScaResults, xrayutils.ScaScanResult{Technology: tech, XrayResults: scanResults, Descriptors: detectedDescriptors})
-	}
-	return
-}
+// func runScaScanInWorkingDir(params *AuditParams, results *xrayutils.Results, workingDir string) (err error) {
+// 	// Prepare the working directory information for the scan.
+// 	technologies := coreutils.DetectTechnologiesDescriptors(workingDir, getTechnologiesToDetect(params), true)
+// 	if len(technologies) == 0 {
+// 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
+// 		return
+// 	}
+// 	serverDetails, err := params.ServerDetails()
+// 	if err != nil {
+// 		return
+// 	}
+// 	// Run the scan for each technology.
+// 	for tech, detectedDescriptors := range technologies {
+// 		if tech == coreutils.Dotnet {
+// 			continue
+// 		}
+// 		// Get the dependency tree for the technology.
+// 		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, tech)
+// 		if techErr != nil {
+// 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
+// 			continue
+// 		}
+// 		if flattenTree == nil || len(flattenTree.Nodes) == 0 {
+// 			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
+// 			continue
+// 		}
+// 		// Scan the dependency tree.
+// 		scanResults, xrayErr := runScaOnTech(tech, params, serverDetails, flattenTree, fullDependencyTrees, results)
+// 		if xrayErr != nil {
+// 			err = errors.Join(err, fmt.Errorf("'%s' Xray dependency tree scan request failed:\n%s\n", tech, xrayErr.Error()))
+// 			continue
+// 		}
+// 		addThirdPartyDependenciesToParams(params, tech, flattenTree, fullDependencyTrees)
+// 		results.ScaResults = append(results.ScaResults, xrayutils.ScaScanResult{Technology: tech, XrayResults: scanResults, Descriptors: detectedDescriptors})
+// 	}
+// 	return
+// }
 
 func getTechnologiesToDetect(params *AuditParams) (technologies []coreutils.Technology) {
 	if len(params.Technologies()) != 0 {
@@ -285,11 +304,11 @@ func runScaScanOnWorkingDir(params *AuditParams, results *xrayutils.Results, wor
 		}
 		params.AppendDependenciesForApplicabilityScan(dependenciesForApplicabilityScan)
 
-		results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
-		if !results.IsMultipleRootProject {
-			results.IsMultipleRootProject = len(fullDependencyTrees) > 1
-		}
-		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
+		// results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
+		// if !results.IsMultipleRootProject {
+		// 	results.IsMultipleRootProject = len(fullDependencyTrees) > 1
+		// }
+		// results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
 	}
 	return
 }

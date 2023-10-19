@@ -369,6 +369,11 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 		if err := w.writer.Close(); err != nil {
 			return err
 		}
+		defer func() {
+			// Reset writer and counter.
+			w.recordCount = 0
+			w.writer = nil
+		}()
 		if w.writer.GetFilePath() != "" {
 			fullPath, err := getUniqueErrorOrDelayFilePath(w.dirPath, func() string {
 				return w.filePrefix
@@ -384,9 +389,6 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 			w.fileIndex++
 		}
 	}
-	// Reset writer and counter.
-	w.recordCount = 0
-	w.writer = nil
 	return nil
 }
 

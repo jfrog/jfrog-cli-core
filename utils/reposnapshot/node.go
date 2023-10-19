@@ -241,30 +241,39 @@ func (node *Node) RestartExploring() error {
 // For a structure such as repo->dir1->dir2->dir3
 // The initial call will be to the root, and for an input of ({"dir1","dir2"}), and the final output will be a pointer to dir2.
 func (node *Node) findMatchingNode(childrenDirs []string) (matchingNode *Node, err error) {
+	// The node was found in the cache. Let's return it.
+	if len(childrenDirs) == 0 {
+		matchingNode = node
+		return
+	}
+
+	// Check if any of the current node's children are parents of the current node.
+	var children []*Node
 	err = node.action(func(node *Node) error {
-		// The node was found in the cache. Let's return it.
-		if len(childrenDirs) == 0 {
-			matchingNode = node
-			return nil
-		}
-
-		// Check if any of the current node's children are parents of the current node.
-		for i := range node.children {
-			if node.children[i].name == childrenDirs[0] {
-				matchingNode, err = node.children[i].findMatchingNode(childrenDirs[1:])
-				return err
-			}
-		}
-
-		// None of the current node's children are parents of the current node.
-		// This means we need to start creating the searched node parents.
-		newNode := CreateNewNode(childrenDirs[0], node)
-		newNode.parent = node
-		node.children = append(node.children, newNode)
-		matchingNode, err = newNode.findMatchingNode(childrenDirs[1:])
-		return err
+		children = node.children
+		return nil
 	})
-	return
+	if err != nil {
+		return
+	}
+	for i := range children {
+		if children[i].name == childrenDirs[0] {
+			matchingNode, err = children[i].findMatchingNode(childrenDirs[1:])
+			return
+		}
+	}
+
+	// None of the current node's children are parents of the current node.
+	// This means we need to start creating the searched node parents.
+	newNode := CreateNewNode(childrenDirs[0], node)
+	err = node.action(func(node *Node) error {
+		node.children = append(node.children, newNode)
+		return nil
+	})
+	if err != nil {
+		return
+	}
+	return newNode.findMatchingNode(childrenDirs[1:])
 }
 
 func CreateNewNode(dirName string, parent *Node) *Node {

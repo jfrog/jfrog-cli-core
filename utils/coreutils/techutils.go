@@ -218,18 +218,24 @@ func mapWorkingDirectoriesToIndicators(files []string) (workingDirectoryToIndica
 	for _, path := range files {
 		directory := filepath.Dir(path)
 		for _, techData := range technologiesData {
-			for _, indicator := range techData.indicators {
-				if strings.HasSuffix(path, indicator) {
-					workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
-				}
-			}
 			if isDescriptor(path, techData) {
+				workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
+			} else if isIndicator(path, techData) {
 				workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
 			}
 		}
 	}
 	log.Debug(fmt.Sprintf("mapped indicators:\n%s", workingDirectoryToIndicators))
 	return 
+}
+
+func isIndicator(path string, techData TechData) bool {
+	for _, indicator := range techData.indicators {
+		if strings.HasSuffix(path, indicator) {
+			return true
+		}
+	}
+	return false
 }
 
 func isDescriptor(path string, techData TechData) bool {
@@ -251,22 +257,27 @@ func mapIndicatorsToTechnologies(workingDirectoryToIndicators map[string][]strin
 	
 	for _, tech := range technologies {
 		techWorkingDirs := make(map[string][]string)
+		foundIndicator := false
 		for wd, indicators := range workingDirectoryToIndicators {
 		
 			
 			// What to do about no descriptors found and only indicators?
 			// Implement exclude
-			// Collect only descriptors
+			// Collect only descriptors, indicators adds techWorkingDirs
 			
 			// Map tech for indicators/descriptors to tech
-			for _, indicator := range indicators {
-				// Don't allow working directory if sub directory already exists as key
-				if isDescriptor(indicator, technologiesData[tech]) && !hasSubDirKey(wd, techWorkingDirs) {
-					techWorkingDirs[wd] = append(techWorkingDirs[wd], indicator)
+			for _, path := range indicators {
+				if isDescriptor(path, technologiesData[tech]) {
+					techWorkingDirs[wd] = append(techWorkingDirs[wd], path)
 				}
+				//  else if isIndicator(path, technologiesData[tech]) {
+				// 	foundIndicator = true
+				// }
 			}
 		}
-		if len(techWorkingDirs) > 0 {
+		// Don't allow working directory if sub directory already exists as key for the same technology
+		techWorkingDirs = cleanSubDirectories(techWorkingDirs)
+		if foundIndicator || len(techWorkingDirs) > 0 {
 			// Found indicators/descriptors for technology, add to detected.
 			technologiesDetected[tech] = techWorkingDirs
 		}
@@ -281,9 +292,19 @@ func mapIndicatorsToTechnologies(workingDirectoryToIndicators map[string][]strin
 	return
 }
 
-func hasSubDirKey(path string, workingDirectoryToIndicators map[string][]string) bool {
+func cleanSubDirectories(workingDirectoryToIndicators map[string][]string) (result map[string][]string) {
+	result = make(map[string][]string)
+	for wd, indicators := range workingDirectoryToIndicators {
+		if !hasSubDirKey(wd, workingDirectoryToIndicators) {
+			result[wd] = indicators
+		}
+	}
+	return
+}
+
+func hasSubDirKey(dir string, workingDirectoryToIndicators map[string][]string) bool {
 	for wd := range workingDirectoryToIndicators {
-		if strings.HasPrefix(path, wd) {
+		if dir != wd && strings.HasPrefix(dir, wd) {
 			return true
 		}
 	}

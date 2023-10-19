@@ -20,7 +20,7 @@ func BuildDependencyTree() (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps [
 		return
 	}
 
-	packageInfo, err := biUtils.ReadPackageInfoFromPackageJson(currentDir, nil)
+	packageInfo, err := biUtils.ReadPackageInfoFromPackageJsonIfExists(currentDir, nil)
 	if errorutils.CheckError(err) != nil {
 		return
 	}

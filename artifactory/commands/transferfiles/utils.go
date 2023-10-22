@@ -374,7 +374,10 @@ func interruptIfRequested(stopSignal chan os.Signal) error {
 		return err
 	}
 	if exist {
-		stopSignal <- os.Interrupt
+		select {
+		case stopSignal <- os.Interrupt:
+		default:
+		}
 	}
 	return nil
 }

@@ -40,7 +40,8 @@ type transferDelayAction func(phase phaseBase, addedDelayFiles []string) error
 
 // Transfer files using the 'producer-consumer' mechanism and apply a delay action.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType, delayAction transferDelayAction) error {
-	ftm.pcDetails = newProducerConsumerWrapper()
+	// Set the producer-consumer value into the referenced value. This allow the Graceful Stop mechanism to access ftm.pcDetails when needed to stop the transfer.
+	*ftm.pcDetails = newProducerConsumerWrapper()
 	return ftm.doTransfer(ftm.pcDetails, transferAction, delayAction)
 }
 
@@ -203,14 +204,14 @@ type producerConsumerWrapper struct {
 	errorsQueue *clientUtils.ErrorsQueue
 }
 
-func newProducerConsumerWrapper() *producerConsumerWrapper {
+func newProducerConsumerWrapper() producerConsumerWrapper {
 	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
 	chunkUploaderProducerConsumer.SetFinishedNotification(true)
 	chunkBuilderProducerConsumer.SetFinishedNotification(true)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
-	return &producerConsumerWrapper{
+	return producerConsumerWrapper{
 		chunkUploaderProducerConsumer: chunkUploaderProducerConsumer,
 		chunkBuilderProducerConsumer:  chunkBuilderProducerConsumer,
 		errorsQueue:                   errorsQueue,

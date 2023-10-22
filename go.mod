@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.4.8
-	github.com/jfrog/build-info-go v1.9.13
+	github.com/jfrog/build-info-go v1.9.14
 	github.com/jfrog/gofrog v1.3.1
 	github.com/jfrog/jfrog-apps-config v1.0.1
 	github.com/jfrog/jfrog-client-go v1.34.3
@@ -101,4 +101,4 @@ require (
 
 // replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20231003120621-90e9d7ea05e9
 
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go dev
+// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20231019085746-e1b192457664

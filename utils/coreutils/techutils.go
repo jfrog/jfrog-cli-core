@@ -394,24 +394,6 @@ func detectTechnologiesByFilePaths(paths []string, isCiSetup bool) (detected map
 	return detected
 }
 
-// func t(path string, techData TechData) (exclude bool, detected bool) {
-// 	// If the project contains a file/directory with a name that ends with an excluded suffix, then this technology is excluded.
-// 	for _, excludeFile := range techData.exclude {
-// 		if strings.HasSuffix(path, excludeFile) {
-// 			return true, false
-// 		}
-// 	}
-// 	// If this technology was already excluded, there's no need to look for indicator files/directories.
-// 	if _, exist := exclude[techName]; !exist {
-// 		// If the project contains a file/directory with a name that ends with the indicator suffix, then the project probably uses this technology.
-// 		for _, indicator := range techData.indicators {
-// 			if strings.HasSuffix(path, indicator) {
-// 				return false, true
-// 			}
-// 		}
-// 	}
-// }
-
 // DetectedTechnologiesToSlice returns a string slice that includes all the names of the detected technologies.
 func DetectedTechnologiesToSlice(detected map[Technology]bool) []string {
 	keys := make([]string, 0, len(detected))

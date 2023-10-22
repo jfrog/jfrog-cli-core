@@ -63,11 +63,9 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 
 // Calculate the scans to preform
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
-	isRecursive := true
-	excludePattern := ""
 	for _, requestedDirectory := range getRequestedDirectoriesToScan(currentWorkingDir, params) {
 		// Detect descriptors and technologies in the requested directory.
-		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, isRecursive, params.Technologies(), getRequestedDescriptors(params), excludePattern)
+		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, params.Recursively(), params.Technologies(), getRequestedDescriptors(params), params.ExcludePattern())
 		// Create scans to preform
 		for tech, workingDirs := range techToWorkingDirs {
 			if tech == coreutils.Dotnet {

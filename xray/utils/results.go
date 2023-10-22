@@ -65,12 +65,11 @@ func (r *Results) IsIssuesFound() bool {
 }
 
 type ScaScanResult struct {
-	Technology       coreutils.Technology    `json:"Technology"`
-	WorkingDirectory string                  `json:"WorkingDirectory"`
-	Descriptors      []string                `json:"Descriptors,omitempty"`
-	XrayResults      []services.ScanResponse `json:"XrayResults,omitempty"`
-
-	IsMultipleRootProject *bool `json:"IsMultipleRootProject,omitempty"`
+	Technology            coreutils.Technology    `json:"Technology"`
+	WorkingDirectory      string                  `json:"WorkingDirectory"`
+	XrayResults           []services.ScanResponse `json:"XrayResults,omitempty"`
+	Descriptors           []string                `json:"Descriptors,omitempty"`
+	IsMultipleRootProject *bool                   `json:"IsMultipleRootProject,omitempty"`
 }
 
 func (s ScaScanResult) HasInformation() bool {

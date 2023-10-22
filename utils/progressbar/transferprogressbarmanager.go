@@ -23,7 +23,6 @@ type transferLabels struct {
 	Repositories     string
 	Files            string
 	Storage          string
-	Note             string
 	TransferSpeed    string
 	EstimatedTime    string
 	VisitedFolders   string
@@ -31,10 +30,6 @@ type transferLabels struct {
 	TransferFailures string
 	WorkingThreads   string
 	RunningFor       string
-	DiffStorage      string
-	DiffFiles        string
-	FailedStorage    string
-	FailedFiles      string
 }
 
 func formatString(emoji, key string, windows bool) string {
@@ -47,23 +42,18 @@ func formatString(emoji, key string, windows bool) string {
 	return key
 }
 
-func initSProgressBarLabels(windows bool) transferLabels {
+func initProgressBarLabels(windows bool) transferLabels {
 	pbs := transferLabels{}
 	pbs.Repositories = formatString("📦", " Repositories", windows)
 	pbs.Files = formatString("📄", " Files", windows)
 	pbs.Storage = formatString("🗄 ", " Storage", windows)
-	pbs.Note = formatString(" 🟠", " Note: ", windows)
 	pbs.TransferSpeed = formatString(" ⚡", " Transfer speed: ", windows)
 	pbs.EstimatedTime = formatString(" ⌛", " Estimated time remaining: ", windows)
-	pbs.VisitedFolders = formatString(" 📁", " Visited folders: ", windows)
-	pbs.DelayedFiles = formatString(" ✋", " Delayed files: ", windows)
 	pbs.TransferFailures = formatString(" ❌", " Transfer failures: ", windows)
 	pbs.WorkingThreads = formatString(" 🧵", " Working threads: ", windows)
 	pbs.RunningFor = formatString(" 🏃🏼", " Running for: ", windows)
-	pbs.DiffStorage = formatString("🗄 ", " Diff Storage", windows)
-	pbs.DiffFiles = formatString("📄", " Diff Files", windows)
-	pbs.FailedFiles = formatString("📄", " Failed Files", windows)
-	pbs.FailedStorage = formatString("🗄 ", " Failed Storage", windows)
+	pbs.VisitedFolders = formatString(" 📁", " Visited folders: ", windows)
+	pbs.DelayedFiles = formatString(" ✋", " Delayed files: ", windows)
 	return pbs
 }
 
@@ -85,7 +75,7 @@ func InitTransferProgressBarMng(state *state.TransferStateManager, allRepos []st
 	mng.stateMng = state
 	mng.allRepos = allRepos
 	mng.generalShouldStop = false
-	mng.transferLabels = initSProgressBarLabels(coreutils.IsWindows())
+	mng.transferLabels = initProgressBarLabels(coreutils.IsWindows())
 	return
 }
 

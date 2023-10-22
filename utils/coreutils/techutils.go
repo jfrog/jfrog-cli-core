@@ -100,8 +100,8 @@ var technologiesData = map[Technology]TechData{
 	},
 	Pip: {
 		packageType:            Pypi,
-		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		indicators:             []string{"setup.py", "requirements.txt"},
+		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 		applicabilityScannable: true,
 	},

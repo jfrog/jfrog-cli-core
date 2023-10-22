@@ -63,66 +63,63 @@ type TechData struct {
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		indicators:             []string{"pom.xml"},
-		ciSetupSupport:         true,
 		packageDescriptors:     []string{"pom.xml"},
+		ciSetupSupport:         true,
 		execCommand:            "mvn",
 		applicabilityScannable: true,
 	},
 	Gradle: {
+		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		indicators:             []string{".gradle", ".gradle.kts"},
 		ciSetupSupport:         true,
-		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		applicabilityScannable: true,
 	},
 	Npm: {
-		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
+		packageDescriptors:         []string{"package.json"},
+		indicators:                 []string{"package-lock.json", "npm-shrinkwrap.json"},
 		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:             true,
-		packageDescriptors:         []string{"package.json"},
 		formal:                     string(Npm),
 		packageVersionOperator:     "@",
 		packageInstallationCommand: "install",
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptors:     []string{"package.json"},
+		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,
 	},
 	Go: {
-		indicators:                 []string{"go.mod"},
 		packageDescriptors:         []string{"go.mod"},
 		packageVersionOperator:     "@v",
 		packageInstallationCommand: "get",
 	},
 	Pip: {
 		packageType:            Pypi,
-		indicators:             []string{"setup.py", "requirements.txt"},
 		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 		applicabilityScannable: true,
 	},
 	Pipenv: {
 		packageType:                Pypi,
-		indicators:                 []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptors:         []string{"Pipfile"},
+		indicators:                 []string{"Pipfile.lock"},
 		packageVersionOperator:     "==",
 		packageInstallationCommand: "install",
 		applicabilityScannable:     true,
 	},
 	Poetry: {
 		packageType:                Pypi,
-		indicators:                 []string{"pyproject.toml", "poetry.lock"},
 		packageDescriptors:         []string{"pyproject.toml"},
+		indicators:                 []string{"poetry.lock"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
 		applicabilityScannable:     true,
 	},
 	Nuget: {
-		indicators: []string{".sln", ".csproj"},
-		formal:     "NuGet",
+		packageDescriptors: []string{".sln", ".csproj"},
+		formal:             "NuGet",
 		// .NET CLI is used for NuGet projects
 		execCommand:                "dotnet",
 		packageInstallationCommand: "add",
@@ -130,8 +127,8 @@ var technologiesData = map[Technology]TechData{
 		packageVersionOperator: " -v ",
 	},
 	Dotnet: {
-		indicators: []string{".sln", ".csproj"},
-		formal:     ".NET",
+		packageDescriptors: []string{".sln", ".csproj"},
+		formal:             ".NET",
 	},
 }
 
@@ -215,6 +212,7 @@ func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs [
 	return
 }
 
+// Map files to relevant working directories according to the technologies' indicators/descriptors and requested descriptors.
 func mapFilesToRelevantWorkingDirectories(files []string, requestedDescriptors map[Technology][]string) (workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology) {
 	workingDirectoryToIndicators = make(map[string][]string)
 	excludedTechAtWorkingDir = make(map[string][]Technology)
@@ -276,6 +274,7 @@ func isExclude(path string, techData TechData) bool {
 	return false
 }
 
+// Map working directories to technologies according to the given workingDirectoryToIndicators map files.
 func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology, requestedTechs []Technology) (technologiesDetected map[Technology]map[string][]string) {
 	// Get the relevant technologies to check
 	technologies := requestedTechs
@@ -323,22 +322,17 @@ func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string
 	return
 }
 
+// Remove sub directories from the given workingDirectoryToFiles map.
 func cleanSubDirectories(workingDirectoryToFiles map[string][]string) (result map[string][]string) {
 	result = make(map[string][]string)
 	for wd, files := range workingDirectoryToFiles {
 		root := getExistingRootDir(wd, workingDirectoryToFiles)
 		result[root] = append(result[root], files...)
-		// if root == wd {
-		// 	// Current working directory is the root
-		// 	result[wd] = files
-		// } else {
-		// 	// add descriptors from sub projects to the root
-		// 	result[root] = append(result[root], files...)
-		// }
 	}
 	return
 }
 
+// Get the root directory of the given path according to the given workingDirectoryToIndicators map.
 func getExistingRootDir(path string, workingDirectoryToIndicators map[string][]string) (rootDir string) {
 	rootDir = path
 	for wd := range workingDirectoryToIndicators {
@@ -347,28 +341,7 @@ func getExistingRootDir(path string, workingDirectoryToIndicators map[string][]s
 		}
 	}
 	return
-
-	// // TODO: make sure to get the top most root!
-	// for wd := range workingDirectoryToIndicators {
-	// 	if path != wd && strings.HasPrefix(path, wd) {
-	// 		return wd
-	// 	}
-	// }
-	// return ""
 }
-
-// func detectTechnologiesDescriptorsByFilePaths(paths []string) (technologiesToDescriptors map[Technology][]string) {
-// 	detected := make(map[Technology][]string)
-// 	for _, path := range paths {
-// 		for techName, techData := range technologiesData {
-// 			for _, descriptor := range techData.packageDescriptors {
-// 				if strings.HasSuffix(path, descriptor) {
-// 					detected[techName] = append(detected[techName], path)
-// 				}
-// 			}
-// 		}
-// 	}
-// }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.
 // 'isCiSetup' will limit the search of possible techs to Maven, Gradle, and npm.

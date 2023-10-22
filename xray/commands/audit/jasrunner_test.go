@@ -21,7 +21,6 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 	defer func() {
 		assert.NoError(t, os.Unsetenv(coreutils.HomeDir))
 	}()
-	// scanResults := &utils.Results{ScaResults:  }// &utils.ExtendedScanResults{XrayResults: jas.FakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
 	scanResults := &utils.Results{ScaResults: []utils.ScaScanResult{{Technology: coreutils.Yarn, XrayResults: jas.FakeBasicXrayResults}}, ExtendedScanResults: &utils.ExtendedScanResults{}}
 	err = runJasScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, &jas.FakeServerDetails, nil, nil, "", false)
 	// Expect error:
@@ -29,19 +28,16 @@ func TestGetExtendedScanResults_AnalyzerManagerDoesntExist(t *testing.T) {
 }
 
 func TestGetExtendedScanResults_ServerNotValid(t *testing.T) {
-	// scanResults := &utils.ExtendedScanResults{XrayResults: jas.FakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Pip}}
 	scanResults := &utils.Results{ScaResults: []utils.ScaScanResult{{Technology: coreutils.Pip, XrayResults: jas.FakeBasicXrayResults}}, ExtendedScanResults: &utils.ExtendedScanResults{}}
 	err := runJasScannersAndSetResults(scanResults, []string{"issueId_1_direct_dependency", "issueId_2_direct_dependency"}, nil, nil, nil, "", false)
 	assert.NoError(t, err)
 }
 
 func TestGetExtendedScanResults_AnalyzerManagerReturnsError(t *testing.T) {
-	mockDirectDependencies := []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}
 	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
 
-	// scanResults := &utils.ExtendedScanResults{XrayResults: jas.FakeBasicXrayResults, ScannedTechnologies: []coreutils.Technology{coreutils.Yarn}}
 	scanResults := &utils.Results{ScaResults: []utils.ScaScanResult{{Technology: coreutils.Yarn, XrayResults: jas.FakeBasicXrayResults}}, ExtendedScanResults: &utils.ExtendedScanResults{}}
-	err := runJasScannersAndSetResults(scanResults, mockDirectDependencies, &jas.FakeServerDetails, nil, nil, "", false)
+	err := runJasScannersAndSetResults(scanResults, []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"}, &jas.FakeServerDetails, nil, nil, "", false)
 
 	// Expect error:
 	assert.ErrorContains(t, err, "failed to run Applicability scan")

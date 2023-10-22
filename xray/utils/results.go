@@ -12,7 +12,6 @@ type Results struct {
 	XrayVersion string
 	ScaError    error
 
-	// IsMultipleRootProject bool // TODO: remove this
 	ExtendedScanResults *ExtendedScanResults
 	JasError            error
 }
@@ -37,7 +36,6 @@ func (r *Results) GetScaScannedTechnologies() []coreutils.Technology {
 }
 
 func (r *Results) IsMultipleProject() bool {
-	// Maybe we should check by working directory as well?
 	if len(r.ScaResults) == 0 {
 		return false
 	}
@@ -75,10 +73,6 @@ type ScaScanResult struct {
 	IsMultipleRootProject *bool `json:"IsMultipleRootProject,omitempty"`
 }
 
-// func (s ScaScanResult) IsMultipleRootProject() bool {
-// 	return len(s.XrayResults) > 1
-// }
-
 func (s ScaScanResult) HasInformation() bool {
 	for _, scan := range s.XrayResults {
 		if len(scan.Vulnerabilities) > 0 || len(scan.Violations) > 0 || len(scan.Licenses) > 0 {
@@ -89,10 +83,6 @@ func (s ScaScanResult) HasInformation() bool {
 }
 
 type ExtendedScanResults struct {
-	// XrayResults         []services.ScanResponse // TODO: remove this
-	// XrayVersion         string // TODO: remove this
-	// ScannedTechnologies []coreutils.Technology // TODO: remove this
-
 	ApplicabilityScanResults []*sarif.Run
 	SecretsScanResults       []*sarif.Run
 	IacScanResults           []*sarif.Run
@@ -106,7 +96,3 @@ func (e *ExtendedScanResults) IsIssuesFound() bool {
 		GetResultsLocationCount(e.IacScanResults...) > 0 ||
 		GetResultsLocationCount(e.SastScanResults...) > 0
 }
-
-// func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
-// 	return e.XrayResults
-// }

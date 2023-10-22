@@ -76,23 +76,6 @@ var exitCodeErrorsMap = map[int]string{
 	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
 }
 
-// type ExtendedScanResults struct {
-// 	XrayResults         []services.ScanResponse
-// 	XrayVersion         string
-// 	ScannedTechnologies []coreutils.Technology
-
-// 	// DependenciesResults []
-// 	ApplicabilityScanResults []*sarif.Run
-// 	SecretsScanResults       []*sarif.Run
-// 	IacScanResults           []*sarif.Run
-// 	SastScanResults          []*sarif.Run
-// 	EntitledForJas           bool
-// }
-
-// func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
-// 	return e.XrayResults
-// }
-
 type AnalyzerManager struct {
 	AnalyzerManagerFullPath string
 	MultiScanId             string

@@ -2,6 +2,8 @@ package audit
 
 import (
 	"errors"
+	"os"
+
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
@@ -10,7 +12,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"golang.org/x/sync/errgroup"
-	"os"
 
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 )
@@ -136,25 +137,6 @@ func (auditCmd *AuditCommand) CommandName() string {
 	return "generic_audit"
 }
 
-// type ScaScanResult struct {
-// 	Technology  coreutils.Technology
-// 	XrayResults []services.ScanResponse
-// 	Descriptors []string
-// }
-
-// type Results struct {
-// 	ScaResults []ScaScanResult
-// 	IsMultipleRootProject bool
-// 	ScaError              error
-
-// 	ExtendedScanResults   *xrayutils.ExtendedScanResults
-// 	JasError              error
-// }
-
-// func NewAuditResults() *Results {
-// 	return &Results{ExtendedScanResults: &xrayutils.ExtendedScanResults{}}
-// }
-
 // Runs an audit scan based on the provided auditParams.
 // Returns an audit Results object containing all the scan results.
 // If the current server is entitled for JAS, the advanced security results will be included in the scan results.
@@ -186,7 +168,7 @@ func RunAudit(auditParams *AuditParams) (results *xrayutils.Results, err error) 
 	}
 
 	// The sca scan doesn't require the analyzer manager, so it can run separately from the analyzer manager download routine.
-	results.ScaError = scaScan(auditParams, results) // runScaScan(auditParams, results)
+	results.ScaError = runScaScan(auditParams, results) // runScaScan(auditParams, results)
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {

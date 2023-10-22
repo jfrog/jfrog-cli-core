@@ -30,10 +30,6 @@ func runJasScannersAndSetResults(scanResults *utils.Results, directDependencies 
 	if progress != nil {
 		progress.SetHeadlineMsg("Running applicability scanning")
 	}
-	// for _, scaResult := range scanResults.ScaResults {
-	// 	// Do ny working dir, collect techs to save scanning
-	// 	scanResults.ExtendedScanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.GetScaScansXrayResults(), directDependencies, scanResults.GetScaScannedTechnologies(), scanner, thirdPartyApplicabilityScan)
-	// }
 	scanResults.ExtendedScanResults.ApplicabilityScanResults, err = applicability.RunApplicabilityScan(scanResults.GetScaScansXrayResults(), directDependencies, scanResults.GetScaScannedTechnologies(), scanner, thirdPartyApplicabilityScan)
 	if err != nil {
 		return

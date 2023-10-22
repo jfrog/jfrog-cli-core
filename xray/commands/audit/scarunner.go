@@ -27,7 +27,7 @@ import (
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
-func scaScan(params *AuditParams, results *xrayutils.Results) (err error) {
+func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 	// Prepare
 	currentWorkingDir, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
@@ -42,12 +42,12 @@ func scaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
 		return
 	}
+	printScansInformation(scans)
+
 	defer func() {
 		// Make sure to return to the original working directory, executeScaScan may change it
 		err = errors.Join(err, os.Chdir(currentWorkingDir))
 	}()
-
-	printScansInformation(scans)
 	for _, scan := range scans {
 		// Run the scan
 		log.Info("Running SCA scan for", scan.Technology, "vulnerable dependencies in", scan.WorkingDirectory, "directory...")
@@ -61,11 +61,12 @@ func scaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 	return
 }
 
+// Calculate the scans to preform
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
 	isRecursive := true
 	excludePattern := ""
 	for _, requestedDirectory := range getRequestedDirectoriesToScan(currentWorkingDir, params) {
-		// Detect descriptors from files
+		// Detect descriptors and technologies in the requested directory.
 		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, isRecursive, params.Technologies(), getRequestedDescriptors(params), excludePattern)
 		// Create scans to preform
 		for tech, workingDirs := range techToWorkingDirs {
@@ -75,7 +76,7 @@ func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansT
 				continue
 			}
 			if len(workingDirs) == 0 {
-				// Requested technology (from params) descriptors was not found, scan only requested directory for this technology.
+				// Requested technology (from params) descriptors/indicators was not found, scan only requested directory for this technology.
 				scansToPreform = append(scansToPreform, &xrayutils.ScaScanResult{WorkingDirectory: requestedDirectory, Technology: tech})
 			}
 			for workingDir, descriptors := range workingDirs {
@@ -114,7 +115,7 @@ func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams
 }
 
 // Preform the SCA scan for the given scan information.
-// This method may change the working directory to the scan's working directory.
+// This method will change the working directory to the scan's working directory.
 func executeScaScan(serverDetails *config.ServerDetails, params *AuditParams, scan *xrayutils.ScaScanResult) (err error) {
 	// Get the dependency tree for the technology in the working directory.
 	if err = os.Chdir(scan.WorkingDirectory); err != nil {
@@ -153,53 +154,6 @@ func runScaWithTech(tech coreutils.Technology, params *AuditParams, serverDetail
 	return
 }
 
-// func runScaScanInWorkingDir(params *AuditParams, results *xrayutils.Results, workingDir string) (err error) {
-// 	// Prepare the working directory information for the scan.
-// 	technologies := coreutils.DetectTechnologiesDescriptors(workingDir, getTechnologiesToDetect(params), true)
-// 	if len(technologies) == 0 {
-// 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
-// 		return
-// 	}
-// 	serverDetails, err := params.ServerDetails()
-// 	if err != nil {
-// 		return
-// 	}
-// 	// Run the scan for each technology.
-// 	for tech, detectedDescriptors := range technologies {
-// 		if tech == coreutils.Dotnet {
-// 			continue
-// 		}
-// 		// Get the dependency tree for the technology.
-// 		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, tech)
-// 		if techErr != nil {
-// 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
-// 			continue
-// 		}
-// 		if flattenTree == nil || len(flattenTree.Nodes) == 0 {
-// 			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
-// 			continue
-// 		}
-// 		// Scan the dependency tree.
-// 		scanResults, xrayErr := runScaOnTech(tech, params, serverDetails, flattenTree, fullDependencyTrees, results)
-// 		if xrayErr != nil {
-// 			err = errors.Join(err, fmt.Errorf("'%s' Xray dependency tree scan request failed:\n%s\n", tech, xrayErr.Error()))
-// 			continue
-// 		}
-// 		addThirdPartyDependenciesToParams(params, tech, flattenTree, fullDependencyTrees)
-// 		results.ScaResults = append(results.ScaResults, xrayutils.ScaScanResult{Technology: tech, XrayResults: scanResults, Descriptors: detectedDescriptors})
-// 	}
-// 	return
-// }
-
-// func getTechnologiesToDetect(params *AuditParams) (technologies []coreutils.Technology) {
-// 	if len(params.Technologies()) != 0 {
-// 		technologies = coreutils.ToTechnologies(params.Technologies())
-// 	} else {
-// 		technologies = coreutils.GetAllTechnologiesList()
-// 	}
-// 	return
-// }
-
 func addThirdPartyDependenciesToParams(params *AuditParams, tech coreutils.Technology, flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode) {
 	var dependenciesForApplicabilityScan []string
 	if shouldUseAllDependencies(params.thirdPartyApplicabilityScan, tech) {
@@ -209,118 +163,6 @@ func addThirdPartyDependenciesToParams(params *AuditParams, tech coreutils.Techn
 	}
 	params.AppendDependenciesForApplicabilityScan(dependenciesForApplicabilityScan)
 }
-
-// func runScaOnTech(tech coreutils.Technology, params *AuditParams, serverDetails *config.ServerDetails, flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, results *xrayutils.Results) (techResults []services.ScanResponse, err error) {
-// 	scanGraphParams := scangraph.NewScanGraphParams().
-// 		SetServerDetails(serverDetails).
-// 		SetXrayGraphScanParams(params.xrayGraphScanParams).
-// 		SetXrayVersion(params.xrayVersion).
-// 		SetFixableOnly(params.fixableOnly).
-// 		SetSeverityLevel(params.minSeverityFilter)
-// 	techResults, err = sca.RunXrayDependenciesTreeScanGraph(flatTree, params.Progress(), tech, scanGraphParams)
-// 	if err != nil {
-// 		return
-// 	}
-// 	techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
-
-// 	// results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
-// 	// if !results.IsMultipleRootProject {
-// 	// 	results.IsMultipleRootProject = len(fullDependencyTrees) > 1
-// 	// }
-
-// 	// results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
-// 	return
-// }
-
-// func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
-// 	rootDir, err := os.Getwd()
-// 	if errorutils.CheckError(err) != nil {
-// 		return
-// 	}
-// 	for _, wd := range params.workingDirs {
-// 		if len(params.workingDirs) > 1 {
-// 			log.Info("Running SCA scan for vulnerable dependencies scan in", wd, "directory...")
-// 		} else {
-// 			log.Info("Running SCA scan for vulnerable dependencies...")
-// 		}
-// 		wdScanErr := runScaScanOnWorkingDir(params, results, wd, rootDir)
-// 		if wdScanErr != nil {
-// 			err = errors.Join(err, fmt.Errorf("audit command in '%s' failed:\n%s\n", wd, wdScanErr.Error()))
-// 			continue
-// 		}
-// 	}
-// 	return
-// }
-
-// Audits the project found in the current directory using Xray.
-// func runScaScanOnWorkingDir(params *AuditParams, results *xrayutils.Results, workingDir, rootDir string) (err error) {
-// 	err = os.Chdir(workingDir)
-// 	if err != nil {
-// 		return
-// 	}
-// 	defer func() {
-// 		err = errors.Join(err, os.Chdir(rootDir))
-// 	}()
-
-// 	var technologies []string
-// 	requestedTechnologies := params.Technologies()
-// 	if len(requestedTechnologies) != 0 {
-// 		technologies = requestedTechnologies
-// 	} else {
-// 		technologies = coreutils.DetectedTechnologiesList()
-// 	}
-// 	if len(technologies) == 0 {
-// 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
-// 		return
-// 	}
-// 	serverDetails, err := params.ServerDetails()
-// 	if err != nil {
-// 		return
-// 	}
-
-// 	for _, tech := range coreutils.ToTechnologies(technologies) {
-// 		if tech == coreutils.Dotnet {
-// 			continue
-// 		}
-// 		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, tech)
-// 		if techErr != nil {
-// 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
-// 			continue
-// 		}
-// 		if flattenTree == nil || len(flattenTree.Nodes) == 0 {
-// 			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
-// 			continue
-// 		}
-
-// 		scanGraphParams := scangraph.NewScanGraphParams().
-// 			SetServerDetails(serverDetails).
-// 			SetXrayGraphScanParams(params.xrayGraphScanParams).
-// 			SetXrayVersion(params.xrayVersion).
-// 			SetFixableOnly(params.fixableOnly).
-// 			SetSeverityLevel(params.minSeverityFilter)
-// 		techResults, techErr := sca.RunXrayDependenciesTreeScanGraph(flattenTree, params.Progress(), tech, scanGraphParams)
-// 		if techErr != nil {
-// 			err = errors.Join(err, fmt.Errorf("'%s' Xray dependency tree scan request failed:\n%s\n", tech, techErr.Error()))
-// 			continue
-// 		}
-// 		techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
-
-// 		var dependenciesForApplicabilityScan []string
-// 		if shouldUseAllDependencies(params.thirdPartyApplicabilityScan, tech) {
-// 			dependenciesForApplicabilityScan = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
-// 		} else {
-// 			dependenciesForApplicabilityScan = getDirectDependenciesFromTree(fullDependencyTrees)
-// 		}
-// 		params.AppendDependenciesForApplicabilityScan(dependenciesForApplicabilityScan)
-
-// 		// results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
-// 		// if !results.IsMultipleRootProject {
-// 		// 	results.IsMultipleRootProject = len(fullDependencyTrees) > 1
-// 		// }
-// 		// results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
-// 	}
-// 	return
-// }
 
 // When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
 // Our solution for this case is to send all dependencies to the CA scanner.

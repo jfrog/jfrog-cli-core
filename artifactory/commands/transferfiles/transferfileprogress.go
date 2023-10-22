@@ -73,8 +73,6 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.runningTime = transfer.transferMng.NewRunningTimeProgressBar()
 	transfer.speedBar = transfer.transferMng.NewSpeedProgBar()
 	transfer.timeEstBar = transfer.transferMng.NewTimeEstBar()
-	transfer.visitedFoldersBar = transfer.transferMng.NewVisitedFoldersBar()
-	transfer.delayedBar = transfer.transferMng.NewDelayedBar()
 	// Init global error count for the process
 	transfer.errorBar = transfer.transferMng.NewErrorBar()
 	tdc.progressbar = &transfer
@@ -90,6 +88,8 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	}
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
 	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
+	t.visitedFoldersBar = t.transferMng.NewVisitedFoldersBar()
+	t.delayedBar = t.transferMng.NewDelayedBar()
 	t.transferMng.StopCurrentRepoProgressBars(false)
 }
 
@@ -209,6 +209,8 @@ func (t *TransferProgressMng) RemoveRepository() {
 	// Abort all current repository's bars
 	t.currentRepoHeadline.Abort(true)
 	t.currentRepoHeadline = nil
+	t.visitedFoldersBar.GetBar().Abort(true)
+	t.delayedBar.GetBar().Abort(true)
 	t.emptyLine.Abort(true)
 	t.emptyLine = nil
 	// Abort all phases bars

@@ -314,7 +314,7 @@ func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string
 				if isDescriptor(path, technologiesData[tech]) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
 					techWorkingDirs[wd] = append(techWorkingDirs[wd], path)
 				}
-				if isIndicator(path, technologiesData[tech]) {
+				if isIndicator(path, technologiesData[tech]) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
 					foundIndicator = true
 				}
 			}

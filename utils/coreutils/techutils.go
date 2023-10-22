@@ -233,8 +233,10 @@ func mapFilesToRelevantWorkingDirectories(files []string, requestedDescriptors m
 			}
 		}
 	}
-	strJson, _ := json.MarshalIndent(workingDirectoryToIndicators, "", "  ")
-	log.Debug(fmt.Sprintf("mapped %d working directories with indicators/descriptors:\n%s", len(workingDirectoryToIndicators), strJson))
+	strJson, err := json.MarshalIndent(workingDirectoryToIndicators, "", "  ")
+	if err == nil {
+		log.Debug(fmt.Sprintf("mapped %d working directories with indicators/descriptors:\n%s", len(workingDirectoryToIndicators), strJson))
+	}
 	return
 }
 

@@ -1,6 +1,7 @@
 package coreutils
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -114,7 +115,7 @@ var technologiesData = map[Technology]TechData{
 	Poetry: {
 		packageType:                Pypi,
 		indicators:                 []string{"pyproject.toml", "poetry.lock"},
-		packageDescriptors:			[]string{"pyproject.toml"},
+		packageDescriptors:         []string{"pyproject.toml"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
 		applicabilityScannable:     true,
@@ -203,39 +204,38 @@ func DetectedTechnologiesListInPath(path string, recursive bool) (technologies [
 // If recursive is true, the search will not be limited to files in the root path.
 // If requestedTechs is empty, all technologies will be checked.
 // If excludePathPattern is not empty, files/directories that match the wildcard pattern will be excluded from the search.
-func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs []string, excludePathPattern string) (technologiesDetected map[Technology]map[string][]string) {
+func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs []string, requestedDescriptors map[Technology][]string, excludePathPattern string) (technologiesDetected map[Technology]map[string][]string) {
 	filesList, err := fspatterns.ListFiles(path, recursive, false, true, excludePathPattern)
 	if err != nil {
 		return
 	}
-	technologiesDetected = mapIndicatorsToTechnologies(mapWorkingDirectoriesToIndicators(filesList), ToTechnologies(requestedTechs))
+	workingDirectoryToIndicators, excludedTechAtWorkingDir := mapFilesToRelevantWorkingDirectories(filesList, requestedDescriptors)
+	technologiesDetected = mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators, excludedTechAtWorkingDir, ToTechnologies(requestedTechs))
 	log.Debug(fmt.Sprintf("Detected %d technologies at %s: %s.", len(technologiesDetected), path, maps.Keys(technologiesDetected)))
-	return 
+	return
 }
 
-func mapWorkingDirectoriesToIndicators(files []string) (workingDirectoryToIndicators map[string][]string) {
+func mapFilesToRelevantWorkingDirectories(files []string, requestedDescriptors map[Technology][]string) (workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology) {
 	workingDirectoryToIndicators = make(map[string][]string)
+	excludedTechAtWorkingDir = make(map[string][]Technology)
 	for _, path := range files {
 		directory := filepath.Dir(path)
-		for _, techData := range technologiesData {
-			if isDescriptor(path, techData) {
+		for tech, techData := range technologiesData {
+			// Check if the working directory contains indicators/descriptors for the technology
+			if isDescriptor(path, techData) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
 				workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
 			} else if isIndicator(path, techData) {
 				workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
 			}
+			// Check if the working directory contains a file/directory with a name that ends with an excluded suffix
+			if isExclude(path, techData) {
+				excludedTechAtWorkingDir[directory] = append(excludedTechAtWorkingDir[directory], tech)
+			}
 		}
 	}
-	log.Debug(fmt.Sprintf("mapped indicators:\n%s", workingDirectoryToIndicators))
-	return 
-}
-
-func isIndicator(path string, techData TechData) bool {
-	for _, indicator := range techData.indicators {
-		if strings.HasSuffix(path, indicator) {
-			return true
-		}
-	}
-	return false
+	strJson, _ := json.MarshalIndent(workingDirectoryToIndicators, "", "  ")
+	log.Debug(fmt.Sprintf("mapped %d working directories with indicators/descriptors:\n%s", len(workingDirectoryToIndicators), strJson))
+	return
 }
 
 func isDescriptor(path string, techData TechData) bool {
@@ -247,32 +247,60 @@ func isDescriptor(path string, techData TechData) bool {
 	return false
 }
 
-func mapIndicatorsToTechnologies(workingDirectoryToIndicators map[string][]string, requestedTechs []Technology) (technologiesDetected map[Technology]map[string][]string) {
+func isRequestedDescriptor(path string, requestedDescriptors []string) bool {
+	for _, requestedDescriptor := range requestedDescriptors {
+		if strings.HasSuffix(path, requestedDescriptor) {
+			return true
+		}
+	}
+	return false
+}
 
+func isIndicator(path string, techData TechData) bool {
+	for _, indicator := range techData.indicators {
+		if strings.HasSuffix(path, indicator) {
+			return true
+		}
+	}
+	return false
+}
+
+func isExclude(path string, techData TechData) bool {
+	for _, exclude := range techData.exclude {
+		if strings.HasSuffix(path, exclude) {
+			return true
+		}
+	}
+	return false
+}
+
+func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology, requestedTechs []Technology) (technologiesDetected map[Technology]map[string][]string) {
+	// Get the relevant technologies to check
 	technologies := requestedTechs
 	if len(technologies) == 0 {
 		technologies = GetAllTechnologiesList()
 	}
 	technologiesDetected = make(map[Technology]map[string][]string)
-	
+	// Map working directories to technologies
 	for _, tech := range technologies {
 		techWorkingDirs := make(map[string][]string)
 		foundIndicator := false
 		for wd, indicators := range workingDirectoryToIndicators {
-		
-			
-			// What to do about no descriptors found and only indicators?
-			// Implement exclude
-			// Collect only descriptors, indicators adds techWorkingDirs
-			
-			// Map tech for indicators/descriptors to tech
+			if excludedTechs, exist := excludedTechAtWorkingDir[wd]; exist {
+				for _, excludedTech := range excludedTechs {
+					if excludedTech == tech {
+						// Exclude this technology from this working directory
+						continue
+					}
+				}
+			}
+			// Check if the working directory contains indicators/descriptors for the technology
 			for _, path := range indicators {
 				if isDescriptor(path, technologiesData[tech]) {
 					techWorkingDirs[wd] = append(techWorkingDirs[wd], path)
+				} else if isIndicator(path, technologiesData[tech]) {
+					foundIndicator = true
 				}
-				//  else if isIndicator(path, technologiesData[tech]) {
-				// 	foundIndicator = true
-				// }
 			}
 		}
 		// Don't allow working directory if sub directory already exists as key for the same technology
@@ -286,29 +314,45 @@ func mapIndicatorsToTechnologies(workingDirectoryToIndicators map[string][]strin
 	for _, tech := range requestedTechs {
 		if _, exist := technologiesDetected[tech]; !exist {
 			// Requested (forced with flag) technology and not found any indicators/descriptors in detection, add as detected.
+			log.Warn(fmt.Sprintf("Requested technology %s but not found any indicators/descriptors in detection.", tech))
 			technologiesDetected[tech] = map[string][]string{}
 		}
 	}
 	return
 }
 
-func cleanSubDirectories(workingDirectoryToIndicators map[string][]string) (result map[string][]string) {
+func cleanSubDirectories(workingDirectoryToFiles map[string][]string) (result map[string][]string) {
 	result = make(map[string][]string)
-	for wd, indicators := range workingDirectoryToIndicators {
-		if !hasSubDirKey(wd, workingDirectoryToIndicators) {
-			result[wd] = indicators
-		}
+	for wd, files := range workingDirectoryToFiles {
+		root := getExistingRootDir(wd, workingDirectoryToFiles)
+		result[root] = append(result[root], files...)
+		// if root == wd {
+		// 	// Current working directory is the root
+		// 	result[wd] = files
+		// } else {
+		// 	// add descriptors from sub projects to the root
+		// 	result[root] = append(result[root], files...)
+		// }
 	}
 	return
 }
 
-func hasSubDirKey(dir string, workingDirectoryToIndicators map[string][]string) bool {
+func getExistingRootDir(path string, workingDirectoryToIndicators map[string][]string) (rootDir string) {
+	rootDir = path
 	for wd := range workingDirectoryToIndicators {
-		if dir != wd && strings.HasPrefix(dir, wd) {
-			return true
+		if strings.HasPrefix(rootDir, wd) {
+			rootDir = wd
 		}
 	}
-	return false
+	return
+
+	// // TODO: make sure to get the top most root!
+	// for wd := range workingDirectoryToIndicators {
+	// 	if path != wd && strings.HasPrefix(path, wd) {
+	// 		return wd
+	// 	}
+	// }
+	// return ""
 }
 
 // func detectTechnologiesDescriptorsByFilePaths(paths []string) (technologiesToDescriptors map[Technology][]string) {

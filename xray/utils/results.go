@@ -8,13 +8,13 @@ import (
 )
 
 type Results struct {
-	ScaResults []ScaScanResult
-	XrayVersion         string
-	ScaError              error
-	
+	ScaResults  []ScaScanResult
+	XrayVersion string
+	ScaError    error
+
 	// IsMultipleRootProject bool // TODO: remove this
-	ExtendedScanResults   *ExtendedScanResults
-	JasError              error
+	ExtendedScanResults *ExtendedScanResults
+	JasError            error
 }
 
 func NewAuditResults() *Results {
@@ -67,12 +67,12 @@ func (r *Results) IsIssuesFound() bool {
 }
 
 type ScaScanResult struct {
-	Technology  coreutils.Technology `json:"Technology"`
-	WorkingDirectory string			`json:"WorkingDirectory"`
-	Descriptors []string			`json:"Descriptors"`
-	XrayResults []services.ScanResponse `json:"XrayResults,omitempty"`
+	Technology       coreutils.Technology    `json:"Technology"`
+	WorkingDirectory string                  `json:"WorkingDirectory"`
+	Descriptors      []string                `json:"Descriptors,omitempty"`
+	XrayResults      []services.ScanResponse `json:"XrayResults,omitempty"`
 
-	IsMultipleRootProject *bool			`json:"IsMultipleRootProject,omitempty"`
+	IsMultipleRootProject *bool `json:"IsMultipleRootProject,omitempty"`
 }
 
 // func (s ScaScanResult) IsMultipleRootProject() bool {
@@ -101,10 +101,10 @@ type ExtendedScanResults struct {
 }
 
 func (e *ExtendedScanResults) IsIssuesFound() bool {
-	return GetResultsLocationCount(e.ApplicabilityScanResults...) > 0 || 
-			GetResultsLocationCount(e.SecretsScanResults...) > 0 || 
-			GetResultsLocationCount(e.IacScanResults...) > 0 || 
-			GetResultsLocationCount(e.SastScanResults...) > 0
+	return GetResultsLocationCount(e.ApplicabilityScanResults...) > 0 ||
+		GetResultsLocationCount(e.SecretsScanResults...) > 0 ||
+		GetResultsLocationCount(e.IacScanResults...) > 0 ||
+		GetResultsLocationCount(e.SastScanResults...) > 0
 }
 
 // func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {

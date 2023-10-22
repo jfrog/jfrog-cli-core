@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -63,34 +64,36 @@ type TechData struct {
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		packageDescriptors:     []string{"pom.xml"},
+		indicators:             []string{"pom.xml"},
 		ciSetupSupport:         true,
+		packageDescriptors:     []string{"pom.xml"},
 		execCommand:            "mvn",
 		applicabilityScannable: true,
 	},
 	Gradle: {
-		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		indicators:             []string{".gradle", ".gradle.kts"},
 		ciSetupSupport:         true,
+		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		applicabilityScannable: true,
 	},
 	Npm: {
-		packageDescriptors:         []string{"package.json"},
-		indicators:                 []string{"package-lock.json", "npm-shrinkwrap.json"},
+		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:             true,
+		packageDescriptors:         []string{"package.json"},
 		formal:                     string(Npm),
 		packageVersionOperator:     "@",
 		packageInstallationCommand: "install",
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		packageDescriptors:     []string{"package.json"},
 		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,
 	},
 	Go: {
+		indicators:                 []string{"go.mod"},
 		packageDescriptors:         []string{"go.mod"},
 		packageVersionOperator:     "@v",
 		packageInstallationCommand: "get",
@@ -98,26 +101,28 @@ var technologiesData = map[Technology]TechData{
 	Pip: {
 		packageType:            Pypi,
 		packageDescriptors:     []string{"setup.py", "requirements.txt"},
+		indicators:             []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 		applicabilityScannable: true,
 	},
 	Pipenv: {
 		packageType:                Pypi,
+		indicators:                 []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptors:         []string{"Pipfile"},
-		indicators:                 []string{"Pipfile.lock"},
 		packageVersionOperator:     "==",
 		packageInstallationCommand: "install",
 		applicabilityScannable:     true,
 	},
 	Poetry: {
 		packageType:                Pypi,
+		indicators:                 []string{"pyproject.toml", "poetry.lock"},
 		packageDescriptors:         []string{"pyproject.toml"},
-		indicators:                 []string{"poetry.lock"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
 		applicabilityScannable:     true,
 	},
 	Nuget: {
+		indicators:         []string{".sln", ".csproj"},
 		packageDescriptors: []string{".sln", ".csproj"},
 		formal:             "NuGet",
 		// .NET CLI is used for NuGet projects
@@ -127,6 +132,7 @@ var technologiesData = map[Technology]TechData{
 		packageVersionOperator: " -v ",
 	},
 	Dotnet: {
+		indicators:         []string{".sln", ".csproj"},
 		packageDescriptors: []string{".sln", ".csproj"},
 		formal:             ".NET",
 	},
@@ -207,23 +213,31 @@ func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs [
 		return
 	}
 	workingDirectoryToIndicators, excludedTechAtWorkingDir := mapFilesToRelevantWorkingDirectories(filesList, requestedDescriptors)
-	technologiesDetected = mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators, excludedTechAtWorkingDir, ToTechnologies(requestedTechs))
-	log.Debug(fmt.Sprintf("Detected %d technologies at %s: %s.", len(technologiesDetected), path, maps.Keys(technologiesDetected)))
+	strJson, err := json.MarshalIndent(workingDirectoryToIndicators, "", "  ")
+	if err == nil && len(workingDirectoryToIndicators) > 0 {
+		log.Debug(fmt.Sprintf("mapped %d working directories with indicators/descriptors:\n%s", len(workingDirectoryToIndicators), strJson))
+	}
+	technologiesDetected = mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators, excludedTechAtWorkingDir, ToTechnologies(requestedTechs), requestedDescriptors)
+	if len(technologiesDetected) > 0 {
+		log.Debug(fmt.Sprintf("Detected %d technologies at %s: %s.", len(technologiesDetected), path, maps.Keys(technologiesDetected)))
+	}
 	return
 }
 
 // Map files to relevant working directories according to the technologies' indicators/descriptors and requested descriptors.
 func mapFilesToRelevantWorkingDirectories(files []string, requestedDescriptors map[Technology][]string) (workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology) {
-	workingDirectoryToIndicators = make(map[string][]string)
+	workingDirectoryToIndicatorsSet := make(map[string]*datastructures.Set[string])
 	excludedTechAtWorkingDir = make(map[string][]Technology)
 	for _, path := range files {
 		directory := filepath.Dir(path)
 		for tech, techData := range technologiesData {
 			// Check if the working directory contains indicators/descriptors for the technology
-			if isDescriptor(path, techData) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
-				workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
-			} else if isIndicator(path, techData) {
-				workingDirectoryToIndicators[directory] = append(workingDirectoryToIndicators[directory], path)
+			relevant := isIndicator(path, techData) || isDescriptor(path, techData) || isRequestedDescriptor(path, requestedDescriptors[tech])
+			if relevant {
+				if _, exist := workingDirectoryToIndicatorsSet[directory]; !exist {
+					workingDirectoryToIndicatorsSet[directory] = datastructures.MakeSet[string]()
+				}
+				workingDirectoryToIndicatorsSet[directory].Add(path)
 			}
 			// Check if the working directory contains a file/directory with a name that ends with an excluded suffix
 			if isExclude(path, techData) {
@@ -231,9 +245,9 @@ func mapFilesToRelevantWorkingDirectories(files []string, requestedDescriptors m
 			}
 		}
 	}
-	strJson, err := json.MarshalIndent(workingDirectoryToIndicators, "", "  ")
-	if err == nil {
-		log.Debug(fmt.Sprintf("mapped %d working directories with indicators/descriptors:\n%s", len(workingDirectoryToIndicators), strJson))
+	workingDirectoryToIndicators = make(map[string][]string)
+	for wd, indicators := range workingDirectoryToIndicatorsSet {
+		workingDirectoryToIndicators[wd] = indicators.ToSlice()
 	}
 	return
 }
@@ -275,7 +289,7 @@ func isExclude(path string, techData TechData) bool {
 }
 
 // Map working directories to technologies according to the given workingDirectoryToIndicators map files.
-func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology, requestedTechs []Technology) (technologiesDetected map[Technology]map[string][]string) {
+func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology, requestedTechs []Technology, requestedDescriptors map[Technology][]string) (technologiesDetected map[Technology]map[string][]string) {
 	// Get the relevant technologies to check
 	technologies := requestedTechs
 	if len(technologies) == 0 {
@@ -297,17 +311,18 @@ func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string
 			}
 			// Check if the working directory contains indicators/descriptors for the technology
 			for _, path := range indicators {
-				if isDescriptor(path, technologiesData[tech]) {
+				if isDescriptor(path, technologiesData[tech]) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
 					techWorkingDirs[wd] = append(techWorkingDirs[wd], path)
-				} else if isIndicator(path, technologiesData[tech]) {
+				}
+				if isIndicator(path, technologiesData[tech]) {
 					foundIndicator = true
 				}
 			}
 		}
 		// Don't allow working directory if sub directory already exists as key for the same technology
 		techWorkingDirs = cleanSubDirectories(techWorkingDirs)
-		if foundIndicator || len(techWorkingDirs) > 0 {
-			// Found indicators/descriptors for technology, add to detected.
+		if foundIndicator {
+			// Found indicators of the technology, add to detected.
 			technologiesDetected[tech] = techWorkingDirs
 		}
 	}

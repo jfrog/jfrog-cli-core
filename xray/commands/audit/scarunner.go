@@ -20,12 +20,15 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/yarn"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/artifactory/services/fspatterns"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
+
+var defaultExcludePatterns = []string{"*node_modules*", "*target*", "*venv*", "*test*"}
 
 func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 	// Prepare
@@ -65,7 +68,7 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
 	for _, requestedDirectory := range getRequestedDirectoriesToScan(currentWorkingDir, params) {
 		// Detect descriptors and technologies in the requested directory.
-		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, params.Recursively(), params.Technologies(), getRequestedDescriptors(params), params.ExcludePattern())
+		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, params.Recursive(), params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params))
 		// Create scans to preform
 		for tech, workingDirs := range techToWorkingDirs {
 			if tech == coreutils.Dotnet {
@@ -92,6 +95,12 @@ func getRequestedDescriptors(params *AuditParams) map[coreutils.Technology][]str
 		requestedDescriptors[coreutils.Pip] = []string{params.PipRequirementsFile()}
 	}
 	return requestedDescriptors
+}
+
+func getExcludePattern(params *AuditParams) string {
+	exclusions := params.Exclusions()
+	exclusions = append(exclusions, defaultExcludePatterns...)
+	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, params.Recursive())
 }
 
 func printScansInformation(scans []*xrayutils.ScaScanResult) {

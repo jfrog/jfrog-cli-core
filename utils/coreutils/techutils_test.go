@@ -152,7 +152,6 @@ func TestMapFilesToRelevantWorkingDirectories(t *testing.T) {
 func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 	noRequestSpecialDescriptors := map[Technology][]string{}
 	noRequestTech := []Technology{}
-	// noExclude := map[string][]Technology{}
 	tests := []struct {
 		name                         string
 		workingDirectoryToIndicators map[string][]string
@@ -162,14 +161,14 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 
 		expected map[Technology]map[string][]string
 	}{
-		// {
-		// 	name: "noTechTest",
-		// 	workingDirectoryToIndicators: map[string][]string{},
-		// 	excludedTechAtWorkingDir: noExclude,
-		// 	requestedTechs: noRequestTech,
-		// 	requestedDescriptors: noRequestSpecialDescriptors,
-		// 	expected: map[Technology]map[string][]string{},
-		// },
+		{
+			name:                         "noTechTest",
+			workingDirectoryToIndicators: map[string][]string{},
+			excludedTechAtWorkingDir:     map[string][]Technology{},
+			requestedTechs:               noRequestTech,
+			requestedDescriptors:         noRequestSpecialDescriptors,
+			expected:                     map[Technology]map[string][]string{},
+		},
 		{
 			name: "all techs test",
 			workingDirectoryToIndicators: map[string][]string{
@@ -212,15 +211,6 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 				Dotnet: {"dir": {filepath.Join("dir", "project.sln"), filepath.Join("dir", "sub1", "project.csproj")}},
 			},
 		},
-		// {"noTechTest", map[string][]string{}, map[string][]Technology{}, []Technology{}, map[Technology][]string{}, map[Technology]map[string][]string{}},
-		// {"mavenTest", map[string][]string{".": {"dir/pom.xml"}, "sub1": {"dir/sub1/pom.xml"}, "sub2": {"dir/sub2/pom.xml"}}, map[string][]Technology{}, []Technology{Maven}, map[Technology][]string{}, map[Technology]map[string][]string{Maven: {"dir": {"dir/pom.xml","dir/sub1/pom.xml","dir/sub2/pom.xml"}}}},
-		// {"npmTest", map[string][]string{"..": {"../package.json"}}, map[string][]Technology{}, []Technology{Npm}, map[Technology][]string{}, map[Technology]map[string][]string{Npm: {"..": {"../package.json"}}}},
-		// {"yarnTest", map[string][]string{".": {"./package.json", "./.yarn"}}, map[string][]Technology{".": {Npm}}, []Technology{Yarn}, map[Technology][]string{}, map[Technology]map[string][]string{Yarn: {".": {"./package.json", "./.yarn"}}}},
-		// {"golangTest", map[string][]string{"/Users/eco/dev/jfrog-cli-core": {"/Users/eco/dev/jfrog-cli-core/go.mod"}}, map[string][]Technology{}, []Technology{Go}, map[Technology][]string{}, map[Technology]map[string][]string{Go: {"/Users/eco/dev/jfrog-cli-core": {"/Users/eco/dev/jfrog-cli-core/go.mod"}}}},
-		// {"pipRequestedDescriptorTest", map[string][]string{"dir": {"dir/blabla.txt"}}, map[string][]Technology{}, []Technology{Pip}, map[Technology][]string{Pip: {"blabla.txt"}}, map[Technology]map[string][]string{Pip: {"dir": {"dir/blabla.txt"}}}},
-		// {"pipenvTest", map[string][]string{"c:\\users\\test\\package": {"c:\\users\\test\\package\\Pipfile"}}, map[string][]Technology{}, []Technology{Pipenv}, map[Technology][]string{}, map[Technology]map[string][]string{Pipenv: {"c:\\users\\test\\package": {"c:\\users\\test\\package\\Pipfile"}}}},
-		// {"gradleTest", map[string][]string{"c:\\users\\test\\package": {"c:\\users\\test\\package\\build.gradle"}}, map[string][]Technology{}, []Technology{Gradle}, map[Technology][]string{}, map[Technology]map[string][]string{Gradle: {"c:\\users\\test\\package": {"c:\\users\\test\\package\\build.gradle"}}}},
-		// {"nugetTest", map[string][]string{"c:\\users\\test\\package": {"c:\\users\\test\\package\\project.sln"}}, map[string][]Technology{}, []Technology{Nuget}, map[Technology][]string{}, map[Technology]map[string][]string{Nuget: {"c:\\users\\test\\package": {"c:\\users\\test\\package\\project.sln"}}}},
 	}
 
 	for _, test := range tests {
@@ -233,12 +223,10 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 				actualKeys := maps.Keys(detectedTech[key])
 				expectedKeys := maps.Keys(value)
 				assert.ElementsMatch(t, expectedKeys, actualKeys, "for tech %s, expected: %s, actual: %s", key, expectedKeys, actualKeys)
-				// assert.ElementsMatch(t, value, actual[key], "expected: %s, actual: %s", value, actual[key])
 				for innerKey, innerValue := range value {
 					assert.ElementsMatch(t, innerValue, detectedTech[key][innerKey], "expected: %s, actual: %s", innerValue, detectedTech[key][innerKey])
 				}
 			}
-			// assert.True(t, reflect.DeepEqual(test.expected, detectedTech), "expected: %s, actual: %s", test.expected, detectedTech)
 		})
 	}
 }

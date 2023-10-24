@@ -40,6 +40,9 @@ func (r *Results) IsMultipleProject() bool {
 		return false
 	}
 	if len(r.ScaResults) == 1 {
+		if r.ScaResults[0].IsMultipleRootProject == nil {
+			return false
+		}
 		return *r.ScaResults[0].IsMultipleRootProject
 	}
 	return true

@@ -126,7 +126,9 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,
 	}}
 
-	scanResults := &xrutils.Results{ScaResults: []xrutils.ScaScanResult{{XrayResults: scanResponse}}, XrayVersion: xrayVersion}
+	scanResults := xrutils.NewAuditResults()
+	scanResults.XrayVersion = xrayVersion
+	scanResults.ScaResults = []xrutils.ScaScanResult{{XrayResults: scanResponse}}
 
 	resultsPrinter := xrutils.NewResultsWriter(scanResults).
 		SetOutputFormat(bsc.outputFormat).

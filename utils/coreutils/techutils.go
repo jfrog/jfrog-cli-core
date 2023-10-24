@@ -230,6 +230,7 @@ func mapFilesToRelevantWorkingDirectories(files []string, requestedDescriptors m
 	excludedTechAtWorkingDir = make(map[string][]Technology)
 	for _, path := range files {
 		directory := filepath.Dir(path)
+
 		for tech, techData := range technologiesData {
 			// Check if the working directory contains indicators/descriptors for the technology
 			relevant := isIndicator(path, techData) || isDescriptor(path, techData) || isRequestedDescriptor(path, requestedDescriptors[tech])
@@ -298,35 +299,12 @@ func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string
 	technologiesDetected = make(map[Technology]map[string][]string)
 	// Map working directories to technologies
 	for _, tech := range technologies {
-		techWorkingDirs := make(map[string][]string)
-		foundIndicator := false
-		for wd, indicators := range workingDirectoryToIndicators {
-			if excludedTechs, exist := excludedTechAtWorkingDir[wd]; exist {
-				for _, excludedTech := range excludedTechs {
-					if excludedTech == tech {
-						// Exclude this technology from this working directory
-						continue
-					}
-				}
-			}
-			// Check if the working directory contains indicators/descriptors for the technology
-			for _, path := range indicators {
-				if isDescriptor(path, technologiesData[tech]) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
-					techWorkingDirs[wd] = append(techWorkingDirs[wd], path)
-				}
-				if isIndicator(path, technologiesData[tech]) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
-					foundIndicator = true
-				}
-			}
-		}
-		// Don't allow working directory if sub directory already exists as key for the same technology
-		techWorkingDirs = cleanSubDirectories(techWorkingDirs)
-		if foundIndicator {
+		techWorkingDirs := getTechInformationFromWorkingDir(tech, workingDirectoryToIndicators, excludedTechAtWorkingDir, requestedDescriptors)
+		if len(techWorkingDirs) > 0 {
 			// Found indicators of the technology, add to detected.
 			technologiesDetected[tech] = techWorkingDirs
 		}
 	}
-
 	for _, tech := range requestedTechs {
 		if _, exist := technologiesDetected[tech]; !exist {
 			// Requested (forced with flag) technology and not found any indicators/descriptors in detection, add as detected.
@@ -337,7 +315,50 @@ func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string
 	return
 }
 
-// Remove sub directories from the given workingDirectoryToFiles map.
+func getTechInformationFromWorkingDir(tech Technology, workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology, requestedDescriptors map[Technology][]string) (techWorkingDirs map[string][]string) {
+	techWorkingDirs = make(map[string][]string)
+	for wd, indicators := range workingDirectoryToIndicators {
+		descriptorsAtWd := []string{}
+		foundIndicator := false
+		if isTechExcludedInWorkingDir(tech, wd, excludedTechAtWorkingDir) {
+			// Exclude this technology from this working directory
+			continue
+		}
+		// Check if the working directory contains indicators/descriptors for the technology
+		for _, path := range indicators {
+			if isDescriptor(path, technologiesData[tech]) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
+				descriptorsAtWd = append(descriptorsAtWd, path)
+			}
+			if isIndicator(path, technologiesData[tech]) || isRequestedDescriptor(path, requestedDescriptors[tech]) {
+				foundIndicator = true
+			}
+		}
+		if foundIndicator {
+			// Found indicators of the technology in the current working directory, add to detected.
+			techWorkingDirs[wd] = descriptorsAtWd
+		}
+	}
+	// Don't allow working directory if sub directory already exists as key for the same technology
+	techWorkingDirs = cleanSubDirectories(techWorkingDirs)
+	return
+}
+
+func isTechExcludedInWorkingDir(tech Technology, wd string, excludedTechAtWorkingDir map[string][]Technology) bool {
+	if excludedTechs, exist := excludedTechAtWorkingDir[wd]; exist {
+		for _, excludedTech := range excludedTechs {
+			if excludedTech == tech {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// Remove sub directories keys from the given workingDirectoryToFiles map.
+// Keys: [dir/dir, dir/directory] -> [dir/dir, dir/directory]
+// Keys: [dir, directory] -> [dir, directory]
+// Keys: [dir/dir2, dir/dir2/dir3, dir/dir2/dir3/dir4] -> [dir/dir2]
+// Values of removed sub directories will be added to the root directory.
 func cleanSubDirectories(workingDirectoryToFiles map[string][]string) (result map[string][]string) {
 	result = make(map[string][]string)
 	for wd, files := range workingDirectoryToFiles {
@@ -348,11 +369,13 @@ func cleanSubDirectories(workingDirectoryToFiles map[string][]string) (result ma
 }
 
 // Get the root directory of the given path according to the given workingDirectoryToIndicators map.
-func getExistingRootDir(path string, workingDirectoryToIndicators map[string][]string) (rootDir string) {
-	rootDir = path
+func getExistingRootDir(path string, workingDirectoryToIndicators map[string][]string) (root string) {
+	root = path
 	for wd := range workingDirectoryToIndicators {
-		if strings.HasPrefix(rootDir, wd) {
-			rootDir = wd
+		parentWd := filepath.Dir(wd)
+		parentRoot := filepath.Dir(root)
+		if parentRoot != parentWd && strings.HasPrefix(root, wd) {
+			root = wd
 		}
 	}
 	return

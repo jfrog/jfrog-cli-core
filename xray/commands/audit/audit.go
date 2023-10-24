@@ -94,7 +94,6 @@ func (auditCmd *AuditCommand) Run() (err error) {
 		SetFixableOnly(auditCmd.fixableOnly).
 		SetGraphBasicParams(auditCmd.AuditBasicParams).
 		SetThirdPartyApplicabilityScan(auditCmd.thirdPartyApplicabilityScan).
-		SetRecursive(auditCmd.recursive).
 		SetExclusions(auditCmd.exclusions)
 	auditResults, err := RunAudit(auditParams)
 	if err != nil {

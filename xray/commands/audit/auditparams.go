@@ -9,7 +9,6 @@ type AuditParams struct {
 	xrayGraphScanParams *services.XrayGraphScanParams
 	workingDirs         []string
 	exclusions          []string
-	recursive           bool
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
@@ -44,15 +43,6 @@ func (params *AuditParams) XrayVersion() string {
 
 func (params *AuditParams) Exclusions() []string {
 	return params.exclusions
-}
-
-func (params *AuditParams) Recursive() bool {
-	return params.recursive
-}
-
-func (params *AuditParams) SetRecursive(recursively bool) *AuditParams {
-	params.recursive = recursively
-	return params
 }
 
 func (params *AuditParams) SetExclusions(exclusions []string) *AuditParams {

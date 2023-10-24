@@ -66,9 +66,10 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 
 // Calculate the scans to preform
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
+	recursive := len(currentWorkingDir) > 0
 	for _, requestedDirectory := range getRequestedDirectoriesToScan(currentWorkingDir, params) {
 		// Detect descriptors and technologies in the requested directory.
-		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, params.Recursive(), params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params))
+		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, recursive, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, recursive))
 		// Create scans to preform
 		for tech, workingDirs := range techToWorkingDirs {
 			if tech == coreutils.Dotnet {
@@ -97,10 +98,12 @@ func getRequestedDescriptors(params *AuditParams) map[coreutils.Technology][]str
 	return requestedDescriptors
 }
 
-func getExcludePattern(params *AuditParams) string {
+func getExcludePattern(params *AuditParams, recursive bool) string {
 	exclusions := params.Exclusions()
-	exclusions = append(exclusions, defaultExcludePatterns...)
-	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, params.Recursive())
+	if len(exclusions) == 0 {
+		exclusions = append(exclusions, defaultExcludePatterns...)
+	}
+	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, recursive)
 }
 
 func printScansInformation(scans []*xrayutils.ScaScanResult) {

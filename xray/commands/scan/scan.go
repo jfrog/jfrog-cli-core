@@ -413,7 +413,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		return err
 	}
 
-	paths, err := fspatterns.ListFiles(rootPath, recursive, false, false, excludePathPattern)
+	paths, err := fspatterns.ListFiles(rootPath, recursive, false, false, false, excludePathPattern)
 	if err != nil {
 		return err
 	}

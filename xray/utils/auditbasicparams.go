@@ -23,6 +23,7 @@ type AuditParams interface {
 	Progress() ioUtils.ProgressMgr
 	SetProgress(progress ioUtils.ProgressMgr)
 	Args() []string
+	InstallCommandArgs() []string
 	SetNpmScope(depType string) *AuditBasicParams
 	OutputFormat() OutputFormat
 	DepsRepo() string
@@ -44,6 +45,7 @@ type AuditBasicParams struct {
 	args                             []string
 	depsRepo                         string
 	ignoreConfigFile                 bool
+	installCommandArgs               []string
 }
 
 func (abp *AuditBasicParams) DirectDependencies() []string {
@@ -64,6 +66,10 @@ func (abp *AuditBasicParams) SetServerDetails(serverDetails *config.ServerDetail
 	return abp
 }
 
+func (abp *AuditBasicParams) SetInstallCommandArgs(installCommandArgs []string) *AuditBasicParams {
+	abp.installCommandArgs = installCommandArgs
+	return abp
+}
 func (abp *AuditBasicParams) PipRequirementsFile() string {
 	return abp.pipRequirementsFile
 }
@@ -119,6 +125,10 @@ func (abp *AuditBasicParams) SetProgress(progress ioUtils.ProgressMgr) {
 
 func (abp *AuditBasicParams) Args() []string {
 	return abp.args
+}
+
+func (abp *AuditBasicParams) InstallCommandArgs() []string {
+	return abp.installCommandArgs
 }
 
 func (abp *AuditBasicParams) SetNpmScope(depType string) *AuditBasicParams {

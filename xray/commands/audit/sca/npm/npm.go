@@ -79,7 +79,7 @@ func configureResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFu
 	if depsRepo == "" || serverDetails == nil {
 		// In case we don't have DepsRepo or ServerDetails, we search for a Jfrog config file, if exists, in order to get them
 		var isNpmConfigFileExists bool
-		npmYamlFilePath := filepath.Join(".jfrog", "projects", "npm.yaml") // todo can this file be in other path?
+		npmYamlFilePath := filepath.Join(".jfrog", "projects", "npm.yaml")
 		isNpmConfigFileExists, err = fileutils.IsFileExists(npmYamlFilePath, false)
 		if err != nil {
 			err = fmt.Errorf("failed to check for jfrog config file in the project: %s", err.Error())
@@ -113,6 +113,7 @@ func configureResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFu
 	if err != nil {
 		err = fmt.Errorf("configuring an artifactory server for resolution failed: %s", err.Error())
 	}
+	log.Info("Artifactory server has been configured for dependency resolution from '", depsRepo, "'")
 	return
 }
 

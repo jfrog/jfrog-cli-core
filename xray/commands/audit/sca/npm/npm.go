@@ -41,6 +41,10 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 
 	var restoreNpmrcFunc func() error
 	restoreNpmrcFunc, err = configureResolutionServerIfNeeded(params)
+	if err != nil {
+		log.Warn(fmt.Sprintf("Configuring an Artifactory server failed. Dependencies will be resolved from NPM default registry if needed\nFailure cause: %s", err.Error()))
+		err = nil
+	}
 	defer func() {
 		if restoreNpmrcFunc != nil {
 			err = errors.Join(err, restoreNpmrcFunc())
@@ -69,7 +73,7 @@ func configureResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFu
 	depsRepo := params.DepsRepo()
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
-		err = fmt.Errorf("couldn't get server details for resolve: %s", err.Error())
+		err = fmt.Errorf("couldn't get resolving server details: %s", err.Error())
 		return
 	}
 	if depsRepo == "" || serverDetails == nil {
@@ -77,6 +81,10 @@ func configureResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFu
 		var isNpmConfigFileExists bool
 		npmYamlFilePath := filepath.Join(".jfrog", "projects", "npm.yaml") // todo can this file be in other path?
 		isNpmConfigFileExists, err = fileutils.IsFileExists(npmYamlFilePath, false)
+		if err != nil {
+			err = fmt.Errorf("failed to check for jfrog config file in the project: %s", err.Error())
+			return
+		}
 		if !isNpmConfigFileExists {
 			return
 		}
@@ -84,12 +92,17 @@ func configureResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFu
 		var npmConfigYamlData *viper.Viper
 		npmConfigYamlData, err = utils2.ReadConfigFile(npmYamlFilePath, utils2.YAML)
 		if err != nil {
+			err = fmt.Errorf("couldn't read jfrog NPM configuration file: %s", err.Error())
 			return
 		}
 
 		if serverDetails == nil {
 			serverId := npmConfigYamlData.GetString("resolver.serverId")
 			serverDetails, err = config.GetSpecificConfig(serverId, true, false)
+			if err != nil {
+				err = fmt.Errorf("couldn't get resolving server details: %s", err.Error())
+				return
+			}
 		}
 		if depsRepo == "" {
 			depsRepo = npmConfigYamlData.GetString("resolver.repo")

@@ -133,8 +133,7 @@ func configNpmResolutionServer(depsRepo string, serverDetails *config.ServerDeta
 func createTreeDepsParam(params utils.AuditParams) biutils.NpmTreeDepListParam {
 	if params == nil {
 		return biutils.NpmTreeDepListParam{
-			Args:               addIgnoreScriptsFlag([]string{}),
-			InstallCommandArgs: params.InstallCommandArgs(),
+			Args: addIgnoreScriptsFlag([]string{}),
 		}
 	}
 	npmTreeDepParam := biutils.NpmTreeDepListParam{

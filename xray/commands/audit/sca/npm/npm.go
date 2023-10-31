@@ -67,14 +67,15 @@ func configNpmResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFu
 		err = fmt.Errorf("got empty params upon configuring resolution server")
 		return
 	}
-	if params.DepsRepo() == "" {
-		return
-	}
 	serverDetails, err := params.ServerDetails()
-	if err != nil {
+	if err != nil || serverDetails == nil {
 		return
 	}
 	depsRepo := params.DepsRepo()
+	if depsRepo == "" {
+		return
+	}
+
 	npmCmd := npm.NewNpmCommand("install", false).SetServerDetails(serverDetails)
 	if err = npmCmd.PreparePrerequisites(depsRepo); err != nil {
 		return

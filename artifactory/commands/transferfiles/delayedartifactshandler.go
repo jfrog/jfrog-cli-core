@@ -89,19 +89,21 @@ type DelayedArtifactsFile struct {
 }
 
 // Collect all the delayed artifact files that were created up to this point for the repository and transfer their artifacts using handleDelayedArtifactsFiles
-func consumeAllDelayFiles(base phaseBase) error {
+func consumeAllDelayFiles(base phaseBase) (err error) {
 	filesToConsume, err := getDelayFiles([]string{base.repoKey})
-	if err != nil {
-		return err
+	if err != nil || len(filesToConsume) == 0 {
+		return
 	}
 	delayFunctions := getDelayUploadComparisonFunctions(base.repoSummary.PackageType)
-	if len(filesToConsume) == 0 || len(delayFunctions) == 0 {
-		return nil
+	if len(delayFunctions) == 0 {
+		return
 	}
 
 	log.Info("Starting to handle delayed artifacts uploads...")
+	// Each delay function causes the transfer to skip a specific group of files.
+	// Within the handleDelayedArtifactsFiles function, we recursively remove the first delay function from the slice to transfer the first set of files every time.
 	if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:]); err != nil {
-		return err
+		return
 	}
 
 	log.Info("Done handling delayed artifacts uploads.")

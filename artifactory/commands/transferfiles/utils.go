@@ -735,3 +735,11 @@ func getUniqueErrorOrDelayFilePath(dirPath string, getFileNamePrefix func() stri
 	}
 	return
 }
+
+func deleteAllFiles(filesToDelete []string) (err error) {
+	for _, fileToDelete := range filesToDelete {
+		log.Debug("Deleting:", fileToDelete, "...")
+		err = errors.Join(err, errorutils.CheckError(os.Remove(fileToDelete)))
+	}
+	return
+}

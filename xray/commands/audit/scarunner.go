@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/go"
@@ -140,6 +141,10 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 		params.Progress().SetHeadlineMsg(logMessage)
 	}
 	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return
+	}
+	err = utils.SetResolutionRepoIfExists(params, tech)
 	if err != nil {
 		return
 	}

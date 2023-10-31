@@ -37,8 +37,8 @@ const (
 	Terraform
 )
 
-// Maps technology to the same technology but of different type to struct
-// Docker doesn't exist since there is no docker-config command, therefore no docker.yaml file
+// Associates a technology with another of a different type in the structure.
+// Docker is not present, as there is no docker-config command and, consequently, no docker.yaml file we need to operate on.
 var techType = map[coreutils.Technology]ProjectType{coreutils.Maven: Maven, coreutils.Gradle: Gradle, coreutils.Npm: Npm, coreutils.Yarn: Yarn, coreutils.Go: Go, coreutils.Pip: Pip,
 	coreutils.Pipenv: Pipenv, coreutils.Poetry: Poetry, coreutils.Nuget: Nuget, coreutils.Dotnet: Dotnet}
 
@@ -192,7 +192,7 @@ func ReadResolutionOnlyConfiguration(confFilePath string) (*RepositoryConfig, er
 	return GetRepoConfigByPrefix(confFilePath, ProjectConfigResolverPrefix, vConfig)
 }
 
-// Checks if depsRepo already exists. If not- looking for a config file according to tech type and if found sets depsRepo in the AuditParams
+// Verifies the existence of depsRepo. If it doesn't exist, it searches for a configuration file based on the technology type. If found, it assigns depsRepo in the AuditParams.
 func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Technology) (err error) {
 	if params.DepsRepo() != "" {
 		return

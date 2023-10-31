@@ -61,7 +61,7 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 	return
 }
 
-// Creates npmrc in order to set an artifactory server as a resolver server
+// Generates a .npmrc file to configure an Artifactory server as the resolver server.
 func configNpmResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFunc func() error, err error) {
 	if params == nil {
 		err = fmt.Errorf("got empty params upon configuring resolution server")

@@ -6,17 +6,12 @@ import (
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/npm"
-	utils2 "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-	"github.com/spf13/viper"
 	"golang.org/x/exp/slices"
-	"path/filepath"
 )
 
 const (
@@ -39,11 +34,10 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 
 	treeDepsParam := createTreeDepsParam(params)
 
-	var restoreNpmrcFunc func() error
-	restoreNpmrcFunc, err = configureResolutionServerIfNeeded(params)
+	restoreNpmrcFunc, err := configNpmResolutionServerIfNeeded(params)
 	if err != nil {
-		log.Warn(fmt.Sprintf("Configuring an Artifactory server failed. Dependencies will be resolved from NPM default registry if needed\nFailure cause: %s", err.Error()))
-		err = nil
+		err = fmt.Errorf("failed while configuring a resolution server")
+		return
 	}
 	defer func() {
 		if restoreNpmrcFunc != nil {
@@ -67,58 +61,20 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 	return
 }
 
-// We check for the existence of DepsRepo and ServerDetails in the audit params or in a Jfrog config file.
-// If found we configure an artifactory server for resolving dependencies in the current project
-func configureResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFunc func() error, err error) {
-	depsRepo := params.DepsRepo()
-	serverDetails, err := params.ServerDetails()
-	if err != nil {
-		err = fmt.Errorf("couldn't get resolving server details: %s", err.Error())
+// Creates npmrc in order to set an artifactory server as a resolver server
+func configNpmResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFunc func() error, err error) {
+	if params == nil {
+		err = fmt.Errorf("got empty params upon configuring resolution server")
 		return
 	}
-	if depsRepo == "" || serverDetails == nil {
-		// In case we don't have DepsRepo or ServerDetails, we search for a Jfrog config file, if exists, in order to get them
-		var isNpmConfigFileExists bool
-		npmYamlFilePath := filepath.Join(".jfrog", "projects", "npm.yaml")
-		isNpmConfigFileExists, err = fileutils.IsFileExists(npmYamlFilePath, false)
-		if err != nil {
-			err = fmt.Errorf("failed to check for jfrog config file in the project: %s", err.Error())
-			return
-		}
-		if !isNpmConfigFileExists {
-			return
-		}
-
-		var npmConfigYamlData *viper.Viper
-		npmConfigYamlData, err = utils2.ReadConfigFile(npmYamlFilePath, utils2.YAML)
-		if err != nil {
-			err = fmt.Errorf("couldn't read jfrog NPM configuration file: %s", err.Error())
-			return
-		}
-
-		if serverDetails == nil {
-			serverId := npmConfigYamlData.GetString("resolver.serverId")
-			serverDetails, err = config.GetSpecificConfig(serverId, true, false)
-			if err != nil {
-				err = fmt.Errorf("couldn't get resolving server details: %s", err.Error())
-				return
-			}
-		}
-		if depsRepo == "" {
-			depsRepo = npmConfigYamlData.GetString("resolver.repo")
-		}
+	if params.DepsRepo() == "" {
+		return
 	}
-
-	restoreNpmrcFunc, err = configNpmResolutionServer(depsRepo, serverDetails)
+	serverDetails, err := params.ServerDetails()
 	if err != nil {
-		err = fmt.Errorf("configuring an artifactory server for resolution failed: %s", err.Error())
+		return
 	}
-	log.Info("Artifactory server has been configured for dependency resolution from '", depsRepo, "'")
-	return
-}
-
-// Creating npmrc in order to set an artifactory server as the resolver server
-func configNpmResolutionServer(depsRepo string, serverDetails *config.ServerDetails) (restoreNpmrcFunc func() error, err error) {
+	depsRepo := params.DepsRepo()
 	npmCmd := npm.NewNpmCommand("install", false).SetServerDetails(serverDetails)
 	if err = npmCmd.PreparePrerequisites(depsRepo); err != nil {
 		return

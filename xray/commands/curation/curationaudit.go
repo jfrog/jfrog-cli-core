@@ -202,7 +202,8 @@ func (ca *CurationAuditCommand) getAuditParamsByTech(tech coreutils.Technology) 
 }
 
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
-	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.getAuditParamsByTech(tech), tech)
+	auditParams := ca.getAuditParamsByTech(tech)
+	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(auditParams, tech)
 	if err != nil {
 		return err
 	}
@@ -210,7 +211,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if len(fullDependenciesTree) == 0 {
 		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.String())
 	}
-	if err = ca.SetRepo(tech); err != nil {
+	if err = ca.SetRepo(tech, auditParams); err != nil {
 		return err
 	}
 	// Resolve the dependencies of the project.
@@ -321,25 +322,22 @@ func (ca *CurationAuditCommand) CommandName() string {
 	return "curation_audit"
 }
 
-func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
+func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology, auditParams utils.AuditParams) error {
 	switch tech {
 	case coreutils.Npm:
-		configFilePath, exists, err := rtUtils.GetProjectConfFilePath(rtUtils.Npm)
+		serverDetails, err := auditParams.ServerDetails()
 		if err != nil {
-			return err
+			return fmt.Errorf("couldn't get server detailsL %s", err.Error())
 		}
-		if !exists {
-			return errorutils.CheckErrorf("no config file was found! Before running the npm command on a " +
+		depsRepo := auditParams.DepsRepo()
+
+		// Reading the project's config file and collecting serverDetails and depsRepo is now performed in an earlier phase in audit.GetTechDependencyTree (which is called before executing the current method)
+		// Therefore at this point, if such a config file exists serverDetails and depsRepo must be already set in auditParams
+		if serverDetails == nil || depsRepo == "" {
+			return errorutils.CheckErrorf("Artifactory server details or resolution repository were not found! Before running the npm command on a " +
 				"project for the first time, the project should be configured using the 'jf npmc' command")
 		}
-		vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
-		if err != nil {
-			return err
-		}
-		resolverParams, err := rtUtils.GetRepoConfigByPrefix(configFilePath, rtUtils.ProjectConfigResolverPrefix, vConfig)
-		if err != nil {
-			return err
-		}
+		resolverParams := (&rtUtils.RepositoryConfig{}).SetServerDetails(serverDetails).SetTargetRepo(depsRepo)
 		ca.setPackageManagerConfig(resolverParams)
 	default:
 		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.String())

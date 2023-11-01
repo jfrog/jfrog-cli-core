@@ -36,7 +36,7 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 
 	restoreNpmrcFunc, err := configNpmResolutionServerIfNeeded(params)
 	if err != nil {
-		err = fmt.Errorf("failed while configuring a resolution server")
+		err = fmt.Errorf("failed while configuring a resolution server: %s", err.Error())
 		return
 	}
 	defer func() {

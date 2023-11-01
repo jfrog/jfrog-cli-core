@@ -188,10 +188,10 @@ func DetectedTechnologiesList() (technologies []string) {
 	if errorutils.CheckError(err) != nil {
 		return
 	}
-	return DetectedTechnologiesListInPath(wd, false)
+	return detectedTechnologiesListInPath(wd, false)
 }
 
-func DetectedTechnologiesListInPath(path string, recursive bool) (technologies []string) {
+func detectedTechnologiesListInPath(path string, recursive bool) (technologies []string) {
 	detectedTechnologies, err := DetectTechnologies(path, false, recursive)
 	if err != nil {
 		return
@@ -214,7 +214,7 @@ func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs [
 	}
 	workingDirectoryToIndicators, excludedTechAtWorkingDir := mapFilesToRelevantWorkingDirectories(filesList, requestedDescriptors)
 	strJson, err := json.MarshalIndent(workingDirectoryToIndicators, "", "  ")
-	if err == nil && len(workingDirectoryToIndicators) > 0 {
+	if errorutils.CheckError(err) == nil && len(workingDirectoryToIndicators) > 0 {
 		log.Debug(fmt.Sprintf("mapped %d working directories with indicators/descriptors:\n%s", len(workingDirectoryToIndicators), strJson))
 	}
 	technologiesDetected = mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators, excludedTechAtWorkingDir, ToTechnologies(requestedTechs), requestedDescriptors)
@@ -225,6 +225,15 @@ func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs [
 }
 
 // Map files to relevant working directories according to the technologies' indicators/descriptors and requested descriptors.
+// files: The file paths to map.
+// requestedDescriptors: Special requested descriptors (for example in Pip requirement.txt can have different path) for each technology.
+// Returns:
+//  1. workingDirectoryToIndicators: A map of working directories to the files that are relevant to the technologies.
+//     wd1: [wd1/indicator, wd1/descriptor]
+//     wd/wd2: [wd/wd2/indicator]
+//  2. excludedTechAtWorkingDir: A map of working directories to the technologies that are excluded from the working directory.
+//     wd1: [tech1, tech2]
+//     wd/wd2: [tech1]
 func mapFilesToRelevantWorkingDirectories(files []string, requestedDescriptors map[Technology][]string) (workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology) {
 	workingDirectoryToIndicatorsSet := make(map[string]*datastructures.Set[string])
 	excludedTechAtWorkingDir = make(map[string][]Technology)
@@ -290,6 +299,10 @@ func isExclude(path string, techData TechData) bool {
 }
 
 // Map working directories to technologies according to the given workingDirectoryToIndicators map files.
+// workingDirectoryToIndicators: A map of working directories to the files inside the directory that are relevant to the technologies.
+// excludedTechAtWorkingDir: A map of working directories to the technologies that are excluded from the working directory.
+// requestedTechs: The technologies to check, if empty all technologies will be checked.
+// requestedDescriptors: Special requested descriptors (for example in Pip requirement.txt can have different path) for each technology to detect.
 func mapWorkingDirectoriesToTechnologies(workingDirectoryToIndicators map[string][]string, excludedTechAtWorkingDir map[string][]Technology, requestedTechs []Technology, requestedDescriptors map[Technology][]string) (technologiesDetected map[Technology]map[string][]string) {
 	// Get the relevant technologies to check
 	technologies := requestedTechs

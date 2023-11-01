@@ -45,7 +45,7 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
 		return
 	}
-	printScansInformation(scans)
+	logScanInfo(scans)
 
 	defer func() {
 		// Make sure to return to the original working directory, executeScaScan may change it
@@ -106,7 +106,7 @@ func getExcludePattern(params *AuditParams, recursive bool) string {
 	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, recursive)
 }
 
-func printScansInformation(scans []*xrayutils.ScaScanResult) {
+func logScanInfo(scans []*xrayutils.ScaScanResult) {
 	scansJson, err := json.MarshalIndent(scans, "", "  ")
 	if err == nil {
 		log.Info(fmt.Sprintf("Preforming %d SCA scans:\n%s", len(scans), string(scansJson)))
@@ -129,14 +129,14 @@ func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams
 func executeScaScan(serverDetails *config.ServerDetails, params *AuditParams, scan *xrayutils.ScaScanResult) (err error) {
 	// Get the dependency tree for the technology in the working directory.
 	if err = os.Chdir(scan.WorkingDirectory); err != nil {
-		return
+		return errorutils.CheckError(err)
 	}
 	flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, scan.Technology)
 	if techErr != nil {
 		return fmt.Errorf("failed while building '%s' dependency tree:\n%s", scan.Technology, techErr.Error())
 	}
 	if flattenTree == nil || len(flattenTree.Nodes) == 0 {
-		return errors.New("no dependencies were found. Please try to build your project and re-run the audit command")
+		return errorutils.CheckErrorf("no dependencies were found. Please try to build your project and re-run the audit command")
 	}
 	// Scan the dependency tree.
 	scanResults, xrayErr := runScaWithTech(scan.Technology, params, serverDetails, flattenTree, fullDependencyTrees)

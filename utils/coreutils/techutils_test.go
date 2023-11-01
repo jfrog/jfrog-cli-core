@@ -231,6 +231,240 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 	}
 }
 
+func TestGetExistingRootDir(t *testing.T) {
+	tests := []struct {
+		name                         string
+		path                         string
+		workingDirectoryToIndicators map[string][]string
+		expected                     string
+	}{
+		{
+			name:                         "empty",
+			path:                         "",
+			workingDirectoryToIndicators: map[string][]string{},
+			expected:                     "",
+		},
+		{
+			name: "no match",
+			path: "dir",
+			workingDirectoryToIndicators: map[string][]string{
+				filepath.Join("folder", "sub1"):    {filepath.Join("folder", "sub1", "pom.xml")},
+				"dir2":                             {filepath.Join("dir2", "go.mod")},
+				"dir3":                             {},
+				filepath.Join("directory", "dir2"): {filepath.Join("directory", "dir2", "go.mod")},
+			},
+			expected: "dir",
+		},
+		{
+			name: "match root",
+			path: filepath.Join("directory", "dir2"),
+			workingDirectoryToIndicators: map[string][]string{
+				filepath.Join("folder", "sub1"):    {filepath.Join("folder", "sub1", "pom.xml")},
+				"dir2":                             {filepath.Join("dir2", "go.mod")},
+				"dir3":                             {},
+				filepath.Join("directory", "dir2"): {filepath.Join("directory", "dir2", "go.mod")},
+			},
+			expected: filepath.Join("directory", "dir2"),
+		},
+		{
+			name: "match sub",
+			path: filepath.Join("directory", "dir2"),
+			workingDirectoryToIndicators: map[string][]string{
+				filepath.Join("folder", "sub1"):    {filepath.Join("folder", "sub1", "pom.xml")},
+				"dir2":                             {filepath.Join("dir2", "go.mod")},
+				"directory":                        {},
+				filepath.Join("directory", "dir2"): {filepath.Join("directory", "dir2", "go.mod")},
+			},
+			expected: "directory",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, getExistingRootDir(test.path, test.workingDirectoryToIndicators))
+		})
+	}
+}
+
+func TestCleanSubDirectories(t *testing.T) {
+	tests := []struct {
+		name                    string
+		workingDirectoryToFiles map[string][]string
+		expected                map[string][]string
+	}{
+		{
+			name:                    "empty",
+			workingDirectoryToFiles: map[string][]string{},
+			expected:                map[string][]string{},
+		},
+		{
+			name: "no sub directories",
+			workingDirectoryToFiles: map[string][]string{
+				"directory":                       {filepath.Join("directory", "file")},
+				filepath.Join("dir", "dir"):       {filepath.Join("dir", "dir", "file")},
+				filepath.Join("dir", "directory"): {filepath.Join("dir", "directory", "file")},
+			},
+			expected: map[string][]string{
+				"directory":                       {filepath.Join("directory", "file")},
+				filepath.Join("dir", "dir"):       {filepath.Join("dir", "dir", "file")},
+				filepath.Join("dir", "directory"): {filepath.Join("dir", "directory", "file")},
+			},
+		},
+		{
+			name: "sub directories",
+			workingDirectoryToFiles: map[string][]string{
+				filepath.Join("dir", "dir"):                  {filepath.Join("dir", "dir", "file")},
+				filepath.Join("dir", "directory"):            {filepath.Join("dir", "directory", "file")},
+				"dir":                                        {filepath.Join("dir", "file")},
+				"directory":                                  {filepath.Join("directory", "file")},
+				filepath.Join("dir", "dir2"):                 {filepath.Join("dir", "dir2", "file")},
+				filepath.Join("dir", "dir2", "dir3"):         {filepath.Join("dir", "dir2", "dir3", "file")},
+				filepath.Join("dir", "dir2", "dir3", "dir4"): {filepath.Join("dir", "dir2", "dir3", "dir4", "file")},
+			},
+			expected: map[string][]string{
+				"directory": {filepath.Join("directory", "file")},
+				"dir": {
+					filepath.Join("dir", "file"),
+					filepath.Join("dir", "dir", "file"),
+					filepath.Join("dir", "directory", "file"),
+					filepath.Join("dir", "dir2", "file"),
+					filepath.Join("dir", "dir2", "dir3", "file"),
+					filepath.Join("dir", "dir2", "dir3", "dir4", "file"),
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cleaned := cleanSubDirectories(test.workingDirectoryToFiles)
+			cleanedKeys := maps.Keys(cleaned)
+			expectedKeys := maps.Keys(test.expected)
+			assert.ElementsMatch(t, expectedKeys, cleanedKeys, "expected: %s, actual: %s", expectedKeys, cleanedKeys)
+			for key, value := range test.expected {
+				assert.ElementsMatch(t, value, cleaned[key], "expected: %s, actual: %s", value, cleaned[key])
+			}
+		})
+	}
+}
+
+func TestGetTechInformationFromWorkingDir(t *testing.T) {
+	workingDirectoryToIndicators := map[string][]string{
+		"folder":                        {filepath.Join("folder", "pom.xml")},
+		filepath.Join("folder", "sub1"): {filepath.Join("folder", "sub1", "pom.xml")},
+		filepath.Join("folder", "sub2"): {filepath.Join("folder", "sub2", "pom.xml")},
+		"dir":                           {filepath.Join("dir", "package.json"), filepath.Join("dir", "package-lock.json"), filepath.Join("dir", "build.gradle.kts"), filepath.Join("dir", "project.sln"), filepath.Join("dir", "blabla.txt")},
+		"directory":                     {filepath.Join("directory", "npm-shrinkwrap.json")},
+		"dir3":                          {filepath.Join("dir3", "package.json"), filepath.Join("dir3", ".yarn")},
+		filepath.Join("dir", "dir2"):    {filepath.Join("dir", "dir2", "go.mod")},
+		filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
+		filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
+		filepath.Join("users", "test", "package"):      {filepath.Join("users", "test", "package", "Pipfile"), filepath.Join("users", "test", "package", "build.gradle")},
+		filepath.Join("dir", "sub1"):                   {filepath.Join("dir", "sub1", "project.csproj")},
+	}
+	excludedTechAtWorkingDir := map[string][]Technology{
+		filepath.Join("users", "test", "package"): {Pip},
+		"dir3": {Npm},
+	}
+
+	tests := []struct {
+		name                 string
+		tech                 Technology
+		requestedDescriptors map[Technology][]string
+		expected             map[string][]string
+	}{
+		{
+			name:                 "mavenTest",
+			tech:                 Maven,
+			requestedDescriptors: map[Technology][]string{},
+			expected: map[string][]string{
+				"folder": {
+					filepath.Join("folder", "pom.xml"),
+					filepath.Join("folder", "sub1", "pom.xml"),
+					filepath.Join("folder", "sub2", "pom.xml"),
+				},
+			},
+		},
+		{
+			name:                 "npmTest",
+			tech:                 Npm,
+			requestedDescriptors: map[Technology][]string{},
+			expected: map[string][]string{
+				"dir":       {filepath.Join("dir", "package.json")},
+				"directory": {},
+			},
+		},
+		{
+			name:                 "yarnTest",
+			tech:                 Yarn,
+			requestedDescriptors: map[Technology][]string{},
+			expected:             map[string][]string{"dir3": {filepath.Join("dir3", "package.json")}},
+		},
+		{
+			name:                 "golangTest",
+			tech:                 Go,
+			requestedDescriptors: map[Technology][]string{},
+			expected:             map[string][]string{filepath.Join("dir", "dir2"): {filepath.Join("dir", "dir2", "go.mod")}},
+		},
+		{
+			name:                 "pipTest",
+			tech:                 Pip,
+			requestedDescriptors: map[Technology][]string{},
+			expected: map[string][]string{
+				filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
+				filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
+			},
+		},
+		{
+			name:                 "pipRequestedDescriptorTest",
+			tech:                 Pip,
+			requestedDescriptors: map[Technology][]string{Pip: {"blabla.txt"}},
+			expected: map[string][]string{
+				"dir": {filepath.Join("dir", "blabla.txt")},
+				filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
+				filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
+			},
+		},
+		{
+			name:                 "pipenvTest",
+			tech:                 Pipenv,
+			requestedDescriptors: map[Technology][]string{},
+			expected:             map[string][]string{filepath.Join("users", "test", "package"): {filepath.Join("users", "test", "package", "Pipfile")}},
+		},
+		{
+			name:                 "gradleTest",
+			tech:                 Gradle,
+			requestedDescriptors: map[Technology][]string{},
+			expected: map[string][]string{
+				filepath.Join("users", "test", "package"): {filepath.Join("users", "test", "package", "build.gradle")},
+				"dir": {filepath.Join("dir", "build.gradle.kts")},
+			},
+		},
+		{
+			name:                 "nugetTest",
+			tech:                 Nuget,
+			requestedDescriptors: map[Technology][]string{},
+			expected:             map[string][]string{"dir": {filepath.Join("dir", "project.sln"), filepath.Join("dir", "sub1", "project.csproj")}},
+		},
+		{
+			name:                 "dotnetTest",
+			tech:                 Dotnet,
+			requestedDescriptors: map[Technology][]string{},
+			expected:             map[string][]string{"dir": {filepath.Join("dir", "project.sln"), filepath.Join("dir", "sub1", "project.csproj")}},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			techInformation := getTechInformationFromWorkingDir(test.tech, workingDirectoryToIndicators, excludedTechAtWorkingDir, test.requestedDescriptors)
+			expectedKeys := maps.Keys(test.expected)
+			actualKeys := maps.Keys(techInformation)
+			assert.ElementsMatch(t, expectedKeys, actualKeys, "expected: %s, actual: %s", expectedKeys, actualKeys)
+			for key, value := range test.expected {
+				assert.ElementsMatch(t, value, techInformation[key], "expected: %s, actual: %s", value, techInformation[key])
+			}
+		})
+	}
+}
+
 func TestContainsApplicabilityScannableTech(t *testing.T) {
 	tests := []struct {
 		name         string

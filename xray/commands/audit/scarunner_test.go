@@ -111,11 +111,10 @@ func createEmptyDir(t *testing.T, path string) string {
 	return path
 }
 
-func createEmptyFile(t *testing.T, path string) string {
+func createEmptyFile(t *testing.T, path string) {
 	file, err := os.Create(path)
 	assert.NoError(t, err)
 	file.Close()
-	return path
 }
 
 func TestGetScaScansToPreform(t *testing.T) {
@@ -161,7 +160,7 @@ func TestGetScaScansToPreform(t *testing.T) {
 		{
 			name:   "Test all",
 			wd:     dir,
-			params: func() *AuditParams { return NewAuditParams() },
+			params: NewAuditParams,
 			expected: []*xrayutils.ScaScanResult{
 				{
 					Technology:       coreutils.Maven,

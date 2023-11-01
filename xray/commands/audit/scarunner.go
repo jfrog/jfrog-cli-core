@@ -9,8 +9,8 @@ import (
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/go"

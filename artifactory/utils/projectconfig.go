@@ -2,16 +2,15 @@ package utils
 
 import (
 	"fmt"
-	"path/filepath"
-	"reflect"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
+	"path/filepath"
+	"reflect"
 )
 
 const (
@@ -37,6 +36,11 @@ const (
 	Build
 	Terraform
 )
+
+// Associates a technology with another of a different type in the structure.
+// Docker is not present, as there is no docker-config command and, consequently, no docker.yaml file we need to operate on.
+var techType = map[coreutils.Technology]ProjectType{coreutils.Maven: Maven, coreutils.Gradle: Gradle, coreutils.Npm: Npm, coreutils.Yarn: Yarn, coreutils.Go: Go, coreutils.Pip: Pip,
+	coreutils.Pipenv: Pipenv, coreutils.Poetry: Poetry, coreutils.Nuget: Nuget, coreutils.Dotnet: Dotnet}
 
 var ProjectTypes = []string{
 	"go",
@@ -186,4 +190,28 @@ func ReadResolutionOnlyConfiguration(confFilePath string) (*RepositoryConfig, er
 		return nil, err
 	}
 	return GetRepoConfigByPrefix(confFilePath, ProjectConfigResolverPrefix, vConfig)
+}
+
+// Verifies the existence of depsRepo. If it doesn't exist, it searches for a configuration file based on the technology type. If found, it assigns depsRepo in the AuditParams.
+func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Technology) (err error) {
+	if params.DepsRepo() != "" {
+		return
+	}
+	configFilePath, exists, err := GetProjectConfFilePath(techType[tech])
+	if err != nil {
+		err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+		return
+	}
+	if !exists {
+		log.Debug(fmt.Sprintf("No %s.yaml configuration file was found. Resolving dependencies from %s default registry", tech.String(), tech.String()))
+		return
+	}
+
+	repoConfig, err := ReadResolutionOnlyConfiguration(configFilePath)
+	if err != nil {
+		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
+		return
+	}
+	params.SetDepsRepo(repoConfig.targetRepo)
+	return
 }

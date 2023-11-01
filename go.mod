@@ -101,4 +101,4 @@ require (
 
 replace github.com/jfrog/jfrog-client-go => github.com/attiasas/jfrog-client-go v0.0.0-20231025121226-04e810f6f34a
 
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20231019085746-e1b192457664
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20231031143744-13f94ab07bbc

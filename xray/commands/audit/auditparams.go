@@ -92,3 +92,8 @@ func (params *AuditParams) SetThirdPartyApplicabilityScan(includeThirdPartyDeps 
 	params.thirdPartyApplicabilityScan = includeThirdPartyDeps
 	return params
 }
+
+func (params *AuditParams) SetDepsRepo(depsRepo string) *AuditParams {
+	params.AuditBasicParams.SetDepsRepo(depsRepo)
+	return params
+}

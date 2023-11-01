@@ -114,7 +114,7 @@ func createEmptyDir(t *testing.T, path string) string {
 func createEmptyFile(t *testing.T, path string) {
 	file, err := os.Create(path)
 	assert.NoError(t, err)
-	file.Close()
+	assert.NoError(t, file.Close())
 }
 
 func TestGetScaScansToPreform(t *testing.T) {

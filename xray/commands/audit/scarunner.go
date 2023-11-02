@@ -29,7 +29,7 @@ import (
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
-var defaultExcludePatterns = []string{"*node_modules*", "*target*", "*venv*", "*test*"}
+var DefaultExcludePatterns = []string{"*node_modules*", "*target*", "*venv*", "*test*"}
 
 func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 	// Prepare
@@ -102,7 +102,7 @@ func getRequestedDescriptors(params *AuditParams) map[coreutils.Technology][]str
 func getExcludePattern(params *AuditParams, recursive bool) string {
 	exclusions := params.Exclusions()
 	if len(exclusions) == 0 {
-		exclusions = append(exclusions, defaultExcludePatterns...)
+		exclusions = append(exclusions, DefaultExcludePatterns...)
 	}
 	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, recursive)
 }

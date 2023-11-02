@@ -117,6 +117,92 @@ func createEmptyFile(t *testing.T, path string) {
 	assert.NoError(t, file.Close())
 }
 
+func TestGetExcludePattern(t *testing.T) {
+	tests := []struct {
+		name      string
+		params    func() *AuditParams
+		recursive bool
+		expected  string
+	}{
+		{
+			name: "Test exclude pattern recursive",
+			params: func() *AuditParams {
+				param := NewAuditParams()
+				param.SetExclusions([]string{"exclude1", "exclude2"})
+				return param
+			},
+			recursive: true,
+			expected:  "(^exclude1$)|(^exclude2$)",
+		},
+		{
+			name:      "Test no exclude pattern recursive",
+			params:    NewAuditParams,
+			recursive: true,
+			expected:  "(^.*node_modules.*$)|(^.*target.*$)|(^.*venv.*$)|(^.*test.*$)",
+		},
+		{
+			name: "Test exclude pattern not recursive",
+			params: func() *AuditParams {
+				param := NewAuditParams()
+				param.SetExclusions([]string{"exclude1", "exclude2"})
+				return param
+			},
+			recursive: false,
+			expected:  "(^exclude1$)|(^exclude2$)",
+		},
+		{
+			name:      "Test no exclude pattern",
+			params:    NewAuditParams,
+			recursive: false,
+			expected:  "(^.*node_modules.*$)|(^.*target.*$)|(^.*venv.*$)|(^.*test.*$)",
+		},
+		// 	name: "Test exclude pattern not recursive",
+		// 	params: func() *AuditParams {
+		// 		param := NewAuditParams()
+		// 		param.SetExclusions([]string{"exclude1", "exclude2"})
+		// 		return param
+		// 	},
+		// 	recursive: false,
+		// 	expected: "(^exclude1$)|(^exclude2$)",
+
+		// },
+		// {
+		// 	name:   "Test no exclude pattern",
+		// 	params: NewAuditParams,
+		// 	expected: []string{},
+		// },
+		// {
+
+		// {
+		// 	name:   "Test no exclude pattern recursive",
+		// 	params: NewAuditParams,
+		// 	recursive: false,
+		// 	expected: []string{},
+		// },
+		// {
+		// 	name: "Test exclude pattern",
+		// 	params: func() *AuditParams {
+		// 		param := NewAuditParams()
+		// 		param.SetExclusions([]string{"exclude1", "exclude2"})
+		// 		return param
+		// 	},
+		// 	expected: []string{"exclude1", "exclude2"},
+		// },
+		// {
+		// 	name:   "Test no exclude pattern",
+		// 	params: NewAuditParams,
+		// 	expected: []string{},
+		// },
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := getExcludePattern(test.params(), test.recursive)
+			assert.Equal(t, test.expected, result)
+		})
+	}
+}
+
 func TestGetScaScansToPreform(t *testing.T) {
 
 	dir, cleanUp := createTestDir(t)

@@ -61,12 +61,8 @@ func (ts *TransferStateManager) LookUpNode(relativePath string) (requestedNode *
 	return
 }
 
-func (ts *TransferStateManager) WasSnapshotLoaded() (wasLoaded bool, err error) {
-	err = ts.snapshotAction(func(rts *RepoTransferSnapshot) error {
-		wasLoaded = rts.loadedFromSnapshot
-		return nil
-	})
-	return
+func (ts *TransferStateManager) WasSnapshotLoaded() bool {
+	return ts.repoTransferSnapshot.loadedFromSnapshot
 }
 
 func (ts *TransferStateManager) GetDirectorySnapshotNodeWithLru(relativePath string) (node *reposnapshot.Node, err error) {

@@ -256,8 +256,7 @@ func TestGetScaScansToPreform(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := getScaScansToPreform(test.wd, test.params())
-			assert.NoError(t, err)
+			result := getScaScansToPreform(test.wd, test.params())
 			for i := range result {
 				sort.Strings(result[i].Descriptors)
 				sort.Strings(test.expected[i].Descriptors)

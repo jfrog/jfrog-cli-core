@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
-	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -292,7 +292,7 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 }
 
 // Creates the Pre-checks runner for the data transfer command
-func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *commandsUtils.PreCheckRunner, err error) {
+func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *precheckrunner.PreCheckRunner, err error) {
 	// Get relevant repos
 	serviceManager, err := createTransferServiceManager(tdc.context, tdc.sourceServerDetails)
 	if err != nil {
@@ -307,7 +307,7 @@ func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *comma
 		return
 	}
 
-	runner = commandsUtils.NewPreChecksRunner()
+	runner = precheckrunner.NewPreChecksRunner()
 
 	// Add pre checks here
 	runner.AddCheck(NewLongPropertyCheck(append(localRepos, federatedRepos...)))

@@ -2,7 +2,6 @@ package utils
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -133,19 +132,22 @@ func CreateCollectChecksumsFunc(previousBuildDependencies map[string]*entities.D
 	}
 }
 
-// Creates a backup of the file in filePath. In case the file in filePath doesn't exist, the file will be created for it to be deleted later when executing the restore function.
+// TODO delete this function and fix BackupFile function to check if filePath exists before calling os.Remove ?
+// Creates a backup of the file in filePath.
+// In case the file in filePath doesn't exist, a backup file won't be created, and the restore func will be an empty function.
 // The returned restore function can be called to restore the file's state - the file in filePath will be replaced by the backup in backupPath.
-// If there is no file at filePath, a backup file won't be created, and the restore function will delete the file at filePath.
 func YarnBackupFile(filePath, backupFileName string) (restore func() error, err error) {
 	fileInfo, err := os.Stat(filePath)
 	if errorutils.CheckError(err) != nil {
 		if os.IsNotExist(err) {
-			_, err = os.Create(filePath)
-			if err != nil {
-				err = fmt.Errorf("failed to create temporary file '%s': %s", filePath, err.Error())
-				return
-			}
-			restore = createRestoreFileFunc(filePath, backupFileName)
+			/*
+				_, err = os.Create(filePath)
+				if err != nil {
+					err = fmt.Errorf("failed to create temporary file '%s': %s", filePath, err.Error())
+					return
+				}
+			*/
+			restore = func() error { return nil }
 			err = nil
 		}
 		return

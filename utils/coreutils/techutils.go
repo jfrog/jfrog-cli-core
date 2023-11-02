@@ -81,7 +81,8 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		indicators: []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"}, //TODO there is a problem with detecting yarn project that has only package.json at them in the beginning.
+		// TODO put this in other PR
 		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,

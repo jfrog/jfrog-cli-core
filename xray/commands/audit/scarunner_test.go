@@ -156,43 +156,6 @@ func TestGetExcludePattern(t *testing.T) {
 			recursive: false,
 			expected:  "(^.*node_modules.*$)|(^.*target.*$)|(^.*venv.*$)|(^.*test.*$)",
 		},
-		// 	name: "Test exclude pattern not recursive",
-		// 	params: func() *AuditParams {
-		// 		param := NewAuditParams()
-		// 		param.SetExclusions([]string{"exclude1", "exclude2"})
-		// 		return param
-		// 	},
-		// 	recursive: false,
-		// 	expected: "(^exclude1$)|(^exclude2$)",
-
-		// },
-		// {
-		// 	name:   "Test no exclude pattern",
-		// 	params: NewAuditParams,
-		// 	expected: []string{},
-		// },
-		// {
-
-		// {
-		// 	name:   "Test no exclude pattern recursive",
-		// 	params: NewAuditParams,
-		// 	recursive: false,
-		// 	expected: []string{},
-		// },
-		// {
-		// 	name: "Test exclude pattern",
-		// 	params: func() *AuditParams {
-		// 		param := NewAuditParams()
-		// 		param.SetExclusions([]string{"exclude1", "exclude2"})
-		// 		return param
-		// 	},
-		// 	expected: []string{"exclude1", "exclude2"},
-		// },
-		// {
-		// 	name:   "Test no exclude pattern",
-		// 	params: NewAuditParams,
-		// 	expected: []string{},
-		// },
 	}
 
 	for _, test := range tests {

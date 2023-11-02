@@ -41,12 +41,17 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 	if err != nil {
 		return
 	}
+
 	scans := getScaScansToPreform(currentWorkingDir, params)
 	if len(scans) == 0 {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
 		return
 	}
-	logScanInfo(scans)
+	scanInfo, err := coreutils.GetJsonIndent(scans)
+	if err != nil {
+		return
+	}
+	log.Info(fmt.Sprintf("Preforming %d SCA scans:\n%s", len(scans), scanInfo))
 
 	defer func() {
 		// Make sure to return to the original working directory, executeScaScan may change it
@@ -70,7 +75,11 @@ func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansT
 	recursive := len(currentWorkingDir) > 0
 	for _, requestedDirectory := range getRequestedDirectoriesToScan(currentWorkingDir, params) {
 		// Detect descriptors and technologies in the requested directory.
-		techToWorkingDirs := coreutils.DetectTechnologiesDescriptors(requestedDirectory, recursive, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, recursive))
+		techToWorkingDirs, err := coreutils.DetectTechnologiesDescriptors(requestedDirectory, recursive, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, recursive))
+		if err != nil {
+			log.Warn("Couldn't detect technologies in", requestedDirectory, "directory.", err.Error())
+			continue
+		}
 		// Create scans to preform
 		for tech, workingDirs := range techToWorkingDirs {
 			if tech == coreutils.Dotnet {
@@ -105,13 +114,6 @@ func getExcludePattern(params *AuditParams, recursive bool) string {
 		exclusions = append(exclusions, DefaultExcludePatterns...)
 	}
 	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, recursive)
-}
-
-func logScanInfo(scans []*xrayutils.ScaScanResult) {
-	scansJson, err := json.MarshalIndent(scans, "", "  ")
-	if err == nil {
-		log.Info(fmt.Sprintf("Preforming %d SCA scans:\n%s", len(scans), string(scansJson)))
-	}
 }
 
 func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams) []string {

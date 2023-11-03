@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
-	tests2 "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	coretests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	clienttestutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -25,7 +26,7 @@ import (
 func TestExtractPoliciesFromMsg(t *testing.T) {
 	var err error
 	extractPoliciesRegex := regexp.MustCompile(extractPoliciesRegexTemplate)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	tests := getTestCasesForExtractPoliciesFromMsg()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -137,7 +138,7 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 			componentId:     "npm://test:1.0.0",
 			artiUrl:         "http://localhost:8000/artifactory",
 			repo:            "npm",
-			tech:            coreutils.Npm.ToString(),
+			tech:            coreutils.Npm.String(),
 			wantDownloadUrl: "http://localhost:8000/artifactory/api/npm/npm/test/-/test-1.0.0.tgz",
 			wantName:        "test",
 			wantVersion:     "1.0.0",
@@ -147,7 +148,7 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 			componentId:     "npm://dev/test:1.0.0",
 			artiUrl:         "http://localhost:8000/artifactory",
 			repo:            "npm",
-			tech:            coreutils.Npm.ToString(),
+			tech:            coreutils.Npm.String(),
 			wantDownloadUrl: "http://localhost:8000/artifactory/api/npm/npm/dev/test/-/test-1.0.0.tgz",
 			wantName:        "test",
 			wantVersion:     "1.0.0",
@@ -399,40 +400,36 @@ func TestDoCurationAudit(t *testing.T) {
 	tests := getTestCasesForDoCurationAudit()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cliHomeDirBefore := os.Getenv(coreutils.HomeDir)
-			defer os.Setenv(coreutils.HomeDir, cliHomeDirBefore)
 			currentDir, err := os.Getwd()
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			configurationDir := filepath.Join("..", "testdata", "npm-project", ".jfrog")
-			require.NoError(t, os.Setenv(coreutils.HomeDir, filepath.Join(currentDir, configurationDir)))
+			callback := clienttestutils.SetEnvWithCallbackAndAssert(t, coreutils.HomeDir, filepath.Join(currentDir, configurationDir))
+			defer callback()
 
 			mockServer, config := curationServer(t, tt.expectedRequest, tt.requestToFail, tt.requestToError)
 			defer mockServer.Close()
 			configFilePath := WriteServerDetailsConfigFileBytes(t, config.ArtifactoryUrl, configurationDir)
 			defer func() {
-				require.NoError(t, os.Remove(configFilePath))
-				require.NoError(t, os.RemoveAll(filepath.Join(configFilePath, "backup")))
+				assert.NoError(t, fileutils.RemoveTempDir(configFilePath))
 			}()
 			curationCmd := NewCurationAuditCommand()
 			curationCmd.parallelRequests = 3
 			rootDir, err := os.Getwd()
-			require.NoError(t, err)
-			defer func() {
-				require.NoError(t, os.Chdir(rootDir))
-			}()
+			assert.NoError(t, err)
 			// Set the working dir for npm project.
-			require.NoError(t, os.Chdir("../testdata/npm-project"))
+			callback = clienttestutils.ChangeDirWithCallback(t, rootDir, "../testdata/npm-project")
+			defer callback()
 			results := map[string][]*PackageStatus{}
 			if tt.requestToError == nil {
-				require.NoError(t, curationCmd.doCurateAudit(results))
+				assert.NoError(t, curationCmd.doCurateAudit(results))
 			} else {
 				gotError := curationCmd.doCurateAudit(results)
-				require.Error(t, gotError)
+				assert.Error(t, gotError)
 				startUrl := strings.Index(tt.expectedError, "/")
-				require.GreaterOrEqual(t, startUrl, 0)
+				assert.GreaterOrEqual(t, startUrl, 0)
 				errMsgExpected := tt.expectedError[:startUrl] + config.ArtifactoryUrl +
 					tt.expectedError[strings.Index(tt.expectedError, "/")+1:]
-				assert.Equal(t, errMsgExpected, gotError.Error())
+				assert.EqualError(t, gotError, errMsgExpected)
 			}
 			// Add the mock server to the expected blocked message url
 			for index := range tt.expectedResp {
@@ -533,7 +530,7 @@ func getTestCasesForDoCurationAudit() []struct {
 
 func curationServer(t *testing.T, expectedRequest map[string]bool, requestToFail map[string]bool, requestToError map[string]bool) (*httptest.Server, *config.ServerDetails) {
 	mapLockReadWrite := sync.Mutex{}
-	serverMock, config, _ := tests2.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+	serverMock, config, _ := coretests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodHead {
 			mapLockReadWrite.Lock()
 			if _, exist := expectedRequest[r.RequestURI]; exist {
@@ -553,7 +550,7 @@ func curationServer(t *testing.T, expectedRequest map[string]bool, requestToFail
 				_, err := w.Write([]byte("{\n    \"errors\": [\n        {\n            \"status\": 403,\n            " +
 					"\"message\": \"Package download was blocked by JFrog Packages " +
 					"Curation service due to the following policies violated {pol1, cond1}\"\n        }\n    ]\n}"))
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		}
 	})
@@ -575,8 +572,8 @@ func WriteServerDetailsConfigFileBytes(t *testing.T, url string, configPath stri
 	}
 
 	detailsByte, err := json.Marshal(serverDetails)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	confFilePath := filepath.Join(configPath, "jfrog-cli.conf.v"+strconv.Itoa(coreutils.GetCliConfigVersion()))
-	require.NoError(t, os.WriteFile(confFilePath, detailsByte, 0644))
+	assert.NoError(t, os.WriteFile(confFilePath, detailsByte, 0644))
 	return confFilePath
 }

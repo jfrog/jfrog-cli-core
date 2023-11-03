@@ -9,7 +9,6 @@ import (
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
-	cmdUtils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -45,6 +44,8 @@ const (
 
 	errorTemplateUnsupportedTech = "It looks like this project uses '%s' to download its dependencies. " +
 		"This package manager however isn't supported by this command."
+
+	TotalConcurrentRequests = 10
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
@@ -110,13 +111,13 @@ type CurationAuditCommand struct {
 	workingDirs          []string
 	OriginPath           string
 	parallelRequests     int
-	*utils.GraphBasicParams
+	utils.AuditParams
 }
 
 func NewCurationAuditCommand() *CurationAuditCommand {
 	return &CurationAuditCommand{
 		extractPoliciesRegex: regexp.MustCompile(extractPoliciesRegexTemplate),
-		GraphBasicParams:     &utils.GraphBasicParams{},
+		AuditParams:          &utils.AuditBasicParams{},
 	}
 }
 
@@ -178,7 +179,7 @@ func (ca *CurationAuditCommand) Run() (err error) {
 }
 
 func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatus) error {
-	techs := cmdUtils.DetectedTechnologies()
+	techs := coreutils.DetectedTechnologiesList()
 	for _, tech := range techs {
 		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
 			log.Info(fmt.Sprintf(errorTemplateUnsupportedTech, tech))
@@ -191,14 +192,23 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 	return nil
 }
 
+func (ca *CurationAuditCommand) getAuditParamsByTech(tech coreutils.Technology) utils.AuditParams {
+	if tech == coreutils.Npm {
+		return utils.AuditNpmParams{AuditParams: ca.AuditParams}.
+			SetNpmIgnoreNodeModules(true).
+			SetNpmOverwritePackageLock(true)
+	}
+	return ca.AuditParams
+}
+
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
-	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.GraphBasicParams, tech)
+	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.getAuditParamsByTech(tech), tech)
 	if err != nil {
 		return err
 	}
 	// Validate the graph isn't empty.
 	if len(fullDependenciesTree) == 0 {
-		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.ToString())
+		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.String())
 	}
 	if err = ca.SetRepo(tech); err != nil {
 		return err
@@ -225,7 +235,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		projectName = projectScope + "/" + projectName
 	}
 	if ca.parallelRequests == 0 {
-		ca.parallelRequests = cmdUtils.TotalConcurrentRequests
+		ca.parallelRequests = TotalConcurrentRequests
 	}
 	var packagesStatus []*PackageStatus
 	analyzer := treeAnalyzer{
@@ -332,7 +342,7 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 		}
 		ca.setPackageManagerConfig(resolverParams)
 	default:
-		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.ToString())
+		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.String())
 	}
 	return nil
 }
@@ -501,7 +511,7 @@ func makeLegiblePolicyDetails(explanation, recommendation string) (string, strin
 
 func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, scope string, version string) {
 	if tech == coreutils.Npm {
-		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.ToString())
+		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.String())
 	}
 	return
 }
@@ -532,4 +542,11 @@ func buildNpmDownloadUrl(url, repo, name, scope, version string) string {
 		packageUrl = fmt.Sprintf("%s/api/npm/%s/%s/-/%s-%s.tgz", strings.TrimSuffix(url, "/"), repo, name, name, version)
 	}
 	return packageUrl
+}
+
+func DetectNumOfThreads(threadsCount int) (int, error) {
+	if threadsCount > TotalConcurrentRequests {
+		return 0, errorutils.CheckErrorf("number of threads crossed the maximum, the maximum threads allowed is %v", TotalConcurrentRequests)
+	}
+	return threadsCount, nil
 }

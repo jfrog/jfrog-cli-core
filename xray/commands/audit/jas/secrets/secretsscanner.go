@@ -1,19 +1,24 @@
 package secrets
 
 import (
+	"path/filepath"
+	"strings"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path/filepath"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
-	secretsScanCommand = "sec"
-	secretsScannerType = "secrets-scan"
+	secretsScanCommand   = "sec"
+	secretsScannerType   = "secrets-scan"
+	secretsDocsUrlSuffix = "secrets"
 )
 
 type SecretScanManager struct {
-	secretsScannerResults []utils.SourceCodeScanResult
+	secretsScannerResults []*sarif.Run
 	scanner               *jas.JasScanner
 }
 
@@ -24,7 +29,7 @@ type SecretScanManager struct {
 // Return values:
 // []utils.IacOrSecretResult: a list of the secrets that were found.
 // error: An error object (if any).
-func RunSecretsScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, err error) {
+func RunSecretsScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 	secretScanManager := newSecretsScanManager(scanner)
 	log.Info("Running secrets scanning...")
 	if err = secretScanManager.scanner.Run(secretScanManager); err != nil {
@@ -33,31 +38,33 @@ func RunSecretsScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResu
 	}
 	results = secretScanManager.secretsScannerResults
 	if len(results) > 0 {
-		log.Info("Found", len(results), "secrets")
+		log.Info("Found", utils.GetResultsLocationCount(results...), "secrets")
 	}
 	return
 }
 
 func newSecretsScanManager(scanner *jas.JasScanner) (manager *SecretScanManager) {
 	return &SecretScanManager{
-		secretsScannerResults: []utils.SourceCodeScanResult{},
+		secretsScannerResults: []*sarif.Run{},
 		scanner:               scanner,
 	}
 }
 
-func (s *SecretScanManager) Run(wd string) (err error) {
-	scanner := s.scanner
-	if err = s.createConfigFile(wd); err != nil {
+func (ssm *SecretScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.Secrets) {
 		return
 	}
-	if err = s.runAnalyzerManager(); err != nil {
+	if err = ssm.createConfigFile(module); err != nil {
 		return
 	}
-	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = jas.GetSourceCodeScanResults(scanner.ResultsFileName, wd, utils.Secrets); err != nil {
+	if err = ssm.runAnalyzerManager(); err != nil {
 		return
 	}
-	s.secretsScannerResults = append(s.secretsScannerResults, workingDirResults...)
+	workingDirRuns, err := jas.ReadJasScanRunsFromFile(ssm.scanner.ResultsFileName, module.SourceRoot, secretsDocsUrlSuffix)
+	if err != nil {
+		return
+	}
+	ssm.secretsScannerResults = append(ssm.secretsScannerResults, processSecretScanRuns(workingDirRuns)...)
 	return
 }
 
@@ -72,20 +79,43 @@ type secretsScanConfiguration struct {
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (s *SecretScanManager) createConfigFile(currentWd string) error {
+func (s *SecretScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	roots, err := jas.GetSourceRoots(module, module.Scanners.Secrets)
+	if err != nil {
+		return err
+	}
 	configFileContent := secretsScanConfig{
 		Scans: []secretsScanConfiguration{
 			{
-				Roots:       []string{currentWd},
+				Roots:       roots,
 				Output:      s.scanner.ResultsFileName,
 				Type:        secretsScannerType,
-				SkippedDirs: jas.SkippedDirs,
+				SkippedDirs: jas.GetExcludePatterns(module, module.Scanners.Secrets),
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(s.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(s.scanner.ConfigFileName, configFileContent, utils.Secrets)
 }
 
 func (s *SecretScanManager) runAnalyzerManager() error {
 	return s.scanner.AnalyzerManager.Exec(s.scanner.ConfigFileName, secretsScanCommand, filepath.Dir(s.scanner.AnalyzerManager.AnalyzerManagerFullPath), s.scanner.ServerDetails)
+}
+
+func maskSecret(secret string) string {
+	if len(secret) <= 3 {
+		return "***"
+	}
+	return secret[:3] + strings.Repeat("*", 12)
+}
+
+func processSecretScanRuns(sarifRuns []*sarif.Run) []*sarif.Run {
+	for _, secretRun := range sarifRuns {
+		// Hide discovered secrets value
+		for _, secretResult := range secretRun.Results {
+			for _, location := range secretResult.Locations {
+				utils.SetLocationSnippet(location, maskSecret(utils.GetLocationSnippet(location)))
+			}
+		}
+	}
+	return sarifRuns
 }

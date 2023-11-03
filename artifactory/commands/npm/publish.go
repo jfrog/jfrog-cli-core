@@ -383,7 +383,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 
 	if fileInfo.IsDir() {
-		npc.packageInfo, err = biutils.ReadPackageInfoFromPackageJson(npc.publishPath, npc.npmVersion)
+		npc.packageInfo, err = biutils.ReadPackageInfoFromPackageJsonIfExists(npc.publishPath, npc.npmVersion)
 		return err
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")

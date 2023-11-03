@@ -79,8 +79,8 @@ func (pb *phaseBase) StopGracefully() {
 		pb.progressBar.StopGracefully()
 	}
 	if pb.pcDetails != nil {
-		pb.pcDetails.chunkBuilderProducerConsumer.Cancel()
-		pb.pcDetails.chunkUploaderProducerConsumer.Cancel()
+		pb.pcDetails.chunkBuilderProducerConsumer.Cancel(true)
+		pb.pcDetails.chunkUploaderProducerConsumer.Cancel(true)
 	}
 }
 
@@ -145,7 +145,8 @@ func (pb *phaseBase) setStopSignal(stopSignal chan os.Signal) {
 }
 
 func createTransferPhase(i int) transferPhase {
-	curPhaseBase := phaseBase{phaseId: i}
+	// Initialize a pointer to an empty producerConsumerWrapper to allow access the real value in StopGracefully
+	curPhaseBase := phaseBase{phaseId: i, pcDetails: &producerConsumerWrapper{}}
 	switch i {
 	case api.Phase1:
 		return &fullTransferPhase{phaseBase: curPhaseBase}

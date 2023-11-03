@@ -28,7 +28,6 @@ import (
 )
 
 const (
-	uploadChunkSize = 16
 	// Size of the channel where the transfer's go routines write the transfer errors
 	fileWritersChannelSize       = 500000
 	retries                      = 600
@@ -229,8 +228,16 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 			return e
 		}
 		tdc.stateManager.TransferFailures = uint(numberInitialErrors)
+
+		numberInitialDelays, e := getDelayedFilesCount(allSourceLocalRepos)
+		if e != nil {
+			return e
+		}
+		tdc.stateManager.DelayedFiles = uint64(numberInitialDelays)
 	} else {
+		tdc.stateManager.VisitedFolders = 0
 		tdc.stateManager.TransferFailures = 0
+		tdc.stateManager.DelayedFiles = 0
 	}
 	return nil
 }

@@ -131,6 +131,14 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Handling folder:", path.Join(m.repoKey, params.relativePath))
 
+	// Increment progress number of folders
+	if m.progressBar != nil {
+		m.progressBar.incNumberOfVisitedFolders()
+	}
+	if err = m.stateManager.IncVisitedFolders(); err != nil {
+		return
+	}
+
 	// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exist.
 	node, done, err := m.getAndHandleDirectoryNode(params, logMsgPrefix)
 	if err != nil || done {
@@ -239,7 +247,7 @@ func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
 		return
 	}
 	curUploadChunk.AppendUploadCandidateIfNeeded(file, m.buildInfoRepo)
-	if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
+	if curUploadChunk.IsChunkFull() {
 		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&m.phaseBase, *curUploadChunk, uploadChunkChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return

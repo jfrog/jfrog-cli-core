@@ -1,20 +1,24 @@
 package iac
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"path/filepath"
+
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
-	iacScannerType = "iac-scan-modules"
-	iacScanCommand = "iac"
+	iacScannerType   = "iac-scan-modules"
+	iacScanCommand   = "iac"
+	iacDocsUrlSuffix = "infrastructure-as-code-iac"
 )
 
 type IacScanManager struct {
-	iacScannerResults []utils.SourceCodeScanResult
+	iacScannerResults []*sarif.Run
 	scanner           *jas.JasScanner
 }
 
@@ -26,7 +30,7 @@ type IacScanManager struct {
 // []utils.SourceCodeScanResult: a list of the iac violations that were found.
 // bool: true if the user is entitled to iac scan, false otherwise.
 // error: An error object (if any).
-func RunIacScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, err error) {
+func RunIacScan(scanner *jas.JasScanner) (results []*sarif.Run, err error) {
 	iacScanManager := newIacScanManager(scanner)
 	log.Info("Running IaC scanning...")
 	if err = iacScanManager.scanner.Run(iacScanManager); err != nil {
@@ -34,7 +38,7 @@ func RunIacScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, 
 		return
 	}
 	if len(iacScanManager.iacScannerResults) > 0 {
-		log.Info("Found", len(iacScanManager.iacScannerResults), "IaC vulnerabilities")
+		log.Info("Found", utils.GetResultsLocationCount(iacScanManager.iacScannerResults...), "IaC vulnerabilities")
 	}
 	results = iacScanManager.iacScannerResults
 	return
@@ -42,21 +46,23 @@ func RunIacScan(scanner *jas.JasScanner) (results []utils.SourceCodeScanResult, 
 
 func newIacScanManager(scanner *jas.JasScanner) (manager *IacScanManager) {
 	return &IacScanManager{
-		iacScannerResults: []utils.SourceCodeScanResult{},
+		iacScannerResults: []*sarif.Run{},
 		scanner:           scanner,
 	}
 }
 
-func (iac *IacScanManager) Run(wd string) (err error) {
-	scanner := iac.scanner
-	if err = iac.createConfigFile(wd); err != nil {
+func (iac *IacScanManager) Run(module jfrogappsconfig.Module) (err error) {
+	if jas.ShouldSkipScanner(module, utils.IaC) {
+		return
+	}
+	if err = iac.createConfigFile(module); err != nil {
 		return
 	}
 	if err = iac.runAnalyzerManager(); err != nil {
 		return
 	}
-	var workingDirResults []utils.SourceCodeScanResult
-	if workingDirResults, err = jas.GetSourceCodeScanResults(scanner.ResultsFileName, wd, utils.IaC); err != nil {
+	workingDirResults, err := jas.ReadJasScanRunsFromFile(iac.scanner.ResultsFileName, module.SourceRoot, iacDocsUrlSuffix)
+	if err != nil {
 		return
 	}
 	iac.iacScannerResults = append(iac.iacScannerResults, workingDirResults...)
@@ -74,18 +80,22 @@ type iacScanConfiguration struct {
 	SkippedDirs []string `yaml:"skipped-folders"`
 }
 
-func (iac *IacScanManager) createConfigFile(currentWd string) error {
+func (iac *IacScanManager) createConfigFile(module jfrogappsconfig.Module) error {
+	roots, err := jas.GetSourceRoots(module, module.Scanners.Iac)
+	if err != nil {
+		return err
+	}
 	configFileContent := iacScanConfig{
 		Scans: []iacScanConfiguration{
 			{
-				Roots:       []string{currentWd},
+				Roots:       roots,
 				Output:      iac.scanner.ResultsFileName,
 				Type:        iacScannerType,
-				SkippedDirs: jas.SkippedDirs,
+				SkippedDirs: jas.GetExcludePatterns(module, module.Scanners.Iac),
 			},
 		},
 	}
-	return jas.CreateScannersConfigFile(iac.scanner.ConfigFileName, configFileContent)
+	return jas.CreateScannersConfigFile(iac.scanner.ConfigFileName, configFileContent, utils.IaC)
 }
 
 func (iac *IacScanManager) runAnalyzerManager() error {

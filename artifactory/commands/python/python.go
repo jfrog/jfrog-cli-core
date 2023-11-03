@@ -106,7 +106,7 @@ func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
 	if err != nil {
 		return err
 	}
-	pc.args = append(pc.args, python.GetPypiRemoteRegistryFlag(pc.pythonTool), rtUrl.String())
+	pc.args = append(pc.args, python.GetPypiRemoteRegistryFlag(pc.pythonTool), rtUrl)
 	return nil
 }
 

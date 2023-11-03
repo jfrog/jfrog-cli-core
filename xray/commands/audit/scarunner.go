@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	_go "github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/go"
@@ -14,7 +15,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/nuget"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/python"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca/yarn"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -59,7 +60,7 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 	if len(requestedTechnologies) != 0 {
 		technologies = requestedTechnologies
 	} else {
-		technologies = commandsutils.DetectedTechnologies()
+		technologies = coreutils.DetectedTechnologiesList()
 	}
 	if len(technologies) == 0 {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
@@ -74,17 +75,17 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		if tech == coreutils.Dotnet {
 			continue
 		}
-		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.GraphBasicParams, tech)
+		flattenTree, fullDependencyTrees, techErr := GetTechDependencyTree(params.AuditBasicParams, tech)
 		if techErr != nil {
 			err = errors.Join(err, fmt.Errorf("failed while building '%s' dependency tree:\n%s\n", tech, techErr.Error()))
 			continue
 		}
-		if len(flattenTree.Nodes) == 0 {
+		if flattenTree == nil || len(flattenTree.Nodes) == 0 {
 			err = errors.Join(err, errors.New("no dependencies were found. Please try to build your project and re-run the audit command"))
 			continue
 		}
 
-		scanGraphParams := commandsutils.NewScanGraphParams().
+		scanGraphParams := scangraph.NewScanGraphParams().
 			SetServerDetails(serverDetails).
 			SetXrayGraphScanParams(params.xrayGraphScanParams).
 			SetXrayVersion(params.xrayVersion).
@@ -96,15 +97,14 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 			continue
 		}
 		techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
-		var directDependencies []string
-		if tech == coreutils.Pip {
-			// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
-			// Our solution for this case is to send all dependencies to the CA scanner.
-			directDependencies = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
+
+		var dependenciesForApplicabilityScan []string
+		if shouldUseAllDependencies(params.thirdPartyApplicabilityScan, tech) {
+			dependenciesForApplicabilityScan = getDirectDependenciesFromTree([]*xrayCmdUtils.GraphNode{flattenTree})
 		} else {
-			directDependencies = getDirectDependenciesFromTree(fullDependencyTrees)
+			dependenciesForApplicabilityScan = getDirectDependenciesFromTree(fullDependencyTrees)
 		}
-		params.AppendDirectDependencies(directDependencies)
+		params.AppendDependenciesForApplicabilityScan(dependenciesForApplicabilityScan)
 
 		results.ExtendedScanResults.XrayResults = append(results.ExtendedScanResults.XrayResults, techResults...)
 		if !results.IsMultipleRootProject {
@@ -113,6 +113,14 @@ func runScaScanOnWorkingDir(params *AuditParams, results *Results, workingDir, r
 		results.ExtendedScanResults.ScannedTechnologies = append(results.ExtendedScanResults.ScannedTechnologies, tech)
 	}
 	return
+}
+
+// When building pip dependency tree using pipdeptree, some of the direct dependencies are recognized as transitive and missed by the CA scanner.
+// Our solution for this case is to send all dependencies to the CA scanner.
+// When thirdPartyApplicabilityScan is true, use flatten graph to include all the dependencies in applicability scanning.
+// Only npm is supported for this flag.
+func shouldUseAllDependencies(thirdPartyApplicabilityScan bool, tech coreutils.Technology) bool {
+	return tech == coreutils.Pip || (thirdPartyApplicabilityScan && tech == coreutils.Npm)
 }
 
 // This function retrieves the dependency trees of the scanned project and extracts a set that contains only the direct dependencies.
@@ -126,11 +134,17 @@ func getDirectDependenciesFromTree(dependencyTrees []*xrayCmdUtils.GraphNode) []
 	return directDependencies.ToSlice()
 }
 
-func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
+func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) (flatTree *xrayCmdUtils.GraphNode, fullDependencyTrees []*xrayCmdUtils.GraphNode, err error) {
+	logMessage := fmt.Sprintf("Calculating %s dependencies", tech.ToFormal())
+	log.Info(logMessage + "...")
 	if params.Progress() != nil {
-		params.Progress().SetHeadlineMsg(fmt.Sprintf("Calculating %v dependencies", tech.ToFormal()))
+		params.Progress().SetHeadlineMsg(logMessage)
 	}
 	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return
+	}
+	err = utils.SetResolutionRepoIfExists(params, tech)
 	if err != nil {
 		return
 	}
@@ -140,7 +154,7 @@ func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Te
 	case coreutils.Maven, coreutils.Gradle:
 		fullDependencyTrees, uniqueDeps, err = java.BuildDependencyTree(params, tech)
 	case coreutils.Npm:
-		fullDependencyTrees, uniqueDeps, err = npm.BuildDependencyTree(params.Args())
+		fullDependencyTrees, uniqueDeps, err = npm.BuildDependencyTree(params)
 	case coreutils.Yarn:
 		fullDependencyTrees, uniqueDeps, err = yarn.BuildDependencyTree()
 	case coreutils.Go:
@@ -156,7 +170,7 @@ func GetTechDependencyTree(params *xrayutils.GraphBasicParams, tech coreutils.Te
 	default:
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}
-	if err != nil {
+	if err != nil || len(uniqueDeps) == 0 {
 		return
 	}
 	log.Debug(fmt.Sprintf("Created '%s' dependency tree with %d nodes. Elapsed time: %.1f seconds.", tech.ToFormal(), len(uniqueDeps), time.Since(startTime).Seconds()))

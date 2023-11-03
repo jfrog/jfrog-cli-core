@@ -11,14 +11,16 @@ type AuditParams struct {
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
-	*xrayutils.GraphBasicParams
+	*xrayutils.AuditBasicParams
 	xrayVersion string
+	// Include third party dependencies source code in the applicability scan.
+	thirdPartyApplicabilityScan bool
 }
 
 func NewAuditParams() *AuditParams {
 	return &AuditParams{
 		xrayGraphScanParams: &services.XrayGraphScanParams{},
-		GraphBasicParams:    &xrayutils.GraphBasicParams{},
+		AuditBasicParams:    &xrayutils.AuditBasicParams{},
 	}
 }
 
@@ -43,8 +45,8 @@ func (params *AuditParams) SetXrayGraphScanParams(xrayGraphScanParams *services.
 	return params
 }
 
-func (params *AuditParams) SetGraphBasicParams(gbp *xrayutils.GraphBasicParams) *AuditParams {
-	params.GraphBasicParams = gbp
+func (params *AuditParams) SetGraphBasicParams(gbp *xrayutils.AuditBasicParams) *AuditParams {
+	params.AuditBasicParams = gbp
 	return params
 }
 
@@ -73,5 +75,15 @@ func (params *AuditParams) MinSeverityFilter() string {
 
 func (params *AuditParams) SetMinSeverityFilter(minSeverityFilter string) *AuditParams {
 	params.minSeverityFilter = minSeverityFilter
+	return params
+}
+
+func (params *AuditParams) SetThirdPartyApplicabilityScan(includeThirdPartyDeps bool) *AuditParams {
+	params.thirdPartyApplicabilityScan = includeThirdPartyDeps
+	return params
+}
+
+func (params *AuditParams) SetDepsRepo(depsRepo string) *AuditParams {
+	params.AuditBasicParams.SetDepsRepo(depsRepo)
 	return params
 }

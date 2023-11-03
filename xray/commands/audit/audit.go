@@ -4,7 +4,7 @@ import (
 	"errors"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	commandsutils "github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray"
@@ -82,7 +82,7 @@ func (auditCmd *AuditCommand) CreateXrayGraphScanParams() *services.XrayGraphSca
 }
 
 func (auditCmd *AuditCommand) Run() (err error) {
-	workingDirs, err := xrayutils.GetFullPathsWorkingDirs(auditCmd.workingDirs)
+	workingDirs, err := coreutils.GetFullPathsWorkingDirs(auditCmd.workingDirs)
 	if err != nil {
 		return
 	}
@@ -91,7 +91,8 @@ func (auditCmd *AuditCommand) Run() (err error) {
 		SetWorkingDirs(workingDirs).
 		SetMinSeverityFilter(auditCmd.minSeverityFilter).
 		SetFixableOnly(auditCmd.fixableOnly).
-		SetGraphBasicParams(auditCmd.GraphBasicParams)
+		SetGraphBasicParams(auditCmd.AuditBasicParams).
+		SetThirdPartyApplicabilityScan(auditCmd.thirdPartyApplicabilityScan)
 	auditResults, err := RunAudit(auditParams)
 	if err != nil {
 		return
@@ -108,15 +109,15 @@ func (auditCmd *AuditCommand) Run() (err error) {
 	// Print Scan results on all cases except if errors accrued on SCA scan and no security/license issues found.
 	printScanResults := !(auditResults.ScaError != nil && xrayutils.IsEmptyScanResponse(auditResults.ExtendedScanResults.XrayResults))
 	if printScanResults {
-		err = xrayutils.PrintScanResults(auditResults.ExtendedScanResults,
-			nil,
-			auditCmd.OutputFormat(),
-			auditCmd.IncludeVulnerabilities,
-			auditCmd.IncludeLicenses,
-			auditResults.IsMultipleRootProject,
-			auditCmd.PrintExtendedTable, false, messages,
-		)
-		if err != nil {
+		if err = xrayutils.NewResultsWriter(auditResults.ExtendedScanResults).
+			SetIsMultipleRootProject(auditResults.IsMultipleRootProject).
+			SetIncludeVulnerabilities(auditCmd.IncludeVulnerabilities).
+			SetIncludeLicenses(auditCmd.IncludeLicenses).
+			SetOutputFormat(auditCmd.OutputFormat()).
+			SetPrintExtendedTable(auditCmd.PrintExtendedTable).
+			SetExtraMessages(messages).
+			SetScanType(services.Dependency).
+			PrintScanResults(); err != nil {
 			return
 		}
 	}
@@ -158,13 +159,13 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 		return
 	}
 	var xrayManager *xray.XrayServicesManager
-	xrayManager, auditParams.xrayVersion, err = commandsutils.CreateXrayServiceManagerAndGetVersion(serverDetails)
-	if err != nil {
+	if xrayManager, auditParams.xrayVersion, err = xrayutils.CreateXrayServiceManagerAndGetVersion(serverDetails); err != nil {
 		return
 	}
-	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, commandsutils.GraphScanMinXrayVersion); err != nil {
+	if err = clientutils.ValidateMinimumVersion(clientutils.Xray, auditParams.xrayVersion, scangraph.GraphScanMinXrayVersion); err != nil {
 		return
 	}
+	results.ExtendedScanResults.XrayVersion = auditParams.xrayVersion
 	results.ExtendedScanResults.EntitledForJas, err = isEntitledForJas(xrayManager, auditParams.xrayVersion)
 	if err != nil {
 		return
@@ -181,12 +182,12 @@ func RunAudit(auditParams *AuditParams) (results *Results, err error) {
 
 	// Wait for the Download of the AnalyzerManager to complete.
 	if err = errGroup.Wait(); err != nil {
-		return
+		err = errors.New("failed while trying to get Analyzer Manager: " + err.Error())
 	}
 
 	// Run scanners only if the user is entitled for Advanced Security
 	if results.ExtendedScanResults.EntitledForJas {
-		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.Progress())
+		results.JasError = runJasScannersAndSetResults(results.ExtendedScanResults, auditParams.DirectDependencies(), serverDetails, auditParams.workingDirs, auditParams.Progress(), auditParams.xrayGraphScanParams.MultiScanId, auditParams.thirdPartyApplicabilityScan)
 	}
 	return
 }

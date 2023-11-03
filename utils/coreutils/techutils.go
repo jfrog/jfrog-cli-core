@@ -1,6 +1,10 @@
 package coreutils
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -40,8 +44,8 @@ type TechData struct {
 	ciSetupSupport bool
 	// Whether Contextual Analysis supported in this technology.
 	applicabilityScannable bool
-	// The file that handles the project's dependencies.
-	packageDescriptor string
+	// The files that handle the project's dependencies.
+	packageDescriptors []string
 	// Formal name of the technology
 	formal string
 	// The executable name of the technology
@@ -56,21 +60,21 @@ var technologiesData = map[Technology]TechData{
 	Maven: {
 		indicators:             []string{"pom.xml"},
 		ciSetupSupport:         true,
-		packageDescriptor:      "pom.xml",
+		packageDescriptors:     []string{"pom.xml"},
 		execCommand:            "mvn",
 		applicabilityScannable: true,
 	},
 	Gradle: {
 		indicators:             []string{".gradle", ".gradle.kts"},
 		ciSetupSupport:         true,
-		packageDescriptor:      "build.gradle, build.gradle.kts",
+		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		applicabilityScannable: true,
 	},
 	Npm: {
 		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:             true,
-		packageDescriptor:          "package.json",
+		packageDescriptors:         []string{"package.json"},
 		formal:                     string(Npm),
 		packageVersionOperator:     "@",
 		packageInstallationCommand: "install",
@@ -78,26 +82,27 @@ var technologiesData = map[Technology]TechData{
 	},
 	Yarn: {
 		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptor:      "package.json",
+		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,
 	},
 	Go: {
 		indicators:                 []string{"go.mod"},
-		packageDescriptor:          "go.mod",
+		packageDescriptors:         []string{"go.mod"},
 		packageVersionOperator:     "@v",
 		packageInstallationCommand: "get",
 	},
 	Pip: {
 		packageType:            Pypi,
 		indicators:             []string{"setup.py", "requirements.txt"},
+		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 		applicabilityScannable: true,
 	},
 	Pipenv: {
 		packageType:                Pypi,
 		indicators:                 []string{"Pipfile", "Pipfile.lock"},
-		packageDescriptor:          "Pipfile",
+		packageDescriptors:         []string{"Pipfile"},
 		packageVersionOperator:     "==",
 		packageInstallationCommand: "install",
 		applicabilityScannable:     true,
@@ -126,34 +131,31 @@ var technologiesData = map[Technology]TechData{
 
 func (tech Technology) ToFormal() string {
 	if technologiesData[tech].formal == "" {
-		return cases.Title(language.Und).String(tech.ToString())
+		return cases.Title(language.Und).String(tech.String())
 	}
 	return technologiesData[tech].formal
 }
 
-func (tech Technology) ToString() string {
+func (tech Technology) String() string {
 	return string(tech)
 }
 
 func (tech Technology) GetExecCommandName() string {
 	if technologiesData[tech].execCommand == "" {
-		return tech.ToString()
+		return tech.String()
 	}
 	return technologiesData[tech].execCommand
 }
 
 func (tech Technology) GetPackageType() string {
 	if technologiesData[tech].packageType == "" {
-		return tech.ToString()
+		return tech.String()
 	}
 	return technologiesData[tech].packageType
 }
 
-func (tech Technology) GetPackageDescriptor() string {
-	if technologiesData[tech].packageDescriptor == "" {
-		return tech.ToFormal() + " Package Descriptor"
-	}
-	return technologiesData[tech].packageDescriptor
+func (tech Technology) GetPackageDescriptor() []string {
+	return technologiesData[tech].packageDescriptors
 }
 
 func (tech Technology) IsCiSetup() bool {
@@ -170,6 +172,23 @@ func (tech Technology) GetPackageInstallationCommand() string {
 
 func (tech Technology) ApplicabilityScannable() bool {
 	return technologiesData[tech].applicabilityScannable
+}
+
+func DetectedTechnologiesList() (technologies []string) {
+	wd, err := os.Getwd()
+	if errorutils.CheckError(err) != nil {
+		return
+	}
+	detectedTechnologies, err := DetectTechnologies(wd, false, false)
+	if err != nil {
+		return
+	}
+	if len(detectedTechnologies) == 0 {
+		return
+	}
+	techStringsList := DetectedTechnologiesToSlice(detectedTechnologies)
+	log.Info(fmt.Sprintf("Detected: %s.", strings.Join(techStringsList, ", ")))
+	return techStringsList
 }
 
 // DetectTechnologies tries to detect all technologies types according to the files in the given path.

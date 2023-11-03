@@ -4,13 +4,10 @@ import (
 	biUtils "github.com/jfrog/build-info-go/build/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-)
-
-const (
-	npmPackageTypeIdentifier = "npm://"
 )
 
 func BuildDependencyTree() (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
@@ -23,7 +20,7 @@ func BuildDependencyTree() (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps [
 		return
 	}
 
-	packageInfo, err := biUtils.ReadPackageInfoFromPackageJson(currentDir, nil)
+	packageInfo, err := biUtils.ReadPackageInfoFromPackageJsonIfExists(currentDir, nil)
 	if errorutils.CheckError(err) != nil {
 		return
 	}
@@ -55,5 +52,5 @@ func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, r
 }
 
 func getXrayDependencyId(yarnDependency *biUtils.YarnDependency) string {
-	return npmPackageTypeIdentifier + yarnDependency.Name() + ":" + yarnDependency.Details.Version
+	return utils.NpmPackageTypeIdentifier + yarnDependency.Name() + ":" + yarnDependency.Details.Version
 }

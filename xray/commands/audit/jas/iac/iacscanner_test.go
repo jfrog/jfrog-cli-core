@@ -1,13 +1,14 @@
 package iac
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"os"
 	"path/filepath"
 	"testing"
 
+	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,7 +22,7 @@ func TestNewIacScanManager(t *testing.T) {
 	if assert.NotNil(t, iacScanManager) {
 		assert.NotEmpty(t, iacScanManager.scanner.ConfigFileName)
 		assert.NotEmpty(t, iacScanManager.scanner.ResultsFileName)
-		assert.NotEmpty(t, iacScanManager.scanner.WorkingDirs)
+		assert.NotEmpty(t, iacScanManager.scanner.JFrogAppsConfig.Modules[0].SourceRoot)
 		assert.Equal(t, &jas.FakeServerDetails, iacScanManager.scanner.ServerDetails)
 	}
 }
@@ -34,7 +35,7 @@ func TestIacScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)
-	err = iacScanManager.createConfigFile(currWd)
+	err = iacScanManager.createConfigFile(jfrogappsconfig.Module{SourceRoot: currWd})
 
 	defer func() {
 		err = os.Remove(iacScanManager.scanner.ConfigFileName)
@@ -58,11 +59,11 @@ func TestIacParseResults_EmptyResults(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.IaC)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.Empty(t, iacScanManager.iacScannerResults)
+	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, iacDocsUrlSuffix)
+	if assert.NoError(t, err) && assert.NotNil(t, iacScanManager.iacScannerResults) {
+		assert.Len(t, iacScanManager.iacScannerResults, 1)
+		assert.Empty(t, iacScanManager.iacScannerResults[0].Results)
+	}
 }
 
 func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
@@ -74,10 +75,9 @@ func TestIacParseResults_ResultsContainIacViolations(t *testing.T) {
 
 	// Act
 	var err error
-	iacScanManager.iacScannerResults, err = jas.GetSourceCodeScanResults(iacScanManager.scanner.ResultsFileName, scanner.WorkingDirs[0], utils.IaC)
-
-	// Assert
-	assert.NoError(t, err)
-	assert.NotEmpty(t, iacScanManager.iacScannerResults)
-	assert.Equal(t, 4, len(iacScanManager.iacScannerResults))
+	iacScanManager.iacScannerResults, err = jas.ReadJasScanRunsFromFile(iacScanManager.scanner.ResultsFileName, scanner.JFrogAppsConfig.Modules[0].SourceRoot, iacDocsUrlSuffix)
+	if assert.NoError(t, err) && assert.NotNil(t, iacScanManager.iacScannerResults) {
+		assert.Len(t, iacScanManager.iacScannerResults, 1)
+		assert.Len(t, iacScanManager.iacScannerResults[0].Results, 4)
+	}
 }

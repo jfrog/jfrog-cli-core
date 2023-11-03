@@ -3,13 +3,12 @@ package transferfiles
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
 	"strings"
 	"time"
+
+	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type errorFileHandlerFunc func() parallel.TaskFunc
@@ -32,7 +31,8 @@ func (e *errorsRetryPhase) run() error {
 // Does so by creating and uploading by chunks, and polling on status.
 // Consumed errors files are deleted, new failures are written to new files.
 func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
-	if len(e.errorsFilesToHandle) == 0 {
+	errorsFilesToHandle := e.errorsFilesToHandle
+	if len(errorsFilesToHandle) == 0 {
 		return nil
 	}
 	log.Info("Starting to handle previous upload failures...")
@@ -45,11 +45,13 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	delayAction := func(phase phaseBase, addedDelayFiles []string) error {
 		return consumeAllDelayFiles(phase)
 	}
-	err := e.transferManager.doTransferWithProducerConsumer(action, delayAction)
-	if err == nil {
-		log.Info("Done handling previous upload failures.")
+
+	if err := e.transferManager.doTransferWithProducerConsumer(action, delayAction); err != nil {
+		return err
 	}
-	return err
+
+	log.Info("Done handling previous upload failures.")
+	return deleteAllFiles(errorsFilesToHandle)
 }
 
 func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatusResponse) (files []api.FileRepresentation) {
@@ -82,24 +84,13 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 	}
 
 	// Upload
-	shouldStop, err := uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
-	if err != nil || shouldStop {
-		return err
-	}
-
-	// Remove the file, so it won't be consumed again.
-	err = os.Remove(errFilePath)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	log.Debug("Done handling errors file: '", errFilePath, "'. Deleting it...")
-	return nil
+	_, err = uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
+	return err
 }
 
 func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
 	return func() parallel.TaskFunc {
-		return func(threadId int) error {
+		return func(int) error {
 			var errList []string
 			var err error
 			for _, errFile := range e.errorsFilesToHandle {
@@ -150,6 +141,19 @@ func (e *errorsRetryPhase) initProgressBar() error {
 		filesCount += len(failedFiles.Errors)
 	}
 	// The progress bar will also be responsible to display the number of delayed items for this repository.
+	// Those delayed artifacts will be handled at the end of this phase in case they exist.
+	delayFiles, err := getDelayFiles([]string{e.repoKey})
+	if err != nil {
+		return err
+	}
+	delayCount, delayStorage, err := countDelayFilesContent(delayFiles)
+	if err != nil {
+		return err
+	}
+	err = e.stateManager.SetTotalSizeAndFilesPhase3(int64(filesCount)+int64(delayCount), storage+delayStorage)
+	if err != nil {
+		return err
+	}
 	e.progressBar.AddPhase3()
 	return nil
 }

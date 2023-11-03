@@ -16,9 +16,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/fs"
 	"net/http"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -221,16 +219,7 @@ func copyGoPackageFiles(destPath, packageName, rtTargetRepo string, authArtDetai
 		return fmt.Errorf("couldn't find suitable package files: %s", packageFilesPath)
 	}
 	// Set permission recursively
-	return filepath.WalkDir(destPath, func(path string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		err = os.Chmod(path, 0700)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
+	return coreutils.SetPermissionsRecursively(destPath, 0755)
 }
 
 // getPackageFilePathFromArtifactory returns a string that represents the package files cache path.

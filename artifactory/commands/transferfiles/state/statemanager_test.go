@@ -146,6 +146,48 @@ func TestReposOverallBiFiles(t *testing.T) {
 	assert.Equal(t, int64(8), stateManager.OverallBiFiles.TransferredUnits)
 }
 
+func TestChangeDelayedFilesCountBy(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Increase delayed files count
+	assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(2, true))
+	assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(4, true))
+	assert.Equal(t, uint64(6), stateManager.DelayedFiles)
+
+	// Decrease delayed files count
+	assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(3, false))
+	assert.Equal(t, uint64(3), stateManager.DelayedFiles)
+}
+
+func TestVisitedFolders(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Increase visited folders count
+	assert.NoError(t, stateManager.IncVisitedFolders())
+	assert.NoError(t, stateManager.IncVisitedFolders())
+	assert.Equal(t, uint64(2), stateManager.VisitedFolders)
+
+	// Set repository state and ensure the visited folders became 0
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
+	assert.Zero(t, stateManager.VisitedFolders)
+}
+
+func TestChangeTransferFailureCountBy(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Increase failures count
+	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(2, true))
+	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(4, true))
+	assert.Equal(t, uint(6), stateManager.TransferFailures)
+
+	// Decrease failures count
+	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(3, false))
+	assert.Equal(t, uint(3), stateManager.TransferFailures)
+}
+
 func assertReposTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
 	totalTransferredSize, err := stateManager.GetReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)

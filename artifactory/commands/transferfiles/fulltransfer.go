@@ -242,7 +242,7 @@ func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
 		return
 	}
 	// Increment the files count in the directory's node in the snapshot manager, to track its progress.
-	err = node.IncrementFilesCount()
+	err = node.IncrementFilesCount(uint64(file.Size))
 	if err != nil {
 		return
 	}

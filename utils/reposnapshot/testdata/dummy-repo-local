@@ -1,1 +1,34 @@
-{"name":".","children":[{"name":"0","children":[{"name":"a"}]},{"name":"1","children":[{"name":"a"},{"name":"b"}]},{"name":"2"}]}
+{
+  "name": ".",
+  "children": [
+    {
+      "name": "0",
+      "children": [
+        {
+          "name": "a",
+          "total_files_count": 3,
+          "total_files_size": 3
+        }
+      ]
+    },
+    {
+      "name": "1",
+      "children": [
+        {
+          "name": "a",
+          "total_files_count": 1
+        },
+        {
+          "name": "b",
+          "total_files_count": 2,
+          "total_files_size": 1
+        }
+      ],
+      "total_files_count": 1
+    },
+    {
+      "name": "2"
+    }
+  ],
+  "total_files_count": 1
+}

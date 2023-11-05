@@ -17,7 +17,9 @@ type Node struct {
 	// Mutex is on the Node level to allow modifying non-conflicting content on multiple nodes simultaneously.
 	mutex sync.Mutex
 	// The files count is used to identify when handling a node is completed. It is only used during runtime, and is not persisted to disk for future runs.
-	filesCount uint32
+	filesCount      uint32
+	totalFilesCount uint32
+	totalFilesSize  uint64
 	NodeStatus
 }
 
@@ -34,9 +36,11 @@ const (
 // The wrapper only contains fields that are used in future runs, hence not all fields from Node are persisted.
 // In addition, it does not hold the parent pointer to avoid cyclic reference on export.
 type NodeExportWrapper struct {
-	Name      string               `json:"name,omitempty"`
-	Children  []*NodeExportWrapper `json:"children,omitempty"`
-	Completed bool                 `json:"completed,omitempty"`
+	Name            string               `json:"name,omitempty"`
+	Children        []*NodeExportWrapper `json:"children,omitempty"`
+	Completed       bool                 `json:"completed,omitempty"`
+	TotalFilesCount uint32               `json:"total_files_count,omitempty"`
+	TotalFilesSize  uint64               `json:"total_files_size,omitempty"`
 }
 
 type ActionOnNodeFunc func(node *Node) error
@@ -55,8 +59,10 @@ func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
 	var children []*Node
 	err = node.action(func(node *Node) error {
 		wrapper = &NodeExportWrapper{
-			Name:      node.name,
-			Completed: node.NodeStatus == Completed,
+			Name:            node.name,
+			Completed:       node.NodeStatus == Completed,
+			TotalFilesCount: node.totalFilesCount,
+			TotalFilesSize:  node.totalFilesSize,
 		}
 		children = node.children
 		return nil
@@ -78,7 +84,9 @@ func (node *Node) convertToWrapper() (wrapper *NodeExportWrapper, err error) {
 // Convert the loaded node export wrapper to node.
 func (wrapper *NodeExportWrapper) convertToNode() *Node {
 	node := &Node{
-		name: wrapper.Name,
+		name:            wrapper.Name,
+		totalFilesCount: wrapper.TotalFilesCount,
+		totalFilesSize:  wrapper.TotalFilesSize,
 	}
 	// If node wasn't previously completed, we will start exploring it from scratch.
 	if wrapper.Completed {
@@ -128,6 +136,31 @@ func (node *Node) setCompleted() (err error) {
 	return
 }
 
+// Sum up all subtree directories with status "completed"
+func (node *Node) CalculateTransferredFilesAndSize() (totalFilesCount uint32, totalFilesSize uint64, err error) {
+	var children []*Node
+	err = node.action(func(node *Node) error {
+		children = node.children
+		if node.NodeStatus == Completed {
+			totalFilesCount = node.totalFilesCount
+			totalFilesSize = node.totalFilesSize
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+	for _, child := range children {
+		childFilesCount, childTotalFilesSize, childErr := child.CalculateTransferredFilesAndSize()
+		if childErr != nil {
+			return 0, 0, childErr
+		}
+		totalFilesCount += childFilesCount
+		totalFilesSize += childTotalFilesSize
+	}
+	return
+}
+
 // Check if node completed - if done exploring, done handling files, children are completed.
 func (node *Node) CheckCompleted() error {
 	isCompleted := false
@@ -135,11 +168,17 @@ func (node *Node) CheckCompleted() error {
 		if node.NodeStatus == Exploring || node.filesCount > 0 {
 			return nil
 		}
+		var totalFilesCount uint32 = 0
+		var totalFilesSize uint64 = 0
 		for _, child := range node.children {
+			totalFilesCount += child.totalFilesCount
+			totalFilesSize += child.totalFilesSize
 			if child.NodeStatus < Completed {
 				return nil
 			}
 		}
+		node.totalFilesCount += totalFilesCount
+		node.totalFilesSize += totalFilesSize
 		isCompleted = true
 		return nil
 	})
@@ -150,9 +189,11 @@ func (node *Node) CheckCompleted() error {
 	return node.setCompleted()
 }
 
-func (node *Node) IncrementFilesCount() error {
+func (node *Node) IncrementFilesCount(fileSize uint64) error {
 	return node.action(func(node *Node) error {
 		node.filesCount++
+		node.totalFilesCount++
+		node.totalFilesSize += fileSize
 		return nil
 	})
 }

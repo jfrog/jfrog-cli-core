@@ -12,6 +12,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
@@ -105,13 +106,13 @@ func (tcb *TransferConfigBase) ValidateDifferentServers() error {
 }
 
 // Create a map between the repository types to the list of repositories to transfer.
-func (tcb *TransferConfigBase) GetSelectedRepositories() (map[utils.RepoType][]string, error) {
+func (tcb *TransferConfigBase) GetSelectedRepositories() (map[utils.RepoType][]services.RepositoryDetails, error) {
 	allTargetRepos, err := tcb.getAllTargetRepositories()
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(map[utils.RepoType][]string, len(utils.RepoTypes)+1)
+	result := make(map[utils.RepoType][]services.RepositoryDetails, len(utils.RepoTypes)+1)
 	sourceRepos, err := tcb.SourceArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return nil, err
@@ -127,7 +128,7 @@ func (tcb *TransferConfigBase) GetSelectedRepositories() (map[utils.RepoType][]s
 				continue
 			}
 			repoType := utils.RepoTypeFromString(sourceRepo.Type)
-			result[repoType] = append(result[repoType], sourceRepo.Key)
+			result[repoType] = append(result[repoType], sourceRepo)
 		}
 	}
 	return result, nil
@@ -148,7 +149,7 @@ func (tcb *TransferConfigBase) DeactivateKeyEncryption() (reactivateKeyEncryptio
 // Transfer all repositories to the target Artifactory server
 // reposToTransfer - Map between a repository type to the list of repository names
 // remoteRepositories - Remote repositories params, we get the remote repository params in an earlier stage after decryption
-func (tcb *TransferConfigBase) TransferRepositoriesToTarget(reposToTransfer map[utils.RepoType][]string, remoteRepositories []interface{}) (err error) {
+func (tcb *TransferConfigBase) TransferRepositoriesToTarget(reposToTransfer map[utils.RepoType][]services.RepositoryDetails, remoteRepositories []interface{}) (err error) {
 	// Transfer remote repositories
 	for i, remoteRepositoryName := range reposToTransfer[utils.Remote] {
 		if err = tcb.createRepositoryAndAssignToProject(remoteRepositories[i], remoteRepositoryName); err != nil {
@@ -187,10 +188,10 @@ func (tcb *TransferConfigBase) getAllTargetRepositories() (*datastructures.Set[s
 // Transfer local, federated, unknown, or virtual repositories
 // reposToTransfer - Repositories names to transfer
 // repoType - Repository type
-func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTransfer []string, repoType utils.RepoType) (err error) {
-	for _, repoKey := range reposToTransfer {
+func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTransfer []services.RepositoryDetails, repoType utils.RepoType) (err error) {
+	for _, repo := range reposToTransfer {
 		var params interface{}
-		if err = tcb.SourceArtifactoryManager.GetRepository(repoKey, &params); err != nil {
+		if err = tcb.SourceArtifactoryManager.GetRepository(repo.Key, &params); err != nil {
 			return
 		}
 		if repoType == utils.Federated {
@@ -198,7 +199,7 @@ func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTrans
 				return
 			}
 		}
-		if err = tcb.createRepositoryAndAssignToProject(params, repoKey); err != nil {
+		if err = tcb.createRepositoryAndAssignToProject(params, repo); err != nil {
 			return
 		}
 	}
@@ -207,17 +208,17 @@ func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTrans
 
 // Transfer virtual repositories
 // reposToTransfer - Repositories names to transfer
-func (tcb *TransferConfigBase) transferVirtualRepositoriesToTarget(reposToTransfer []string) (err error) {
+func (tcb *TransferConfigBase) transferVirtualRepositoriesToTarget(reposToTransfer []services.RepositoryDetails) (err error) {
 	allReposParams := make(map[string]interface{})
 	var singleRepoParamsMap map[string]interface{}
 	var singleRepoParams interface{}
 	// Step 1 - Get and create all virtual repositories with the included repositories removed
-	for _, repoKey := range reposToTransfer {
+	for _, repoToTransfer := range reposToTransfer {
 		// Get repository params
-		if err = tcb.SourceArtifactoryManager.GetRepository(repoKey, &singleRepoParams); err != nil {
+		if err = tcb.SourceArtifactoryManager.GetRepository(repoToTransfer.Key, &singleRepoParams); err != nil {
 			return
 		}
-		allReposParams[repoKey] = singleRepoParams
+		allReposParams[repoToTransfer.Key] = singleRepoParams
 		singleRepoParamsMap, err = InterfaceToMap(singleRepoParams)
 		if err != nil {
 			return
@@ -226,7 +227,7 @@ func (tcb *TransferConfigBase) transferVirtualRepositoriesToTarget(reposToTransf
 		// Create virtual repository without included repositories
 		repositories := singleRepoParamsMap["repositories"]
 		delete(singleRepoParamsMap, "repositories")
-		if err = tcb.createRepositoryAndAssignToProject(singleRepoParamsMap, repoKey); err != nil {
+		if err = tcb.createRepositoryAndAssignToProject(singleRepoParamsMap, repoToTransfer); err != nil {
 			return
 		}
 
@@ -326,9 +327,9 @@ func (tcb *TransferConfigBase) removeFederatedMembers(federatedRepoParams interf
 // Create a repository in the target server and assign the repository to the required project, if any.
 // repoParams - Repository parameters
 // repoKey    - Repository key
-func (tcb *TransferConfigBase) createRepositoryAndAssignToProject(repoParams interface{}, repoKey string) (err error) {
+func (tcb *TransferConfigBase) createRepositoryAndAssignToProject(repoParams interface{}, repoDetails services.RepositoryDetails) (err error) {
 	var projectKey string
-	if repoParams, projectKey, err = removeProjectKeyIfNeeded(repoParams, repoKey); err != nil {
+	if repoParams, projectKey, err = removeProjectKeyIfNeeded(repoParams, repoDetails.Key); err != nil {
 		return
 	}
 	if projectKey != "" {
@@ -336,13 +337,13 @@ func (tcb *TransferConfigBase) createRepositoryAndAssignToProject(repoParams int
 		// This is why we make sure to detach it before actually creating the repository.
 		// If the project isn't linked to the repository, an error might come up, but we ignore it because we can't
 		// be certain whether the repository was actually assigned to the project or not.
-		_ = tcb.TargetAccessManager.UnassignRepoFromProject(repoKey)
+		_ = tcb.TargetAccessManager.UnassignRepoFromProject(repoDetails.Key)
 	}
-	if err = tcb.TargetArtifactoryManager.CreateRepositoryWithParams(repoParams, repoKey); err != nil {
+	if err = tcb.TargetArtifactoryManager.CreateRepositoryWithParams(repoParams, repoDetails.Key); err != nil {
 		return
 	}
 	if projectKey != "" {
-		return tcb.TargetAccessManager.AssignRepoToProject(repoKey, projectKey, true)
+		return tcb.TargetAccessManager.AssignRepoToProject(repoDetails.Key, projectKey, true)
 	}
 	return
 }

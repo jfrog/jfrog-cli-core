@@ -97,7 +97,7 @@ func (m *fullTransferPhase) run() error {
 			return nil
 		}
 
-		// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exist.
+		// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exists.
 		node, done, err := m.getAndHandleDirectoryNode(".")
 		if err != nil || done {
 			return err
@@ -228,7 +228,7 @@ func (m *fullTransferPhase) handleFoundChildFolder(params folderParams, pcWrappe
 	item servicesUtils.ResultItem) (err error) {
 	newRelativePath := getFolderRelativePath(item.Name, params.relativePath)
 
-	// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exist.
+	// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exists.
 	node, done, err := m.getAndHandleDirectoryNode(newRelativePath)
 	if err != nil || done {
 		return err

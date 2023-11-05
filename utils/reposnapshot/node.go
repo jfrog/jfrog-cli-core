@@ -200,9 +200,10 @@ func (node *Node) IncrementFilesCount(fileSize uint64) error {
 
 func (node *Node) DecrementFilesCount() error {
 	return node.action(func(node *Node) error {
-		if node.filesCount > 0 {
-			node.filesCount--
+		if node.filesCount == 0 {
+			return errorutils.CheckErrorf("attempting to decrease file count in node '%s', but the files count is already 0", node.name)
 		}
+		node.filesCount--
 		return nil
 	})
 }

@@ -126,9 +126,11 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,
 	}}
 
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: scanResponse, XrayVersion: xrayVersion}
+	scanResults := xrutils.NewAuditResults()
+	scanResults.XrayVersion = xrayVersion
+	scanResults.ScaResults = []xrutils.ScaScanResult{{XrayResults: scanResponse}}
 
-	resultsPrinter := xrutils.NewResultsWriter(extendedScanResults).
+	resultsPrinter := xrutils.NewResultsWriter(scanResults).
 		SetOutputFormat(bsc.outputFormat).
 		SetIncludeVulnerabilities(bsc.includeVulnerabilities).
 		SetIncludeLicenses(false).

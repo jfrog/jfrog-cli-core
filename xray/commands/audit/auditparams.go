@@ -8,6 +8,7 @@ import (
 type AuditParams struct {
 	xrayGraphScanParams *services.XrayGraphScanParams
 	workingDirs         []string
+	exclusions          []string
 	installFunc         func(tech string) error
 	fixableOnly         bool
 	minSeverityFilter   string
@@ -38,6 +39,15 @@ func (params *AuditParams) WorkingDirs() []string {
 
 func (params *AuditParams) XrayVersion() string {
 	return params.xrayVersion
+}
+
+func (params *AuditParams) Exclusions() []string {
+	return params.exclusions
+}
+
+func (params *AuditParams) SetExclusions(exclusions []string) *AuditParams {
+	params.exclusions = exclusions
+	return params
 }
 
 func (params *AuditParams) SetXrayGraphScanParams(xrayGraphScanParams *services.XrayGraphScanParams) *AuditParams {

@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // The interval in which to save the state and run transfer files to the file system.
@@ -67,6 +68,8 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // buildInfoRepo  - True if build info repository
 // reset          - Delete the repository's previous transfer info
 func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
+	var transferredFiles uint32 = 0
+	var transferredSizeBytes uint64 = 0
 	err := ts.Action(func(*TransferState) error {
 		transferState, repoTransferSnapshot, err := getTransferStateAndSnapshot(repoKey, reset)
 		if err != nil {
@@ -74,6 +77,17 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 		}
 		transferState.CurrentRepo.Phase1Info.TotalSizeBytes = totalSizeBytes
 		transferState.CurrentRepo.Phase1Info.TotalUnits = totalFiles
+
+		if repoTransferSnapshot != nil && repoTransferSnapshot.loadedFromSnapshot {
+			transferredFiles, transferredSizeBytes, err = repoTransferSnapshot.snapshotManager.CalculateTransferredFilesAndSize()
+			if err != nil {
+				return err
+			}
+			log.Info("Calculated transferred files from previous run:", transferredFiles)
+			log.Info("Calculated transferred bytes from previous run:", transferredSizeBytes)
+			transferState.CurrentRepo.Phase1Info.TransferredUnits = int64(transferredFiles)
+			transferState.CurrentRepo.Phase1Info.TransferredSizeBytes = int64(transferredSizeBytes)
+		}
 
 		ts.TransferState = transferState
 		ts.repoTransferSnapshot = repoTransferSnapshot
@@ -87,8 +101,8 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 		transferRunStatus.BuildInfoRepo = buildInfoRepo
 		transferRunStatus.VisitedFolders = 0
 
-		transferRunStatus.OverallTransfer.TransferredUnits += ts.CurrentRepo.Phase1Info.TransferredUnits
-		transferRunStatus.OverallTransfer.TransferredSizeBytes += ts.CurrentRepo.Phase1Info.TransferredSizeBytes
+		transferRunStatus.OverallTransfer.TransferredUnits += int64(transferredFiles)
+		transferRunStatus.OverallTransfer.TransferredSizeBytes += int64(transferredSizeBytes)
 		return nil
 	})
 }

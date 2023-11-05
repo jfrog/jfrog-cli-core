@@ -2,6 +2,7 @@ package coreutils
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -500,6 +501,16 @@ func parseYesNo(s string, def bool) (ans, valid bool) {
 		return false, true
 	}
 	return false, false
+}
+
+func GetJsonIndent(o any) (strJson string, err error) {
+	byteJson, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		err = errorutils.CheckError(err)
+		return
+	}
+	strJson = string(byteJson)
+	return
 }
 
 func GetCliUserAgent() string {

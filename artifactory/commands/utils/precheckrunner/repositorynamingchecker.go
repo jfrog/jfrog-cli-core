@@ -14,7 +14,7 @@ import (
 
 const (
 	repositoryNamingCheckName        = "Repositories naming"
-	illegalDockerRepositoryKeyReason = "Docker repository keys in the SasS are not allowed to include '.' or '_' characters."
+	illegalDockerRepositoryKeyReason = "Docker repository keys in JFrog Cloud are not allowed to include '.' or '_' characters."
 )
 
 type illegalRepositoryKeys struct {

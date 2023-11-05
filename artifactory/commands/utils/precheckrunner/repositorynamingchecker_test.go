@@ -23,5 +23,4 @@ func TestGetIllegalDockerRepositoryKeys(t *testing.T) {
 		{RepoKey: "a.b-docker", Reason: illegalDockerRepositoryKeyReason},
 		{RepoKey: "a_b-docker", Reason: illegalDockerRepositoryKeyReason},
 	}, actualIllegalRepositories)
-
 }

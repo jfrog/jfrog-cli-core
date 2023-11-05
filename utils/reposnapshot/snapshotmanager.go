@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/jfrog/gofrog/lru"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"strings"
 )
 
 // Represents a snapshot of a repository being traversed to do a certain action.
@@ -80,6 +81,12 @@ func loadAndConvertNodeTree(snapshotFilePath string) (root *Node, err error) {
 
 func (sm *RepoSnapshotManager) PersistRepoSnapshot() error {
 	return sm.root.convertAndSaveToFile(sm.snapshotFilePath)
+}
+
+// Return the count and size of files that have been successfully transferred and their respective directories are marked as complete,
+// ensuring they won't be transferred again. This data helps in estimating the remaining files for transfer after stopping.
+func (sm *RepoSnapshotManager) CalculateTransferredFilesAndSize() (totalFilesCount uint32, totalFilesSize uint64, err error) {
+	return sm.root.CalculateTransferredFilesAndSize()
 }
 
 // Returns the node corresponding to the directory in the provided relative path. Path should be provided without the repository name.

@@ -241,9 +241,12 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults, XrayVersion: xrayVersion}
 
-	if err = xrutils.NewResultsWriter(extendedScanResults).
+	scanResults := xrutils.NewAuditResults()
+	scanResults.XrayVersion = xrayVersion
+	scanResults.ScaResults = []xrutils.ScaScanResult{{XrayResults: flatResults}}
+
+	if err = xrutils.NewResultsWriter(scanResults).
 		SetOutputFormat(scanCmd.outputFormat).
 		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
 		SetIncludeLicenses(scanCmd.includeLicenses).
@@ -410,7 +413,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		return err
 	}
 
-	paths, err := fspatterns.ListFiles(rootPath, recursive, false, false, excludePathPattern)
+	paths, err := fspatterns.ListFiles(rootPath, recursive, false, false, false, excludePathPattern)
 	if err != nil {
 		return err
 	}

@@ -95,7 +95,7 @@ func TestGetConfigXml(t *testing.T) {
 
 	// Test get config xml
 	transferConfigCmd := createTransferConfigCommand(t, serverDetails, nil)
-	configXml, _, err := transferConfigCmd.getEncryptedItems(make(map[utils.RepoType][]string))
+	configXml, _, err := transferConfigCmd.getEncryptedItems(make(map[utils.RepoType][]services.RepositoryDetails))
 	assert.NoError(t, err)
 	assert.Equal(t, "<config></config>", configXml)
 }

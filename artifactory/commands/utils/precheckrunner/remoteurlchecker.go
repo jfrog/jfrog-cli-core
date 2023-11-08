@@ -1,4 +1,4 @@
-package utils
+package precheckrunner
 
 import (
 	"encoding/json"
@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -114,7 +115,7 @@ func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments, r
 	}
 
 	// Create rtDetails
-	rtDetails, err := CreateArtifactoryClientDetails(*rrc.targetServicesManager)
+	rtDetails, err := utils.CreateArtifactoryClientDetails(*rrc.targetServicesManager)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +146,7 @@ func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httput
 		LogMsgPrefix:             "[Config import]",
 		ExecutionHandler: func() (shouldRetry bool, err error) {
 			// Start the remote repositories check process
-			resp, responseBody, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheck", requestBody, rtDetails)
+			resp, responseBody, err := (*rrc.targetServicesManager).Client().SendPost(artifactoryUrl+utils.PluginsExecuteRestApi+"remoteRepositoriesCheck", requestBody, rtDetails)
 			if err != nil {
 				return false, err
 			}
@@ -190,7 +191,7 @@ func (rrc *RemoteRepositoryCheck) waitForRemoteReposCheckCompletion(rtDetails *h
 func (rrc *RemoteRepositoryCheck) createImportPollingAction(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) httputils.PollingAction {
 	return func() (shouldStop bool, responseBody []byte, err error) {
 		// Get config import status
-		resp, body, _, err := (*rrc.targetServicesManager).Client().SendGet(artifactoryUrl+PluginsExecuteRestApi+"remoteRepositoriesCheckStatus", true, rtDetails)
+		resp, body, _, err := (*rrc.targetServicesManager).Client().SendGet(artifactoryUrl+utils.PluginsExecuteRestApi+"remoteRepositoriesCheckStatus", true, rtDetails)
 		if err != nil {
 			return true, nil, err
 		}
@@ -227,7 +228,7 @@ func unmarshalRemoteUrlResponse(body []byte) (*remoteUrlResponse, error) {
 // Create csv summary of all the files with inaccessible remote repositories and log the result
 func handleFailureRun(inaccessibleRepositories []inaccessibleRepository) (err error) {
 	// Create summary
-	csvPath, err := CreateCSVFile("inaccessible-repositories", inaccessibleRepositories, time.Now())
+	csvPath, err := utils.CreateCSVFile("inaccessible-repositories", inaccessibleRepositories, time.Now())
 	if err != nil {
 		log.Error("Couldn't create the inaccessible remote repository URLs CSV file", err)
 		return

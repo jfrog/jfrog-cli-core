@@ -1,6 +1,13 @@
 package dotnet
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
 	"github.com/jfrog/gofrog/io"
@@ -9,11 +16,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"testing"
 )
 
 func TestGetFlagValueExists(t *testing.T) {
@@ -215,7 +217,7 @@ func assertFileExists(t *testing.T, path string, expected bool) {
 }
 
 func createNewDotnetModule(t *testing.T, tmpDir string) *build.DotnetModule {
-	dotnetBuild := build.NewBuild("", "", "", tmpDir, nil)
+	dotnetBuild := build.NewBuild("", "", time.Now(), "", tmpDir, nil)
 	module, err := dotnetBuild.AddDotnetModules("")
 	assert.NoError(t, err)
 	return module

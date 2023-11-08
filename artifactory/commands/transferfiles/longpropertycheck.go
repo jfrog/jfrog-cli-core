@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -67,7 +68,7 @@ func (lpc *LongPropertyCheck) Name() string {
 	return longPropertyCheckName
 }
 
-func (lpc *LongPropertyCheck) ExecuteCheck(args cmdutils.RunArguments) (passed bool, err error) {
+func (lpc *LongPropertyCheck) ExecuteCheck(args precheckrunner.RunArguments) (passed bool, err error) {
 	// Init producer consumer
 	lpc.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
 	lpc.filesChan = make(chan FileWithLongProperty, threadCount)
@@ -111,7 +112,7 @@ func (lpc *LongPropertyCheck) ExecuteCheck(args cmdutils.RunArguments) (passed b
 
 // Search for long properties in the server and create a search task to find the files that contains them
 // Returns the number of long properties found
-func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args cmdutils.RunArguments) int {
+func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args precheckrunner.RunArguments) int {
 	// Init
 	serviceManager, err := createTransferServiceManager(args.Context, args.ServerDetails)
 	if err != nil {
@@ -173,7 +174,7 @@ func getSearchAllPropertiesQuery(pageNumber int) string {
 
 // Create a task that fetch from the server the files with the given property.
 // We keep only the files that are at the requested repos and pass them at the files channel
-func createSearchPropertyTask(property Property, repos []string, args cmdutils.RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
+func createSearchPropertyTask(property Property, repos []string, args precheckrunner.RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
 	return func(threadId int) (err error) {
 		serviceManager, err := createTransferServiceManager(args.Context, args.ServerDetails)
 		if err != nil {

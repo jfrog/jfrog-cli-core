@@ -89,19 +89,25 @@ type DelayedArtifactsFile struct {
 }
 
 // Collect all the delayed artifact files that were created up to this point for the repository and transfer their artifacts using handleDelayedArtifactsFiles
-func consumeAllDelayFiles(base phaseBase) error {
+func consumeAllDelayFiles(base phaseBase) (err error) {
 	filesToConsume, err := getDelayFiles([]string{base.repoKey})
-	if err != nil {
-		return err
+	if err != nil || len(filesToConsume) == 0 {
+		return
 	}
 	delayFunctions := getDelayUploadComparisonFunctions(base.repoSummary.PackageType)
-	if len(filesToConsume) > 0 && len(delayFunctions) > 0 {
-		log.Info("Starting to handle delayed artifacts uploads...")
-		if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:]); err == nil {
-			log.Info("Done handling delayed artifacts uploads.")
-		}
+	if len(delayFunctions) == 0 {
+		return
 	}
-	return err
+
+	log.Info("Starting to handle delayed artifacts uploads...")
+	// Each delay function causes the transfer to skip a specific group of files.
+	// Within the handleDelayedArtifactsFiles function, we recursively remove the first delay function from the slice to transfer the first set of files every time.
+	if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:]); err != nil {
+		return
+	}
+
+	log.Info("Done handling delayed artifacts uploads.")
+	return deleteAllFiles(filesToConsume)
 }
 
 // Call consumeAllDelayFiles only if there are no failed transferred files for the repository up to this point.
@@ -182,13 +188,6 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 		if err = base.stateManager.ChangeDelayedFilesCountBy(uint64(len(delayedArtifactsFile.DelayedArtifacts)), false); err != nil {
 			log.Warn("Couldn't decrease the delayed files counter", err.Error())
 		}
-
-		// Remove the file, so it won't be consumed again.
-		if err = os.Remove(filePath); err != nil {
-			return errorutils.CheckError(err)
-		}
-
-		log.Debug("Done handling delayed artifacts file: '" + filePath + "'. Deleting it...")
 	}
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -212,7 +213,7 @@ func (tcc *TransferConfigCommand) runPreChecks() error {
 		return err
 	}
 
-	return tcc.NewPreChecksRunner(remoteRepositories).Run(context.Background(), tcc.TargetServerDetails)
+	return tcc.NewPreChecksRunner(selectedRepos, remoteRepositories).Run(context.Background(), tcc.TargetServerDetails)
 }
 
 func (tcc *TransferConfigCommand) printWarnings() (err error) {
@@ -296,16 +297,17 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin() error {
 }
 
 // Creates the Pre-checks runner for the config import command
-func (tcc *TransferConfigCommand) NewPreChecksRunner(remoteRepositories []interface{}) (runner *commandsUtils.PreCheckRunner) {
-	runner = commandsUtils.NewPreChecksRunner()
+func (tcc *TransferConfigCommand) NewPreChecksRunner(selectedRepos map[utils.RepoType][]services.RepositoryDetails, remoteRepositories []interface{}) (runner *precheckrunner.PreCheckRunner) {
+	runner = precheckrunner.NewPreChecksRunner()
 
 	// Add pre-checks here
-	runner.AddCheck(commandsUtils.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, remoteRepositories))
+	runner.AddCheck(precheckrunner.NewRepositoryNamingCheck(selectedRepos))
+	runner.AddCheck(precheckrunner.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, remoteRepositories))
 
 	return
 }
 
-func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[utils.RepoType][]string) (configXml string, remoteRepositories []interface{}, err error) {
+func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[utils.RepoType][]services.RepositoryDetails) (configXml string, remoteRepositories []interface{}, err error) {
 	reactivateKeyEncryption, err := tcc.DeactivateKeyEncryption()
 	if err != nil {
 		return "", nil, err
@@ -324,10 +326,10 @@ func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[util
 	}
 
 	// Get all remote repositories from the source Artifactory server.
-	if remoteRepositoryNames, ok := selectedSourceRepos[utils.Remote]; ok && len(remoteRepositoryNames) > 0 {
-		remoteRepositories = make([]interface{}, len(remoteRepositoryNames))
-		for i, repoName := range remoteRepositoryNames {
-			if err = tcc.SourceArtifactoryManager.GetRepository(repoName, &remoteRepositories[i]); err != nil {
+	if remoteRepositoriesDetails, ok := selectedSourceRepos[utils.Remote]; ok && len(remoteRepositoriesDetails) > 0 {
+		remoteRepositories = make([]interface{}, len(remoteRepositoriesDetails))
+		for i, remoteRepositoryDetails := range remoteRepositoriesDetails {
+			if err = tcc.SourceArtifactoryManager.GetRepository(remoteRepositoryDetails.Key, &remoteRepositories[i]); err != nil {
 				return
 			}
 		}

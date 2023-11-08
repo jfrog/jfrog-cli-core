@@ -1,17 +1,20 @@
 package buildinfo
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
-	"net/url"
+	"io"
 	"strconv"
 	"time"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -45,18 +48,24 @@ func (bac *BuildAppendCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, bac.buildConfiguration.GetProject()); err != nil {
+	if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, bac.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
 
-	// Calculate build timestamp
-	timestamp, err := bac.getBuildTimestamp()
+	// Create services manager to get build-info from Artifactory.
+	servicesManager, err := utils.CreateServiceManager(bac.serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
 
-	// Get checksum headers from the build info artifact
-	checksumDetails, err := bac.getChecksumDetails(timestamp)
+	// Calculate build timestamp
+	timestamp, err := bac.getBuildTimestamp(servicesManager)
+	if err != nil {
+		return err
+	}
+
+	// Get checksum values from the build info artifact
+	checksumDetails, err := bac.getChecksumDetails(servicesManager, timestamp)
 	if err != nil {
 		return err
 	}
@@ -99,16 +108,10 @@ func (bac *BuildAppendCommand) SetBuildNumberToAppend(buildNumber string) *Build
 
 // Get build timestamp of the build to append. The build timestamp has to be converted to milliseconds from epoch.
 // For example, start time of: 2020-11-27T14:33:38.538+0200 should be converted to 1606480418538.
-func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
-	// Create services manager to get build-info from Artifactory.
-	sm, err := utils.CreateServiceManager(bac.serverDetails, -1, 0, false)
-	if err != nil {
-		return 0, err
-	}
-
+func (bac *BuildAppendCommand) getBuildTimestamp(servicesManager artifactory.ArtifactoryServicesManager) (int64, error) {
 	// Get published build-info from Artifactory.
 	buildInfoParams := services.BuildInfoParams{BuildName: bac.buildNameToAppend, BuildNumber: bac.buildNumberToAppend, ProjectKey: bac.buildConfiguration.GetProject()}
-	buildInfo, found, err := sm.GetBuildInfo(buildInfoParams)
+	buildInfo, found, err := servicesManager.GetBuildInfo(buildInfoParams)
 	if err != nil {
 		return 0, err
 	}
@@ -133,24 +136,38 @@ func (bac *BuildAppendCommand) getBuildTimestamp() (int64, error) {
 }
 
 // Download MD5 and SHA1 from the build info artifact.
-func (bac *BuildAppendCommand) getChecksumDetails(timestamp int64) (buildinfo.Checksum, error) {
-	serviceDetails, err := bac.serverDetails.CreateArtAuthConfig()
+func (bac *BuildAppendCommand) getChecksumDetails(servicesManager artifactory.ArtifactoryServicesManager, timestamp int64) (buildinfo.Checksum, error) {
+	// Run AQL query for build
+	stringTimestamp := strconv.FormatInt(timestamp, 10)
+	aqlQuery := servicesutils.CreateAqlQueryForBuildInfoJson(bac.buildConfiguration.GetProject(), bac.buildNameToAppend, bac.buildNumberToAppend, stringTimestamp)
+	stream, err := servicesManager.Aql(aqlQuery)
 	if err != nil {
 		return buildinfo.Checksum{}, err
 	}
-	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
+	defer func() {
+		err = errors.Join(err, errorutils.CheckError(stream.Close()))
+	}()
+
+	// Parse AQL results
+	aqlResults, err := io.ReadAll(stream)
 	if err != nil {
 		return buildinfo.Checksum{}, err
+	}
+	parsedResult := new(servicesutils.AqlSearchResult)
+	if err = json.Unmarshal(aqlResults, parsedResult); err != nil {
+		return buildinfo.Checksum{}, errorutils.CheckError(err)
+	}
+	if len(parsedResult.Results) == 0 {
+		return buildinfo.Checksum{}, errorutils.CheckErrorf("Build '%s/%s' could not be found", bac.buildNameToAppend, bac.buildNumberToAppend)
 	}
 
-	buildInfoRepo := "artifactory-build-info"
-	if bac.buildConfiguration.GetProject() != "" {
-		buildInfoRepo = url.PathEscape(bac.buildConfiguration.GetProject()) + "-build-info"
+	// Verify checksum exist
+	sha1 := parsedResult.Results[0].Actual_Sha1
+	md5 := parsedResult.Results[0].Actual_Md5
+	if sha1 == "" || md5 == "" {
+		return buildinfo.Checksum{}, errorutils.CheckErrorf("Missing checksums for build-info: '%s/%s', sha1: '%s', md5: '%s'", bac.buildNameToAppend, bac.buildNumberToAppend, sha1, md5)
 	}
-	buildInfoPath := fmt.Sprintf("%v%v/%v/%v-%v.json", serviceDetails.GetUrl(), buildInfoRepo, url.PathEscape(bac.buildNameToAppend), url.PathEscape(bac.buildNumberToAppend), strconv.FormatInt(timestamp, 10))
-	details, _, err := client.GetRemoteFileDetails(buildInfoPath, serviceDetails.CreateHttpClientDetails())
-	if err != nil {
-		return buildinfo.Checksum{}, err
-	}
-	return details.Checksum, nil
+
+	// Return checksums
+	return buildinfo.Checksum{Sha1: sha1, Md5: md5}, nil
 }

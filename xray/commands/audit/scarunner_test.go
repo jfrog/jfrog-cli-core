@@ -138,7 +138,7 @@ func TestGetExcludePattern(t *testing.T) {
 			name:      "Test no exclude pattern recursive",
 			params:    NewAuditParams,
 			recursive: true,
-			expected:  "(^.*node_modules.*$)|(^.*target.*$)|(^.*venv.*$)|(^.*test.*$)",
+			expected:  "(^.*\\.git.*$)|(^.*node_modules.*$)|(^.*target.*$)|(^.*venv.*$)|(^.*test.*$)",
 		},
 		{
 			name: "Test exclude pattern not recursive",
@@ -154,7 +154,7 @@ func TestGetExcludePattern(t *testing.T) {
 			name:      "Test no exclude pattern",
 			params:    NewAuditParams,
 			recursive: false,
-			expected:  "(^.*node_modules.*$)|(^.*target.*$)|(^.*venv.*$)|(^.*test.*$)",
+			expected:  "(^.*\\.git.*$)|(^.*node_modules.*$)|(^.*target.*$)|(^.*venv.*$)|(^.*test.*$)",
 		},
 	}
 

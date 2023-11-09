@@ -330,7 +330,7 @@ func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run
 		return
 	}
 	if strings.TrimSpace(descriptorPath) == "" {
-		return
+		descriptorPath = "Package Descriptor"
 	}
 	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil
 }

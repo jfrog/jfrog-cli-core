@@ -47,7 +47,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DepTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
-		assert.Len(t, uniqueDeps, 9)
+		assert.Len(t, uniqueDeps, 12)
 		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
 		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
@@ -153,7 +153,7 @@ func TestGetDepTreeArtifactoryRepository(t *testing.T) {
 }
 
 func TestCreateDepTreeScript(t *testing.T) {
-	manager := &gradleDepTreeManager{}
+	manager := &gradleDepTreeManager{&DepTreeManager{}}
 	tmpDir, err := manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	defer func() {
@@ -166,7 +166,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 }
 
 func TestCreateDepTreeScriptWithRepositories(t *testing.T) {
-	manager := &gradleDepTreeManager{}
+	manager := &gradleDepTreeManager{&DepTreeManager{}}
 	manager.depsRepo = "deps-repo"
 	manager.server = &config.ServerDetails{
 		Url:            "https://myartifactory.com/",

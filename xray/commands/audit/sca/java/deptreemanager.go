@@ -49,10 +49,12 @@ func getGraphFromDepTree(depTreeOutput []byte) (depsGraph []*xrayUtils.GraphNode
 	}
 	uniqueDepsSet := datastructures.MakeSet[string]()
 	for _, moduleTree := range modules {
+		directDepId := GavPackageTypeIdentifier + moduleTree.Root
 		directDependency := &xrayUtils.GraphNode{
-			Id:    GavPackageTypeIdentifier + moduleTree.Root,
+			Id:    directDepId,
 			Nodes: []*xrayUtils.GraphNode{},
 		}
+		uniqueDepsSet.Add(directDepId)
 		populateDependencyTree(directDependency, moduleTree.Root, moduleTree, uniqueDepsSet)
 		depsGraph = append(depsGraph, directDependency)
 	}

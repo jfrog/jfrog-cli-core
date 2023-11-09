@@ -5,10 +5,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
-func TestGetGraphFromDepTree(t *testing.T) {
+func TestGetGradleGraphFromDepTree(t *testing.T) {
 	// Create and change directory to test workspace
 	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, "gradle-example-ci-server")
 	defer func() {
@@ -42,6 +43,9 @@ func TestGetGraphFromDepTree(t *testing.T) {
 		},
 		expectedUniqueDeps: []string{
 			GavPackageTypeIdentifier + "junit:junit:4.11",
+			GavPackageTypeIdentifier + "org.jfrog.example.gradle:webservice:1.0",
+			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0",
+			GavPackageTypeIdentifier + "org.jfrog.example.gradle:" + filepath.Base(tempDirPath) + ":1.0",
 			GavPackageTypeIdentifier + "commons-io:commons-io:1.2",
 			GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7",
 			GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0",
@@ -53,12 +57,12 @@ func TestGetGraphFromDepTree(t *testing.T) {
 		},
 	}
 
-	manager := &gradleDepTreeManager{}
+	manager := &gradleDepTreeManager{&DepTreeManager{}}
 	outputFileContent, err := manager.runGradleDepTree()
 	assert.NoError(t, err)
 	depTree, uniqueDeps, err := getGraphFromDepTree(outputFileContent)
 	assert.NoError(t, err)
-	assert.ElementsMatch(t, uniqueDeps, testCase.expectedUniqueDeps, "First is actual, Second is Expected")
+	reflect.DeepEqual(uniqueDeps, testCase.expectedUniqueDeps)
 
 	for _, dependency := range depTree {
 		depChild, exists := testCase.expectedTree[dependency.Id]

@@ -72,7 +72,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DepTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
-		assert.Len(t, uniqueDeps, 8)
+		assert.Len(t, uniqueDeps, 11)
 		// Check module
 		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test.gradle.publish:api:1.0-SNAPSHOT")
 		assert.Len(t, module.Nodes, 4)

@@ -29,7 +29,7 @@ import (
 	xrayCmdUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 )
 
-var DefaultExcludePatterns = []string{".git", "*node_modules*", "*target*", "*venv*", "*test*"}
+var DefaultExcludePatterns = []string{"*.git*", "*node_modules*", "*target*", "*venv*", "*test*"}
 
 func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 	// Prepare

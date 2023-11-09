@@ -45,7 +45,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{})
+	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DepTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, uniqueDeps, 9)
 		assert.Len(t, modulesDependencyTrees, 5)
@@ -69,7 +69,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DependencyTreeParams{UseWrapper: true})
+	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DepTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 		assert.Len(t, uniqueDeps, 8)
@@ -153,20 +153,20 @@ func TestGetDepTreeArtifactoryRepository(t *testing.T) {
 }
 
 func TestCreateDepTreeScript(t *testing.T) {
-	manager := &depTreeManager{}
+	manager := &gradleDepTreeManager{}
 	tmpDir, err := manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	defer func() {
-		assert.NoError(t, os.Remove(filepath.Join(tmpDir, depTreeInitFile)))
+		assert.NoError(t, os.Remove(filepath.Join(tmpDir, gradleDepTreeInitFile)))
 	}()
-	content, err := os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
+	content, err := os.ReadFile(filepath.Join(tmpDir, gradleDepTreeInitFile))
 	assert.NoError(t, err)
 	gradleDepTreeJarPath := ioutils.DoubleWinPathSeparator(filepath.Join(tmpDir, gradleDepTreeJarFile))
-	assert.Equal(t, fmt.Sprintf(depTreeInitScript, "", gradleDepTreeJarPath, ""), string(content))
+	assert.Equal(t, fmt.Sprintf(gradleDepTreeInitScript, "", gradleDepTreeJarPath, ""), string(content))
 }
 
 func TestCreateDepTreeScriptWithRepositories(t *testing.T) {
-	manager := &depTreeManager{}
+	manager := &gradleDepTreeManager{}
 	manager.depsRepo = "deps-repo"
 	manager.server = &config.ServerDetails{
 		Url:            "https://myartifactory.com/",
@@ -176,10 +176,10 @@ func TestCreateDepTreeScriptWithRepositories(t *testing.T) {
 	tmpDir, err := manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	defer func() {
-		assert.NoError(t, os.Remove(filepath.Join(tmpDir, depTreeInitFile)))
+		assert.NoError(t, os.Remove(filepath.Join(tmpDir, gradleDepTreeInitFile)))
 	}()
 
-	content, err := os.ReadFile(filepath.Join(tmpDir, depTreeInitFile))
+	content, err := os.ReadFile(filepath.Join(tmpDir, gradleDepTreeInitFile))
 	assert.NoError(t, err)
 	gradleDepTreeJarPath := ioutils.DoubleWinPathSeparator(filepath.Join(tmpDir, gradleDepTreeJarFile))
 	assert.Equal(t, fmt.Sprintf(expectedInitScriptWithRepos, gradleDepTreeJarPath), string(content))

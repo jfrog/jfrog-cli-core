@@ -53,7 +53,7 @@ func TestGetGraphFromDepTree(t *testing.T) {
 		},
 	}
 
-	manager := &depTreeManager{}
+	manager := &gradleDepTreeManager{}
 	outputFileContent, err := manager.runGradleDepTree()
 	assert.NoError(t, err)
 	depTree, uniqueDeps, err := getGraphFromDepTree(outputFileContent)

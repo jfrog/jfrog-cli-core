@@ -131,7 +131,7 @@ func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) 
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)
 	if repo == "" {
-		// In the maven.yaml config, there's a resolver repository field named "releasesrepo"
+		// In the maven.yaml config, there's a resolver repository field named "releaserepo"
 		if repo = vConfig.GetString(prefix + "." + ProjectConfigReleaseRepo); repo == "" {
 			err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
 			return

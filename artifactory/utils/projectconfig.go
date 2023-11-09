@@ -17,6 +17,7 @@ const (
 	ProjectConfigResolverPrefix = "resolver"
 	ProjectConfigDeployerPrefix = "deployer"
 	ProjectConfigRepo           = "repo"
+	ProjectConfigReleaseRepo    = "releaserepo"
 	ProjectConfigServerId       = "serverId"
 )
 
@@ -130,8 +131,11 @@ func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) 
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)
 	if repo == "" {
-		err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
-		return
+		// In the maven.yaml config, there's a resolver repository field named "releasesrepo"
+		if repo = vConfig.GetString(prefix + "." + ProjectConfigReleaseRepo); repo == "" {
+			err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
+			return
+		}
 	}
 	serverId := vConfig.GetString(prefix + "." + ProjectConfigServerId)
 	if serverId == "" {
@@ -212,6 +216,7 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
 		return
 	}
+	params.SetServerDetails(repoConfig.serverDetails)
 	params.SetDepsRepo(repoConfig.targetRepo)
 	return
 }

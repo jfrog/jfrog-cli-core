@@ -151,7 +151,7 @@ func (bac *BuildAppendCommand) getChecksumDetails(servicesManager artifactory.Ar
 	// Parse AQL results
 	aqlResults, err := io.ReadAll(stream)
 	if err != nil {
-		return buildinfo.Checksum{}, err
+		return buildinfo.Checksum{}, errorutils.CheckError(err)
 	}
 	parsedResult := new(servicesutils.AqlSearchResult)
 	if err = json.Unmarshal(aqlResults, parsedResult); err != nil {

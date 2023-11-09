@@ -194,7 +194,7 @@ func ReadResolutionOnlyConfiguration(confFilePath string) (*RepositoryConfig, er
 
 // Verifies the existence of depsRepo. If it doesn't exist, it searches for a configuration file based on the technology type. If found, it assigns depsRepo in the AuditParams.
 func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Technology) (err error) {
-	if params.DepsRepo() != "" {
+	if params.DepsRepo() != "" || params.IgnoreConfigFile() {
 		return
 	}
 	configFilePath, exists, err := GetProjectConfFilePath(techType[tech])

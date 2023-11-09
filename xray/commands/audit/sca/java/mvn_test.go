@@ -120,7 +120,8 @@ func TestCreateMvnProps(t *testing.T) {
 	assert.Equal(t, "https://jfrog.com/artifactory", result1["resolver.url"])
 	assert.Equal(t, "repo1", result1["resolver.releaseRepo"])
 	assert.Equal(t, "repo1", result1["resolver.snapshotRepo"])
-	assert.True(t, result1["buildInfoConfig.artifactoryResolutionEnabled"].(bool))
+	isArtifactoryResolutionEnabled := result1["buildInfoConfig.artifactoryResolutionEnabled"].(bool)
+	assert.True(t, isArtifactoryResolutionEnabled)
 
 	// Valid server details with access token
 	mockServerDetails2 := &config.ServerDetails{
@@ -135,7 +136,8 @@ func TestCreateMvnProps(t *testing.T) {
 	assert.Equal(t, "https://jfrog.com/artifactory", result2["resolver.url"])
 	assert.Equal(t, "repo2", result2["resolver.releaseRepo"])
 	assert.Equal(t, "repo2", result2["resolver.snapshotRepo"])
-	assert.True(t, result2["buildInfoConfig.artifactoryResolutionEnabled"].(bool))
+	isArtifactoryResolutionEnabled = result2["buildInfoConfig.artifactoryResolutionEnabled"].(bool)
+	assert.True(t, isArtifactoryResolutionEnabled)
 
 	// Empty server details
 	result3 := createMvnProps("repo3", nil)

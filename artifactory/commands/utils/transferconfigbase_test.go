@@ -153,10 +153,10 @@ func TestGetSelectedRepositories(t *testing.T) {
 	selectedRepos, err := transferConfigBase.GetSelectedRepositories()
 	assert.NoError(t, err)
 	assert.Len(t, selectedRepos, 4)
-	assert.Equal(t, []string{"generic-local"}, selectedRepos[utils.Local])
-	assert.Equal(t, []string{"generic-remote"}, selectedRepos[utils.Remote])
-	assert.Equal(t, []string{"generic-virtual"}, selectedRepos[utils.Virtual])
-	assert.Equal(t, []string{"generic-federated"}, selectedRepos[utils.Federated])
+	assert.Equal(t, []services.RepositoryDetails{{Key: "generic-local", Type: "local"}}, selectedRepos[utils.Local])
+	assert.Equal(t, []services.RepositoryDetails{{Key: "generic-remote", Type: "remote"}}, selectedRepos[utils.Remote])
+	assert.Equal(t, []services.RepositoryDetails{{Key: "generic-virtual", Type: "virtual"}}, selectedRepos[utils.Virtual])
+	assert.Equal(t, []services.RepositoryDetails{{Key: "generic-federated", Type: "federated"}}, selectedRepos[utils.Federated])
 }
 
 func TestTransferRepositoryToTarget(t *testing.T) {
@@ -189,7 +189,8 @@ func TestTransferRepositoryToTarget(t *testing.T) {
 
 	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
 	assert.False(t, transferConfigBase.FederatedMembersRemoved)
-	err := transferConfigBase.transferSpecificRepositoriesToTarget([]string{"federated-local", "federated-local-no-members"}, utils.Federated)
+	err := transferConfigBase.transferSpecificRepositoriesToTarget([]services.RepositoryDetails{
+		{Key: "federated-local"}, {Key: "federated-local-no-members"}}, utils.Federated)
 	assert.NoError(t, err)
 	assert.True(t, transferConfigBase.FederatedMembersRemoved)
 }
@@ -237,7 +238,7 @@ func TestTransferVirtualRepositoriesToTarget(t *testing.T) {
 	defer testServer.Close()
 
 	transferConfigBase := createTransferConfigBase(t, serverDetails, serverDetails)
-	assert.NoError(t, transferConfigBase.transferVirtualRepositoriesToTarget([]string{"a-virtual", "b-virtual"}))
+	assert.NoError(t, transferConfigBase.transferVirtualRepositoriesToTarget([]services.RepositoryDetails{{Key: "a-virtual"}, {Key: "b-virtual"}}))
 }
 
 func TestDeactivateKeyEncryption(t *testing.T) {
@@ -343,7 +344,7 @@ func TestCreateRepositoryAndAssignToProject(t *testing.T) {
 	repoParams := services.NewLocalRepositoryBaseParams()
 	repoParams.Key = "local-repo"
 	repoParams.ProjectKey = projectKey
-	err := transferConfigBase.createRepositoryAndAssignToProject(repoParams, repoParams.Key)
+	err := transferConfigBase.createRepositoryAndAssignToProject(repoParams, services.RepositoryDetails{Key: repoParams.Key})
 	assert.NoError(t, err)
 	assert.True(t, projectUnassigned)
 	assert.True(t, repositoryCreated)

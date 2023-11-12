@@ -96,8 +96,15 @@ func (m *fullTransferPhase) run() error {
 		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
 		}
-		folderHandler := m.createFolderFullTransferHandlerFunc(*pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
-		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: "."}), pcWrapper.errorsQueue.AddError)
+
+		// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exists.
+		node, done, err := m.getAndHandleDirectoryNode(".")
+		if err != nil || done {
+			return err
+		}
+
+		folderHandler := m.createFolderFullTransferHandlerFunc(node, *pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+		_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: "."}), pcWrapper.errorsQueue.AddError)
 		return err
 	}
 	delayAction := func(phase phaseBase, addedDelayFiles []string) error {
@@ -117,17 +124,17 @@ type folderParams struct {
 	relativePath string
 }
 
-func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(pcWrapper producerConsumerWrapper, uploadChunkChan chan UploadedChunk,
+func (m *fullTransferPhase) createFolderFullTransferHandlerFunc(node *reposnapshot.Node, pcWrapper producerConsumerWrapper, uploadChunkChan chan UploadedChunk,
 	delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) folderFullTransferHandlerFunc {
 	return func(params folderParams) parallel.TaskFunc {
 		return func(threadId int) error {
 			logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
-			return m.transferFolder(params, logMsgPrefix, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+			return m.transferFolder(node, params, logMsgPrefix, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 		}
 	}
 }
 
-func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
+func (m *fullTransferPhase) transferFolder(node *reposnapshot.Node, params folderParams, logMsgPrefix string, pcWrapper producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) (err error) {
 	log.Debug(logMsgPrefix+"Handling folder:", path.Join(m.repoKey, params.relativePath))
 
@@ -137,12 +144,6 @@ func (m *fullTransferPhase) transferFolder(params folderParams, logMsgPrefix str
 	}
 	if err = m.stateManager.IncVisitedFolders(); err != nil {
 		return
-	}
-
-	// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exist.
-	node, done, err := m.getAndHandleDirectoryNode(params, logMsgPrefix)
-	if err != nil || done {
-		return err
 	}
 
 	curUploadChunk, err := m.searchAndHandleFolderContents(params, pcWrapper,
@@ -227,7 +228,13 @@ func (m *fullTransferPhase) handleFoundChildFolder(params folderParams, pcWrappe
 	item servicesUtils.ResultItem) (err error) {
 	newRelativePath := getFolderRelativePath(item.Name, params.relativePath)
 
-	folderHandler := m.createFolderFullTransferHandlerFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+	// Get the directory's node from the snapshot manager, and use information from previous transfer attempts if such exists.
+	node, done, err := m.getAndHandleDirectoryNode(newRelativePath)
+	if err != nil || done {
+		return err
+	}
+
+	folderHandler := m.createFolderFullTransferHandlerFunc(node, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
 	_, err = pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(folderHandler(folderParams{relativePath: newRelativePath}), pcWrapper.errorsQueue.AddError)
 	return
 }
@@ -242,7 +249,7 @@ func (m *fullTransferPhase) handleFoundFile(pcWrapper producerConsumerWrapper,
 		return
 	}
 	// Increment the files count in the directory's node in the snapshot manager, to track its progress.
-	err = node.IncrementFilesCount()
+	err = node.IncrementFilesCount(uint64(file.Size))
 	if err != nil {
 		return
 	}
@@ -289,15 +296,14 @@ func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffse
 // node - A node in the repository snapshot tree, which represents the current directory.
 // completed - Whether handling the node directory was completed. If it wasn't fully transferred, we start exploring and transferring it from scratch.
 // previousChildren - If the directory requires exploring, previously known children will be added from this map in order to preserve their states and references.
-func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMsgPrefix string) (node *reposnapshot.Node, completed bool, err error) {
-	node, err = m.stateManager.LookUpNode(params.relativePath)
+func (m *fullTransferPhase) getAndHandleDirectoryNode(relativePath string) (node *reposnapshot.Node, completed bool, err error) {
+	node, err = m.stateManager.LookUpNode(relativePath)
 	if err != nil {
 		return
 	}
 
 	// If data was not loaded from snapshot, we know that the node is visited for the first time and was not explored.
-	loadedFromSnapshot, err := m.stateManager.WasSnapshotLoaded()
-	if err != nil || !loadedFromSnapshot {
+	if !m.stateManager.WasSnapshotLoaded() {
 		return
 	}
 
@@ -306,7 +312,7 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(params folderParams, logMs
 		return
 	}
 	if completed {
-		log.Debug(logMsgPrefix+"Skipping completed folder:", path.Join(m.repoKey, params.relativePath))
+		log.Debug("Skipping completed folder:", path.Join(m.repoKey, relativePath))
 		return
 	}
 	// If the node was not completed, we will start exploring it from the beginning.

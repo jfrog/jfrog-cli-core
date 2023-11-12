@@ -1,4 +1,4 @@
-package utils
+package precheckrunner
 
 import (
 	"encoding/json"

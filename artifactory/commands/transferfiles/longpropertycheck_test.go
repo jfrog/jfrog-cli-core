@@ -2,21 +2,22 @@ package transferfiles
 
 import (
 	"encoding/json"
-	"github.com/jfrog/gofrog/parallel"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
+	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -82,7 +83,7 @@ func testGetLongProperties(t *testing.T, serverProperties, expectedLongPropertie
 	longPropertyCheck := NewLongPropertyCheck([]string{})
 	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
 
-	count := longPropertyCheck.longPropertiesTaskProducer(nil, utils.RunArguments{Context: nil, ServerDetails: serverDetails})
+	count := longPropertyCheck.longPropertiesTaskProducer(nil, precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails})
 	assert.Len(t, expectedLongProperties, count)
 }
 
@@ -119,7 +120,7 @@ func testSearchPropertyInFilesTask(t *testing.T, prop Property, specificRepos []
 		wait.Done()
 	}()
 
-	task := createSearchPropertyTask(prop, specificRepos, utils.RunArguments{Context: nil, ServerDetails: serverDetails}, filesChan, nil)
+	task := createSearchPropertyTask(prop, specificRepos, precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails}, filesChan, nil)
 	assert.NoError(t, task(0))
 	close(filesChan)
 	wait.Wait()
@@ -170,7 +171,7 @@ func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRe
 		waitCollection.Done()
 	}()
 
-	longPropertyCheck.longPropertiesTaskProducer(nil, utils.RunArguments{Context: nil, ServerDetails: serverDetails})
+	longPropertyCheck.longPropertiesTaskProducer(nil, precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails})
 	longPropertyCheck.producerConsumer.Done()
 	longPropertyCheck.producerConsumer.Run()
 	close(longPropertyCheck.filesChan)
@@ -201,7 +202,7 @@ func testLongPropertyCheckWithStubServer(t *testing.T, serverProperties []Proper
 	defer testServer.Close()
 
 	longPropertyCheck := NewLongPropertyCheck(specificRepos)
-	passed, err := longPropertyCheck.ExecuteCheck(utils.RunArguments{Context: nil, ServerDetails: serverDetails})
+	passed, err := longPropertyCheck.ExecuteCheck(precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails})
 	assert.NoError(t, err)
 	assert.Equal(t, shouldPass, passed)
 }

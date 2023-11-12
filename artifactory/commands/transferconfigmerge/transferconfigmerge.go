@@ -53,7 +53,7 @@ func (tcmc *TransferConfigMergeCommand) SetExcludeProjectsPatterns(excludeProjec
 
 type mergeEntities struct {
 	projectsToTransfer []accessServices.Project
-	reposToTransfer    map[utils.RepoType][]string
+	reposToTransfer    map[utils.RepoType][]services.RepositoryDetails
 }
 
 type Conflict struct {
@@ -243,8 +243,8 @@ func compareProjects(sourceProject, targetProject accessServices.Project) (*Conf
 	}, nil
 }
 
-func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer map[utils.RepoType][]string, err error) {
-	reposToTransfer = make(map[utils.RepoType][]string)
+func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer map[utils.RepoType][]services.RepositoryDetails, err error) {
+	reposToTransfer = make(map[utils.RepoType][]services.RepositoryDetails)
 	sourceRepos, err := tcmc.SourceArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return
@@ -286,7 +286,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 			}
 		} else {
 			repoType := utils.RepoTypeFromString(sourceRepo.Type)
-			reposToTransfer[repoType] = append(reposToTransfer[repoType], sourceRepo.Key)
+			reposToTransfer[repoType] = append(reposToTransfer[repoType], sourceRepo)
 		}
 	}
 	return
@@ -351,7 +351,7 @@ func (tcmc *TransferConfigMergeCommand) transferProjectsToTarget(reposToTransfer
 	return
 }
 
-func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remoteRepositoryNames []string) (remoteRepositories []interface{}, err error) {
+func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remoteRepositoriesDetails []services.RepositoryDetails) (remoteRepositories []interface{}, err error) {
 	// Decrypt source Artifactory to get remote repositories with raw text passwords
 	reactivateKeyEncryption, err := tcmc.DeactivateKeyEncryption()
 	if err != nil {
@@ -362,7 +362,11 @@ func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remot
 			err = reactivationErr
 		}
 	}()
-	return tcmc.GetAllRemoteRepositories(remoteRepositoryNames)
+	var remoteRepositoryKeys []string
+	for _, remoteRepositoryDetails := range remoteRepositoriesDetails {
+		remoteRepositoryKeys = append(remoteRepositoryKeys, remoteRepositoryDetails.Key)
+	}
+	return tcmc.GetAllRemoteRepositories(remoteRepositoryKeys)
 }
 
 type projectsMapper struct {

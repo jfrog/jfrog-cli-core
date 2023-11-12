@@ -70,7 +70,7 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable: true,
 	},
 	Gradle: {
-		indicators:             []string{".gradle", ".gradle.kts"},
+		indicators:             []string{"build.gradle", "build.gradle.kts"},
 		ciSetupSupport:         true,
 		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		applicabilityScannable: true,

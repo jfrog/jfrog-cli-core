@@ -86,7 +86,7 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"},
+		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,

@@ -15,7 +15,7 @@ require (
 	github.com/jfrog/build-info-go v1.9.15
 	github.com/jfrog/gofrog v1.3.1
 	github.com/jfrog/jfrog-apps-config v1.0.1
-	github.com/jfrog/jfrog-client-go v1.34.4
+	github.com/jfrog/jfrog-client-go v1.34.5
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.3.0
@@ -99,6 +99,6 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20231109105822-00d80f604090
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20231109105822-00d80f604090
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go dev

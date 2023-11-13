@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/pipelines/manager"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/pipelines/services"
 )
 
 type ValidateSignedPipelinesCommand struct {
@@ -73,6 +74,19 @@ func (vspc *ValidateSignedPipelinesCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = serviceManager.ValidateSignedPipelines(vspc.artifactType, vspc.buildName, vspc.buildNumber, vspc.projectKey, vspc.artifactPath, vspc.releaseBundleName, vspc.releaseBundleVersion)
+	artifactTypeInfo := services.ArtifactTypeInfo{}
+	artifactTypeInfo.BuildNumber = vspc.buildNumber
+	artifactTypeInfo.BuildName = vspc.buildName
+	artifactTypeInfo.ProjectKey = vspc.projectKey
+	artifactTypeInfo.ArtifactPath = vspc.artifactPath
+	artifactTypeInfo.RbName = vspc.releaseBundleName
+	artifactTypeInfo.RbVersion = vspc.releaseBundleVersion
+	artifactType := services.Artifact
+	if vspc.artifactType == "buildInfo" {
+		artifactType = services.BuildInfo
+	} else if vspc.artifactType == "releaseBundle" {
+		artifactType = services.ReleaseBundle
+	}
+	err = serviceManager.ValidateSignedPipelines(artifactTypeInfo, artifactType)
 	return err
 }

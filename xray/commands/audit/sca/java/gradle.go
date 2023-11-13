@@ -13,7 +13,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -171,29 +170,16 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 	if remoteRepo == "" || server.IsEmpty() {
 		return "", nil
 	}
-	pass := server.Password
-	user := server.User
-	if server.AccessToken != "" {
-		pass = server.AccessToken
-		if user == "" {
-			user = auth.ExtractUsernameFromAccessToken(pass)
-		}
-	}
-	if pass == "" && user == "" {
-		errString := "either username/password or access token must be set for "
-		if server.Url != "" {
-			errString += server.Url
-		} else {
-			errString += server.ArtifactoryUrl
-		}
-		return "", errors.New(errString)
+	username, password, err := server.GetAuthenticationCredentials()
+	if err != nil {
+		return "", err
 	}
 	log.Debug("The project dependencies will be resolved from", server.ArtifactoryUrl, "from the", remoteRepo, "repository")
 	return fmt.Sprintf(artifactoryRepository,
 		strings.TrimSuffix(server.ArtifactoryUrl, "/"),
 		remoteRepo,
-		user,
-		pass), nil
+		username,
+		password), nil
 }
 
 // This function assumes that the Gradle wrapper is in the root directory.

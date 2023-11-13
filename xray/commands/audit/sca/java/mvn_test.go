@@ -1,7 +1,6 @@
 package java
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -100,48 +99,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 }
 
 func TestGetMavenPluginInstallationArgs(t *testing.T) {
-	args := GetMavenPluginInstallationArgs("testPlugin")
+	args := GetMavenPluginInstallationGoals("testPlugin")
 	assert.Equal(t, "org.apache.maven.plugins:maven-install-plugin:2.5.2:install-file", args[0])
 	assert.Equal(t, "-Dfile=testPlugin", args[1])
-}
-
-func TestCreateMvnProps(t *testing.T) {
-	// Valid server details with username and password
-	mockServerDetails1 := &config.ServerDetails{
-		User:           "user1",
-		Password:       "password1",
-		Url:            "https://jfrog.com",
-		ArtifactoryUrl: "https://jfrog.com/artifactory",
-	}
-	result1 := createMvnProps("repo1", mockServerDetails1)
-	assert.NotNil(t, result1)
-	assert.Equal(t, "user1", result1["resolver.username"])
-	assert.Equal(t, "password1", result1["resolver.password"])
-	assert.Equal(t, "https://jfrog.com/artifactory", result1["resolver.url"])
-	assert.Equal(t, "repo1", result1["resolver.releaseRepo"])
-	assert.Equal(t, "repo1", result1["resolver.snapshotRepo"])
-	isArtifactoryResolutionEnabled, isBool := result1["buildInfoConfig.artifactoryResolutionEnabled"].(bool)
-	assert.True(t, isBool)
-	assert.True(t, isArtifactoryResolutionEnabled)
-
-	// Valid server details with access token
-	mockServerDetails2 := &config.ServerDetails{
-		AccessToken:    "token2",
-		Url:            "https://jfrog.com",
-		ArtifactoryUrl: "https://jfrog.com/artifactory",
-	}
-	result2 := createMvnProps("repo2", mockServerDetails2)
-	assert.NotNil(t, result2)
-	assert.Equal(t, "", result2["resolver.username"])
-	assert.Equal(t, "token2", result2["resolver.password"])
-	assert.Equal(t, "https://jfrog.com/artifactory", result2["resolver.url"])
-	assert.Equal(t, "repo2", result2["resolver.releaseRepo"])
-	assert.Equal(t, "repo2", result2["resolver.snapshotRepo"])
-	isArtifactoryResolutionEnabled, isBool = result2["buildInfoConfig.artifactoryResolutionEnabled"].(bool)
-	assert.True(t, isBool)
-	assert.True(t, isArtifactoryResolutionEnabled)
-
-	// Empty server details
-	result3 := createMvnProps("repo3", nil)
-	assert.Nil(t, result3)
 }

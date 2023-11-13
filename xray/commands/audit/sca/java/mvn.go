@@ -1,19 +1,14 @@
 package java
 
 import (
-	"bytes"
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-	"io"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -26,15 +21,36 @@ const (
 	mavenDepTreeVersion    = "1.0.0"
 	TreeCmd                = "tree"
 	ProjectsCmd            = "projects"
+	settingsXmlFileName    = "settings.xml"
 )
+
+var settingsXml = `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <servers>
+    <server>
+      <username>%s</username>
+      <password>%s</password>
+      <id>artifactory</id>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+          <id>artifactory</id>
+          <url>%s</url>
+          <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>`
 
 //go:embed maven-dep-tree.jar
 var mavenDepTreeJar []byte
 
 type MavenDepTreeManager struct {
 	*DepTreeManager
-	cmdName     string
-	isInstalled bool
+	isInstalled     bool
+	cmdName         string
+	settingsXmlPath string
 }
 
 func buildMavenDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
@@ -48,6 +64,7 @@ func buildMavenDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtil
 }
 
 func (mdt *MavenDepTreeManager) runMavenDepTree() ([]byte, error) {
+	// Create a temp directory for all the necessary files that are required for the maven-dep-tree run
 	depTreeExecDir, err := fileutils.CreateTempDir()
 	if err != nil {
 		return nil, err
@@ -55,6 +72,13 @@ func (mdt *MavenDepTreeManager) runMavenDepTree() ([]byte, error) {
 	defer func() {
 		err = errors.Join(err, fileutils.RemoveTempDir(depTreeExecDir))
 	}()
+
+	// Create a settings.xml file that sets the dependency resolution from the given server and repository
+	if mdt.depsRepo != "" {
+		if err = mdt.createSettingsXmlWithConfiguredArtifactory(depTreeExecDir); err != nil {
+			return nil, err
+		}
+	}
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
 		return nil, err
 	}
@@ -69,19 +93,19 @@ func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string)
 	if err := errorutils.CheckError(os.WriteFile(mavenDepTreeJarPath, mavenDepTreeJar, 0666)); err != nil {
 		return err
 	}
-	installArgs := GetMavenPluginInstallationArgs(mavenDepTreeJarPath)
-	_, err := RunMvnCmd(mdt.depsRepo, mdt.server, installArgs)
+	goals := GetMavenPluginInstallationGoals(mavenDepTreeJarPath)
+	_, err := mdt.runMvnCmd(goals)
 	return err
 }
 
-func GetMavenPluginInstallationArgs(pluginPath string) []string {
+func GetMavenPluginInstallationGoals(pluginPath string) []string {
 	return []string{"org.apache.maven.plugins:maven-install-plugin:2.5.2:install-file", "-Dfile=" + pluginPath}
 }
 
 func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + mdt.cmdName, "-DdepsTreeOutputFile=" + mavenDepTreePath}
-	_, err := RunMvnCmd(mdt.depsRepo, mdt.server, goals)
+	_, err := mdt.runMvnCmd(goals)
 	if err != nil {
 		return nil, err
 	}
@@ -90,11 +114,9 @@ func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte,
 	return mavenDepTreeOutput, err
 }
 
-func RunMvnCmd(depsRepo string, serverDetails *config.ServerDetails, goals []string) (cmdOutput []byte, err error) {
-	if depsRepo != "" {
-		// Run the mvn command with the Maven Build-Info Extractor to download dependencies from Artifactory.
-		cmdOutput, err = runMvnCmdWithBuildInfoExtractor(depsRepo, serverDetails, goals)
-		return
+func (mdt *MavenDepTreeManager) runMvnCmd(goals []string) (cmdOutput []byte, err error) {
+	if mdt.settingsXmlPath != "" {
+		goals = append(goals, "-s", mdt.settingsXmlPath)
 	}
 
 	//#nosec G204
@@ -107,52 +129,18 @@ func RunMvnCmd(depsRepo string, serverDetails *config.ServerDetails, goals []str
 	return
 }
 
-// Run a Maven command with the specified goals
-// utilizing the Maven Build-Info Extractor to fetch and download dependencies from the provided server and repository.
-func runMvnCmdWithBuildInfoExtractor(depsRepo string, serverDetails *config.ServerDetails, goals []string) (cmdOutput []byte, err error) {
-	mvnProps := createMvnProps(depsRepo, serverDetails)
-	vConfig, err := utils.ReadMavenConfig("", mvnProps)
+// Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.
+// The settings.xml will be written to the given path.
+func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path string) error {
+	username, password, err := mdt.server.GetAuthenticationCredentials()
 	if err != nil {
-		return
+		return err
 	}
-	var buf bytes.Buffer
-	mvnParams := mvnutils.NewMvnUtils().
-		SetConfig(vConfig).
-		SetGoals(goals).
-		SetDisableDeploy(true).
-		SetOutputWriter(&buf)
-	cmdOutput = make([]byte, 0)
-	err = mvnutils.RunMvn(mvnParams)
-	// cmdOutput should return from this function
-	_, _ = io.ReadFull(&buf, cmdOutput)
+	remoteRepositoryFullPath, err := url.JoinPath(mdt.server.ArtifactoryUrl, mdt.depsRepo)
 	if err != nil {
-		if len(cmdOutput) > 0 {
-			// Log output if exists
-			log.Info(string(cmdOutput))
-		}
-		err = fmt.Errorf("failed running command 'mvn %s': %s", strings.Join(goals, " "), err.Error())
+		return err
 	}
-	return
-}
-
-func createMvnProps(resolverRepo string, serverDetails *config.ServerDetails) map[string]any {
-	if serverDetails == nil || serverDetails.IsEmpty() {
-		return nil
-	}
-	authPass := serverDetails.Password
-	if serverDetails.AccessToken != "" {
-		authPass = serverDetails.AccessToken
-	}
-	authUser := serverDetails.User
-	if authUser == "" {
-		authUser = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
-	}
-	return map[string]any{
-		"resolver.username":                            authUser,
-		"resolver.password":                            authPass,
-		"resolver.url":                                 serverDetails.ArtifactoryUrl,
-		"resolver.releaseRepo":                         resolverRepo,
-		"resolver.snapshotRepo":                        resolverRepo,
-		"buildInfoConfig.artifactoryResolutionEnabled": true,
-	}
+	mdt.settingsXmlPath = filepath.Join(path, settingsXmlFileName)
+	settingsXmlContent := fmt.Sprintf(settingsXml, username, password, remoteRepositoryFullPath)
+	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0666))
 }

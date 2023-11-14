@@ -209,7 +209,7 @@ func convertXrayResponsesToSarifRun(results *Results, isMultipleRoots, includeLi
 	}
 	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", BaseDocumentationURL+"sca")
 	xrayRun.Tool.Driver.Version = &results.XrayVersion
-	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
+	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 || len(xrayJson.LicensesViolations) > 0 {
 		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson); err != nil {
 			return
 		}
@@ -283,7 +283,7 @@ func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Ru
 		getXrayLicenseSarifHeadline(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
 		getLicenseViolationMarkdown(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey, formattedDirectDependencies),
 		license.Components,
-		nil,
+		getXrayIssueLocation(""),
 		run,
 	)
 	return
@@ -329,10 +329,14 @@ func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run
 	if err != nil {
 		return
 	}
-	if strings.TrimSpace(descriptorPath) == "" {
-		descriptorPath = "Package-Descriptor"
+	return getXrayIssueLocation(descriptorPath), nil
+}
+
+func getXrayIssueLocation(filePath string) *sarif.Location {
+	if strings.TrimSpace(filePath) == "" {
+		filePath = "Package-Descriptor"
 	}
-	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil
+	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filePath)))
 }
 
 func addXrayRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription string, run *sarif.Run) {

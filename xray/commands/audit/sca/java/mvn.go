@@ -121,11 +121,13 @@ func (mdt *MavenDepTreeManager) runMvnCmd(goals []string) error {
 	//#nosec G204
 	cmdOutput, err := exec.Command("mvn", goals...).CombinedOutput()
 	if err != nil {
-		if len(cmdOutput) > 0 {
-			log.Info(string(cmdOutput))
-		}
+		//if len(cmdOutput) > 0 {
+		//	log.Info(string(cmdOutput))
+		//}
 		err = fmt.Errorf("failed running command 'mvn %s': %s", strings.Join(goals, " "), err.Error())
 	}
+	log.Info(string(cmdOutput))
+
 	return err
 }
 

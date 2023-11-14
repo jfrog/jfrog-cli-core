@@ -102,7 +102,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 
 func TestGetMavenPluginInstallationArgs(t *testing.T) {
 	args := GetMavenPluginInstallationGoals("testPlugin")
-	assert.Equal(t, "org.apache.maven.plugins:maven-install-plugin:2.5.2:install-file", args[0])
+	assert.Equal(t, "org.apache.maven.plugins:maven-install-plugin:3.1.1:install-file", args[0])
 	assert.Equal(t, "-Dfile=testPlugin", args[1])
 }
 

@@ -163,7 +163,7 @@ func TestGetXrayIssueLocationIfValidExists(t *testing.T) {
 			name:           "No descriptor information",
 			tech:           coreutils.Pip,
 			run:            CreateRunWithDummyResults().WithInvocations([]*sarif.Invocation{invocation}),
-			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://Package Descriptor"))),
+			expectedOutput: sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://Package-Descriptor"))),
 		},
 		{
 			name:           "One descriptor information",

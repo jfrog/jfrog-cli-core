@@ -1,9 +1,11 @@
 package java
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -102,4 +104,74 @@ func TestGetMavenPluginInstallationArgs(t *testing.T) {
 	args := GetMavenPluginInstallationGoals("testPlugin")
 	assert.Equal(t, "org.apache.maven.plugins:maven-install-plugin:2.5.2:install-file", args[0])
 	assert.Equal(t, "-Dfile=testPlugin", args[1])
+}
+
+func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
+	// Test case for successful creation of settings.xml.
+	mdt := MavenDepTreeManager{
+		DepTreeManager: &DepTreeManager{
+			server: &config.ServerDetails{
+				ArtifactoryUrl: "https://myartifactory.com/artifactory",
+				User:           "testUser",
+				Password:       "testPass",
+			},
+			depsRepo: "testRepo",
+		},
+	}
+	// Create a temporary directory for testing and settings.xml creation
+	tempDir := t.TempDir()
+	err := mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
+	assert.NoError(t, err)
+
+	// Verify settings.xml file creation.
+	settingsXmlPath := filepath.Join(tempDir, "settings.xml")
+	actualContent, err := os.ReadFile(settingsXmlPath)
+	assert.NoError(t, err)
+	expectedContent := `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <servers>
+    <server>
+      <username>testUser</username>
+      <password>testPass</password>
+      <id>artifactory</id>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+          <id>artifactory</id>
+          <url>https://myartifactory.com/artifactory/testRepo</url>
+          <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>`
+	assert.Equal(t, expectedContent, string(actualContent))
+
+	mdt.server.Password = ""
+	mdt.server.AccessToken = "accessToken"
+	err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
+	assert.NoError(t, err)
+
+	// Verify settings.xml file creation.
+	actualContent, err = os.ReadFile(settingsXmlPath)
+	assert.NoError(t, err)
+	expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <servers>
+    <server>
+      <username>testUser</username>
+      <password>accessToken</password>
+      <id>artifactory</id>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+          <id>artifactory</id>
+          <url>https://myartifactory.com/artifactory/testRepo</url>
+          <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>`
+	assert.Equal(t, expectedContent, string(actualContent))
 }

@@ -18,7 +18,7 @@ import (
 const (
 	mavenDepTreeJarFile    = "maven-dep-tree.jar"
 	mavenDepTreeOutputFile = "mavendeptree.out"
-	mavenDepTreeVersion    = "1.0.0"
+	mavenDepTreeVersion    = "1.0.2"
 	TreeCmd                = "tree"
 	ProjectsCmd            = "projects"
 	settingsXmlFile        = "settings.xml"

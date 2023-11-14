@@ -21,10 +21,10 @@ const (
 	mavenDepTreeVersion    = "1.0.0"
 	TreeCmd                = "tree"
 	ProjectsCmd            = "projects"
-	settingsXmlFileName    = "settings.xml"
+	settingsXmlFile        = "settings.xml"
 )
 
-var settingsXml = `<?xml version="1.0" encoding="UTF-8"?>
+var settingsXmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.2.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <servers>
@@ -64,7 +64,7 @@ func buildMavenDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtil
 }
 
 func (mdt *MavenDepTreeManager) runMavenDepTree() ([]byte, error) {
-	// Create a temp directory for all the necessary files that are required for the maven-dep-tree run
+	// Create a temp directory for all the files that are required for the maven-dep-tree run
 	depTreeExecDir, err := fileutils.CreateTempDir()
 	if err != nil {
 		return nil, err
@@ -94,8 +94,7 @@ func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string)
 		return err
 	}
 	goals := GetMavenPluginInstallationGoals(mavenDepTreeJarPath)
-	_, err := mdt.runMvnCmd(goals)
-	return err
+	return mdt.runMvnCmd(goals)
 }
 
 func GetMavenPluginInstallationGoals(pluginPath string) []string {
@@ -105,28 +104,29 @@ func GetMavenPluginInstallationGoals(pluginPath string) []string {
 func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + mdt.cmdName, "-DdepsTreeOutputFile=" + mavenDepTreePath}
-	_, err := mdt.runMvnCmd(goals)
-	if err != nil {
+	if err := mdt.runMvnCmd(goals); err != nil {
 		return nil, err
 	}
+
 	mavenDepTreeOutput, err := os.ReadFile(mavenDepTreePath)
 	err = errorutils.CheckError(err)
 	return mavenDepTreeOutput, err
 }
 
-func (mdt *MavenDepTreeManager) runMvnCmd(goals []string) (cmdOutput []byte, err error) {
+func (mdt *MavenDepTreeManager) runMvnCmd(goals []string) error {
 	if mdt.settingsXmlPath != "" {
 		goals = append(goals, "-s", mdt.settingsXmlPath)
 	}
 
 	//#nosec G204
-	if cmdOutput, err = exec.Command("mvn", goals...).CombinedOutput(); err != nil {
+	cmdOutput, err := exec.Command("mvn", goals...).CombinedOutput()
+	if err != nil {
 		if len(cmdOutput) > 0 {
 			log.Info(string(cmdOutput))
 		}
 		err = fmt.Errorf("failed running command 'mvn %s': %s", strings.Join(goals, " "), err.Error())
 	}
-	return
+	return err
 }
 
 // Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.
@@ -140,7 +140,7 @@ func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path 
 	if err != nil {
 		return err
 	}
-	mdt.settingsXmlPath = filepath.Join(path, settingsXmlFileName)
-	settingsXmlContent := fmt.Sprintf(settingsXml, username, password, remoteRepositoryFullPath)
+	mdt.settingsXmlPath = filepath.Join(path, settingsXmlFile)
+	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, username, password, remoteRepositoryFullPath)
 	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0666))
 }

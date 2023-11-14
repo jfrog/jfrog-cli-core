@@ -230,7 +230,7 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 		}
 	}
 	for _, license := range xrayJson.LicensesViolations {
-		if err := addXrayLicenseViolationToSarifRun(license, run); err != nil {
+		if err := AddXrayLicenseViolationToSarifRun(license, run); err != nil {
 			return err
 		}
 	}
@@ -268,7 +268,7 @@ func addXrayCveIssueToSarifRun(issue formats.VulnerabilityOrViolationRow, run *s
 	return
 }
 
-func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Run) (err error) {
+func AddXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Run) (err error) {
 	formattedDirectDependencies, err := getDirectDependenciesFormatted(license.Components)
 	if err != nil {
 		return

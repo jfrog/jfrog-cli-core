@@ -34,7 +34,11 @@ const (
 	nodeModulesRepoName = "node_modules"
 )
 
-func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func BuildDependencyTree(params *utils.AuditParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+	if params == nil {
+		err = errors.New("received an empty audit params while building dependency tree for the project")
+		return
+	}
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -54,16 +58,9 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 		return
 	}
 
-	if !projectInstalled || len(params.InstallCommandArgs()) != 0 {
+	if !projectInstalled || len((*params).InstallCommandArgs()) != 0 {
 		// In case project is not "installed" or in case the user has provided an 'install' command to run
-		var serverDetails *config.ServerDetails
-		serverDetails, err = params.ServerDetails()
-		if err != nil {
-			err = fmt.Errorf("failed to get server details while building yarn dependency tree: %s", err.Error())
-			return
-		}
-		depsRepo := params.DepsRepo()
-		err = configureYarnResolutionServerAndRunInstall(params, currentDir, executablePath, serverDetails, depsRepo)
+		err = configureYarnResolutionServerAndRunInstall(params, currentDir, executablePath)
 		if err != nil {
 			err = fmt.Errorf("failed to configure an Artifactory resolution server or running and install command: %s", err.Error())
 			return
@@ -81,11 +78,20 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 	return
 }
 
-// Sets up Artifactory server configurations for dependency resolution, if such were provided by the user. Executes the user's 'install' command or a default 'install' command if none was specified.
-func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd, yarnExecPath string, serverDetails *config.ServerDetails, depsRepo string) (err error) {
+// Sets up Artifactory server configurations for dependency resolution, if such were provided by the user.
+// Executes the user's 'install' command or a default 'install' command if none was specified.
+func configureYarnResolutionServerAndRunInstall(params *utils.AuditParams, curWd, yarnExecPath string) (err error) {
+	depsRepo := (*params).DepsRepo()
 	if depsRepo == "" {
 		// Run install without configuring an Artifactory server
-		return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
+		return runYarnInstallAccordingToVersion(curWd, yarnExecPath, (*params).InstallCommandArgs())
+	}
+
+	var serverDetails *config.ServerDetails
+	serverDetails, err = (*params).ServerDetails()
+	if err != nil {
+		err = fmt.Errorf("failed to get server details while building yarn dependency tree: %s", err.Error())
+		return
 	}
 
 	// If an Artifactory resolution repository was provided we first configure to resolve from it and only then run the 'install' command
@@ -113,7 +119,7 @@ func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd,
 		err = errors.Join(err, yarn.RestoreConfigurationsFromBackup(backupEnvMap, restoreYarnrcFunc))
 	}()
 
-	return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
+	return runYarnInstallAccordingToVersion(curWd, yarnExecPath, (*params).InstallCommandArgs())
 }
 
 // Verifies the project's installation status by examining the presence of the yarn.lock file.

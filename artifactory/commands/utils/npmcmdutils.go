@@ -165,7 +165,7 @@ func createRestoreFileFunc(filePath, backupFileName string) func() error {
 		backupPath := filepath.Join(filepath.Dir(filePath), backupFileName)
 		if _, err := os.Stat(backupPath); err != nil {
 			if os.IsNotExist(err) {
-				// We verify the existence of the file in the specified filePath before initiating its deletion, in order to prevents errors that might occur when attempting to remove a file that doesn't exist
+				// We verify the existence of the file in the specified filePath before initiating its deletion in order to prevent errors that might occur when attempting to remove a non-existent file
 				var fileExists bool
 				fileExists, err = fileutils.IsDirExists(filePath, false)
 				if err != nil {

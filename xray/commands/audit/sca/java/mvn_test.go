@@ -127,6 +127,7 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	// Verify settings.xml file creation with username and password
 	settingsXmlPath := filepath.Join(tempDir, "settings.xml")
 	actualContent, err := os.ReadFile(settingsXmlPath)
+	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
 	assert.NoError(t, err)
 	expectedContent := `<?xml version="1.0" encoding="UTF-8"?>
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
@@ -160,6 +161,7 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 
 	// Verify settings.xml file creation with username and access token
 	actualContent, err = os.ReadFile(settingsXmlPath)
+	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
 	assert.NoError(t, err)
 	expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
@@ -192,6 +194,7 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 
 	// Verify settings.xml file creation with access token only
 	actualContent, err = os.ReadFile(settingsXmlPath)
+	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
 	assert.NoError(t, err)
 	expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"

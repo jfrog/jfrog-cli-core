@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"golang.org/x/exp/slices"
 )
 
 type OutputFormat string
@@ -117,7 +118,7 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	case Json:
 		return PrintJson(rw.results.GetScaScansXrayResults())
 	case Sarif:
-		sarifReport, err := GenereateSarifReportFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses)
+		sarifReport, err := GenereateSarifReportFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses, nil)
 		if err != nil {
 			return err
 		}
@@ -175,12 +176,12 @@ func printMessage(message string) {
 	log.Output("💬" + message)
 }
 
-func GenereateSarifReportFromResults(results *Results, isMultipleRoots, includeLicenses bool) (report *sarif.Report, err error) {
+func GenereateSarifReportFromResults(results *Results, isMultipleRoots, includeLicenses bool, allowedLicenses []string) (report *sarif.Report, err error) {
 	report, err = NewReport()
 	if err != nil {
 		return
 	}
-	xrayRun, err := convertXrayResponsesToSarifRun(results, isMultipleRoots, includeLicenses)
+	xrayRun, err := convertXrayResponsesToSarifRun(results, isMultipleRoots, includeLicenses, allowedLicenses)
 	if err != nil {
 		return
 	}
@@ -202,8 +203,8 @@ func ConvertSarifReportToString(report *sarif.Report) (sarifStr string, err erro
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertXrayResponsesToSarifRun(results *Results, isMultipleRoots, includeLicenses bool) (run *sarif.Run, err error) {
-	xrayJson, err := convertXrayScanToSimpleJson(results, isMultipleRoots, includeLicenses, true)
+func convertXrayResponsesToSarifRun(results *Results, isMultipleRoots, includeLicenses bool, allowedLicenses []string) (run *sarif.Run, err error) {
+	xrayJson, err := ConvertXrayScanToSimpleJson(results, isMultipleRoots, includeLicenses, true, allowedLicenses)
 	if err != nil {
 		return
 	}
@@ -230,7 +231,7 @@ func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResu
 		}
 	}
 	for _, license := range xrayJson.LicensesViolations {
-		if err := AddXrayLicenseViolationToSarifRun(license, run); err != nil {
+		if err := addXrayLicenseViolationToSarifRun(license, run); err != nil {
 			return err
 		}
 	}
@@ -268,7 +269,7 @@ func addXrayCveIssueToSarifRun(issue formats.VulnerabilityOrViolationRow, run *s
 	return
 }
 
-func AddXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Run) (err error) {
+func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Run) (err error) {
 	formattedDirectDependencies, err := getDirectDependenciesFormatted(license.Components)
 	if err != nil {
 		return
@@ -355,7 +356,7 @@ func addXrayRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescript
 	})
 }
 
-func convertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+func ConvertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicenses, simplifiedOutput bool, allowedLicenses []string) (formats.SimpleJsonResults, error) {
 	violations, vulnerabilities, licenses := SplitScanResults(results.ScaResults)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
@@ -364,6 +365,16 @@ func convertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicen
 			return formats.SimpleJsonResults{}, err
 		}
 		jsonTable.Vulnerabilities = vulJsonTable
+	}
+	if includeLicenses || len(allowedLicenses) > 0 {
+		licJsonTable, err := PrepareLicenses(licenses)
+		if err != nil {
+			return formats.SimpleJsonResults{}, err
+		}
+		if includeLicenses {
+			jsonTable.Licenses = licJsonTable
+		}
+		jsonTable.LicensesViolations = GetViolatedLicenses(allowedLicenses, licJsonTable)
 	}
 	if len(violations) > 0 {
 		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, results, isMultipleRoots, simplifiedOutput)
@@ -374,19 +385,23 @@ func convertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicen
 		jsonTable.LicensesViolations = licViolationsJsonTable
 		jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 	}
-	if includeLicenses {
-		licJsonTable, err := PrepareLicenses(licenses)
-		if err != nil {
-			return formats.SimpleJsonResults{}, err
-		}
-		jsonTable.Licenses = licJsonTable
-	}
-
 	return jsonTable, nil
 }
 
+func GetViolatedLicenses(allowedLicenses []string, licenses []formats.LicenseRow) (violatedLicenses []formats.LicenseRow) {
+	if len(allowedLicenses) == 0 {
+		return
+	}
+	for _, license := range licenses {
+		if !slices.Contains(allowedLicenses, license.LicenseKey) {
+			violatedLicenses = append(violatedLicenses, license)
+		}
+	}
+	return
+}
+
 func (rw *ResultsWriter) convertScanToSimpleJson() (formats.SimpleJsonResults, error) {
-	jsonTable, err := convertXrayScanToSimpleJson(rw.results, rw.isMultipleRoots, rw.includeLicenses, false)
+	jsonTable, err := ConvertXrayScanToSimpleJson(rw.results, rw.isMultipleRoots, rw.includeLicenses, false, nil)
 	if err != nil {
 		return formats.SimpleJsonResults{}, err
 	}

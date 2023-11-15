@@ -89,7 +89,7 @@ func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd,
 	}
 
 	// If an Artifactory resolution repository was provided we first configure to resolve from it and only then run the 'install' command
-	restoreYarnrcFunc, err := rtutils.YarnBackupFile(filepath.Join(curWd, yarn.YarnrcFileName), yarn.YarnrcBackupFileName)
+	restoreYarnrcFunc, err := rtutils.BackupFile(filepath.Join(curWd, yarn.YarnrcFileName), yarn.YarnrcBackupFileName)
 	if err != nil {
 		return
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -130,33 +129,4 @@ func CreateCollectChecksumsFunc(previousBuildDependencies map[string]*entities.D
 		dependency.Checksum = checksum
 		return true, nil
 	}
-}
-
-// TODO delete this function and fix BackupFile function to check if filePath exists before calling os.Remove ?
-// Creates a backup of the file in filePath.
-// In case the file in filePath doesn't exist, a backup file won't be created, and the restore func will be an empty function.
-// The returned restore function can be called to restore the file's state - the file in filePath will be replaced by the backup in backupPath.
-func YarnBackupFile(filePath, backupFileName string) (restore func() error, err error) {
-	fileInfo, err := os.Stat(filePath)
-	if errorutils.CheckError(err) != nil {
-		if os.IsNotExist(err) {
-			/*
-				_, err = os.Create(filePath)
-				if err != nil {
-					err = fmt.Errorf("failed to create temporary file '%s': %s", filePath, err.Error())
-					return
-				}
-			*/
-			restore = func() error { return nil }
-			err = nil
-		}
-		return
-	}
-
-	if err = cloneFile(filePath, backupFileName, fileInfo.Mode()); err != nil {
-		return
-	}
-	log.Debug("The file", filePath, "was backed up successfully to", backupFileName)
-	restore = createRestoreFileFunc(filePath, backupFileName)
-	return
 }

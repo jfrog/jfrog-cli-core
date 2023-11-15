@@ -34,11 +34,7 @@ const (
 	nodeModulesRepoName = "node_modules"
 )
 
-func BuildDependencyTree(params *utils.AuditParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	if params == nil {
-		err = errors.New("received an empty audit params while building dependency tree for the project")
-		return
-	}
+func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -58,7 +54,7 @@ func BuildDependencyTree(params *utils.AuditParams) (dependencyTrees []*xrayUtil
 		return
 	}
 
-	if !projectInstalled || len((*params).InstallCommandArgs()) != 0 {
+	if !projectInstalled || len(params.InstallCommandArgs()) != 0 {
 		// In case project is not "installed" or in case the user has provided an 'install' command to run
 		err = configureYarnResolutionServerAndRunInstall(params, currentDir, executablePath)
 		if err != nil {
@@ -80,15 +76,15 @@ func BuildDependencyTree(params *utils.AuditParams) (dependencyTrees []*xrayUtil
 
 // Sets up Artifactory server configurations for dependency resolution, if such were provided by the user.
 // Executes the user's 'install' command or a default 'install' command if none was specified.
-func configureYarnResolutionServerAndRunInstall(params *utils.AuditParams, curWd, yarnExecPath string) (err error) {
-	depsRepo := (*params).DepsRepo()
+func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd, yarnExecPath string) (err error) {
+	depsRepo := params.DepsRepo()
 	if depsRepo == "" {
 		// Run install without configuring an Artifactory server
-		return runYarnInstallAccordingToVersion(curWd, yarnExecPath, (*params).InstallCommandArgs())
+		return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
 	}
 
 	var serverDetails *config.ServerDetails
-	serverDetails, err = (*params).ServerDetails()
+	serverDetails, err = params.ServerDetails()
 	if err != nil {
 		err = fmt.Errorf("failed to get server details while building yarn dependency tree: %s", err.Error())
 		return
@@ -119,7 +115,7 @@ func configureYarnResolutionServerAndRunInstall(params *utils.AuditParams, curWd
 		err = errors.Join(err, yarn.RestoreConfigurationsFromBackup(backupEnvMap, restoreYarnrcFunc))
 	}()
 
-	return runYarnInstallAccordingToVersion(curWd, yarnExecPath, (*params).InstallCommandArgs())
+	return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
 }
 
 // Verifies the project's installation status by examining the presence of the yarn.lock file.
@@ -136,17 +132,15 @@ func isYarnProjectInstalled(currentDir string) (projectInstalled bool, err error
 
 // Executes the user-defined 'install' command; if absent, defaults to running an 'install' command with specific flags suited to the current yarn version.
 func runYarnInstallAccordingToVersion(curWd, yarnExecPath string, installCommandArgs []string) (err error) {
-	// If the installCommandArgs in the parames is not empty, it signifies that the user has provided it, and 'install' is already included as one of the arguments
+	// If the installCommandArgs in the params is not empty, it signifies that the user has provided it, and 'install' is already included as one of the arguments
 	installCommandProvidedFromUser := len(installCommandArgs) != 0
-	if !installCommandProvidedFromUser {
-		installCommandArgs = []string{"install"}
-	}
 
 	// Upon receiving a user-provided 'install' command, we execute the command exactly as provided
 	if installCommandProvidedFromUser {
 		return build.RunYarnCommand(yarnExecPath, curWd, installCommandArgs...)
 	}
 
+	installCommandArgs = []string{"install"}
 	executableVersionStr, err := biUtils.GetVersion(yarnExecPath, curWd)
 	if err != nil {
 		return

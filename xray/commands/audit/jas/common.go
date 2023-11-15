@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	DefaultExcludePatterns = []string{"**/*test*/**", "**/*venv*/**", NodeModulesPattern, "**/*target*/**"}
+	DefaultExcludePatterns = []string{"**/.git/**", "**/*test*/**", "**/*venv*/**", NodeModulesPattern, "**/target/**"}
 
 	mapSeverityToScore = map[string]string{
 		"":         "0.0",

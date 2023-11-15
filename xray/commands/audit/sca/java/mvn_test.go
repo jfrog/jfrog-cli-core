@@ -133,16 +133,16 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
           xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <server>
-    <id>artifactory</id>
-    <configuration>
-        <httpHeaders>
-            <property>
-                <name>Authorization</name>
-                <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
-            </property>
-        </httpHeaders>
-    </configuration>
-</server>
+        <id>artifactory</id>
+        <configuration>
+            <httpHeaders>
+                <property>
+                    <name>Authorization</name>
+                    <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
+                </property>
+            </httpHeaders>
+        </configuration>
+    </server>
     <mirrors>
         <mirror>
             <id>artifactory</id>
@@ -166,16 +166,16 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
           xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <server>
-    <id>artifactory</id>
-    <configuration>
-        <httpHeaders>
-            <property>
-                <name>Authorization</name>
-                <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
-            </property>
-        </httpHeaders>
-    </configuration>
-</server>
+        <id>artifactory</id>
+        <configuration>
+            <httpHeaders>
+                <property>
+                    <name>Authorization</name>
+                    <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
+                </property>
+            </httpHeaders>
+        </configuration>
+    </server>
     <mirrors>
         <mirror>
             <id>artifactory</id>
@@ -198,16 +198,16 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
           xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <server>
-    <id>artifactory</id>
-    <configuration>
-        <httpHeaders>
-            <property>
-                <name>Authorization</name>
-                <value>Bearer accessToken</value>
-            </property>
-        </httpHeaders>
-    </configuration>
-</server>
+        <id>artifactory</id>
+        <configuration>
+            <httpHeaders>
+                <property>
+                    <name>Authorization</name>
+                    <value>Bearer accessToken</value>
+                </property>
+            </httpHeaders>
+        </configuration>
+    </server>
     <mirrors>
         <mirror>
             <id>artifactory</id>

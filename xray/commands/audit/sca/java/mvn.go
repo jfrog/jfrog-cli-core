@@ -23,9 +23,6 @@ const (
 	TreeCmd                = "tree"
 	ProjectsCmd            = "projects"
 	settingsXmlFile        = "settings.xml"
-	basicAuthServerXmlPath = "resources/basic-auth-server.xml"
-	tokenAuthServerXmlPath = "resources/token-auth-server.xml"
-	errReadServerXml       = "encountered an error while attempting to read from %s while constructing the settings.xml for the 'mvn-dep-tree' command:\n%w"
 )
 
 //go:embed resources/settings.xml
@@ -164,11 +161,7 @@ func (mdt *MavenDepTreeManager) getSettingsXmlServerAuthentication() (string, er
 		if password == "" {
 			password = token
 		}
-		basicAuthServerXml, err := os.ReadFile(basicAuthServerXmlPath)
-		if err != nil {
-			return "", errorutils.CheckErrorf(errReadServerXml, basicAuthServerXmlPath, err)
-		}
-		authString := fmt.Sprintf(string(basicAuthServerXml), base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+		authString := "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
 		return authString, nil
 	}
 
@@ -177,10 +170,6 @@ func (mdt *MavenDepTreeManager) getSettingsXmlServerAuthentication() (string, er
 		return "", errorutils.CheckErrorf(errorMessage)
 	}
 
-	tokenAuthServerXml, err := os.ReadFile(tokenAuthServerXmlPath)
-	if err != nil {
-		return "", errorutils.CheckErrorf(errReadServerXml, tokenAuthServerXmlPath, err)
-	}
-	authString := fmt.Sprintf(string(tokenAuthServerXml), token)
+	authString := "Bearer " + token
 	return authString, nil
 }

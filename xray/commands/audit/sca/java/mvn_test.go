@@ -124,27 +124,32 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	err := mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
 	assert.NoError(t, err)
 
-	// Verify settings.xml file creation.
+	// Verify settings.xml file creation with username and password
 	settingsXmlPath := filepath.Join(tempDir, "settings.xml")
 	actualContent, err := os.ReadFile(settingsXmlPath)
 	assert.NoError(t, err)
 	expectedContent := `<?xml version="1.0" encoding="UTF-8"?>
-<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <servers>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <server>
-      <username>testUser</username>
-      <password>testPass</password>
-      <id>artifactory</id>
-    </server>
-  </servers>
-  <mirrors>
-    <mirror>
-          <id>artifactory</id>
-          <url>https://myartifactory.com/artifactory/testRepo</url>
-          <mirrorOf>*</mirrorOf>
-    </mirror>
-  </mirrors>
+    <id>artifactory</id>
+    <configuration>
+        <httpHeaders>
+            <property>
+                <name>Authorization</name>
+                <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
+            </property>
+        </httpHeaders>
+    </configuration>
+</server>
+    <mirrors>
+        <mirror>
+            <id>artifactory</id>
+            <url>https://myartifactory.com/artifactory/testRepo</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+    </mirrors>
 </settings>`
 	assert.Equal(t, expectedContent, string(actualContent))
 
@@ -153,26 +158,63 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
 	assert.NoError(t, err)
 
-	// Verify settings.xml file creation.
+	// Verify settings.xml file creation with username and access token
 	actualContent, err = os.ReadFile(settingsXmlPath)
 	assert.NoError(t, err)
 	expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
-<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <servers>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <server>
-      <username>testUser</username>
-      <password>accessToken</password>
-      <id>artifactory</id>
-    </server>
-  </servers>
-  <mirrors>
-    <mirror>
-          <id>artifactory</id>
-          <url>https://myartifactory.com/artifactory/testRepo</url>
-          <mirrorOf>*</mirrorOf>
-    </mirror>
-  </mirrors>
+    <id>artifactory</id>
+    <configuration>
+        <httpHeaders>
+            <property>
+                <name>Authorization</name>
+                <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
+            </property>
+        </httpHeaders>
+    </configuration>
+</server>
+    <mirrors>
+        <mirror>
+            <id>artifactory</id>
+            <url>https://myartifactory.com/artifactory/testRepo</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+    </mirrors>
+</settings>`
+	assert.Equal(t, expectedContent, string(actualContent))
+
+	mdt.server.User = ""
+	err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
+	assert.NoError(t, err)
+
+	// Verify settings.xml file creation with access token only
+	actualContent, err = os.ReadFile(settingsXmlPath)
+	assert.NoError(t, err)
+	expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <server>
+    <id>artifactory</id>
+    <configuration>
+        <httpHeaders>
+            <property>
+                <name>Authorization</name>
+                <value>Bearer accessToken</value>
+            </property>
+        </httpHeaders>
+    </configuration>
+</server>
+    <mirrors>
+        <mirror>
+            <id>artifactory</id>
+            <url>https://myartifactory.com/artifactory/testRepo</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+    </mirrors>
 </settings>`
 	assert.Equal(t, expectedContent, string(actualContent))
 }

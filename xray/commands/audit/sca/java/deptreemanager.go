@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
@@ -12,18 +11,15 @@ import (
 )
 
 type DepTreeParams struct {
-	Tool                  coreutils.Technology
-	UseWrapper            bool
-	IsMvnDepTreeInstalled bool
-	Server                *config.ServerDetails
-	DepsRepo              string
+	UseWrapper bool
+	Server     *config.ServerDetails
+	DepsRepo   string
 }
 
 type DepTreeManager struct {
-	server       *config.ServerDetails
-	releasesRepo string
-	depsRepo     string
-	useWrapper   bool
+	server     *config.ServerDetails
+	depsRepo   string
+	useWrapper bool
 }
 
 func NewDepTreeManager(params *DepTreeParams) *DepTreeManager {

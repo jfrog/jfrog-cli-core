@@ -2,6 +2,7 @@ package java
 
 import (
 	_ "embed"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -22,28 +23,15 @@ const (
 	TreeCmd                = "tree"
 	ProjectsCmd            = "projects"
 	settingsXmlFile        = "settings.xml"
+	basicAuthServerXmlPath = "resources/basic-auth-server.xml"
+	tokenAuthServerXmlPath = "resources/token-auth-server.xml"
+	errReadServerXml       = "encountered an error while attempting to read from %s while constructing the settings.xml for the 'mvn-dep-tree' command:\n%w"
 )
 
-var settingsXmlTemplate = `<?xml version="1.0" encoding="UTF-8"?>
-<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd" xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <servers>
-    <server>
-      <username>%s</username>
-      <password>%s</password>
-      <id>artifactory</id>
-    </server>
-  </servers>
-  <mirrors>
-    <mirror>
-          <id>artifactory</id>
-          <url>%s</url>
-          <mirrorOf>*</mirrorOf>
-    </mirror>
-  </mirrors>
-</settings>`
+//go:embed resources/settings.xml
+var settingsXmlTemplate string
 
-//go:embed maven-dep-tree.jar
+//go:embed resources/maven-dep-tree.jar
 var mavenDepTreeJar []byte
 
 type MavenDepTreeManager struct {
@@ -53,9 +41,21 @@ type MavenDepTreeManager struct {
 	settingsXmlPath string
 }
 
-func buildMavenDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	manager := &MavenDepTreeManager{DepTreeManager: NewDepTreeManager(params), cmdName: TreeCmd, isInstalled: params.IsMvnDepTreeInstalled}
-	outputFileContent, err := manager.runMavenDepTree()
+func NewMavenDepTreeManager(params *DepTreeParams, cmdName string, isDepTreeInstalled bool) *MavenDepTreeManager {
+	depTreeManager := NewDepTreeManager(&DepTreeParams{
+		Server:   params.Server,
+		DepsRepo: params.DepsRepo,
+	})
+	return &MavenDepTreeManager{
+		DepTreeManager: depTreeManager,
+		isInstalled:    isDepTreeInstalled,
+		cmdName:        cmdName,
+	}
+}
+
+func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+	manager := NewMavenDepTreeManager(params, TreeCmd, isDepTreeInstalled)
+	outputFileContent, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
 	}
@@ -63,7 +63,7 @@ func buildMavenDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtil
 	return
 }
 
-func (mdt *MavenDepTreeManager) runMavenDepTree() ([]byte, error) {
+func (mdt *MavenDepTreeManager) RunMavenDepTree() ([]byte, error) {
 	// Create a temp directory for all the files that are required for the maven-dep-tree run
 	depTreeExecDir, err := fileutils.CreateTempDir()
 	if err != nil {
@@ -94,7 +94,8 @@ func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string)
 		return err
 	}
 	goals := GetMavenPluginInstallationGoals(mavenDepTreeJarPath)
-	return mdt.runMvnCmd(goals)
+	_, err := mdt.RunMvnCmd(goals)
+	return err
 }
 
 func GetMavenPluginInstallationGoals(pluginPath string) []string {
@@ -102,9 +103,16 @@ func GetMavenPluginInstallationGoals(pluginPath string) []string {
 }
 
 func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
+	if mdt.cmdName == TreeCmd {
+		return mdt.runTreeCmd(depTreeExecDir)
+	}
+	return mdt.runProjectsCmd()
+}
+
+func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
-	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + mdt.cmdName, "-DdepsTreeOutputFile=" + mavenDepTreePath}
-	if err := mdt.runMvnCmd(goals); err != nil {
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + TreeCmd, "-DdepsTreeOutputFile=" + mavenDepTreePath}
+	if _, err := mdt.RunMvnCmd(goals); err != nil {
 		return nil, err
 	}
 
@@ -113,7 +121,12 @@ func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte,
 	return mavenDepTreeOutput, err
 }
 
-func (mdt *MavenDepTreeManager) runMvnCmd(goals []string) error {
+func (mdt *MavenDepTreeManager) runProjectsCmd() ([]byte, error) {
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + ProjectsCmd, "-q"}
+	return mdt.RunMvnCmd(goals)
+}
+
+func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) ([]byte, error) {
 	if mdt.settingsXmlPath != "" {
 		goals = append(goals, "-s", mdt.settingsXmlPath)
 	}
@@ -126,13 +139,13 @@ func (mdt *MavenDepTreeManager) runMvnCmd(goals []string) error {
 		}
 		err = fmt.Errorf("failed running command 'mvn %s': %s", strings.Join(goals, " "), err.Error())
 	}
-	return err
+	return cmdOutput, err
 }
 
 // Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.
 // The settings.xml will be written to the given path.
 func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path string) error {
-	username, password, err := mdt.server.GetAuthenticationCredentials()
+	serverAuthentication, err := mdt.getSettingsXmlServerAuthentication()
 	if err != nil {
 		return err
 	}
@@ -141,6 +154,33 @@ func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path 
 		return err
 	}
 	mdt.settingsXmlPath = filepath.Join(path, settingsXmlFile)
-	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, username, password, remoteRepositoryFullPath)
-	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0666))
+	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, serverAuthentication, remoteRepositoryFullPath)
+	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0600))
+}
+
+func (mdt *MavenDepTreeManager) getSettingsXmlServerAuthentication() (string, error) {
+	username, password, token := mdt.server.User, mdt.server.Password, mdt.server.AccessToken
+	if username != "" {
+		if password == "" {
+			password = token
+		}
+		basicAuthServerXml, err := os.ReadFile(basicAuthServerXmlPath)
+		if err != nil {
+			return "", errorutils.CheckErrorf(errReadServerXml, basicAuthServerXmlPath, err)
+		}
+		authString := fmt.Sprintf(string(basicAuthServerXml), base64.StdEncoding.EncodeToString([]byte(username+":"+password)))
+		return authString, nil
+	}
+
+	if token == "" {
+		errorMessage := "both a username and either a password or an access token are required when configuring the Maven settings.xml file to execute Maven commands for resolving dependencies from Artifactory"
+		return "", errorutils.CheckErrorf(errorMessage)
+	}
+
+	tokenAuthServerXml, err := os.ReadFile(tokenAuthServerXmlPath)
+	if err != nil {
+		return "", errorutils.CheckErrorf(errReadServerXml, tokenAuthServerXmlPath, err)
+	}
+	authString := fmt.Sprintf(string(tokenAuthServerXml), token)
+	return authString, nil
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -29,7 +30,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 		GavPackageTypeIdentifier + "hsqldb:hsqldb:1.8.0.10",
 	}
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
@@ -79,7 +80,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 		GavPackageTypeIdentifier + "javax.servlet:servlet-api:2.5",
 	}
 
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{UseWrapper: true})
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
@@ -174,4 +175,15 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
   </mirrors>
 </settings>`
 	assert.Equal(t, expectedContent, string(actualContent))
+}
+
+func TestRunProjectsCmd(t *testing.T) {
+	// Create and change directory to test workspace
+	_, cleanUp := sca.CreateTestWorkspace(t, "maven-example")
+	defer cleanUp()
+	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, ProjectsCmd, false)
+	output, err := mvnDepTreeManager.RunMavenDepTree()
+	assert.NoError(t, err)
+	pomPathOccurences := strings.Count(string(output), "pomPath")
+	assert.Equal(t, 4, pomPathOccurences)
 }

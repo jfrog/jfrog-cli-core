@@ -1,0 +1,11 @@
+<server>
+    <id>artifactory</id>
+    <configuration>
+        <httpHeaders>
+            <property>
+                <name>Authorization</name>
+                <value>Bearer %s</value>
+            </property>
+        </httpHeaders>
+    </configuration>
+</server>

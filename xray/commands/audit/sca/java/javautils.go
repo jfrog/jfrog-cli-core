@@ -16,14 +16,12 @@ func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology
 		return nil, nil, err
 	}
 	depTreeParams := &DepTreeParams{
-		Tool:                  tech,
-		IsMvnDepTreeInstalled: params.IsMavenDepTreeInstalled(),
-		UseWrapper:            params.UseWrapper(),
-		Server:                serverDetails,
-		DepsRepo:              params.DepsRepo(),
+		UseWrapper: params.UseWrapper(),
+		Server:     serverDetails,
+		DepsRepo:   params.DepsRepo(),
 	}
 	if tech == coreutils.Maven {
-		return buildMavenDependencyTree(depTreeParams)
+		return buildMavenDependencyTree(depTreeParams, params.IsMavenDepTreeInstalled())
 	}
 	return buildGradleDependencyTree(depTreeParams)
 }

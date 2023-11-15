@@ -49,7 +49,7 @@ allprojects {
 		}`
 )
 
-//go:embed gradle-dep-tree.jar
+//go:embed resources/gradle-dep-tree.jar
 var gradleDepTreeJar []byte
 
 type gradleDepTreeManager struct {
@@ -57,7 +57,7 @@ type gradleDepTreeManager struct {
 }
 
 func buildGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	manager := &gradleDepTreeManager{NewDepTreeManager(params)}
+	manager := &gradleDepTreeManager{DepTreeManager: NewDepTreeManager(params)}
 	outputFileContent, err := manager.runGradleDepTree()
 	if err != nil {
 		return
@@ -91,17 +91,18 @@ func (gdt *gradleDepTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, 
 	if err != nil {
 		return
 	}
-	gdt.releasesRepo, gdt.depsRepo, err = getRemoteRepos(gdt.depsRepo, gdt.server)
+	var releasesRepo string
+	releasesRepo, gdt.depsRepo, err = getRemoteRepos(gdt.depsRepo, gdt.server)
 	if err != nil {
 		return
 	}
 	gradleDepTreeJarPath := filepath.Join(tmpDir, gradleDepTreeJarFile)
-	if err = errorutils.CheckError(os.WriteFile(gradleDepTreeJarPath, gradleDepTreeJar, 0666)); err != nil {
+	if err = errorutils.CheckError(os.WriteFile(gradleDepTreeJarPath, gradleDepTreeJar, 0600)); err != nil {
 		return
 	}
 	gradleDepTreeJarPath = ioutils.DoubleWinPathSeparator(gradleDepTreeJarPath)
 
-	depTreeInitScript := fmt.Sprintf(gradleDepTreeInitScript, gdt.releasesRepo, gradleDepTreeJarPath, gdt.depsRepo)
+	depTreeInitScript := fmt.Sprintf(gradleDepTreeInitScript, releasesRepo, gradleDepTreeJarPath, gdt.depsRepo)
 	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, gradleDepTreeInitFile), []byte(depTreeInitScript), 0666))
 }
 

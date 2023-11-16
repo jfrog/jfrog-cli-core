@@ -70,7 +70,6 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 	assert.True(t, projectInstalled)
 }
 
-/*
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "1.22.19", nil)
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", nil)
@@ -94,5 +93,3 @@ func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, 
 	assert.NoError(t, err)
 	assert.True(t, projectInstalled)
 }
-
-*/

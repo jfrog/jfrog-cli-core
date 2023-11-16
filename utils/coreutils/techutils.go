@@ -70,7 +70,7 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable: true,
 	},
 	Gradle: {
-		indicators:             []string{".gradle", ".gradle.kts"},
+		indicators:             []string{"build.gradle", "build.gradle.kts"},
 		ciSetupSupport:         true,
 		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		applicabilityScannable: true,
@@ -86,7 +86,7 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"},
 		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,

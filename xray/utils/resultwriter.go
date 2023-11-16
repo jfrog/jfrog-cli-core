@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"golang.org/x/exp/slices"
 )
 
 type OutputFormat string
@@ -117,15 +118,7 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	case Json:
 		return PrintJson(rw.results.GetScaScansXrayResults())
 	case Sarif:
-		sarifReport, err := GenereateSarifReportFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses)
-		if err != nil {
-			return err
-		}
-		sarifFile, err := ConvertSarifReportToString(sarifReport)
-		if err != nil {
-			return err
-		}
-		log.Output(sarifFile)
+		return PrintSarif(rw.results, rw.isMultipleRoots, rw.includeLicenses)
 	}
 	return nil
 }
@@ -175,12 +168,12 @@ func printMessage(message string) {
 	log.Output("💬" + message)
 }
 
-func GenereateSarifReportFromResults(results *Results, isMultipleRoots, includeLicenses bool) (report *sarif.Report, err error) {
+func GenereateSarifReportFromResults(results *Results, isMultipleRoots, includeLicenses bool, allowedLicenses []string) (report *sarif.Report, err error) {
 	report, err = NewReport()
 	if err != nil {
 		return
 	}
-	xrayRun, err := convertXrayResponsesToSarifRun(results, isMultipleRoots, includeLicenses)
+	xrayRun, err := convertXrayResponsesToSarifRun(results, isMultipleRoots, includeLicenses, allowedLicenses)
 	if err != nil {
 		return
 	}
@@ -202,14 +195,14 @@ func ConvertSarifReportToString(report *sarif.Report) (sarifStr string, err erro
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertXrayResponsesToSarifRun(results *Results, isMultipleRoots, includeLicenses bool) (run *sarif.Run, err error) {
-	xrayJson, err := convertXrayScanToSimpleJson(results, isMultipleRoots, includeLicenses, true)
+func convertXrayResponsesToSarifRun(results *Results, isMultipleRoots, includeLicenses bool, allowedLicenses []string) (run *sarif.Run, err error) {
+	xrayJson, err := ConvertXrayScanToSimpleJson(results, isMultipleRoots, includeLicenses, true, allowedLicenses)
 	if err != nil {
 		return
 	}
 	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", BaseDocumentationURL+"sca")
 	xrayRun.Tool.Driver.Version = &results.XrayVersion
-	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
+	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 || len(xrayJson.LicensesViolations) > 0 {
 		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson); err != nil {
 			return
 		}
@@ -283,7 +276,7 @@ func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Ru
 		getXrayLicenseSarifHeadline(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
 		getLicenseViolationMarkdown(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey, formattedDirectDependencies),
 		license.Components,
-		nil,
+		getXrayIssueLocation(""),
 		run,
 	)
 	return
@@ -329,10 +322,14 @@ func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run
 	if err != nil {
 		return
 	}
-	if strings.TrimSpace(descriptorPath) == "" {
-		descriptorPath = "Package Descriptor"
+	return getXrayIssueLocation(descriptorPath), nil
+}
+
+func getXrayIssueLocation(filePath string) *sarif.Location {
+	if strings.TrimSpace(filePath) == "" {
+		filePath = "Package-Descriptor"
 	}
-	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + descriptorPath))), nil
+	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filePath)))
 }
 
 func addXrayRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription string, run *sarif.Run) {
@@ -351,7 +348,7 @@ func addXrayRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescript
 	})
 }
 
-func convertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
+func ConvertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicenses, simplifiedOutput bool, allowedLicenses []string) (formats.SimpleJsonResults, error) {
 	violations, vulnerabilities, licenses := SplitScanResults(results.ScaResults)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
@@ -360,6 +357,16 @@ func convertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicen
 			return formats.SimpleJsonResults{}, err
 		}
 		jsonTable.Vulnerabilities = vulJsonTable
+	}
+	if includeLicenses || len(allowedLicenses) > 0 {
+		licJsonTable, err := PrepareLicenses(licenses)
+		if err != nil {
+			return formats.SimpleJsonResults{}, err
+		}
+		if includeLicenses {
+			jsonTable.Licenses = licJsonTable
+		}
+		jsonTable.LicensesViolations = GetViolatedLicenses(allowedLicenses, licJsonTable)
 	}
 	if len(violations) > 0 {
 		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, results, isMultipleRoots, simplifiedOutput)
@@ -370,19 +377,23 @@ func convertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicen
 		jsonTable.LicensesViolations = licViolationsJsonTable
 		jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 	}
-	if includeLicenses {
-		licJsonTable, err := PrepareLicenses(licenses)
-		if err != nil {
-			return formats.SimpleJsonResults{}, err
-		}
-		jsonTable.Licenses = licJsonTable
-	}
-
 	return jsonTable, nil
 }
 
+func GetViolatedLicenses(allowedLicenses []string, licenses []formats.LicenseRow) (violatedLicenses []formats.LicenseRow) {
+	if len(allowedLicenses) == 0 {
+		return
+	}
+	for _, license := range licenses {
+		if !slices.Contains(allowedLicenses, license.LicenseKey) {
+			violatedLicenses = append(violatedLicenses, license)
+		}
+	}
+	return
+}
+
 func (rw *ResultsWriter) convertScanToSimpleJson() (formats.SimpleJsonResults, error) {
-	jsonTable, err := convertXrayScanToSimpleJson(rw.results, rw.isMultipleRoots, rw.includeLicenses, false)
+	jsonTable, err := ConvertXrayScanToSimpleJson(rw.results, rw.isMultipleRoots, rw.includeLicenses, false, nil)
 	if err != nil {
 		return formats.SimpleJsonResults{}, err
 	}
@@ -531,6 +542,19 @@ func PrintJson(output interface{}) error {
 		return errorutils.CheckError(err)
 	}
 	log.Output(clientUtils.IndentJson(results))
+	return nil
+}
+
+func PrintSarif(results *Results, isMultipleRoots, includeLicenses bool) error {
+	sarifReport, err := GenereateSarifReportFromResults(results, isMultipleRoots, includeLicenses, nil)
+	if err != nil {
+		return err
+	}
+	sarifFile, err := ConvertSarifReportToString(sarifReport)
+	if err != nil {
+		return err
+	}
+	log.Output(sarifFile)
 	return nil
 }
 

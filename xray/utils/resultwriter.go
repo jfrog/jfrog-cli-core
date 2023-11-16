@@ -118,15 +118,7 @@ func (rw *ResultsWriter) PrintScanResults() error {
 	case Json:
 		return PrintJson(rw.results.GetScaScansXrayResults())
 	case Sarif:
-		sarifReport, err := GenereateSarifReportFromResults(rw.results, rw.isMultipleRoots, rw.includeLicenses, nil)
-		if err != nil {
-			return err
-		}
-		sarifFile, err := ConvertSarifReportToString(sarifReport)
-		if err != nil {
-			return err
-		}
-		log.Output(sarifFile)
+		return PrintSarif(rw.results, rw.isMultipleRoots, rw.includeLicenses)
 	}
 	return nil
 }
@@ -550,6 +542,19 @@ func PrintJson(output interface{}) error {
 		return errorutils.CheckError(err)
 	}
 	log.Output(clientUtils.IndentJson(results))
+	return nil
+}
+
+func PrintSarif(results *Results, isMultipleRoots, includeLicenses bool) error {
+	sarifReport, err := GenereateSarifReportFromResults(results, isMultipleRoots, includeLicenses, nil)
+	if err != nil {
+		return err
+	}
+	sarifFile, err := ConvertSarifReportToString(sarifReport)
+	if err != nil {
+		return err
+	}
+	log.Output(sarifFile)
 	return nil
 }
 

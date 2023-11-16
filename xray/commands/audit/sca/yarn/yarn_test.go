@@ -86,7 +86,12 @@ func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, 
 	assert.NoError(t, err)
 
 	assert.NoError(t, build.RunYarnCommand(executablePath, tempDirPath, "set", "version", version))
-	assert.NoError(t, runYarnInstallAccordingToVersion(tempDirPath, executablePath, params))
+	err = runYarnInstallAccordingToVersion(tempDirPath, executablePath, params)
+	if err != nil {
+		assert.NoError(t, err, err.Error())
+	} else {
+		assert.NoError(t, err)
+	}
 
 	// Checking the installation worked
 	projectInstalled, err := isYarnProjectInstalled(tempDirPath)

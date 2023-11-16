@@ -1,0 +1,7 @@
+{
+  "name": "yarn-project",
+  "packageManager": "yarn@3.6.1",
+  "dependencies": {
+    "tough-cookie": "2.5.0"
+  }
+}

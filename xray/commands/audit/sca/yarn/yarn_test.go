@@ -72,8 +72,8 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "1.22.19", []string{})
-	//executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{})
-	//executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{"install", "--mode=update-lockfile"})
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{})
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{"install", "--mode=update-lockfile"})
 }
 
 func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, version string, params []string) {
@@ -85,7 +85,10 @@ func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, 
 	executablePath, err := biutils.GetYarnExecutable()
 	assert.NoError(t, err)
 
-	assert.NoError(t, build.RunYarnCommand(executablePath, tempDirPath, "set", "version", version))
+	if version != "" {
+		assert.NoError(t, build.RunYarnCommand(executablePath, tempDirPath, "set", "version", version))
+	}
+
 	err = runYarnInstallAccordingToVersion(tempDirPath, executablePath, params)
 	if err != nil {
 		assert.NoError(t, err, err.Error())

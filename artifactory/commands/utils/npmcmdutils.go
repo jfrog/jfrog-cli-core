@@ -167,7 +167,7 @@ func createRestoreFileFunc(filePath, backupFileName string) func() error {
 			if os.IsNotExist(err) {
 				// We verify the existence of the file in the specified filePath before initiating its deletion in order to prevent errors that might occur when attempting to remove a non-existent file
 				var fileExists bool
-				fileExists, err = fileutils.IsDirExists(filePath, false)
+				fileExists, err = fileutils.IsFileExists(filePath, false)
 				if err != nil {
 					err = fmt.Errorf("failed to check for the existence of '%s' before deleting the file: %s", filePath, err.Error())
 					return errorutils.CheckError(err)

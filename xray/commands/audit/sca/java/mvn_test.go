@@ -10,6 +10,78 @@ import (
 	"testing"
 )
 
+const (
+	settingsXmlWithUsernameAndPassword = `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <server>
+        <id>artifactory</id>
+        <configuration>
+            <httpHeaders>
+                <property>
+                    <name>Authorization</name>
+                    <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
+                </property>
+            </httpHeaders>
+        </configuration>
+    </server>
+    <mirrors>
+        <mirror>
+            <id>artifactory</id>
+            <url>https://myartifactory.com/artifactory/testRepo</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+    </mirrors>
+</settings>`
+	settingsXmlWithUsernameAndToken = `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <server>
+        <id>artifactory</id>
+        <configuration>
+            <httpHeaders>
+                <property>
+                    <name>Authorization</name>
+                    <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
+                </property>
+            </httpHeaders>
+        </configuration>
+    </server>
+    <mirrors>
+        <mirror>
+            <id>artifactory</id>
+            <url>https://myartifactory.com/artifactory/testRepo</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+    </mirrors>
+</settings>`
+	settingsXmlWithAccessToken = `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <server>
+        <id>artifactory</id>
+        <configuration>
+            <httpHeaders>
+                <property>
+                    <name>Authorization</name>
+                    <value>Bearer accessToken</value>
+                </property>
+            </httpHeaders>
+        </configuration>
+    </server>
+    <mirrors>
+        <mirror>
+            <id>artifactory</id>
+            <url>https://myartifactory.com/artifactory/testRepo</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+    </mirrors>
+</settings>`
+)
+
 func TestMavenTreesMultiModule(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := sca.CreateTestWorkspace(t, "maven-example")
@@ -110,7 +182,7 @@ func TestGetMavenPluginInstallationArgs(t *testing.T) {
 func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	// Test case for successful creation of settings.xml.
 	mdt := MavenDepTreeManager{
-		DepTreeManager: &DepTreeManager{
+		DepTreeManager: DepTreeManager{
 			server: &config.ServerDetails{
 				ArtifactoryUrl: "https://myartifactory.com/artifactory",
 				User:           "testUser",
@@ -129,30 +201,7 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	actualContent, err := os.ReadFile(settingsXmlPath)
 	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
 	assert.NoError(t, err)
-	expectedContent := `<?xml version="1.0" encoding="UTF-8"?>
-<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
-          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <server>
-        <id>artifactory</id>
-        <configuration>
-            <httpHeaders>
-                <property>
-                    <name>Authorization</name>
-                    <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
-                </property>
-            </httpHeaders>
-        </configuration>
-    </server>
-    <mirrors>
-        <mirror>
-            <id>artifactory</id>
-            <url>https://myartifactory.com/artifactory/testRepo</url>
-            <mirrorOf>*</mirrorOf>
-        </mirror>
-    </mirrors>
-</settings>`
-	assert.Equal(t, expectedContent, string(actualContent))
+	assert.Equal(t, settingsXmlWithUsernameAndPassword, string(actualContent))
 
 	mdt.server.Password = ""
 	mdt.server.AccessToken = "accessToken"
@@ -163,30 +212,7 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	actualContent, err = os.ReadFile(settingsXmlPath)
 	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
 	assert.NoError(t, err)
-	expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
-<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
-          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <server>
-        <id>artifactory</id>
-        <configuration>
-            <httpHeaders>
-                <property>
-                    <name>Authorization</name>
-                    <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
-                </property>
-            </httpHeaders>
-        </configuration>
-    </server>
-    <mirrors>
-        <mirror>
-            <id>artifactory</id>
-            <url>https://myartifactory.com/artifactory/testRepo</url>
-            <mirrorOf>*</mirrorOf>
-        </mirror>
-    </mirrors>
-</settings>`
-	assert.Equal(t, expectedContent, string(actualContent))
+	assert.Equal(t, settingsXmlWithUsernameAndToken, string(actualContent))
 
 	mdt.server.User = ""
 	err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
@@ -196,39 +222,16 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	actualContent, err = os.ReadFile(settingsXmlPath)
 	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
 	assert.NoError(t, err)
-	expectedContent = `<?xml version="1.0" encoding="UTF-8"?>
-<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
-          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
-          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <server>
-        <id>artifactory</id>
-        <configuration>
-            <httpHeaders>
-                <property>
-                    <name>Authorization</name>
-                    <value>Bearer accessToken</value>
-                </property>
-            </httpHeaders>
-        </configuration>
-    </server>
-    <mirrors>
-        <mirror>
-            <id>artifactory</id>
-            <url>https://myartifactory.com/artifactory/testRepo</url>
-            <mirrorOf>*</mirrorOf>
-        </mirror>
-    </mirrors>
-</settings>`
-	assert.Equal(t, expectedContent, string(actualContent))
+	assert.Equal(t, settingsXmlWithAccessToken, string(actualContent))
 }
 
 func TestRunProjectsCmd(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := sca.CreateTestWorkspace(t, "maven-example")
 	defer cleanUp()
-	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, ProjectsCmd, false)
+	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
 	output, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
-	pomPathOccurences := strings.Count(string(output), "pomPath")
-	assert.Equal(t, 4, pomPathOccurences)
+	pomPathOccurrences := strings.Count(string(output), "pomPath")
+	assert.Equal(t, 4, pomPathOccurrences)
 }

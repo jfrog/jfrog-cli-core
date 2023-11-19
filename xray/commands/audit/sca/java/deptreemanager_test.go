@@ -6,66 +6,59 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func TestGetGradleGraphFromDepTree(t *testing.T) {
 	// Create and change directory to test workspace
 	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, "gradle-example-ci-server")
-	defer func() {
-		cleanUp()
-	}()
+	defer cleanUp()
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
-	testCase := struct {
-		name               string
-		expectedTree       map[string]map[string]string
-		expectedUniqueDeps []string
-	}{
-		name: "ValidOutputFileContent",
-		expectedTree: map[string]map[string]string{
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0":                             {},
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:" + filepath.Base(tempDirPath) + ":1.0": {},
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:services:1.0":                           {},
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:webservice:1.0": {
-				GavPackageTypeIdentifier + "junit:junit:4.11":                            "",
-				GavPackageTypeIdentifier + "commons-io:commons-io:1.2":                   "",
-				GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7":              "",
-				GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0":         "",
-				GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0":            "",
-				GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":               "",
-				GavPackageTypeIdentifier + "commons-collections:commons-collections:3.2": "",
-			},
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0": {
-				GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7":      "",
-				GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0": "",
-				GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4":       "",
-			},
+	expectedTree := map[string]map[string]string{
+		"org.jfrog.example.gradle:shared:1.0":                             {},
+		"org.jfrog.example.gradle:" + filepath.Base(tempDirPath) + ":1.0": {},
+		"org.jfrog.example.gradle:services:1.0":                           {},
+		"org.jfrog.example.gradle:webservice:1.0": {
+			"junit:junit:4.11":                            "",
+			"commons-io:commons-io:1.2":                   "",
+			"org.apache.wicket:wicket:1.3.7":              "",
+			"org.jfrog.example.gradle:shared:1.0":         "",
+			"org.jfrog.example.gradle:api:1.0":            "",
+			"commons-lang:commons-lang:2.4":               "",
+			"commons-collections:commons-collections:3.2": "",
 		},
-		expectedUniqueDeps: []string{
-			GavPackageTypeIdentifier + "junit:junit:4.11",
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:webservice:1.0",
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0",
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:" + filepath.Base(tempDirPath) + ":1.0",
-			GavPackageTypeIdentifier + "commons-io:commons-io:1.2",
-			GavPackageTypeIdentifier + "org.apache.wicket:wicket:1.3.7",
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:shared:1.0",
-			GavPackageTypeIdentifier + "org.jfrog.example.gradle:api:1.0",
-			GavPackageTypeIdentifier + "commons-collections:commons-collections:3.2",
-			GavPackageTypeIdentifier + "commons-lang:commons-lang:2.4",
-			GavPackageTypeIdentifier + "org.hamcrest:hamcrest-core:1.3",
-			GavPackageTypeIdentifier + "org.slf4j:slf4j-api:1.4.2",
+		"org.jfrog.example.gradle:api:1.0": {
+			"org.apache.wicket:wicket:1.3.7":      "",
+			"org.jfrog.example.gradle:shared:1.0": "",
+			"commons-lang:commons-lang:2.4":       "",
 		},
 	}
+	expectedUniqueDeps := []string{
+		"junit:junit:4.11",
+		"org.jfrog.example.gradle:webservice:1.0",
+		"org.jfrog.example.gradle:api:1.0",
+		"org.jfrog.example.gradle:" + filepath.Base(tempDirPath) + ":1.0",
+		"commons-io:commons-io:1.2",
+		"org.apache.wicket:wicket:1.3.7",
+		"org.jfrog.example.gradle:shared:1.0",
+		"org.jfrog.example.gradle:api:1.0",
+		"commons-collections:commons-collections:3.2",
+		"commons-lang:commons-lang:2.4",
+		"org.hamcrest:hamcrest-core:1.3",
+		"org.slf4j:slf4j-api:1.4.2",
+	}
 
-	manager := &gradleDepTreeManager{&DepTreeManager{}}
+	manager := &gradleDepTreeManager{DepTreeManager{}}
 	outputFileContent, err := manager.runGradleDepTree()
 	assert.NoError(t, err)
 	depTree, uniqueDeps, err := getGraphFromDepTree(outputFileContent)
 	assert.NoError(t, err)
-	reflect.DeepEqual(uniqueDeps, testCase.expectedUniqueDeps)
+	reflect.DeepEqual(uniqueDeps, expectedUniqueDeps)
 
 	for _, dependency := range depTree {
-		depChild, exists := testCase.expectedTree[dependency.Id]
+		dependencyId := strings.TrimPrefix(dependency.Id, GavPackageTypeIdentifier)
+		depChild, exists := expectedTree[dependencyId]
 		assert.True(t, exists)
 		assert.Equal(t, len(depChild), len(dependency.Nodes))
 	}

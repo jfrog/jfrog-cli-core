@@ -4,11 +4,33 @@ import (
 	"encoding/json"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"strings"
 )
+
+const (
+	GavPackageTypeIdentifier = "gav://"
+)
+
+func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
+	serverDetails, err := params.ServerDetails()
+	if err != nil {
+		return nil, nil, err
+	}
+	depTreeParams := &DepTreeParams{
+		UseWrapper: params.UseWrapper(),
+		Server:     serverDetails,
+		DepsRepo:   params.DepsRepo(),
+	}
+	if tech == coreutils.Maven {
+		return buildMavenDependencyTree(depTreeParams, params.IsMavenDepTreeInstalled())
+	}
+	return buildGradleDependencyTree(depTreeParams)
+}
 
 type DepTreeParams struct {
 	UseWrapper bool
@@ -22,8 +44,8 @@ type DepTreeManager struct {
 	useWrapper bool
 }
 
-func NewDepTreeManager(params *DepTreeParams) *DepTreeManager {
-	return &DepTreeManager{useWrapper: params.UseWrapper, depsRepo: params.DepsRepo, server: params.Server}
+func NewDepTreeManager(params *DepTreeParams) DepTreeManager {
+	return DepTreeManager{useWrapper: params.UseWrapper, depsRepo: params.DepsRepo, server: params.Server}
 }
 
 // The structure of a dependency tree of a module in a Gradle/Maven project, as created by the gradle-dep-tree and maven-dep-tree plugins.

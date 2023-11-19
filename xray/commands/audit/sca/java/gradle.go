@@ -53,7 +53,7 @@ allprojects {
 var gradleDepTreeJar []byte
 
 type gradleDepTreeManager struct {
-	*DepTreeManager
+	DepTreeManager
 }
 
 func buildGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {

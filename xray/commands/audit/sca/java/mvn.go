@@ -19,10 +19,16 @@ import (
 const (
 	mavenDepTreeJarFile    = "maven-dep-tree.jar"
 	mavenDepTreeOutputFile = "mavendeptree.out"
-	mavenDepTreeVersion    = "1.0.2"
-	TreeCmd                = "tree"
-	ProjectsCmd            = "projects"
-	settingsXmlFile        = "settings.xml"
+	// Changing this version also requires a change in MAVEN_DEP_TREE_VERSION within buildscripts/download_jars.sh
+	mavenDepTreeVersion = "1.0.2"
+	settingsXmlFile     = "settings.xml"
+)
+
+type MavenDepTreeCmd string
+
+const (
+	Projects MavenDepTreeCmd = "projects"
+	Tree     MavenDepTreeCmd = "tree"
 )
 
 //go:embed resources/settings.xml
@@ -32,13 +38,13 @@ var settingsXmlTemplate string
 var mavenDepTreeJar []byte
 
 type MavenDepTreeManager struct {
-	*DepTreeManager
+	DepTreeManager
 	isInstalled     bool
-	cmdName         string
+	cmdName         MavenDepTreeCmd
 	settingsXmlPath string
 }
 
-func NewMavenDepTreeManager(params *DepTreeParams, cmdName string, isDepTreeInstalled bool) *MavenDepTreeManager {
+func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDepTreeInstalled bool) *MavenDepTreeManager {
 	depTreeManager := NewDepTreeManager(&DepTreeParams{
 		Server:   params.Server,
 		DepsRepo: params.DepsRepo,
@@ -51,7 +57,7 @@ func NewMavenDepTreeManager(params *DepTreeParams, cmdName string, isDepTreeInst
 }
 
 func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	manager := NewMavenDepTreeManager(params, TreeCmd, isDepTreeInstalled)
+	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
 	outputFileContent, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
@@ -100,7 +106,7 @@ func GetMavenPluginInstallationGoals(pluginPath string) []string {
 }
 
 func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
-	if mdt.cmdName == TreeCmd {
+	if mdt.cmdName == Tree {
 		return mdt.runTreeCmd(depTreeExecDir)
 	}
 	return mdt.runProjectsCmd()
@@ -108,7 +114,7 @@ func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte,
 
 func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
-	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + TreeCmd, "-DdepsTreeOutputFile=" + mavenDepTreePath}
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath}
 	if _, err := mdt.RunMvnCmd(goals); err != nil {
 		return nil, err
 	}
@@ -119,7 +125,7 @@ func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error
 }
 
 func (mdt *MavenDepTreeManager) runProjectsCmd() ([]byte, error) {
-	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + ProjectsCmd, "-q"}
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q"}
 	return mdt.RunMvnCmd(goals)
 }
 

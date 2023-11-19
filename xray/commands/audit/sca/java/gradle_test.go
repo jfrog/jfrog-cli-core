@@ -153,7 +153,7 @@ func TestGetDepTreeArtifactoryRepository(t *testing.T) {
 }
 
 func TestCreateDepTreeScript(t *testing.T) {
-	manager := &gradleDepTreeManager{DepTreeManager: &DepTreeManager{}}
+	manager := &gradleDepTreeManager{DepTreeManager: DepTreeManager{}}
 	tmpDir, err := manager.createDepTreeScriptAndGetDir()
 	assert.NoError(t, err)
 	defer func() {
@@ -166,7 +166,7 @@ func TestCreateDepTreeScript(t *testing.T) {
 }
 
 func TestCreateDepTreeScriptWithRepositories(t *testing.T) {
-	manager := &gradleDepTreeManager{DepTreeManager: &DepTreeManager{}}
+	manager := &gradleDepTreeManager{DepTreeManager: DepTreeManager{}}
 	manager.depsRepo = "deps-repo"
 	manager.server = &config.ServerDetails{
 		Url:            "https://myartifactory.com/",

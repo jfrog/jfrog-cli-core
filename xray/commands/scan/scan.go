@@ -8,10 +8,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
+	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/common/format"
@@ -248,6 +251,25 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	scanResults.XrayVersion = xrayVersion
 	scanResults.ScaResults = []xrutils.ScaScanResult{{XrayResults: flatResults}}
 
+	scanResults.ExtendedScanResults.EntitledForJas, err = xrutils.IsEntitledForJas(xrayManager, xrayVersion)
+	errGroup := new(errgroup.Group)
+	if scanResults.ExtendedScanResults.EntitledForJas {
+		// Download (if needed) the analyzer manager in a background routine.
+		errGroup.Go(rtutils.DownloadAnalyzerManagerIfNeeded)
+	}
+	// Wait for the Download of the AnalyzerManager to complete.
+	if err = errGroup.Wait(); err != nil {
+		err = errors.New("failed while trying to get Analyzer Manager: " + err.Error())
+	}
+
+	if scanResults.ExtendedScanResults.EntitledForJas {
+		cveList := cveListFromVulnerabilities(flatResults)
+		multiScanId := "" // Also empty for audit
+		thirdPartyApplicabilityScan := false
+		workingDirs := []string{(*(*scanCmd).spec).Files[0].Pattern}
+		scanResults.JasError = runJasScannersAndSetResults(scanResults, cveList, scanCmd.serverDetails, workingDirs, scanCmd.progress, multiScanId, thirdPartyApplicabilityScan)
+	}
+
 	if err = xrutils.NewResultsWriter(scanResults).
 		SetOutputFormat(scanCmd.outputFormat).
 		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
@@ -451,4 +473,22 @@ func appendErrorSlice(scanErrors []formats.SimpleJsonError, errorsToAdd [][]form
 		scanErrors = append(scanErrors, errorSlice...)
 	}
 	return scanErrors
+}
+
+func cveListFromVulnerabilities(flatResults []services.ScanResponse) []string {
+	var cveList []string
+	var technologiesList []string
+	for _, result := range flatResults {
+		for _, vulnerability := range result.Vulnerabilities {
+			for _, cve := range vulnerability.Cves {
+				if !slices.Contains(cveList, cve.Id) && (cve.Id != "") {
+					cveList = append(cveList, cve.Id)
+				}
+			}
+			if !slices.Contains(technologiesList, vulnerability.Technology) && (vulnerability.Technology != "") {
+				cveList = append(technologiesList, vulnerability.Technology)
+			}
+		}
+	}
+	return cveList
 }

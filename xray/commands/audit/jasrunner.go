@@ -2,6 +2,7 @@ package audit
 
 import (
 	"errors"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/jas/applicability"
@@ -41,7 +42,7 @@ func runJasScannersAndSetResults(scanResults *utils.Results, directDependencies 
 	if progress != nil {
 		progress.SetHeadlineMsg("Running secrets scanning")
 	}
-	scanResults.ExtendedScanResults.SecretsScanResults, err = secrets.RunSecretsScan(scanner)
+	scanResults.ExtendedScanResults.SecretsScanResults, err = secrets.RunSecretsScan(scanner, secrets.SecretsScannerType)
 	if err != nil {
 		return
 	}

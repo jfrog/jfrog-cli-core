@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"os"
 	"time"
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
@@ -242,7 +242,7 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 
 func createFlatTree(uniqueDeps []string) (*xrayCmdUtils.GraphNode, error) {
 	if log.GetLogger().GetLogLevel() == log.DEBUG {
-		// Avoid printing and marshalling if not on DEBUG mode.
+		// Avoid printing and marshaling if not on DEBUG mode.
 		jsonList, err := json.Marshal(uniqueDeps)
 		if errorutils.CheckError(err) != nil {
 			return nil, err

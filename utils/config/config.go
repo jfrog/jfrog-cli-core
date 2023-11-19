@@ -750,6 +750,39 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 	return details, nil
 }
 
+// GetAuthenticationCredentials retrieves authentication credentials for the serverDetails instance.
+// If both a username and password are provided, they are returned.
+// If only an access token is provided, the function extracts the username from the access token,
+// and both the username and access token are returned.
+//
+// Returns:
+// - Username and password if both are provided.
+// - Username extracted from the access token, along with the access token, if the access token is provided.
+// - An error if neither username/password nor access token is provided, with details about the missing credentials.
+func (serverDetails *ServerDetails) GetAuthenticationCredentials() (string, string, error) {
+	// Username and password are set
+	if serverDetails.Password != "" && serverDetails.User != "" {
+		return serverDetails.User, serverDetails.Password, nil
+	}
+
+	// Access token is set, extract the username from the access token if needed
+	if serverDetails.AccessToken != "" {
+		if serverDetails.User == "" {
+			serverDetails.User = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
+		}
+		return serverDetails.User, serverDetails.AccessToken, nil
+	}
+
+	// Username/Password or Access token isn't set
+	errMissingCredsMsg := "either username/password or access token must be set for "
+	if serverDetails.Url != "" {
+		errMissingCredsMsg += serverDetails.Url
+	} else if serverDetails.ArtifactoryUrl != "" {
+		errMissingCredsMsg += serverDetails.ArtifactoryUrl
+	}
+	return "", "", errorutils.CheckErrorf(errMissingCredsMsg)
+}
+
 func (missionControlDetails *MissionControlDetails) GetAccessToken() string {
 	return missionControlDetails.AccessToken
 }

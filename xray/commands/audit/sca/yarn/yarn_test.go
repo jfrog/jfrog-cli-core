@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -53,10 +54,18 @@ func TestParseYarnDependenciesList(t *testing.T) {
 }
 
 func TestIsYarnProjectInstalled(t *testing.T) {
+	// This phase is required due to the runner image demands on Ubuntu operating system
+	_, err := exec.Command("corepack", "enable").CombinedOutput()
+	assert.NoError(t, err)
+	defer func() {
+		_, deferErr := exec.Command("corepack", "disable").CombinedOutput()
+		assert.NoError(t, deferErr)
+	}()
+
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
-	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, false, nil))
+	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
 	projectInstalled, err := isYarnProjectInstalled(tempDirPath)
 	assert.NoError(t, err)
 	assert.False(t, projectInstalled)
@@ -71,16 +80,23 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 }
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "1.22.19", []string{})
+	// This phase is required due to the runner image demands on Ubuntu operating system
+	_, err := exec.Command("corepack", "enable").CombinedOutput()
+	assert.NoError(t, err)
+	defer func() {
+		_, deferErr := exec.Command("corepack", "disable").CombinedOutput()
+		assert.NoError(t, deferErr)
+	}()
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{"install", "--mode=update-lockfile"})
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{})
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{"install", "--mode=update-lockfile"})
 }
 
 func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, version string, params []string) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
-	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, false, nil))
+	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
 
 	executablePath, err := biutils.GetYarnExecutable()
 	assert.NoError(t, err)

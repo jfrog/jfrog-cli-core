@@ -1,7 +1,10 @@
 {
-  "name": "yarn-project",
-  "packageManager": "yarn@3.6.1",
+  "name": "yarn",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "packageManager": "yarn@1.22.21",
   "dependencies": {
-    "tough-cookie": "2.5.0"
+    "minimist": "1.2.5"
   }
 }

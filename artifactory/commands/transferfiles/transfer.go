@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -33,6 +34,7 @@ const (
 	retries                      = 600
 	retriesWaitMilliSecs         = 5000
 	dataTransferPluginMinVersion = "1.7.0"
+	disableDistinctAqlMinVersion = "7.37"
 )
 
 type TransferFilesCommand struct {
@@ -55,6 +57,8 @@ type TransferFilesCommand struct {
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
 	locallyGeneratedFilter    *locallyGeneratedFilter
+	// Optimization in Artifactory version 7.37 and above enables the exclusion of setting DISTINCT in SQL queries
+	disabledDistinctiveAql bool
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -182,6 +186,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
+	if err = tdc.initDistinctAql(); err != nil {
+		return err
+	}
+
 	if err = tdc.initStateManager(allSourceLocalRepos, sourceBuildInfoRepos); err != nil {
 		return err
 	}
@@ -289,6 +297,28 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	}
 	tdc.targetStorageInfoManager = storageInfoManager
 	return storageInfoManager.CalculateStorageInfo()
+}
+
+func (tdc *TransferFilesCommand) initDistinctAql() error {
+	// Init source storage services manager
+	servicesManager, err := createTransferServiceManager(tdc.context, tdc.sourceServerDetails)
+	if err != nil {
+		return err
+	}
+
+	// Getting source Artifactory version
+	sourceArtifactoryVersion, err := servicesManager.GetVersion()
+	if err != nil {
+		return err
+	}
+
+	// If version is at least 7.37, add .distinct(false) to AQL queries
+	if version.NewVersion(sourceArtifactoryVersion).AtLeast(disableDistinctAqlMinVersion) {
+		tdc.disabledDistinctiveAql = true
+		log.Debug(fmt.Sprintf("The source Artifactory version is above %s (%s). Adding .distinct(false) to AQL requests.",
+			disableDistinctAqlMinVersion, sourceArtifactoryVersion))
+	}
+	return nil
 }
 
 // Creates the Pre-checks runner for the data transfer command
@@ -457,6 +487,9 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	err = (*newPhase).initProgressBar()
 	if err != nil {
 		return err
+	}
+	if tdc.disabledDistinctiveAql {
+		(*newPhase).setDisabledDistinctiveAql()
 	}
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()

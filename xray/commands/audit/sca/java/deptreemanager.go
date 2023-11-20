@@ -2,7 +2,6 @@ package java
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -127,7 +126,7 @@ func getArtifactoryAuthFromServer(server *config.ServerDetails) (string, string,
 		return "", "", err
 	}
 	if username == "" {
-		return "", "", errors.New("a username is required for authenticating with Artifactory")
+		return "", "", errorutils.CheckErrorf("a username is required for authenticating with Artifactory")
 	}
 	return username, password, nil
 }

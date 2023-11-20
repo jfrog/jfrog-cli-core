@@ -218,6 +218,7 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
 		return
 	}
+	params.SetServerDetails(repoConfig.serverDetails)
 	params.SetDepsRepo(repoConfig.targetRepo)
 	return
 }

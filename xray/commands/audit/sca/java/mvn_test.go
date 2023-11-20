@@ -16,17 +16,19 @@ const (
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
           xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <server>
-        <id>artifactory</id>
-        <configuration>
-            <httpHeaders>
-                <property>
-                    <name>Authorization</name>
-                    <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
-                </property>
-            </httpHeaders>
-        </configuration>
-    </server>
+    <servers>
+        <server>
+            <id>artifactory</id>
+            <configuration>
+                <httpHeaders>
+                    <property>
+                        <name>Authorization</name>
+                        <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
+                    </property>
+                </httpHeaders>
+            </configuration>
+        </server>
+    </servers>
     <mirrors>
         <mirror>
             <id>artifactory</id>
@@ -40,17 +42,19 @@ const (
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
           xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <server>
-        <id>artifactory</id>
-        <configuration>
-            <httpHeaders>
-                <property>
-                    <name>Authorization</name>
-                    <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
-                </property>
-            </httpHeaders>
-        </configuration>
-    </server>
+    <servers>
+        <server>
+            <id>artifactory</id>
+            <configuration>
+                <httpHeaders>
+                    <property>
+                        <name>Authorization</name>
+                        <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
+                    </property>
+                </httpHeaders>
+            </configuration>
+        </server>
+    </servers>
     <mirrors>
         <mirror>
             <id>artifactory</id>
@@ -64,17 +68,19 @@ const (
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
           xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <server>
-        <id>artifactory</id>
-        <configuration>
-            <httpHeaders>
-                <property>
-                    <name>Authorization</name>
-                    <value>Bearer accessToken</value>
-                </property>
-            </httpHeaders>
-        </configuration>
-    </server>
+    <servers>
+        <server>
+            <id>artifactory</id>
+            <configuration>
+                <httpHeaders>
+                    <property>
+                        <name>Authorization</name>
+                        <value>Bearer accessToken</value>
+                    </property>
+                </httpHeaders>
+            </configuration>
+        </server>
+    </servers>
     <mirrors>
         <mirror>
             <id>artifactory</id>

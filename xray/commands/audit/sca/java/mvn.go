@@ -2,7 +2,6 @@ package java
 
 import (
 	_ "embed"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -102,7 +101,7 @@ func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string)
 }
 
 func GetMavenPluginInstallationGoals(pluginPath string) []string {
-	return []string{"org.apache.maven.plugins:maven-install-plugin:3.1.1:install-file", "-Dfile=" + pluginPath}
+	return []string{"org.apache.maven.plugins:maven-install-plugin:3.1.1:install-file", "-Dfile=" + pluginPath, "-B"}
 }
 
 func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
@@ -114,7 +113,7 @@ func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte,
 
 func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
-	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath}
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath, "-B"}
 	if _, err := mdt.RunMvnCmd(goals); err != nil {
 		return nil, err
 	}
@@ -148,7 +147,7 @@ func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) ([]byte, error) {
 // Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.
 // The settings.xml will be written to the given path.
 func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path string) error {
-	serverAuthentication, err := mdt.getSettingsXmlServerAuthentication()
+	username, password, err := getArtifactoryAuthFromServer(mdt.server)
 	if err != nil {
 		return err
 	}
@@ -157,25 +156,7 @@ func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path 
 		return err
 	}
 	mdt.settingsXmlPath = filepath.Join(path, settingsXmlFile)
-	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, serverAuthentication, remoteRepositoryFullPath)
+	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, username, password, remoteRepositoryFullPath)
+
 	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0600))
-}
-
-func (mdt *MavenDepTreeManager) getSettingsXmlServerAuthentication() (string, error) {
-	username, password, token := mdt.server.User, mdt.server.Password, mdt.server.AccessToken
-	if username != "" {
-		if password == "" {
-			password = token
-		}
-		authString := "Basic " + base64.StdEncoding.EncodeToString([]byte(username+":"+password))
-		return authString, nil
-	}
-
-	if token == "" {
-		errorMessage := "both a username and either a password or an access token are required when configuring the Maven settings.xml file to execute Maven commands for resolving dependencies from Artifactory"
-		return "", errorutils.CheckErrorf(errorMessage)
-	}
-
-	authString := "Bearer " + token
-	return authString, nil
 }

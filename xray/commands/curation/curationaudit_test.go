@@ -414,6 +414,7 @@ func TestDoCurationAudit(t *testing.T) {
 			}()
 			curationCmd := NewCurationAuditCommand()
 			curationCmd.parallelRequests = 3
+			curationCmd.SetIgnoreConfigFile(true)
 			rootDir, err := os.Getwd()
 			assert.NoError(t, err)
 			// Set the working dir for npm project.

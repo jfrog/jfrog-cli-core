@@ -2,6 +2,7 @@ package java
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -118,4 +119,15 @@ func parseDepTreeFile(path string) (results *moduleDepTree, err error) {
 	results = &moduleDepTree{}
 	err = errorutils.CheckError(json.Unmarshal(depTreeJson, &results))
 	return
+}
+
+func getArtifactoryAuthFromServer(server *config.ServerDetails) (string, string, error) {
+	username, password, err := server.GetAuthenticationCredentials()
+	if err != nil {
+		return "", "", err
+	}
+	if username == "" {
+		return "", "", errors.New("a username is required for authenticating with Artifactory")
+	}
+	return username, password, nil
 }

@@ -171,10 +171,11 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 	if remoteRepo == "" || server.IsEmpty() {
 		return "", nil
 	}
-	username, password, err := server.GetAuthenticationCredentials()
+	username, password, err := getArtifactoryAuthFromServer(server)
 	if err != nil {
 		return "", err
 	}
+
 	log.Debug("The project dependencies will be resolved from", server.ArtifactoryUrl, "from the", remoteRepo, "repository")
 	return fmt.Sprintf(artifactoryRepository,
 		strings.TrimSuffix(server.ArtifactoryUrl, "/"),

@@ -147,7 +147,7 @@ func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) ([]byte, error) {
 // Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.
 // The settings.xml will be written to the given path.
 func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path string) error {
-	username, password, err := mdt.server.GetAuthenticationCredentials()
+	username, password, err := getArtifactoryAuthFromServer(mdt.server)
 	if err != nil {
 		return err
 	}

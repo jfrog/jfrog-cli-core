@@ -19,14 +19,8 @@ const (
     <servers>
         <server>
             <id>artifactory</id>
-            <configuration>
-                <httpHeaders>
-                    <property>
-                        <name>Authorization</name>
-                        <value>Basic dGVzdFVzZXI6dGVzdFBhc3M=</value>
-                    </property>
-                </httpHeaders>
-            </configuration>
+            <username>testUser</username>
+            <password>testPass</password>
         </server>
     </servers>
     <mirrors>
@@ -45,14 +39,8 @@ const (
     <servers>
         <server>
             <id>artifactory</id>
-            <configuration>
-                <httpHeaders>
-                    <property>
-                        <name>Authorization</name>
-                        <value>Basic dGVzdFVzZXI6YWNjZXNzVG9rZW4=</value>
-                    </property>
-                </httpHeaders>
-            </configuration>
+            <username>testUser</username>
+            <password>accessToken</password>
         </server>
     </servers>
     <mirrors>
@@ -71,14 +59,8 @@ const (
     <servers>
         <server>
             <id>artifactory</id>
-            <configuration>
-                <httpHeaders>
-                    <property>
-                        <name>Authorization</name>
-                        <value>Bearer accessToken</value>
-                    </property>
-                </httpHeaders>
-            </configuration>
+            <username></username>
+            <password>accessToken</password>
         </server>
     </servers>
     <mirrors>

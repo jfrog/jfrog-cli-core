@@ -5,14 +5,8 @@
     <servers>
         <server>
             <id>artifactory</id>
-            <configuration>
-                <httpHeaders>
-                    <property>
-                        <name>Authorization</name>
-                        <value>%s</value>
-                    </property>
-                </httpHeaders>
-            </configuration>
+            <username>%s</username>
+            <password>%s</password>
         </server>
     </servers>
     <mirrors>

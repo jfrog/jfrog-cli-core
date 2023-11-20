@@ -36,6 +36,7 @@ type transferPhase interface {
 	setProxyKey(proxyKey string)
 	setBuildInfo(setBuildInfo bool)
 	setPackageType(packageType string)
+	setDisabledDistinctiveAql()
 	setStopSignal(stopSignal chan os.Signal)
 	StopGracefully()
 }
@@ -59,6 +60,8 @@ type phaseBase struct {
 	stateManager              *state.TransferStateManager
 	locallyGeneratedFilter    *locallyGeneratedFilter
 	stopSignal                chan os.Signal
+	// Optimization in Artifactory version 7.37 and above enables the exclusion of setting DISTINCT in SQL queries
+	disabledDistinctiveAql bool
 }
 
 func (pb *phaseBase) ShouldStop() bool {
@@ -138,6 +141,10 @@ func (pb *phaseBase) setBuildInfo(buildInfoRepo bool) {
 
 func (pb *phaseBase) setPackageType(packageType string) {
 	pb.packageType = packageType
+}
+
+func (pb *phaseBase) setDisabledDistinctiveAql() {
+	pb.disabledDistinctiveAql = true
 }
 
 func (pb *phaseBase) setStopSignal(stopSignal chan os.Signal) {

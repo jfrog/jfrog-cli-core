@@ -1,98 +1,162 @@
 package java
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
-	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
-func buildMvnDependencyTree(params *DependencyTreeParams) (modules []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	buildConfiguration, cleanBuild := createBuildConfiguration("audit-mvn")
-	defer func() {
-		err = errors.Join(err, cleanBuild())
-	}()
+const (
+	mavenDepTreeJarFile    = "maven-dep-tree.jar"
+	mavenDepTreeOutputFile = "mavendeptree.out"
+	// Changing this version also requires a change in MAVEN_DEP_TREE_VERSION within buildscripts/download_jars.sh
+	mavenDepTreeVersion = "1.0.2"
+	settingsXmlFile     = "settings.xml"
+)
 
-	mvnProps := CreateMvnProps(params.DepsRepo, params.Server)
-	err = runMvn(buildConfiguration, params.InsecureTls, params.IgnoreConfigFile, params.UseWrapper, mvnProps)
+type MavenDepTreeCmd string
+
+const (
+	Projects MavenDepTreeCmd = "projects"
+	Tree     MavenDepTreeCmd = "tree"
+)
+
+//go:embed resources/settings.xml
+var settingsXmlTemplate string
+
+//go:embed resources/maven-dep-tree.jar
+var mavenDepTreeJar []byte
+
+type MavenDepTreeManager struct {
+	DepTreeManager
+	isInstalled     bool
+	cmdName         MavenDepTreeCmd
+	settingsXmlPath string
+}
+
+func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDepTreeInstalled bool) *MavenDepTreeManager {
+	depTreeManager := NewDepTreeManager(&DepTreeParams{
+		Server:   params.Server,
+		DepsRepo: params.DepsRepo,
+	})
+	return &MavenDepTreeManager{
+		DepTreeManager: depTreeManager,
+		isInstalled:    isDepTreeInstalled,
+		cmdName:        cmdName,
+	}
+}
+
+func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
+	outputFileContent, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
 	}
-
-	return createGavDependencyTree(buildConfiguration)
+	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFileContent)
+	return
 }
 
-func CreateMvnProps(resolverRepo string, serverDetails *config.ServerDetails) map[string]any {
-	if serverDetails == nil || serverDetails.IsEmpty() {
+func (mdt *MavenDepTreeManager) RunMavenDepTree() ([]byte, error) {
+	// Create a temp directory for all the files that are required for the maven-dep-tree run
+	depTreeExecDir, err := fileutils.CreateTempDir()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		err = errors.Join(err, fileutils.RemoveTempDir(depTreeExecDir))
+	}()
+
+	// Create a settings.xml file that sets the dependency resolution from the given server and repository
+	if mdt.depsRepo != "" {
+		if err = mdt.createSettingsXmlWithConfiguredArtifactory(depTreeExecDir); err != nil {
+			return nil, err
+		}
+	}
+	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
+		return nil, err
+	}
+	return mdt.execMavenDepTree(depTreeExecDir)
+}
+
+func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string) error {
+	if mdt.isInstalled {
 		return nil
 	}
-	authPass := serverDetails.Password
-	if serverDetails.AccessToken != "" {
-		authPass = serverDetails.AccessToken
+	mavenDepTreeJarPath := filepath.Join(depTreeExecDir, mavenDepTreeJarFile)
+	if err := errorutils.CheckError(os.WriteFile(mavenDepTreeJarPath, mavenDepTreeJar, 0666)); err != nil {
+		return err
 	}
-	authUser := serverDetails.User
-	if authUser == "" {
-		authUser = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
-	}
-	return map[string]any{
-		"resolver.username":     authUser,
-		"resolver.password":     authPass,
-		"resolver.url":          serverDetails.ArtifactoryUrl,
-		"resolver.releaseRepo":  resolverRepo,
-		"resolver.repo":         resolverRepo,
-		"resolver.snapshotRepo": resolverRepo,
-		"buildInfoConfig.artifactoryResolutionEnabled": true,
-	}
+	goals := GetMavenPluginInstallationGoals(mavenDepTreeJarPath)
+	_, err := mdt.RunMvnCmd(goals)
+	return err
 }
 
-func runMvn(buildConfiguration *utils.BuildConfiguration, insecureTls, ignoreConfigFile, useWrapper bool, mvnProps map[string]any) (err error) {
-	goals := []string{"-B", "compile", "test-compile", "-Dcheckstyle.skip", "-Denforcer.skip"}
-	log.Debug(fmt.Sprintf("mvn command goals: %v", goals))
-	configFilePath := ""
-	if !ignoreConfigFile {
-		var exists bool
-		configFilePath, exists, err = utils.GetProjectConfFilePath(utils.Maven)
-		if err != nil {
-			return
-		}
-		if exists {
-			log.Debug("Using resolver config from " + configFilePath)
-		}
+func GetMavenPluginInstallationGoals(pluginPath string) []string {
+	return []string{"org.apache.maven.plugins:maven-install-plugin:3.1.1:install-file", "-Dfile=" + pluginPath, "-B"}
+}
+
+func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
+	if mdt.cmdName == Tree {
+		return mdt.runTreeCmd(depTreeExecDir)
 	}
-	if useWrapper {
-		useWrapper, err = isMavenWrapperExist()
-		if err != nil {
-			return
-		}
-		if mvnProps == nil {
-			mvnProps = make(map[string]any)
-		}
-		mvnProps["useWrapper"] = useWrapper
+	return mdt.runProjectsCmd()
+}
+
+func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error) {
+	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath, "-B"}
+	if _, err := mdt.RunMvnCmd(goals); err != nil {
+		return nil, err
 	}
-	// Read config
-	vConfig, err := utils.ReadMavenConfig(configFilePath, mvnProps)
+
+	mavenDepTreeOutput, err := os.ReadFile(mavenDepTreePath)
+	err = errorutils.CheckError(err)
+	return mavenDepTreeOutput, err
+}
+
+func (mdt *MavenDepTreeManager) runProjectsCmd() ([]byte, error) {
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q"}
+	return mdt.RunMvnCmd(goals)
+}
+
+func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) ([]byte, error) {
+	if mdt.settingsXmlPath != "" {
+		goals = append(goals, "-s", mdt.settingsXmlPath)
+	}
+
+	//#nosec G204
+	cmdOutput, err := exec.Command("mvn", goals...).CombinedOutput()
+	if err != nil {
+		if len(cmdOutput) > 0 {
+			log.Info(string(cmdOutput))
+		}
+		err = fmt.Errorf("failed running command 'mvn %s': %s", strings.Join(goals, " "), err.Error())
+	}
+	return cmdOutput, err
+}
+
+// Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.
+// The settings.xml will be written to the given path.
+func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path string) error {
+	username, password, err := getArtifactoryAuthFromServer(mdt.server)
 	if err != nil {
 		return err
 	}
-	mvnParams := mvnutils.NewMvnUtils().
-		SetConfig(vConfig).
-		SetBuildConf(buildConfiguration).
-		SetGoals(goals).
-		SetInsecureTls(insecureTls).
-		SetDisableDeploy(true)
-	return mvnutils.RunMvn(mvnParams)
-}
-
-func isMavenWrapperExist() (bool, error) {
-	wrapperName := "mvnw"
-	if coreutils.IsWindows() {
-		wrapperName += ".cmd"
+	remoteRepositoryFullPath, err := url.JoinPath(mdt.server.ArtifactoryUrl, mdt.depsRepo)
+	if err != nil {
+		return err
 	}
-	return fileutils.IsFileExists(wrapperName, false)
+	mdt.settingsXmlPath = filepath.Join(path, settingsXmlFile)
+	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, username, password, remoteRepositoryFullPath)
+
+	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0600))
 }

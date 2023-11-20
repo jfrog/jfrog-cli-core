@@ -32,3 +32,43 @@ func TestConvertResultsToFileRepresentation(t *testing.T) {
 		assert.Equal(t, []api.FileRepresentation{testCase.expectedOutput}, files)
 	}
 }
+
+var generateDiffAqlQueryTestCases = []struct {
+	paginationOffset       int
+	disabledDistinctiveAql bool
+	expectedAql            string
+}{
+	{0, false, "items.find({\"$and\":[{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"repo\":\"repo1\",\"type\":\"any\"}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\",\"size\").sort({\"$asc\":[\"name\",\"path\"]}).offset(0).limit(10000)"},
+	{0, true, "items.find({\"$and\":[{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"repo\":\"repo1\",\"type\":\"any\"}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\",\"size\").sort({\"$asc\":[\"name\",\"path\"]}).offset(0).limit(10000).distinct(false)"},
+	{2, false, "items.find({\"$and\":[{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"repo\":\"repo1\",\"type\":\"any\"}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\",\"size\").sort({\"$asc\":[\"name\",\"path\"]}).offset(20000).limit(10000)"},
+	{2, true, "items.find({\"$and\":[{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"repo\":\"repo1\",\"type\":\"any\"}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\",\"size\").sort({\"$asc\":[\"name\",\"path\"]}).offset(20000).limit(10000).distinct(false)"},
+}
+
+func TestGenerateDiffAqlQuery(t *testing.T) {
+	for _, testCase := range generateDiffAqlQueryTestCases {
+		t.Run("", func(*testing.T) {
+			results := generateDiffAqlQuery(repo1Key, "1", "2", testCase.paginationOffset, testCase.disabledDistinctiveAql)
+			assert.Equal(t, testCase.expectedAql, results)
+		})
+	}
+}
+
+var generateDockerManifestAqlQueryTestCases = []struct {
+	paginationOffset       int
+	disabledDistinctiveAql bool
+	expectedAql            string
+}{
+	{0, false, "items.find({\"$and\":[{\"repo\":\"repo1\"},{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"$or\":[{\"name\":\"manifest.json\"},{\"name\":\"list.manifest.json\"}]}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\").sort({\"$asc\":[\"name\",\"path\"]}).offset(0).limit(10000)"},
+	{0, true, "items.find({\"$and\":[{\"repo\":\"repo1\"},{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"$or\":[{\"name\":\"manifest.json\"},{\"name\":\"list.manifest.json\"}]}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\").sort({\"$asc\":[\"name\",\"path\"]}).offset(0).limit(10000).distinct(false)"},
+	{2, false, "items.find({\"$and\":[{\"repo\":\"repo1\"},{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"$or\":[{\"name\":\"manifest.json\"},{\"name\":\"list.manifest.json\"}]}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\").sort({\"$asc\":[\"name\",\"path\"]}).offset(20000).limit(10000)"},
+	{2, true, "items.find({\"$and\":[{\"repo\":\"repo1\"},{\"modified\":{\"$gte\":\"1\"}},{\"modified\":{\"$lt\":\"2\"}},{\"$or\":[{\"name\":\"manifest.json\"},{\"name\":\"list.manifest.json\"}]}]}).include(\"repo\",\"path\",\"name\",\"type\",\"modified\").sort({\"$asc\":[\"name\",\"path\"]}).offset(20000).limit(10000).distinct(false)"},
+}
+
+func TestGenerateDockerManifestAqlQuery(t *testing.T) {
+	for _, testCase := range generateDockerManifestAqlQueryTestCases {
+		t.Run("", func(*testing.T) {
+			results := generateDockerManifestAqlQuery(repo1Key, "1", "2", testCase.paginationOffset, testCase.disabledDistinctiveAql)
+			assert.Equal(t, testCase.expectedAql, results)
+		})
+	}
+}

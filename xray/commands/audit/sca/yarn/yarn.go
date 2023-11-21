@@ -166,7 +166,7 @@ func runYarnInstallAccordingToVersion(curWd, yarnExecPath string, installCommand
 
 		installCommandArgs = append(installCommandArgs, v1IgnoreScriptsFlag, v1SilentFlag, v1NonInteractiveFlag)
 	} else {
-		installCommandArgs = append(installCommandArgs, v2UpdateLockfileFlag, v2SkipBuildFlag)
+		installCommandArgs = append(installCommandArgs) // , v2UpdateLockfileFlag, v2SkipBuildFlag)
 	}
 	return build.RunYarnCommand(yarnExecPath, curWd, installCommandArgs...)
 }

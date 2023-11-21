@@ -53,16 +53,6 @@ func TestParseYarnDependenciesList(t *testing.T) {
 }
 
 func TestIsYarnProjectInstalled(t *testing.T) {
-	/*
-		_, err := exec.Command("corepack", "enable").CombinedOutput()
-		assert.NoError(t, err)
-		defer func() {
-			_, deferErr := exec.Command("corepack", "disable").CombinedOutput()
-			assert.NoError(t, deferErr)
-		}()
-
-	*/
-
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
@@ -81,15 +71,6 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 }
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
-	/*
-		_, err := exec.Command("corepack", "enable").CombinedOutput()
-		assert.NoError(t, err)
-		defer func() {
-			_, deferErr := exec.Command("corepack", "disable").CombinedOutput()
-			assert.NoError(t, deferErr)
-		}()
-
-	*/
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{})
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{})
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{"install", "--mode=update-lockfile"})

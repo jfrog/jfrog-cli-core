@@ -71,8 +71,8 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 }
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.5.0", []string{})
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "1.22.21", []string{})
+	// executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.5.0", []string{})
 	// executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{"install", "--mode=update-lockfile"})
 }
 

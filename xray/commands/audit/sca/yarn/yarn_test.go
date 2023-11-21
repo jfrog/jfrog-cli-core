@@ -72,7 +72,7 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", "--ignore-scripts"})
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", v1IgnoreScriptsFlag})
 }
 
 func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, params []string) {

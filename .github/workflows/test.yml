@@ -44,7 +44,9 @@ jobs:
           dotnet-version: '6.x'
 
       - name: Install Yarn
-        run: corepack prepare yarn@3.6.1
+        run: |
+          corepack prepare yarn@3.5.0
+          yarn set version berry
 
       - name: Go Cache
         uses: actions/cache@v3

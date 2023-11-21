@@ -72,7 +72,7 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", "--mode=update-lockfile"})
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", "--ignore-scripts"})
 }
 
 func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, params []string) {

@@ -71,7 +71,9 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 }
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
+	// Testing default 'install command'
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{})
+	// Testing user provided 'install' command
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", v1IgnoreScriptsFlag})
 }
 

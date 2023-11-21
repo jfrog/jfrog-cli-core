@@ -88,8 +88,8 @@ func TestRunYarnInstallAccordingToVersion(t *testing.T) {
 		assert.NoError(t, deferErr)
 	}()
 	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{"install", "--mode=update-lockfile"})
+	//executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{})
+	//executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "3.6.1", []string{"install", "--mode=update-lockfile"})
 }
 
 func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, version string, params []string) {

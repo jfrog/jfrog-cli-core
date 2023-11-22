@@ -31,6 +31,7 @@ const (
 	// Ignores any build scripts
 	v2SkipBuildFlag     = "--mode=skip-build"
 	yarnV2Version       = "2.0.0"
+	yarnV4Version       = "4.0.0"
 	nodeModulesRepoName = "node_modules"
 )
 
@@ -81,6 +82,17 @@ func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd,
 	if depsRepo == "" {
 		// Run install without configuring an Artifactory server
 		return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
+	}
+
+	executableYarnVersion, err := biUtils.GetVersion(yarnExecPath, curWd)
+	if err != nil {
+		return
+	}
+	// Checking if the current yarn version is Yarn V1 ro Yarn v4, and if so - abort. Resolving dependencies from artifactory is currently not supported for Yarn V1 and V4
+	yarnVersion := version.NewVersion(executableYarnVersion)
+	if yarnVersion.Compare(yarnV2Version) > 0 || yarnVersion.Compare(yarnV4Version) <= 0 {
+		err = errors.New("resolving yarn dependencies from Artifactory is currently not supported for Yarn V1 and Yarn V4")
+		return
 	}
 
 	var serverDetails *config.ServerDetails

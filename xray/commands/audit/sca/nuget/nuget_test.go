@@ -2,9 +2,11 @@ package nuget
 
 import (
 	"encoding/json"
+	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/jfrog/build-info-go/entities"
@@ -46,5 +48,79 @@ func TestBuildNugetDependencyTree(t *testing.T) {
 	for i := range *expectedTrees {
 		expectedTree := &(*expectedTrees)[i]
 		assert.True(t, tests.CompareTree(expectedTree, xrayDependenciesTree[i]), "expected:", expectedTree.Nodes, "got:", xrayDependenciesTree[i].Nodes)
+	}
+}
+
+func TestGetProjectToolName(t *testing.T) {
+	testCases := []struct {
+		testProjectName string
+		expectedOutput  string
+	}{
+		{testProjectName: "dotnet-single", expectedOutput: "dotnet"},
+		{testProjectName: "dotnet-single", expectedOutput: "nuget"},
+		{testProjectName: "dotnet-multi", expectedOutput: "dotnet"},
+	}
+
+	for _, testcase := range testCases {
+		runGetProjectToolNameTestcase(t, testcase.testProjectName, testcase.expectedOutput)
+	}
+
+	// Checks for error when no .csproj files not packages.config files were detected
+	emptyProject, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	toolName, err := getProjectToolName(emptyProject)
+	assert.Empty(t, toolName)
+	assert.Error(t, err)
+}
+
+func runGetProjectToolNameTestcase(t *testing.T, projectName string, expectedOutput string) {
+	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	dotnetProjectPath := filepath.Join("..", "..", "..", "testdata", "dotnet-projects", projectName)
+	assert.NoError(t, utils.CopyDir(dotnetProjectPath, tempDirPath, true, nil))
+
+	// This phase makes the project as an 'old nuget project' that uses packages.config instead <PackageReference> for dependencies definition
+	if expectedOutput == "nuget" {
+		assert.NoError(t, os.Remove(filepath.Join(tempDirPath, projectName+".csproj")))
+		tempFile, err := os.Create(filepath.Join(tempDirPath, "packages.config"))
+		assert.NoError(t, err)
+		defer func() {
+			assert.NoError(t, tempFile.Close())
+		}()
+	}
+
+	toolName, err := getProjectToolName(tempDirPath)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedOutput, toolName)
+}
+
+func TestGetProjectConfigurationFilesPaths(t *testing.T) {
+	dotnetProjectPath, err := filepath.Abs(filepath.Join("..", "..", "..", "testdata", "dotnet-projects"))
+	assert.NoError(t, err)
+
+	testCases := []struct {
+		testProjectPath string
+		expectedOutput  []string
+	}{
+		{
+			testProjectPath: filepath.Join(dotnetProjectPath, "dotnet-single"),
+			expectedOutput: []string{
+				filepath.Join(dotnetProjectPath, "dotnet-single", "dotnet-single.csproj"),
+			},
+		},
+		{
+			testProjectPath: filepath.Join(dotnetProjectPath, "dotnet-multi"),
+			expectedOutput: []string{
+				filepath.Join(dotnetProjectPath, "dotnet-multi", "ClassLibrary1", "ClassLibrary1.csproj"),
+				filepath.Join(dotnetProjectPath, "dotnet-multi", "TestApp1", "TestApp1.csproj"),
+			},
+		},
+	}
+
+	for _, testcase := range testCases {
+		var projectFiles []string
+		projectFiles, err = getProjectConfigurationFilesPaths(testcase.testProjectPath)
+		assert.NoError(t, err)
+		assert.Equal(t, testcase.expectedOutput, projectFiles)
 	}
 }

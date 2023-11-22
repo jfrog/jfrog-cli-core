@@ -16,6 +16,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,7 +25,7 @@ import (
 
 const (
 	nugetPackageTypeIdentifier = "nuget://"
-	csprojFileName             = ".csproj"
+	csprojFileSuffix           = ".csproj"
 	packageReferenceSyntax     = "PackageReference"
 	packagesConfigFileName     = "packages.config"
 	installCommandName         = "restore"
@@ -67,6 +68,7 @@ func isInstallRequired(params utils.AuditParams, sol solution.Solution) (install
 	return
 }
 
+// TODO write test to this func
 func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string) (sol solution.Solution, err error) {
 	// Creating a temporary copy of the project in order to run 'install' command without effecting the original directory + creating the jfrog config for artifactory resolution
 	tmpWd, err := fileutils.CreateTempDir()
@@ -84,8 +86,19 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 		return
 	}
 
+	toolName := params.InstallCommandName()
+	if toolName == "" {
+		// Detect whether the project is a NuGet or .NET project
+		toolName, err = getProjectToolName(originalWd)
+		if err != nil {
+			err = fmt.Errorf("failed while checking for the porject's tool type: %s", err.Error())
+			return
+		}
+	}
+
+	toolType := bidotnet.ConvertNameToToolType(toolName)
+
 	var installCommandArgs []string
-	var toolType bidotnet.ToolchainType
 	// Set up an Artifactory server as a resolution server if needed
 	depsRepo := params.DepsRepo()
 	if depsRepo != "" {
@@ -96,16 +109,7 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 			return
 		}
 
-		log.Info("Resolving dependencies from", serverDetails.Url, "from repo", depsRepo)
-
-		// Detect whether the project is a NuGet or .NET project
-		var toolName string
-		toolName, err = getProjectToolName(originalWd)
-		if err != nil {
-			err = fmt.Errorf("failed while checking for the porject's tool type: %s", err.Error())
-			return
-		}
-		toolType = bidotnet.ConvertNameToToolType(toolName)
+		log.Info("Resolving dependencies from", serverDetails.Url, "from repo '", depsRepo, "'")
 
 		var configFile *os.File
 		configFile, err = dotnet.InitNewConfig(tmpWd, depsRepo, serverDetails, false)
@@ -124,38 +128,37 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 	return
 }
 
+// Identifies if the project operating using .NET Cli to NuGet Cli, preferring .NET Cli
+// Notice That for multi-module projects only one of these tools can be identified and will be applied to all modules
 func getProjectToolName(wd string) (toolName string, err error) {
-	// If <PackageReference> syntax is detected in the .csproj file - the tool type that is being used is .NET CLI
-	csprojFilePath := filepath.Join(wd, csprojFileName)
-	// TODO do we need to check if this file exists? of just use the error if it failed upon reading it?
-	csprojExists, err := fileutils.IsFileExists(csprojFilePath, false)
+	projectConfigFilesPaths, err := getProjectConfigurationFilesPaths(wd)
 	if err != nil {
-		err = fmt.Errorf("failed while searching for '%s' file: %s", csprojFilePath, err.Error())
-		return
-	}
-	if !csprojExists {
-		err = errorutils.CheckErrorf(".csproj file wasn't fount at the project's root directory '%s'", wd)
+		err = fmt.Errorf("failed which getting file's list in '%s': %s", wd, err.Error())
 		return
 	}
 
-	fileData, err := os.ReadFile(csprojFilePath)
-	if err != nil {
-		err = fmt.Errorf("failed to read file '%s': %s", csprojFilePath, err.Error())
-		return
-	}
-	if strings.Contains(string(fileData), packageReferenceSyntax) {
-		toolName = dotnetToolType
-		return
+	var packagesConfigFiles []string
+	for _, configFilePath := range projectConfigFilesPaths {
+		if strings.HasSuffix(configFilePath, csprojFileSuffix) {
+			var fileData []byte
+			fileData, err = os.ReadFile(configFilePath)
+			if err != nil {
+				err = fmt.Errorf("failed to read file '%s': %s", configFilePath, err.Error())
+				return
+			}
+
+			// If <PackageReference> syntax is detected in the .csproj file - the tool type that is being used is .NET CLI
+			if strings.Contains(string(fileData), packageReferenceSyntax) {
+				toolName = dotnetToolType
+				return
+			}
+		} else {
+			packagesConfigFiles = append(packagesConfigFiles, configFilePath)
+		}
 	}
 
-	// If packages.config file is found in the root dir - the tool type that is being used is NuGet CLI
-	packagesConfigFilePath := filepath.Join(wd, packagesConfigFileName)
-	packagesConfigExists, err := fileutils.IsFileExists(packagesConfigFilePath, false)
-	if err != nil {
-		err = fmt.Errorf("failed while searching for '%s' file: %s", packagesConfigFilePath, err.Error())
-		return
-	}
-	if packagesConfigExists {
+	// If <PackageReference> syntax wasn't detected in any .csproj file and packages.config file was found - the tool type that is being used is NuGet CLI
+	if len(packagesConfigFiles) > 0 {
 		toolName = nugetToolType
 		return
 	}
@@ -164,24 +167,45 @@ func getProjectToolName(wd string) (toolName string, err error) {
 	return
 }
 
+// Returns a list of all absolute paths of project's configuration files - .csproj files and packages.config files
+func getProjectConfigurationFilesPaths(wd string) (projectConfigFilesPaths []string, err error) {
+	err = filepath.WalkDir(wd, func(path string, d fs.DirEntry, innerErr error) error {
+		if innerErr != nil {
+			return fmt.Errorf("error has occured when trying to access or traverse the files system: %s", err.Error())
+		}
+
+		if strings.HasSuffix(path, csprojFileSuffix) || strings.HasSuffix(path, packagesConfigFileName) {
+			var absFilePath string
+			absFilePath, innerErr = filepath.Abs(path)
+			if innerErr != nil {
+				return fmt.Errorf("couldn't retrieve file's absolute path for './%s':%s", path, innerErr.Error())
+			}
+			projectConfigFilesPaths = append(projectConfigFilesPaths, absFilePath)
+		}
+		return nil
+	})
+	return
+}
+
+// TODO write test to this func
 func runDotnetRestore(wd string, params utils.AuditParams, toolType bidotnet.ToolchainType, commandExtraArgs []string) (err error) {
 	// case 1: user command & artifactory
 	// case 2: user command & no artifactory
 	// case 3: default install & artifactory
 	// case 4: default install & no artifactory
 
-	// check if there is a user provided command. if so run it WITH the commandArgs
-	// if no user command run the default command (check for nuget flags) WITH the commandArgs
-
-	// TODO VERIFY INSTALL COMMAND FROM USER CONTAINS THE TOOL TYPE AS THE FIRST ARG
+	//TODO is it necessary to look for dotnet/nuget exec path or can I just run with the word 'dotnet' or 'nuget'
 	var completeCommandArgs []string
 	if len(params.InstallCommandArgs()) > 0 {
-		// If the user has provided an 'install' command we run the command with the addition of artifactory server configuration (if exists)
-		completeCommandArgs = params.InstallCommandArgs()
+		// If the user has provided an 'install' command we run the provided command
+		completeCommandArgs = append(completeCommandArgs, params.InstallCommandName())
+		completeCommandArgs = append(completeCommandArgs, params.InstallCommandArgs()...)
 	} else {
+		// TODO check for nuget flags
 		completeCommandArgs = append(completeCommandArgs, toolType.String(), installCommandName)
 	}
-	// Here we add the flag (if exists) that enables resolution from an Artifactory server
+
+	// We add the flag that enables resolution from an Artifactory server (if exists)
 	completeCommandArgs = append(completeCommandArgs, commandExtraArgs...)
 	command := exec.Command(completeCommandArgs[0], completeCommandArgs[1:]...)
 	command.Dir = wd

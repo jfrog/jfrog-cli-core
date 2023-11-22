@@ -119,3 +119,14 @@ func parseDepTreeFile(path string) (results *moduleDepTree, err error) {
 	err = errorutils.CheckError(json.Unmarshal(depTreeJson, &results))
 	return
 }
+
+func getArtifactoryAuthFromServer(server *config.ServerDetails) (string, string, error) {
+	username, password, err := server.GetAuthenticationCredentials()
+	if err != nil {
+		return "", "", err
+	}
+	if username == "" {
+		return "", "", errorutils.CheckErrorf("a username is required for authenticating with Artifactory")
+	}
+	return username, password, nil
+}

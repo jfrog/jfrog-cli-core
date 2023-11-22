@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -48,7 +47,6 @@ type TransferFilesCommand struct {
 	progressbar               *TransferProgressMng
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
-	timeStarted               time.Time
 	ignoreState               bool
 	proxyKey                  string
 	status                    bool
@@ -72,7 +70,6 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (
 		cancelFunc:          cancelFunc,
 		sourceServerDetails: sourceServer,
 		targetServerDetails: targetServer,
-		timeStarted:         time.Now(),
 		stateManager:        stateManager,
 		stopSignal:          make(chan os.Signal, 1),
 	}, nil
@@ -121,7 +118,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.stop {
 		return tdc.signalStop()
 	}
-	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
+	if err = tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err
 	}
 	defer func() {
@@ -130,6 +127,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			err = unlockErr
 		}
 	}()
+	if _, err = tdc.stateManager.InitStartTimestamp(); err != nil {
+		return err
+	}
 
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.context, tdc.sourceServerDetails)
 	if err != nil {
@@ -230,6 +230,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 	tdc.stateManager.OverallTransfer.TotalUnits = totalFiles
 	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))
 	tdc.stateManager.OverallBiFiles.TotalUnits = totalBiFiles
+	tdc.stateManager.TimeEstimationManager.CurrentTotalTransferredBytes = 0
 	if !tdc.ignoreState {
 		numberInitialErrors, e := getRetryErrorCount(allSourceLocalRepos)
 		if e != nil {
@@ -647,7 +648,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 		}
 	}
 
-	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
+	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.stateManager.GetStartTimestamp())
 	if e != nil {
 		log.Error("Couldn't create the errors CSV file", e)
 		if err == nil {
@@ -702,7 +703,7 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 
 // Create the '~/.jfrog/transfer/stop' file to mark the transfer-file process to stop
 func (tdc *TransferFilesCommand) signalStop() error {
-	_, isRunning, err := state.GetRunningTime()
+	isRunning, err := tdc.stateManager.IsRunning()
 	if err != nil {
 		return err
 	}

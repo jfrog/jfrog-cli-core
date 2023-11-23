@@ -28,6 +28,7 @@ func ConvertToVulnerabilityScanTableRow(rows []VulnerabilityOrViolationRow) (tab
 		tableRows = append(tableRows, vulnerabilityScanTableRow{
 			severity:               rows[i].Severity,
 			severityNumValue:       rows[i].SeverityNumValue,
+			applicable:             rows[i].Applicable,
 			impactedPackageName:    rows[i].ImpactedDependencyName,
 			impactedPackageVersion: rows[i].ImpactedDependencyVersion,
 			ImpactedPackageType:    rows[i].ImpactedDependencyType,

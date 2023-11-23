@@ -4,7 +4,7 @@ go 1.20
 
 require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 
-require github.com/jedib0t/go-pretty/v6 v6.4.0 // Should not be updated to v6.4.1+ due to a bug ()
+require github.com/jedib0t/go-pretty/v6 v6.4.0 // Should not be updated to v6.4.1+ due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/1045)
 
 require (
 	github.com/buger/jsonparser v1.1.1

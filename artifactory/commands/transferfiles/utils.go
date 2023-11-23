@@ -362,11 +362,11 @@ func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error
 			}
 			updateProducerConsumerMaxParallel(pcWrapper.chunkUploaderProducerConsumer, calculatedChunkUploaderThreads)
 		}
-		log.Info(fmt.Sprintf("Number of threads have been updated to %s (was %s).", strconv.Itoa(calculatedChunkUploaderThreads), strconv.Itoa(curChunkUploaderThreads)))
+		log.Info(fmt.Sprintf("Number of threads has been updated to %s (was %s).", strconv.Itoa(calculatedChunkUploaderThreads), strconv.Itoa(curChunkUploaderThreads)))
 		curChunkBuilderThreads = calculatedChunkBuilderThreads
 		curChunkUploaderThreads = calculatedChunkUploaderThreads
 	} else {
-		log.Debug(fmt.Sprintf("No change to the number of threads have been detected. Max chunks builder threads: %d. Max chunks uploader threads: %d.",
+		log.Debug(fmt.Sprintf("No change to the number of threads has been detected. Max chunks builder threads: %d. Max chunks uploader threads: %d.",
 			calculatedChunkBuilderThreads, calculatedChunkUploaderThreads))
 	}
 	return nil

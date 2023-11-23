@@ -4,6 +4,8 @@ go 1.20
 
 require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 
+require github.com/jedib0t/go-pretty/v6 v6.4.0 // Should not be updated to v6.4.1+ due to a bug ()
+
 require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
@@ -11,7 +13,6 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20230616125104-99d496ca653d
 	github.com/google/uuid v1.3.1
 	github.com/gookit/color v1.5.4
-	github.com/jedib0t/go-pretty/v6 v6.4.8
 	github.com/jfrog/build-info-go v1.9.15
 	github.com/jfrog/gofrog v1.3.1
 	github.com/jfrog/jfrog-apps-config v1.0.1

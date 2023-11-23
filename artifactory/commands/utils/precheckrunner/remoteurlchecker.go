@@ -20,7 +20,7 @@ import (
 type RemoteUrlCheckStatus string
 
 const (
-	longPropertyCheckName           = "Remote repositories URL connectivity"
+	remoteUrlCheckName              = "Remote repositories URL connectivity"
 	remoteUrlCheckPollingTimeout    = 30 * time.Minute
 	remoteUrlCheckPollingInterval   = 5 * time.Second
 	remoteUrlCheckRetries           = 3
@@ -61,7 +61,7 @@ func NewRemoteRepositoryCheck(targetServicesManager *artifactory.ArtifactoryServ
 }
 
 func (rrc *RemoteRepositoryCheck) Name() string {
-	return longPropertyCheckName
+	return remoteUrlCheckName
 }
 
 func (rrc *RemoteRepositoryCheck) ExecuteCheck(args RunArguments) (passed bool, err error) {

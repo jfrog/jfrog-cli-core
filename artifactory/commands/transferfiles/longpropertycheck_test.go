@@ -77,10 +77,10 @@ func TestGetLongProperties(t *testing.T) {
 }
 
 func testGetLongProperties(t *testing.T, serverProperties, expectedLongProperties []Property) {
-	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, serverProperties, propertyToFiles)
+	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, serverProperties, propertyToFiles, false)
 	defer testServer.Close()
 
-	longPropertyCheck := NewLongPropertyCheck([]string{})
+	longPropertyCheck := NewLongPropertyCheck([]string{}, true)
 	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
 
 	count := longPropertyCheck.longPropertiesTaskProducer(nil, precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails})
@@ -105,7 +105,7 @@ func TestSearchPropertyInFilesTask(t *testing.T) {
 }
 
 func testSearchPropertyInFilesTask(t *testing.T, prop Property, specificRepos []string, propertiesFiles map[Property][]api.FileRepresentation, expected []FileWithLongProperty) {
-	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, nil, propertiesFiles)
+	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, nil, propertiesFiles, false)
 	defer testServer.Close()
 
 	var result []FileWithLongProperty
@@ -120,7 +120,11 @@ func testSearchPropertyInFilesTask(t *testing.T, prop Property, specificRepos []
 		wait.Done()
 	}()
 
-	task := createSearchPropertyTask(prop, specificRepos, precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails}, filesChan, nil)
+	longPropertyCheck := LongPropertyCheck{
+		filesChan: filesChan,
+		repos:     specificRepos,
+	}
+	task := longPropertyCheck.createSearchPropertyTask(prop, precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails}, nil)
 	assert.NoError(t, task(0))
 	close(filesChan)
 	wait.Wait()
@@ -152,10 +156,10 @@ func TestSearchLongPropertiesInFiles(t *testing.T) {
 }
 
 func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRepos []string, propertiesFiles map[Property][]api.FileRepresentation, expected []FileWithLongProperty) {
-	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, properties, propertiesFiles)
+	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, properties, propertiesFiles, false)
 	defer testServer.Close()
 
-	longPropertyCheck := NewLongPropertyCheck(specificRepos)
+	longPropertyCheck := NewLongPropertyCheck(specificRepos, true)
 	longPropertyCheck.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
 	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
 	longPropertyCheck.errorsQueue = clientutils.NewErrorsQueue(1)
@@ -181,33 +185,34 @@ func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRe
 
 func TestLongPropertyExecuteCheck(t *testing.T) {
 	cases := []struct {
-		serverProperties []Property
-		specificRepos    []string
-		shouldPass       bool
+		serverProperties       []Property
+		specificRepos          []string
+		disabledDistinctiveAql bool
+		shouldPass             bool
 	}{
-		{[]Property{}, []string{"Repo", "OtherRepo"}, true},
-		{[]Property{property, shorterProperty, borderProperty}, []string{"Repo", "OtherRepo"}, true},
-		{[]Property{property, shorterProperty, borderProperty, longProperty, longProperty2}, []string{"Repo", "OtherRepo"}, false},
-		{[]Property{property, shorterProperty, borderProperty, longProperty2}, []string{"Repo", "OtherRepo"}, false},
-		{[]Property{property, shorterProperty, borderProperty, longProperty2}, []string{"OtherRepo"}, true},
+		{[]Property{}, []string{"Repo", "OtherRepo"}, true, true},
+		{[]Property{property, shorterProperty, borderProperty}, []string{"Repo", "OtherRepo"}, false, true},
+		{[]Property{property, shorterProperty, borderProperty, longProperty, longProperty2}, []string{"Repo", "OtherRepo"}, true, false},
+		{[]Property{property, shorterProperty, borderProperty, longProperty2}, []string{"Repo", "OtherRepo"}, false, false},
+		{[]Property{property, shorterProperty, borderProperty, longProperty2}, []string{"OtherRepo"}, true, true},
 	}
 
 	for _, testCase := range cases {
-		testLongPropertyCheckWithStubServer(t, testCase.serverProperties, testCase.specificRepos, propertyToFiles, testCase.shouldPass)
+		testLongPropertyCheckWithStubServer(t, testCase.serverProperties, testCase.specificRepos, propertyToFiles, testCase.disabledDistinctiveAql, testCase.shouldPass)
 	}
 }
 
-func testLongPropertyCheckWithStubServer(t *testing.T, serverProperties []Property, specificRepos []string, propertiesFiles map[Property][]api.FileRepresentation, shouldPass bool) {
-	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, serverProperties, propertiesFiles)
+func testLongPropertyCheckWithStubServer(t *testing.T, serverProperties []Property, specificRepos []string, propertiesFiles map[Property][]api.FileRepresentation, disabledDistinctiveAql, shouldPass bool) {
+	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, serverProperties, propertiesFiles, disabledDistinctiveAql)
 	defer testServer.Close()
 
-	longPropertyCheck := NewLongPropertyCheck(specificRepos)
+	longPropertyCheck := NewLongPropertyCheck(specificRepos, disabledDistinctiveAql)
 	passed, err := longPropertyCheck.ExecuteCheck(precheckrunner.RunArguments{Context: nil, ServerDetails: serverDetails})
 	assert.NoError(t, err)
 	assert.Equal(t, shouldPass, passed)
 }
 
-func getLongPropertyCheckStubServer(t *testing.T, serverProperties []Property, propertiesFiles map[Property][]api.FileRepresentation) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
+func getLongPropertyCheckStubServer(t *testing.T, serverProperties []Property, propertiesFiles map[Property][]api.FileRepresentation, disabledDistinctiveAql bool) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
 	return commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "/"+"api/search/aql" {
 			content, err := io.ReadAll(r.Body)
@@ -238,6 +243,11 @@ func getLongPropertyCheckStubServer(t *testing.T, serverProperties []Property, p
 				assert.NoError(t, err)
 				_, err = w.Write(content)
 				assert.NoError(t, err)
+				if disabledDistinctiveAql {
+					assert.Contains(t, strContent, ".distinct(false)")
+				} else {
+					assert.NotContains(t, strContent, ".distinct(false)")
+				}
 			}
 		}
 	})

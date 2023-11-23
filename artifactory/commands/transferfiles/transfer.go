@@ -144,6 +144,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 
+	if err = tdc.initDistinctAql(); err != nil {
+		return err
+	}
+
 	if tdc.preChecks {
 		if runner, err := tdc.NewTransferDataPreChecksRunner(); err != nil {
 			return err
@@ -183,10 +187,6 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	defer finishStopping()
 
 	if err = tdc.removeOldFilesIfNeeded(allSourceLocalRepos); err != nil {
-		return err
-	}
-
-	if err = tdc.initDistinctAql(); err != nil {
 		return err
 	}
 
@@ -340,7 +340,7 @@ func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *prech
 	runner = precheckrunner.NewPreChecksRunner()
 
 	// Add pre checks here
-	runner.AddCheck(NewLongPropertyCheck(append(localRepos, federatedRepos...)))
+	runner.AddCheck(NewLongPropertyCheck(append(localRepos, federatedRepos...), tdc.disabledDistinctiveAql))
 
 	return
 }

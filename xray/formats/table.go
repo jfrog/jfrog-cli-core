@@ -20,7 +20,8 @@ type vulnerabilityTableRow struct {
 }
 
 type vulnerabilityScanTableRow struct {
-	severity string `col-name:"Severity"`
+	severity   string `col-name:"Severity"`
+	applicable string `col-name:"Contextual\nAnalysis" omitempty:"true"`
 	// For sorting
 	severityNumValue       int
 	directPackages         []directPackagesTableRow `embed-table:"true"`

@@ -201,6 +201,7 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 	if params.DepsRepo() != "" || params.IgnoreConfigFile() {
 		return
 	}
+
 	configFilePath, exists, err := GetProjectConfFilePath(techType[tech])
 	if err != nil {
 		err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
@@ -211,11 +212,13 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		return
 	}
 
+	log.Debug("Using resolver config from", configFilePath)
 	repoConfig, err := ReadResolutionOnlyConfiguration(configFilePath)
 	if err != nil {
 		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
 		return
 	}
+	params.SetServerDetails(repoConfig.serverDetails)
 	params.SetDepsRepo(repoConfig.targetRepo)
 	return
 }

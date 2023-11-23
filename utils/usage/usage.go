@@ -6,9 +6,9 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	ecosysusage "github.com/jfrog/jfrog-client-go/utils/usage"
@@ -49,7 +49,7 @@ func NewUsageReporter(productId string, serverDetails *config.ServerDetails) *Us
 		serverDetails:     serverDetails,
 		reportWaitGroup:   new(errgroup.Group),
 		sendToEcosystem:   true,
-		sendToXray: 	  true,
+		sendToXray:        true,
 		sendToArtifactory: true,
 	}
 }

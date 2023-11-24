@@ -56,7 +56,7 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
-	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, false, nil))
+	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
 	projectInstalled, err := isYarnProjectInstalled(tempDirPath)
 	assert.NoError(t, err)
 	assert.False(t, projectInstalled)
@@ -71,30 +71,23 @@ func TestIsYarnProjectInstalled(t *testing.T) {
 }
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "1.22.19", []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{})
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, "", []string{"install", "--mode=update-lockfile"})
+	// Testing default 'install' command
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{})
+	// Testing user provided 'install' command
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", v1IgnoreScriptsFlag})
 }
 
-func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, version string, params []string) {
+func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, params []string) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
-	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, false, nil))
+	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
 
 	executablePath, err := biutils.GetYarnExecutable()
 	assert.NoError(t, err)
 
-	if version != "" {
-		assert.NoError(t, build.RunYarnCommand(executablePath, tempDirPath, "set", "version", version))
-	}
-
 	err = runYarnInstallAccordingToVersion(tempDirPath, executablePath, params)
-	if err != nil {
-		assert.NoError(t, err, err.Error())
-	} else {
-		assert.NoError(t, err)
-	}
+	assert.NoError(t, err)
 
 	// Checking the installation worked
 	projectInstalled, err := isYarnProjectInstalled(tempDirPath)

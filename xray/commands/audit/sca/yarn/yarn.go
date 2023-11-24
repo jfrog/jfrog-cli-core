@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
-	biUtils "github.com/jfrog/build-info-go/build/utils"
+	biutils "github.com/jfrog/build-info-go/build/utils"
 	"github.com/jfrog/gofrog/version"
 	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/yarn"
@@ -31,6 +31,7 @@ const (
 	// Ignores any build scripts
 	v2SkipBuildFlag     = "--mode=skip-build"
 	yarnV2Version       = "2.0.0"
+	yarnV4Version       = "4.0.0"
 	nodeModulesRepoName = "node_modules"
 )
 
@@ -39,12 +40,12 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 	if err != nil {
 		return
 	}
-	executablePath, err := biUtils.GetYarnExecutable()
+	executablePath, err := biutils.GetYarnExecutable()
 	if errorutils.CheckError(err) != nil {
 		return
 	}
 
-	packageInfo, err := biUtils.ReadPackageInfoFromPackageJsonIfExists(currentDir, nil)
+	packageInfo, err := biutils.ReadPackageInfoFromPackageJsonIfExists(currentDir, nil)
 	if errorutils.CheckError(err) != nil {
 		return
 	}
@@ -64,7 +65,7 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 	}
 
 	// Calculate Yarn dependencies
-	dependenciesMap, root, err := biUtils.GetYarnDependencies(executablePath, currentDir, packageInfo, log.Logger)
+	dependenciesMap, root, err := biutils.GetYarnDependencies(executablePath, currentDir, packageInfo, log.Logger)
 	if err != nil {
 		return
 	}
@@ -81,6 +82,17 @@ func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd,
 	if depsRepo == "" {
 		// Run install without configuring an Artifactory server
 		return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
+	}
+
+	executableYarnVersion, err := biutils.GetVersion(yarnExecPath, curWd)
+	if err != nil {
+		return
+	}
+	// Checking if the current yarn version is Yarn V1 ro Yarn v4, and if so - abort. Resolving dependencies from artifactory is currently not supported for Yarn V1 and V4
+	yarnVersion := version.NewVersion(executableYarnVersion)
+	if yarnVersion.Compare(yarnV2Version) > 0 || yarnVersion.Compare(yarnV4Version) <= 0 {
+		err = errors.New("resolving Yarn dependencies from Artifactory is currently not supported for Yarn V1 and Yarn V4. The current Yarn version is: " + executableYarnVersion)
+		return
 	}
 
 	var serverDetails *config.ServerDetails
@@ -141,7 +153,7 @@ func runYarnInstallAccordingToVersion(curWd, yarnExecPath string, installCommand
 	}
 
 	installCommandArgs = []string{"install"}
-	executableVersionStr, err := biUtils.GetVersion(yarnExecPath, curWd)
+	executableVersionStr, err := biutils.GetVersion(yarnExecPath, curWd)
 	if err != nil {
 		return
 	}
@@ -172,13 +184,13 @@ func runYarnInstallAccordingToVersion(curWd, yarnExecPath string, installCommand
 }
 
 // Parse the dependencies into a Xray dependency tree format
-func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, rootXrayId string) (*xrayUtils.GraphNode, []string) {
+func parseYarnDependenciesMap(dependencies map[string]*biutils.YarnDependency, rootXrayId string) (*xrayUtils.GraphNode, []string) {
 	treeMap := make(map[string][]string)
 	for _, dependency := range dependencies {
 		xrayDepId := getXrayDependencyId(dependency)
 		var subDeps []string
 		for _, subDepPtr := range dependency.Details.Dependencies {
-			subDeps = append(subDeps, getXrayDependencyId(dependencies[biUtils.GetYarnDependencyKeyFromLocator(subDepPtr.Locator)]))
+			subDeps = append(subDeps, getXrayDependencyId(dependencies[biutils.GetYarnDependencyKeyFromLocator(subDepPtr.Locator)]))
 		}
 		if len(subDeps) > 0 {
 			treeMap[xrayDepId] = subDeps
@@ -187,6 +199,6 @@ func parseYarnDependenciesMap(dependencies map[string]*biUtils.YarnDependency, r
 	return sca.BuildXrayDependencyTree(treeMap, rootXrayId)
 }
 
-func getXrayDependencyId(yarnDependency *biUtils.YarnDependency) string {
+func getXrayDependencyId(yarnDependency *biutils.YarnDependency) string {
 	return utils.NpmPackageTypeIdentifier + yarnDependency.Name() + ":" + yarnDependency.Details.Version
 }

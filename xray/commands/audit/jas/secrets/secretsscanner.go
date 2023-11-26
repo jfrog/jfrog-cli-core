@@ -13,8 +13,8 @@ import (
 
 const (
 	secretsScanCommand       = "sec"
-	SecretsScannerType       = "secrets-scan" // #nosec
-	SecretsScannerDockerType = "secrets-docker-scan"
+	SecretsScannerType       = "secrets-scan"        // #nosec
+	SecretsScannerDockerType = "secrets-docker-scan" // #nosec
 	secretsDocsUrlSuffix     = "secrets"
 )
 

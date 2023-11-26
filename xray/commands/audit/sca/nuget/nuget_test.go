@@ -62,7 +62,24 @@ func TestGetProjectToolName(t *testing.T) {
 	}
 
 	for _, testcase := range testCases {
-		runGetProjectToolNameTestcase(t, testcase.testProjectName, testcase.expectedOutput)
+		tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+		defer createTempDirCallback()
+		dotnetProjectPath := filepath.Join("..", "..", "..", "testdata", "dotnet-projects", testcase.testProjectName)
+		assert.NoError(t, utils.CopyDir(dotnetProjectPath, tempDirPath, true, nil))
+
+		// This phase makes the project as an 'old nuget project' that uses packages.config instead <PackageReference> for dependencies definition
+		if testcase.expectedOutput == "nuget" {
+			assert.NoError(t, os.Remove(filepath.Join(tempDirPath, testcase.testProjectName+".csproj")))
+			tempFile, err := os.Create(filepath.Join(tempDirPath, "packages.config"))
+			assert.NoError(t, err)
+			defer func() {
+				assert.NoError(t, tempFile.Close())
+			}()
+		}
+
+		toolName, err := getProjectToolName(tempDirPath)
+		assert.NoError(t, err)
+		assert.Equal(t, testcase.expectedOutput, toolName)
 	}
 
 	// Checks for error when no .csproj files not packages.config files were detected
@@ -71,27 +88,6 @@ func TestGetProjectToolName(t *testing.T) {
 	toolName, err := getProjectToolName(emptyProject)
 	assert.Empty(t, toolName)
 	assert.Error(t, err)
-}
-
-func runGetProjectToolNameTestcase(t *testing.T, projectName string, expectedOutput string) {
-	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
-	defer createTempDirCallback()
-	dotnetProjectPath := filepath.Join("..", "..", "..", "testdata", "dotnet-projects", projectName)
-	assert.NoError(t, utils.CopyDir(dotnetProjectPath, tempDirPath, true, nil))
-
-	// This phase makes the project as an 'old nuget project' that uses packages.config instead <PackageReference> for dependencies definition
-	if expectedOutput == "nuget" {
-		assert.NoError(t, os.Remove(filepath.Join(tempDirPath, projectName+".csproj")))
-		tempFile, err := os.Create(filepath.Join(tempDirPath, "packages.config"))
-		assert.NoError(t, err)
-		defer func() {
-			assert.NoError(t, tempFile.Close())
-		}()
-	}
-
-	toolName, err := getProjectToolName(tempDirPath)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedOutput, toolName)
 }
 
 func TestGetProjectConfigurationFilesPaths(t *testing.T) {

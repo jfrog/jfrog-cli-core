@@ -44,7 +44,7 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 	}
 
 	if isInstallRequired(params, sol) {
-		log.Info("Dependencies sources were not detected or 'install' command was provided. Running 'restore' command")
+		log.Info("Dependencies sources were not detected nor 'install' command provided. Running 'restore' command")
 		sol, err = runDotnetRestoreAndLoadSolution(params, wd)
 		if err != nil {
 			return

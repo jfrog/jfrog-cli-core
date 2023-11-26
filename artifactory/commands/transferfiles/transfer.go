@@ -703,11 +703,11 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 
 // Create the '~/.jfrog/transfer/stop' file to mark the transfer-file process to stop
 func (tdc *TransferFilesCommand) signalStop() error {
-	isRunning, err := tdc.stateManager.IsRunning()
+	running, err := tdc.stateManager.Running()
 	if err != nil {
 		return err
 	}
-	if !isRunning {
+	if !running {
 		return errorutils.CheckErrorf("There is no active file transfer process.")
 	}
 

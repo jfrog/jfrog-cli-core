@@ -402,7 +402,7 @@ func (ts *TransferStateManager) tryLockStateManager() error {
 	return nil
 }
 
-func (ts *TransferStateManager) IsRunning() (isRunning bool, err error) {
+func (ts *TransferStateManager) Running() (isRunning bool, err error) {
 	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
 	if err != nil {
 		return false, err
@@ -412,7 +412,7 @@ func (ts *TransferStateManager) IsRunning() (isRunning bool, err error) {
 	return err == nil && startTimestamp != 0, err
 }
 
-func (ts *TransferStateManager) InitStartTimestamp() (isRunning bool, err error) {
+func (ts *TransferStateManager) InitStartTimestamp() (running bool, err error) {
 	if !ts.startTimestamp.IsZero() {
 		return true, nil
 	}

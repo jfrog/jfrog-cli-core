@@ -33,7 +33,7 @@ type TimeEstimationManager struct {
 	LastSpeedsSum float64 `json:"last_speeds_sum,omitempty"`
 	// The last calculated sum of speeds, in bytes/ms
 	SpeedsAverage float64 `json:"speeds_average,omitempty"`
-	// Total transferred bytes since the beginning of the current transfer running
+	// Total transferred bytes since the beginning of the current transfer execution
 	CurrentTotalTransferredBytes uint64 `json:"current_total_transferred_bytes,omitempty"`
 	// The state manager
 	stateManager *TransferStateManager
@@ -95,7 +95,7 @@ func (tem *TimeEstimationManager) getSpeed() float64 {
 	return tem.SpeedsAverage * bytesPerMilliSecToMBPerSec
 }
 
-// GetSpeedString gets the transfer speed in an easy-to-read string.
+// GetSpeedString gets the transfer speed as an easy-to-read string.
 func (tem *TimeEstimationManager) GetSpeedString() string {
 	if len(tem.LastSpeeds) == 0 {
 		return "Not available yet"
@@ -103,7 +103,7 @@ func (tem *TimeEstimationManager) GetSpeedString() string {
 	return fmt.Sprintf("%.3f MB/s", tem.getSpeed())
 }
 
-// GetEstimatedRemainingTimeString gets the estimated remaining time in an easy-to-read string.
+// GetEstimatedRemainingTimeString gets the estimated remaining time as an easy-to-read string.
 // Return "Not available yet" in the following cases:
 // 1. 5 minutes not passed since the beginning of the transfer
 // 2. No files transferred

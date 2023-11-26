@@ -24,6 +24,8 @@ type ActionOnStatusFunc func(transferRunStatus *TransferRunStatus) error
 // This state is used to allow showing the current run status by the 'jf rt transfer-files --status' command.
 // It is also used for the time estimation and more.
 type TransferRunStatus struct {
+	// Timestamp since the beginning of the current transfer execution
+	startTimestamp    time.Time
 	lastSaveTimestamp time.Time
 	// This variable holds the total/transferred number of repositories (not their files).
 	OverallTransfer   ProgressState      `json:"overall_transfer,omitempty"`

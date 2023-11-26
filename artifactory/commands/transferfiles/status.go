@@ -20,7 +20,12 @@ const sizeUnits = "KMGTPE"
 
 func ShowStatus() error {
 	var output strings.Builder
-	runningTime, isRunning, err := state.GetRunningTime()
+	stateManager, err := state.NewTransferStateManager(true)
+	if err != nil {
+		return err
+	}
+
+	isRunning, err := stateManager.InitStartTimestamp()
 	if err != nil {
 		return err
 	}
@@ -39,11 +44,7 @@ func ShowStatus() error {
 		return nil
 	}
 
-	stateManager, err := state.NewTransferStateManager(true)
-	if err != nil {
-		return err
-	}
-	addOverallStatus(stateManager, &output, runningTime)
+	addOverallStatus(stateManager, &output, stateManager.GetRunningTimeString())
 	if stateManager.CurrentRepoKey != "" {
 		transferState, exists, err := state.LoadTransferState(stateManager.CurrentRepoKey, false)
 		if err != nil {

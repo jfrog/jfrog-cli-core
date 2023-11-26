@@ -61,6 +61,14 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 	return ts.unlockStateManager()
 }
 
+func (ts *TransferStateManager) SetStartTimestamp(startTimestamp time.Time) {
+	ts.startTimestamp = startTimestamp
+}
+
+func (ts *TransferStateManager) GetStartTimestamp() time.Time {
+	return ts.startTimestamp
+}
+
 // Set the repository state.
 // repoKey        - Repository key
 // totalSizeBytes - Repository size in bytes
@@ -394,21 +402,39 @@ func (ts *TransferStateManager) tryLockStateManager() error {
 	return nil
 }
 
-func getStartTimestamp() (int64, error) {
+func (ts *TransferStateManager) Running() (running bool, err error) {
 	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
 	if err != nil {
-		return 0, err
+		return false, err
 	}
-	return lock.GetLastLockTimestamp(lockDirPath)
+	var startTimestamp int64
+	startTimestamp, err = lock.GetLastLockTimestamp(lockDirPath)
+	return err == nil && startTimestamp != 0, err
 }
 
-func GetRunningTime() (runningTime string, isRunning bool, err error) {
-	startTimestamp, err := getStartTimestamp()
-	if err != nil || startTimestamp == 0 {
-		return
+func (ts *TransferStateManager) InitStartTimestamp() (running bool, err error) {
+	if !ts.startTimestamp.IsZero() {
+		return true, nil
 	}
-	runningSecs := int64(time.Since(time.Unix(0, startTimestamp)).Seconds())
-	return SecondsToLiteralTime(runningSecs, ""), true, nil
+	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
+	if err != nil {
+		return false, err
+	}
+	var startTimestamp int64
+	startTimestamp, err = lock.GetLastLockTimestamp(lockDirPath)
+	if err != nil || startTimestamp == 0 {
+		return false, err
+	}
+	ts.startTimestamp = time.Unix(0, startTimestamp)
+	return true, nil
+}
+
+func (ts *TransferStateManager) GetRunningTimeString() (runningTime string) {
+	if ts.startTimestamp.IsZero() {
+		return ""
+	}
+	runningSecs := int64(time.Since(ts.startTimestamp).Seconds())
+	return SecondsToLiteralTime(runningSecs, "")
 }
 
 func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStatus) (err error) {

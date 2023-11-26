@@ -15,10 +15,13 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
+	artifactoryutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	clientutilstests "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -390,4 +393,43 @@ func createUniqueFileAndAssertCounter(t *testing.T, tmpDir, prefix string, expec
 	assert.NoError(t, err)
 	assert.NoError(t, os.WriteFile(filePath, nil, 0644))
 	assert.True(t, strings.HasSuffix(filePath, strconv.Itoa(expectedCounter)+".json"))
+}
+
+var updateThreadsProvider = []struct {
+	threadsNumber                int
+	expectedChunkBuilderThreads  int
+	expectedChunkUploaderThreads int
+	buildInfo                    bool
+}{
+	{artifactoryutils.DefaultThreads - 1, artifactoryutils.DefaultThreads - 1, artifactoryutils.DefaultThreads - 1, false},
+	{artifactoryutils.DefaultThreads, artifactoryutils.DefaultThreads, artifactoryutils.DefaultThreads, false},
+	{artifactoryutils.MaxBuildInfoThreads + 1, artifactoryutils.MaxBuildInfoThreads + 1, artifactoryutils.MaxBuildInfoThreads + 1, false},
+	{artifactoryutils.MaxChunkBuilderThreads + 1, artifactoryutils.MaxChunkBuilderThreads, artifactoryutils.MaxChunkBuilderThreads + 1, false},
+
+	{artifactoryutils.DefaultThreads - 1, artifactoryutils.DefaultThreads - 1, artifactoryutils.DefaultThreads - 1, true},
+	{artifactoryutils.DefaultThreads, artifactoryutils.DefaultThreads, artifactoryutils.DefaultThreads, true},
+	{artifactoryutils.MaxBuildInfoThreads + 1, artifactoryutils.MaxBuildInfoThreads, artifactoryutils.MaxBuildInfoThreads, true},
+	{artifactoryutils.MaxChunkBuilderThreads + 1, artifactoryutils.MaxBuildInfoThreads, artifactoryutils.MaxBuildInfoThreads, true},
+}
+
+func TestUpdateThreads(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	previousLog := clientutilstests.RedirectLogOutputToNil()
+	defer func() {
+		log.SetLogger(previousLog)
+	}()
+
+	for _, testCase := range updateThreadsProvider {
+		t.Run(strconv.Itoa(testCase.threadsNumber)+" Build Info: "+strconv.FormatBool(testCase.buildInfo), func(t *testing.T) {
+			transferSettings := &artifactoryutils.TransferSettings{ThreadsNumber: testCase.threadsNumber}
+			assert.NoError(t, artifactoryutils.SaveTransferSettings(transferSettings))
+
+			assert.NoError(t, updateThreads(nil, testCase.buildInfo))
+			assert.Equal(t, testCase.expectedChunkBuilderThreads, curChunkBuilderThreads)
+			assert.Equal(t, testCase.expectedChunkUploaderThreads, curChunkUploaderThreads)
+		})
+	}
 }

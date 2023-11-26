@@ -589,19 +589,20 @@ func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDe
 
 func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 	// Use default threads if settings file doesn't exist or an error occurred.
-	curThreads = utils.DefaultThreads
+	curChunkUploaderThreads = utils.DefaultThreads
+	curChunkBuilderThreads = utils.DefaultThreads
 	settings, err := utils.LoadTransferSettings()
 	if err != nil {
 		return err
 	}
 	if settings != nil {
-		curThreads = settings.CalcNumberOfThreads(buildInfoRepo)
-		if buildInfoRepo && curThreads < settings.ThreadsNumber {
+		curChunkBuilderThreads, curChunkUploaderThreads = settings.CalcNumberOfThreads(buildInfoRepo)
+		if buildInfoRepo && curChunkUploaderThreads < settings.ThreadsNumber {
 			log.Info("Build info transferring - using reduced number of threads")
 		}
 	}
 
-	log.Info("Running with maximum", strconv.Itoa(curThreads), "working threads...")
+	log.Info("Running with maximum", strconv.Itoa(curChunkUploaderThreads), "working threads...")
 	return nil
 }
 

@@ -134,7 +134,7 @@ func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.T
 			if long := isLongProperty(property); long {
 				log.Debug(fmt.Sprintf(`Found long property ('@%s':'%s')`, property.Key, property.Value))
 				if lpc.producerConsumer != nil {
-					lpc.producerConsumer.AddTaskWithError(lpc.createSearchPropertyTask(property, args, progress), lpc.errorsQueue.AddError)
+					_, _ = lpc.producerConsumer.AddTaskWithError(lpc.createSearchPropertyTask(property, args, progress), lpc.errorsQueue.AddError)
 				}
 				if progress != nil {
 					progress.IncGeneralProgressTotalBy(1)

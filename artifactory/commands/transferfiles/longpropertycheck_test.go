@@ -159,7 +159,7 @@ func testSearchPropertiesInFiles(t *testing.T, properties []Property, specificRe
 	testServer, serverDetails, _ := getLongPropertyCheckStubServer(t, properties, propertiesFiles, false)
 	defer testServer.Close()
 
-	longPropertyCheck := NewLongPropertyCheck(specificRepos, true)
+	longPropertyCheck := NewLongPropertyCheck(specificRepos, false)
 	longPropertyCheck.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
 	longPropertyCheck.filesChan = make(chan FileWithLongProperty, threadCount)
 	longPropertyCheck.errorsQueue = clientutils.NewErrorsQueue(1)

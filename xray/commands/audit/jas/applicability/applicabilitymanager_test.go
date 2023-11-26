@@ -172,7 +172,7 @@ func TestApplicabilityScanManager_ShouldRun_ScanResultsAreEmpty(t *testing.T) {
 	applicabilityManager := newApplicabilityScanManager(nil, mockDirectDependencies, scanner, false)
 
 	// Assert
-	eligible := applicabilityManager.shouldRunApplicabilityScan([]coreutils.Technology{coreutils.Npm})
+	eligible := applicabilityManager.shouldRunApplicabilityScan([]coreutils.Technology{coreutils.Nuget})
 	assert.False(t, eligible)
 }
 
@@ -188,23 +188,28 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	}
 	tests := []struct {
 		directDependencies []string
-		cvesCount          int
+		directCvesCount    int
+		indirectCvesCount  int
 	}{
 		{directDependencies: []string{"issueId_2_direct_dependency", "issueId_1_direct_dependency"},
-			cvesCount: 2,
+			directCvesCount:   2,
+			indirectCvesCount: 0,
 		},
 		// Vulnerability dependency, should be ignored by function
 		{directDependencies: []string{"issueId_1_direct_dependency"},
-			cvesCount: 0,
+			directCvesCount:   0,
+			indirectCvesCount: 2,
 		},
 		{directDependencies: []string{},
-			cvesCount: 0,
+			directCvesCount:   0,
+			indirectCvesCount: 2,
 		},
 	}
 
 	for _, test := range tests {
-		cves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, test.directDependencies)
-		assert.Len(t, cves, test.cvesCount)
+		directCves, indirectCves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, test.directDependencies)
+		assert.Len(t, directCves, test.directCvesCount)
+		assert.Len(t, indirectCves, test.indirectCvesCount)
 	}
 }
 
@@ -228,23 +233,29 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 	tests := []struct {
 		directDependencies []string
-		cvesCount          int
+		directCvesCount    int
+		indirectCvesCount  int
 	}{
 		{
 			directDependencies: []string{"issueId_1_direct_dependency"},
-			cvesCount:          3,
+			directCvesCount:    3,
+			indirectCvesCount:  2,
 		},
 		{
 			directDependencies: []string{"issueId_2_direct_dependency"},
-			cvesCount:          2,
+			directCvesCount:    2,
+			indirectCvesCount:  3,
 		},
 		{directDependencies: []string{},
-			cvesCount: 0,
+			directCvesCount:   0,
+			indirectCvesCount: 5,
 		},
 	}
 
 	for _, test := range tests {
-		assert.Len(t, extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies), test.cvesCount)
+		directCves, indirectCves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies)
+		assert.Len(t, directCves, test.directCvesCount)
+		assert.Len(t, indirectCves, test.indirectCvesCount)
 	}
 }
 

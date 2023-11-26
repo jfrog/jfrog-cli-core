@@ -134,7 +134,7 @@ func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.T
 			if long := isLongProperty(property); long {
 				log.Debug(fmt.Sprintf(`Found long property ('@%s':'%s')`, property.Key, property.Value))
 				if lpc.producerConsumer != nil {
-					_, _ = lpc.producerConsumer.AddTaskWithError(lpc.createSearchPropertyTask(property, args, progress), lpc.errorsQueue.AddError)
+					lpc.producerConsumer.AddTaskWithError(lpc.createSearchPropertyTask(property, args, progress), lpc.errorsQueue.AddError)
 				}
 				if progress != nil {
 					progress.IncGeneralProgressTotalBy(1)
@@ -216,9 +216,7 @@ func (lpc *LongPropertyCheck) runSearchPropertyInFilesAql(serviceManager artifac
 // Get the query that search files with specific property
 func (lpc *LongPropertyCheck) getSearchPropertyInFilesQuery(property Property) string {
 	query := fmt.Sprintf(`items.find({"type": {"$eq":"any"},"@%s":"%s"}).include("repo","path","name")`, property.Key, property.Value)
-	if lpc.disabledDistinctiveAql {
-		query += `.distinct(false)`
-	}
+	query += appendDistinctIfNeeded(lpc.disabledDistinctiveAql)
 	return query
 }
 

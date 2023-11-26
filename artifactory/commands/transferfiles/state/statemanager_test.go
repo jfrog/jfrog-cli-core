@@ -235,3 +235,78 @@ func TestTryLockStateManager(t *testing.T) {
 	assert.NoError(t, stateManager.tryLockStateManager())
 	assert.ErrorIs(t, new(AlreadyLockedError), stateManager.tryLockStateManager())
 }
+
+func TestRunning(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Assert no running=false
+	running, err := stateManager.Running()
+	assert.NoError(t, err)
+	assert.False(t, running)
+
+	// Lock to simulate transfer
+	assert.NoError(t, stateManager.TryLockTransferStateManager())
+
+	// Assert running=true
+	running, err = stateManager.Running()
+	assert.NoError(t, err)
+	assert.True(t, running)
+}
+
+func TestInitStartTimestamp(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Init start timestamp and expect timestamp zero
+	running, err := stateManager.InitStartTimestamp()
+	assert.NoError(t, err)
+	assert.False(t, running)
+	assert.True(t, stateManager.startTimestamp.IsZero())
+
+	// Lock to simulate transfer
+	assert.NoError(t, stateManager.TryLockTransferStateManager())
+
+	// Init start timestamp and expect timestamp non-zero
+	running, err = stateManager.InitStartTimestamp()
+	assert.NoError(t, err)
+	assert.True(t, running)
+	assert.False(t, stateManager.startTimestamp.IsZero())
+}
+
+var getRunningTimeStringCases = []struct {
+	startTimestamp time.Time
+	expectedString string
+}{
+	{time.Now(), "Less than a minute"},
+	{time.Now().Add(-time.Second), "Less than a minute"},
+	{time.Now().Add(-time.Minute), "1 minute"},
+	{time.Now().Add(-time.Hour), "1 hour"},
+	{time.Now().Add(-time.Hour).Add(time.Minute), "59 minutes"},
+	{time.Now().Add(-time.Hour).Add(time.Minute).Add(10 * time.Second), "58 minutes"},
+}
+
+func TestGetRunningTimeString(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	runningTime := stateManager.GetRunningTimeString()
+	assert.Empty(t, runningTime)
+
+	// Lock and init start timestamp to simulate transfer
+	assert.NoError(t, stateManager.TryLockTransferStateManager())
+	running, err := stateManager.InitStartTimestamp()
+	assert.NoError(t, err)
+	assert.True(t, running)
+
+	// Run test cases
+	for _, testCase := range getRunningTimeStringCases {
+		t.Run(testCase.startTimestamp.String(), func(t *testing.T) {
+			// Set start timestamp
+			stateManager.startTimestamp = testCase.startTimestamp
+
+			// Assert running time string
+			assert.Equal(t, testCase.expectedString, stateManager.GetRunningTimeString())
+		})
+	}
+}

@@ -402,7 +402,7 @@ func (ts *TransferStateManager) tryLockStateManager() error {
 	return nil
 }
 
-func (ts *TransferStateManager) Running() (isRunning bool, err error) {
+func (ts *TransferStateManager) Running() (running bool, err error) {
 	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
 	if err != nil {
 		return false, err

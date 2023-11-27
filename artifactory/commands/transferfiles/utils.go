@@ -143,6 +143,13 @@ func createSrcRtUserPluginServiceManager(ctx context.Context, sourceRtDetails *c
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
 }
 
+func appendDistinctIfNeeded(disabledDistinctiveAql bool) string {
+	if disabledDistinctiveAql {
+		return `.distinct(false)`
+	}
+	return ""
+}
+
 func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
 	serviceManager, err := createTransferServiceManager(ctx, sourceRtDetails)
 	if err != nil {

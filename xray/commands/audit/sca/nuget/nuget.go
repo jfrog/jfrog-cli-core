@@ -40,7 +40,11 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 	}
 	sol, err := solution.Load(wd, "", log.Logger)
 	if err != nil {
-		return
+		// If we get an error that global package path couldn't be found we want to continue because will be fixed after restoring the project
+		if !strings.Contains(err.Error(), "could not find global packages path at:") {
+			return
+		}
+		err = nil
 	}
 
 	if isInstallRequired(params, sol) {
@@ -62,7 +66,7 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 func isInstallRequired(params utils.AuditParams, sol solution.Solution) (installRequired bool) {
 	// In case the user provided an 'install' command we execute 'restore' command even if the project is already installed
 	// In case dependency sources were not detected when construction the Solution struct the project requires 'install' as well
-	if len(params.InstallCommandArgs()) > 0 || !sol.DependenciesSourcesExist() {
+	if len(params.InstallCommandArgs()) > 0 || !sol.DependenciesSourcesAndProjectsPathExist() {
 		installRequired = true
 	}
 	return
@@ -167,7 +171,7 @@ func getProjectToolName(wd string) (toolName string, err error) {
 	return
 }
 
-// Returns a list of all absolute paths of project's configuration files - .csproj files and packages.config files
+// Returns a list of all absolute paths of project's configuration files - .csproj files and packages.config files ONLY
 func getProjectConfigurationFilesPaths(wd string) (projectConfigFilesPaths []string, err error) {
 	err = filepath.WalkDir(wd, func(path string, d fs.DirEntry, innerErr error) error {
 		if innerErr != nil {
@@ -189,19 +193,12 @@ func getProjectConfigurationFilesPaths(wd string) (projectConfigFilesPaths []str
 
 // TODO write test to this func
 func runDotnetRestore(wd string, params utils.AuditParams, toolType bidotnet.ToolchainType, commandExtraArgs []string) (err error) {
-	// case 1: user command & artifactory
-	// case 2: user command & no artifactory
-	// case 3: default install & artifactory
-	// case 4: default install & no artifactory
-
-	//TODO is it necessary to look for dotnet/nuget exec path or can I just run with the word 'dotnet' or 'nuget'
 	var completeCommandArgs []string
 	if len(params.InstallCommandArgs()) > 0 {
 		// If the user has provided an 'install' command we run the provided command
 		completeCommandArgs = append(completeCommandArgs, params.InstallCommandName())
 		completeCommandArgs = append(completeCommandArgs, params.InstallCommandArgs()...)
 	} else {
-		// TODO check for nuget flags
 		completeCommandArgs = append(completeCommandArgs, toolType.String(), installCommandName)
 	}
 

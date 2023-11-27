@@ -207,7 +207,7 @@ func TestExtractXrayDirectViolations(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		directCves, indirectCves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, test.directDependencies)
+		directCves, indirectCves := extractDependenciesCvesFromScan(xrayResponseForDirectViolationsTest, test.directDependencies)
 		assert.Len(t, directCves, test.directCvesCount)
 		assert.Len(t, indirectCves, test.indirectCvesCount)
 	}
@@ -253,7 +253,7 @@ func TestExtractXrayDirectVulnerabilities(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		directCves, indirectCves := extractDirectDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies)
+		directCves, indirectCves := extractDependenciesCvesFromScan(xrayResponseForDirectVulnerabilitiesTest, test.directDependencies)
 		assert.Len(t, directCves, test.directCvesCount)
 		assert.Len(t, indirectCves, test.indirectCvesCount)
 	}

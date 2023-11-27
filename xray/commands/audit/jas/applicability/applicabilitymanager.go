@@ -56,7 +56,7 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 }
 
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
-	directDependenciesCves, indirectDependenciesCves := extractDirectDependenciesCvesFromScan(xrayScanResults, directDependencies)
+	directDependenciesCves, indirectDependenciesCves := extractDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
 		directDependenciesCves:   directDependenciesCves,
@@ -67,45 +67,37 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 	}
 }
 
+func addCvesToSet(cves []services.Cve, set *datastructures.Set[string]) {
+	for _, cve := range cves {
+		if cve.Id != "" {
+			set.Add(cve.Id)
+		}
+	}
+}
+
 // This function gets a list of xray scan responses that contain direct and indirect vulnerabilities and returns separate
 // lists of the direct and indirect CVEs
-func extractDirectDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies []string) ([]string, []string) {
-	directsCves := datastructures.MakeSet[string]()
-	indirectCves := datastructures.MakeSet[string]()
+func extractDependenciesCvesFromScan(xrayScanResults []services.ScanResponse, directDependencies []string) (directCves []string, indirectCves []string) {
+	directCvesSet := datastructures.MakeSet[string]()
+	indirectCvesSet := datastructures.MakeSet[string]()
 	for _, scanResult := range xrayScanResults {
 		for _, vulnerability := range scanResult.Vulnerabilities {
 			if isDirectComponents(maps.Keys(vulnerability.Components), directDependencies) {
-				for _, cve := range vulnerability.Cves {
-					if cve.Id != "" {
-						directsCves.Add(cve.Id)
-					}
-				}
+				addCvesToSet(vulnerability.Cves, directCvesSet)
 			} else {
-				for _, cve := range vulnerability.Cves {
-					if cve.Id != "" {
-						indirectCves.Add(cve.Id)
-					}
-				}
+				addCvesToSet(vulnerability.Cves, indirectCvesSet)
 			}
 		}
 		for _, violation := range scanResult.Violations {
 			if isDirectComponents(maps.Keys(violation.Components), directDependencies) {
-				for _, cve := range violation.Cves {
-					if cve.Id != "" {
-						directsCves.Add(cve.Id)
-					}
-				}
+				addCvesToSet(violation.Cves, directCvesSet)
 			} else {
-				for _, cve := range violation.Cves {
-					if cve.Id != "" {
-						indirectCves.Add(cve.Id)
-					}
-				}
+				addCvesToSet(violation.Cves, indirectCvesSet)
 			}
 		}
 	}
 
-	return directsCves.ToSlice(), indirectCves.ToSlice()
+	return directCvesSet.ToSlice(), indirectCvesSet.ToSlice()
 }
 
 func isDirectComponents(components []string, directDependencies []string) bool {

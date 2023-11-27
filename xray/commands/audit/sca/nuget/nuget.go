@@ -72,7 +72,6 @@ func isInstallRequired(params utils.AuditParams, sol solution.Solution) (install
 	return
 }
 
-// TODO write test to this func
 func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string) (sol solution.Solution, err error) {
 	// Creating a temporary copy of the project in order to run 'install' command without effecting the original directory + creating the jfrog config for artifactory resolution
 	tmpWd, err := fileutils.CreateTempDir()
@@ -191,7 +190,6 @@ func getProjectConfigurationFilesPaths(wd string) (projectConfigFilesPaths []str
 	return
 }
 
-// TODO write test to this func
 func runDotnetRestore(wd string, params utils.AuditParams, toolType bidotnet.ToolchainType, commandExtraArgs []string) (err error) {
 	var completeCommandArgs []string
 	if len(params.InstallCommandArgs()) > 0 {

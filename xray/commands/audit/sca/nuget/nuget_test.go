@@ -2,8 +2,11 @@ package nuget
 
 import (
 	"encoding/json"
+	"github.com/jfrog/build-info-go/build/utils/dotnet/solution"
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	xrayUtils2 "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"path/filepath"
@@ -118,5 +121,24 @@ func TestGetProjectConfigurationFilesPaths(t *testing.T) {
 		projectFiles, err = getProjectConfigurationFilesPaths(testcase.testProjectPath)
 		assert.NoError(t, err)
 		assert.Equal(t, testcase.expectedOutput, projectFiles)
+	}
+}
+
+func TestRunDotnetRestoreAndLoadSolution(t *testing.T) {
+	projectsToCheck := []string{"dotnet-single", "dotnet-multi"}
+	for _, projectName := range projectsToCheck {
+		tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+		defer createTempDirCallback()
+		dotnetProjectPath := filepath.Join("..", "..", "..", "testdata", "dotnet-projects", projectName)
+		assert.NoError(t, utils.CopyDir(dotnetProjectPath, tempDirPath, true, nil))
+
+		sol, err := solution.Load(tempDirPath, "", log.Logger)
+		assert.NoError(t, err)
+		assert.False(t, sol.DependenciesSourcesAndProjectsPathExist())
+
+		params := &xrayUtils2.AuditBasicParams{}
+		sol, err = runDotnetRestoreAndLoadSolution(params, tempDirPath)
+		assert.NoError(t, err)
+		assert.True(t, sol.DependenciesSourcesAndProjectsPathExist())
 	}
 }

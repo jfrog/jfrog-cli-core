@@ -24,13 +24,14 @@ import (
 )
 
 const (
-	nugetPackageTypeIdentifier = "nuget://"
-	csprojFileSuffix           = ".csproj"
-	packageReferenceSyntax     = "PackageReference"
-	packagesConfigFileName     = "packages.config"
-	installCommandName         = "restore"
-	dotnetToolType             = "dotnet"
-	nugetToolType              = "nuget"
+	nugetPackageTypeIdentifier         = "nuget://"
+	csprojFileSuffix                   = ".csproj"
+	packageReferenceSyntax             = "PackageReference"
+	packagesConfigFileName             = "packages.config"
+	installCommandName                 = "restore"
+	dotnetToolType                     = "dotnet"
+	nugetToolType                      = "nuget"
+	globalPackagesNotFoundErrorMessage = "could not find global packages path at:"
 )
 
 func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
@@ -39,11 +40,10 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 		return
 	}
 	sol, err := solution.Load(wd, "", log.Logger)
-	if err != nil {
-		// If an error arises due to the inability to locate the global package path, we aim to proceed, as this issue is expected to be resolved upon project restoration
-		if !strings.Contains(err.Error(), "could not find global packages path at:") {
-			return
-		}
+	if err != nil && !strings.Contains(err.Error(), globalPackagesNotFoundErrorMessage) {
+		// In older NuGet projects that utilize NuGet Cli and package.config, if the project is not installed, the solution.Load function raises an error because it cannot find global package paths.
+		// This issue is resolved by executing the 'nuget restore' command followed by running solution.Load again. Therefore, in this scenario, we need to proceed with this process.
+		return
 	}
 
 	if isInstallRequired(params, sol) {
@@ -63,13 +63,10 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 }
 
 // Verifies whether the execution of an 'install' command is necessary, either because the project isn't installed or because the user has specified an 'install' command
-func isInstallRequired(params utils.AuditParams, sol solution.Solution) (installRequired bool) {
+func isInstallRequired(params utils.AuditParams, sol solution.Solution) bool {
 	// If the user has specified an 'install' command, we proceed with executing the 'restore' command even if the project is already installed
 	// Additionally, if dependency sources were not identified during the construction of the Solution struct, the project will necessitate an 'install'
-	if len(params.InstallCommandArgs()) > 0 || !sol.DependenciesSourcesAndProjectsPathExist() {
-		installRequired = true
-	}
-	return
+	return len(params.InstallCommandArgs()) > 0 || !sol.DependenciesSourcesAndProjectsPathExist()
 }
 
 // Generates a temporary duplicate of the project to execute the 'install' command without impacting the original directory and establishing the JFrog configuration file for Artifactory resolution
@@ -78,7 +75,7 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 	// Creating a temporary copy of the project in order to run 'install' command without effecting the original directory + creating the jfrog config for artifactory resolution
 	tmpWd, err := fileutils.CreateTempDir()
 	if err != nil {
-		err = fmt.Errorf("failed to create a temporary dir: %s", err.Error())
+		err = fmt.Errorf("failed to create a temporary dir: %w", err)
 		return
 	}
 	defer func() {

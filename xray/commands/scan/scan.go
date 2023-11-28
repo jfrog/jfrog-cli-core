@@ -487,7 +487,7 @@ func cveListFromVulnerabilities(flatResults []services.ScanResponse) []string {
 				}
 			}
 			if !slices.Contains(technologiesList, vulnerability.Technology) && (vulnerability.Technology != "") {
-				cveList = append(technologiesList, vulnerability.Technology)
+				technologiesList = append(technologiesList, vulnerability.Technology)
 			}
 		}
 	}

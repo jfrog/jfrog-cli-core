@@ -40,7 +40,7 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 	}
 	sol, err := solution.Load(wd, "", log.Logger)
 	if err != nil {
-		// If we get an error that global package path couldn't be found we want to continue because will be fixed after restoring the project
+		// If an error arises due to the inability to locate the global package path, we aim to proceed, as this issue is expected to be resolved upon project restoration
 		if !strings.Contains(err.Error(), "could not find global packages path at:") {
 			return
 		}
@@ -62,20 +62,23 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 	return
 }
 
+// Verifies whether the execution of an 'install' command is necessary, either because the project isn't installed or because the user has specified an 'install' command
 func isInstallRequired(params utils.AuditParams, sol solution.Solution) (installRequired bool) {
-	// In case the user provided an 'install' command we execute 'restore' command even if the project is already installed
-	// In case dependency sources were not detected when construction the Solution struct the project requires 'install' as well
+	// If the user has specified an 'install' command, we proceed with executing the 'restore' command even if the project is already installed
+	// Additionally, if dependency sources were not identified during the construction of the Solution struct, the project will necessitate an 'install'
 	if len(params.InstallCommandArgs()) > 0 || !sol.DependenciesSourcesAndProjectsPathExist() {
 		installRequired = true
 	}
 	return
 }
 
+// Generates a temporary duplicate of the project to execute the 'install' command without impacting the original directory and establishing the JFrog configuration file for Artifactory resolution
+// Additionally, re-loads the project's Solution so the dependencies sources will be identified
 func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string) (sol solution.Solution, err error) {
 	// Creating a temporary copy of the project in order to run 'install' command without effecting the original directory + creating the jfrog config for artifactory resolution
 	tmpWd, err := fileutils.CreateTempDir()
 	if err != nil {
-		err = fmt.Errorf("failed creating temporary dir: %w", err)
+		err = fmt.Errorf("failed to create a temporary dir: %s", err.Error())
 		return
 	}
 	defer func() {
@@ -90,7 +93,7 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 
 	toolName := params.InstallCommandName()
 	if toolName == "" {
-		// Detect whether the project is a NuGet or .NET project
+		// Determine if the project is a NuGet or .NET project
 		toolName, err = getProjectToolName(originalWd)
 		if err != nil {
 			err = fmt.Errorf("failed while checking for the porject's tool type: %s", err.Error())
@@ -116,7 +119,7 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 		var configFile *os.File
 		configFile, err = dotnet.InitNewConfig(tmpWd, depsRepo, serverDetails, false)
 		if err != nil {
-			err = fmt.Errorf("failed to create a config file in order to set artifactory as a resolution server")
+			err = fmt.Errorf("failed while attempting to generate a configuration file for setting up Artifactory as a resolution server")
 			return
 		}
 		installCommandArgs = append(installCommandArgs, toolType.GetTypeFlagPrefix()+"configfile", configFile.Name())
@@ -130,12 +133,12 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 	return
 }
 
-// Identifies if the project operating using .NET Cli to NuGet Cli, preferring .NET Cli
-// Notice That for multi-module projects only one of these tools can be identified and will be applied to all modules
+// Detects if the project is utilizing either .NET CLI or NuGet CLI, prioritizing .NET CLI.
+// Note: For multi-module projects, only one of these tools can be identified and will be uniformly applied across all modules.
 func getProjectToolName(wd string) (toolName string, err error) {
 	projectConfigFilesPaths, err := getProjectConfigurationFilesPaths(wd)
 	if err != nil {
-		err = fmt.Errorf("failed which getting file's list in '%s': %s", wd, err.Error())
+		err = fmt.Errorf("failed while retrieving list of files in '%s': %s", wd, err.Error())
 		return
 	}
 
@@ -149,7 +152,7 @@ func getProjectToolName(wd string) (toolName string, err error) {
 				return
 			}
 
-			// If <PackageReference> syntax is detected in the .csproj file - the tool type that is being used is .NET CLI
+			// If the .csproj file contains the <PackageReference> syntax, it signifies the usage of .NET CLI as the tool type
 			if strings.Contains(string(fileData), packageReferenceSyntax) {
 				toolName = dotnetToolType
 				return
@@ -159,17 +162,17 @@ func getProjectToolName(wd string) (toolName string, err error) {
 		}
 	}
 
-	// If <PackageReference> syntax wasn't detected in any .csproj file and packages.config file was found - the tool type that is being used is NuGet CLI
+	// If the <PackageReference> syntax isn't found in any .csproj file but a packages.config file is present, it indicates that the tool type being used is the NuGet CLI
 	if len(packagesConfigFiles) > 0 {
 		toolName = nugetToolType
 		return
 	}
 
-	err = errorutils.CheckErrorf("couldn't detect the project's tool type (.NET/NuGet CLI). Please execute 'restore' command.\nNotice: Some entry points enable provision of an 'install' command instead of running it yourself")
+	err = errorutils.CheckErrorf("the project's tool type (.NET/NuGet CLI) couldn't be detected. Please execute the 'restore' command.\nNote: Certain entry points allow providing an 'install' command instead of manually executing it")
 	return
 }
 
-// Returns a list of all absolute paths of project's configuration files - .csproj files and packages.config files ONLY
+// Returns a slice of absolute paths for the project's configuration files, strictly limited to .csproj files and packages.config files.
 func getProjectConfigurationFilesPaths(wd string) (projectConfigFilesPaths []string, err error) {
 	err = filepath.WalkDir(wd, func(path string, d fs.DirEntry, innerErr error) error {
 		if innerErr != nil {
@@ -192,14 +195,14 @@ func getProjectConfigurationFilesPaths(wd string) (projectConfigFilesPaths []str
 func runDotnetRestore(wd string, params utils.AuditParams, toolType bidotnet.ToolchainType, commandExtraArgs []string) (err error) {
 	var completeCommandArgs []string
 	if len(params.InstallCommandArgs()) > 0 {
-		// If the user has provided an 'install' command we run the provided command
+		// If the user has specified an 'install' command, we execute the command that has been provided.
 		completeCommandArgs = append(completeCommandArgs, params.InstallCommandName())
 		completeCommandArgs = append(completeCommandArgs, params.InstallCommandArgs()...)
 	} else {
 		completeCommandArgs = append(completeCommandArgs, toolType.String(), installCommandName)
 	}
 
-	// We add the flag that enables resolution from an Artifactory server (if exists)
+	// We include the flag that allows resolution from an Artifactory server, if it exists.
 	completeCommandArgs = append(completeCommandArgs, commandExtraArgs...)
 	command := exec.Command(completeCommandArgs[0], completeCommandArgs[1:]...)
 	command.Dir = wd

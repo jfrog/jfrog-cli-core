@@ -801,6 +801,7 @@ func simplifyViolations(scanViolations []services.Violation, multipleRoots bool)
 				continue
 			}
 			uniqueViolations[packageKey] = &services.Violation{
+				Summary:       violation.Summary,
 				Severity:      violation.Severity,
 				ViolationType: violation.ViolationType,
 				Components:    map[string]services.Component{vulnerableComponentId: violation.Components[vulnerableComponentId]},

@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
 
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -33,6 +33,7 @@ const (
 	retries                      = 600
 	retriesWaitMilliSecs         = 5000
 	dataTransferPluginMinVersion = "1.7.0"
+	disableDistinctAqlMinVersion = "7.37"
 )
 
 type TransferFilesCommand struct {
@@ -46,7 +47,6 @@ type TransferFilesCommand struct {
 	progressbar               *TransferProgressMng
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
-	timeStarted               time.Time
 	ignoreState               bool
 	proxyKey                  string
 	status                    bool
@@ -55,6 +55,8 @@ type TransferFilesCommand struct {
 	stateManager              *state.TransferStateManager
 	preChecks                 bool
 	locallyGeneratedFilter    *locallyGeneratedFilter
+	// Optimization in Artifactory version 7.37 and above enables the exclusion of setting DISTINCT in SQL queries
+	disabledDistinctiveAql bool
 }
 
 func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (*TransferFilesCommand, error) {
@@ -68,7 +70,6 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (
 		cancelFunc:          cancelFunc,
 		sourceServerDetails: sourceServer,
 		targetServerDetails: targetServer,
-		timeStarted:         time.Now(),
 		stateManager:        stateManager,
 		stopSignal:          make(chan os.Signal, 1),
 	}, nil
@@ -117,7 +118,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.stop {
 		return tdc.signalStop()
 	}
-	if err := tdc.stateManager.TryLockTransferStateManager(); err != nil {
+	if err = tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err
 	}
 	defer func() {
@@ -126,6 +127,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 			err = unlockErr
 		}
 	}()
+	if _, err = tdc.stateManager.InitStartTimestamp(); err != nil {
+		return err
+	}
 
 	srcUpService, err := createSrcRtUserPluginServiceManager(tdc.context, tdc.sourceServerDetails)
 	if err != nil {
@@ -137,6 +141,10 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 
 	if err = tdc.verifySourceTargetConnectivity(srcUpService); err != nil {
+		return err
+	}
+
+	if err = tdc.initDistinctAql(); err != nil {
 		return err
 	}
 
@@ -222,6 +230,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 	tdc.stateManager.OverallTransfer.TotalUnits = totalFiles
 	tdc.stateManager.TotalRepositories.TotalUnits = int64(len(allSourceLocalRepos))
 	tdc.stateManager.OverallBiFiles.TotalUnits = totalBiFiles
+	tdc.stateManager.TimeEstimationManager.CurrentTotalTransferredBytes = 0
 	if !tdc.ignoreState {
 		numberInitialErrors, e := getRetryErrorCount(allSourceLocalRepos)
 		if e != nil {
@@ -291,6 +300,28 @@ func (tdc *TransferFilesCommand) initStorageInfoManagers() error {
 	return storageInfoManager.CalculateStorageInfo()
 }
 
+func (tdc *TransferFilesCommand) initDistinctAql() error {
+	// Init source storage services manager
+	servicesManager, err := createTransferServiceManager(tdc.context, tdc.sourceServerDetails)
+	if err != nil {
+		return err
+	}
+
+	// Getting source Artifactory version
+	sourceArtifactoryVersion, err := servicesManager.GetVersion()
+	if err != nil {
+		return err
+	}
+
+	// If version is at least 7.37, add .distinct(false) to AQL queries
+	if version.NewVersion(sourceArtifactoryVersion).AtLeast(disableDistinctAqlMinVersion) {
+		tdc.disabledDistinctiveAql = true
+		log.Debug(fmt.Sprintf("The source Artifactory version is above %s (%s). Adding .distinct(false) to AQL requests.",
+			disableDistinctAqlMinVersion, sourceArtifactoryVersion))
+	}
+	return nil
+}
+
 // Creates the Pre-checks runner for the data transfer command
 func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *precheckrunner.PreCheckRunner, err error) {
 	// Get relevant repos
@@ -310,7 +341,7 @@ func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *prech
 	runner = precheckrunner.NewPreChecksRunner()
 
 	// Add pre checks here
-	runner.AddCheck(NewLongPropertyCheck(append(localRepos, federatedRepos...)))
+	runner.AddCheck(NewLongPropertyCheck(append(localRepos, federatedRepos...), tdc.disabledDistinctiveAql))
 
 	return
 }
@@ -458,6 +489,9 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 	if err != nil {
 		return err
 	}
+	if tdc.disabledDistinctiveAql {
+		(*newPhase).setDisabledDistinctiveAql()
+	}
 	printPhaseChange("Running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'...")
 	err = (*newPhase).run()
 	if err != nil {
@@ -555,19 +589,20 @@ func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDe
 
 func (tdc *TransferFilesCommand) initCurThreads(buildInfoRepo bool) error {
 	// Use default threads if settings file doesn't exist or an error occurred.
-	curThreads = utils.DefaultThreads
+	curChunkUploaderThreads = utils.DefaultThreads
+	curChunkBuilderThreads = utils.DefaultThreads
 	settings, err := utils.LoadTransferSettings()
 	if err != nil {
 		return err
 	}
 	if settings != nil {
-		curThreads = settings.CalcNumberOfThreads(buildInfoRepo)
-		if buildInfoRepo && curThreads < settings.ThreadsNumber {
+		curChunkBuilderThreads, curChunkUploaderThreads = settings.CalcNumberOfThreads(buildInfoRepo)
+		if buildInfoRepo && curChunkUploaderThreads < settings.ThreadsNumber {
 			log.Info("Build info transferring - using reduced number of threads")
 		}
 	}
 
-	log.Info("Running with maximum", strconv.Itoa(curThreads), "working threads...")
+	log.Info("Running with maximum", strconv.Itoa(curChunkUploaderThreads), "working threads...")
 	return nil
 }
 
@@ -614,7 +649,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 		}
 	}
 
-	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.timeStarted)
+	csvErrorsFile, e := createErrorsCsvSummary(sourceRepos, tdc.stateManager.GetStartTimestamp())
 	if e != nil {
 		log.Error("Couldn't create the errors CSV file", e)
 		if err == nil {
@@ -669,11 +704,11 @@ func (tdc *TransferFilesCommand) handleMaxUniqueSnapshots(repoSummary *serviceUt
 
 // Create the '~/.jfrog/transfer/stop' file to mark the transfer-file process to stop
 func (tdc *TransferFilesCommand) signalStop() error {
-	_, isRunning, err := state.GetRunningTime()
+	running, err := tdc.stateManager.Running()
 	if err != nil {
 		return err
 	}
-	if !isRunning {
+	if !running {
 		return errorutils.CheckErrorf("There is no active file transfer process.")
 	}
 

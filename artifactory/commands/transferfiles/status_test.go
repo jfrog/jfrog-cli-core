@@ -68,7 +68,7 @@ func TestShowStatus(t *testing.T) {
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
-	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Estimated time remaining:	Not available yet")
 	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files)")
 
 	// Check repository status
@@ -100,7 +100,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
-	assert.Contains(t, results, "Estimated time remaining:	Not available in this phase")
+	assert.Contains(t, results, "Estimated time remaining:	Not available yet")
 	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files)")
 
 	// Check repository status
@@ -131,8 +131,8 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:		16")
-	assert.Contains(t, results, "Transfer speed:		Not available while transferring a build-info repository")
-	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
+	assert.Contains(t, results, "Estimated time remaining:	Not available yet")
 	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
@@ -179,6 +179,7 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool, staleChunks
 	stateManager.OverallTransfer.TotalSizeBytes = 11111
 	stateManager.TotalRepositories.TotalUnits = 1111
 	stateManager.TotalRepositories.TransferredUnits = 15
+	stateManager.CurrentTotalTransferredBytes = 15
 	stateManager.WorkingThreads = 16
 	stateManager.VisitedFolders = 15
 	stateManager.DelayedFiles = 20

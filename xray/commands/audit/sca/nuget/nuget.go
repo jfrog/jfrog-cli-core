@@ -66,7 +66,9 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.
 func isInstallRequired(params utils.AuditParams, sol solution.Solution) bool {
 	// If the user has specified an 'install' command, we proceed with executing the 'restore' command even if the project is already installed
 	// Additionally, if dependency sources were not identified during the construction of the Solution struct, the project will necessitate an 'install'
-	return len(params.InstallCommandArgs()) > 0 || !sol.DependenciesSourcesAndProjectsPathExist()
+	solDependencySourcesExists := len(sol.GetDependenciesSources()) > 0
+	solProjectsExists := len(sol.GetProjects()) > 0
+	return len(params.InstallCommandArgs()) > 0 || !solDependencySourcesExists || !solProjectsExists
 }
 
 // Generates a temporary duplicate of the project to execute the 'install' command without impacting the original directory and establishing the JFrog configuration file for Artifactory resolution

@@ -228,7 +228,7 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 			RemotePypiRepo:      params.DepsRepo(),
 			PipRequirementsFile: params.PipRequirementsFile()})
 	case coreutils.Nuget:
-		fullDependencyTrees, uniqueDeps, err = nuget.BuildDependencyTree()
+		fullDependencyTrees, uniqueDeps, err = nuget.BuildDependencyTree(params)
 	default:
 		err = errorutils.CheckErrorf("%s is currently not supported", string(tech))
 	}

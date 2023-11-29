@@ -291,8 +291,6 @@ func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, 
 
 func generateAqlSortingPart(paginationOffset int, disabledDistinctiveAql bool) string {
 	sortingPart := fmt.Sprintf(`.sort({"$asc":["name","path"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
-	if disabledDistinctiveAql {
-		sortingPart += `.distinct(false)`
-	}
+	sortingPart += appendDistinctIfNeeded(disabledDistinctiveAql)
 	return sortingPart
 }

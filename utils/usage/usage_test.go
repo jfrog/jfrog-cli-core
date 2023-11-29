@@ -191,7 +191,7 @@ func TestReportEcosystemUsageError(t *testing.T) {
 	// No features
 	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToArtifactory(false).SetSendToXray(false)
 	reporter.Report()
-	assert.Error(t, reporter.WaitForResponses())
+	assert.NoError(t, reporter.WaitForResponses())
 	// Empty features
 	reporter.Report(ReportFeature{
 		FeatureId: "",

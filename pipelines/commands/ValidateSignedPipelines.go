@@ -82,9 +82,9 @@ func (vspc *ValidateSignedPipelinesCommand) Run() error {
 	artifactTypeInfo.RbName = vspc.releaseBundleName
 	artifactTypeInfo.RbVersion = vspc.releaseBundleVersion
 	artifactType := services.Artifact
-	if vspc.artifactType == "buildInfo" {
+	if vspc.artifactType == services.BuildInfo.String() {
 		artifactType = services.BuildInfo
-	} else if vspc.artifactType == "releaseBundle" {
+	} else if vspc.artifactType == services.ReleaseBundle.String() {
 		artifactType = services.ReleaseBundle
 	}
 	err = serviceManager.ValidateSignedPipelines(artifactTypeInfo, artifactType)

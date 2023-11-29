@@ -84,11 +84,15 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 		log.Debug("Usage info is disabled.")
 		return
 	}
+	if len(features) == 0 {
+		log.Debug(ReportUsagePrefix, "Nothing to send.")
+		return
+	}
 	log.Debug(ReportUsagePrefix, "Sending info...")
 	if ur.sendToEcosystem {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToEcosystem(features...); err != nil {
-				err = fmt.Errorf("ecosystem, %s", err.Error())
+				err = fmt.Errorf("ecosystem, %w", err)
 			}
 			return
 		})
@@ -96,7 +100,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 	if ur.sendToXray {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToXray(features...); err != nil {
-				err = fmt.Errorf("xray, %s", err.Error())
+				err = fmt.Errorf("xray, %w", err)
 			}
 			return
 		})
@@ -104,7 +108,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 	if ur.sendToArtifactory {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToArtifactory(features...); err != nil {
-				err = fmt.Errorf("artifactory, %s", err.Error())
+				err = fmt.Errorf("artifactory, %w", err)
 			}
 			return
 		})
@@ -135,6 +139,11 @@ func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error
 }
 
 func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
+	events := ur.convertAttributesToXrayEvents(features...)
+	if len(events) == 0 {
+		err = errorutils.CheckErrorf("Nothing to send.")
+		return
+	}
 	if ur.serverDetails.XrayUrl == "" {
 		err = errorutils.CheckErrorf("Xray Url is not set.")
 		return
@@ -143,26 +152,21 @@ func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
 	if err != nil {
 		return
 	}
-	events := ur.convertAttributesToXrayEvents(features...)
-	if len(events) == 0 {
-		err = errorutils.CheckErrorf("Nothing to send.")
-		return
-	}
 	return xrayusage.SendXrayUsageEvents(*serviceManager, events...)
 }
 
 func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err error) {
+	converted := ur.convertAttributesToArtifactoryFeatures(features...)
+	if len(converted) == 0 {
+		err = errorutils.CheckErrorf("nothing to send")
+		return
+	}
 	if ur.serverDetails.ArtifactoryUrl == "" {
 		err = errorutils.CheckErrorf("Artifactory URL is not set")
 		return
 	}
 	serviceManager, err := utils.CreateServiceManager(ur.serverDetails, -1, 0, false)
 	if err != nil {
-		return
-	}
-	converted := ur.convertAttributesToArtifactoryFeatures(features...)
-	if len(converted) == 0 {
-		err = errorutils.CheckErrorf("nothing to send")
 		return
 	}
 	return usage.ReportUsageToArtifactory(ur.ProductId, serviceManager, converted...)

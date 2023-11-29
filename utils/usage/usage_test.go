@@ -151,17 +151,13 @@ func TestReportXrayUsage(t *testing.T) {
 
 func TestReportXrayError(t *testing.T) {
 	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToEcosystem(false).SetSendToArtifactory(false)
-	reporter.Report(ReportFeature{
-		FeatureId: "",
-	})
+	reporter.Report(ReportFeature{})
 	assert.Error(t, reporter.WaitForResponses())
 
 	server := httptest.NewServer(create404UsageHandler(t))
 	defer server.Close()
 	reporter = NewUsageReporter("", &config.ServerDetails{ArtifactoryUrl: server.URL + "/"}).SetSendToEcosystem(false).SetSendToArtifactory(false)
-	reporter.Report(ReportFeature{
-		FeatureId: "",
-	})
+	reporter.Report(ReportFeature{})
 	assert.Error(t, reporter.WaitForResponses())
 }
 
@@ -185,7 +181,9 @@ func createXrayUsageHandler(t *testing.T, productId, commandName, clientId strin
 			w.WriteHeader(http.StatusOK)
 			_, err = w.Write([]byte("{}"))
 			assert.NoError(t, err)
+			return
 		}
+		assert.Fail(t, "Unexpected request URI", r.RequestURI)
 	}
 }
 

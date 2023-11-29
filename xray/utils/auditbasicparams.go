@@ -23,6 +23,7 @@ type AuditParams interface {
 	Progress() ioUtils.ProgressMgr
 	SetProgress(progress ioUtils.ProgressMgr)
 	Args() []string
+	InstallCommandName() string
 	InstallCommandArgs() []string
 	SetNpmScope(depType string) *AuditBasicParams
 	OutputFormat() OutputFormat
@@ -45,6 +46,7 @@ type AuditBasicParams struct {
 	isMavenDepTreeInstalled          bool
 	pipRequirementsFile              string
 	depsRepo                         string
+	installCommandName               string
 	technologies                     []string
 	args                             []string
 	installCommandArgs               []string
@@ -71,6 +73,11 @@ func (abp *AuditBasicParams) SetServerDetails(serverDetails *config.ServerDetail
 
 func (abp *AuditBasicParams) SetInstallCommandArgs(installCommandArgs []string) *AuditBasicParams {
 	abp.installCommandArgs = installCommandArgs
+	return abp
+}
+
+func (abp *AuditBasicParams) SetInstallCommandName(installCommandName string) *AuditBasicParams {
+	abp.installCommandName = installCommandName
 	return abp
 }
 
@@ -129,6 +136,10 @@ func (abp *AuditBasicParams) SetProgress(progress ioUtils.ProgressMgr) {
 
 func (abp *AuditBasicParams) Args() []string {
 	return abp.args
+}
+
+func (abp *AuditBasicParams) InstallCommandName() string {
+	return abp.installCommandName
 }
 
 func (abp *AuditBasicParams) InstallCommandArgs() []string {

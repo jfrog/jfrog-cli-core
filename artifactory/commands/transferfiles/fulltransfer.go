@@ -273,7 +273,7 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 }
 
 func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
-	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset)
+	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset, m.disabledDistinctiveAql)
 	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
 	if err != nil {
 		return []servicesUtils.ResultItem{}, false, err
@@ -284,10 +284,11 @@ func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginati
 	return
 }
 
-func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int) string {
+func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int, disabledDistinctiveAql bool) string {
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
+	query += appendDistinctIfNeeded(disabledDistinctiveAql)
 	return query
 }
 

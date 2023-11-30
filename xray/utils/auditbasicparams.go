@@ -23,6 +23,7 @@ type AuditParams interface {
 	Progress() ioUtils.ProgressMgr
 	SetProgress(progress ioUtils.ProgressMgr)
 	Args() []string
+	InstallCommandName() string
 	InstallCommandArgs() []string
 	SetNpmScope(depType string) *AuditBasicParams
 	OutputFormat() OutputFormat
@@ -30,22 +31,26 @@ type AuditParams interface {
 	SetDepsRepo(depsRepo string) *AuditBasicParams
 	IgnoreConfigFile() bool
 	SetIgnoreConfigFile(ignoreConfigFile bool) *AuditBasicParams
+	IsMavenDepTreeInstalled() bool
+	SetIsMavenDepTreeInstalled(isMavenDepTreeInstalled bool) *AuditBasicParams
 }
 
 type AuditBasicParams struct {
 	serverDetails                    *config.ServerDetails
 	outputFormat                     OutputFormat
 	progress                         ioUtils.ProgressMgr
-	dependenciesForApplicabilityScan []string
 	excludeTestDependencies          bool
 	useWrapper                       bool
 	insecureTls                      bool
+	ignoreConfigFile                 bool
+	isMavenDepTreeInstalled          bool
 	pipRequirementsFile              string
+	depsRepo                         string
+	installCommandName               string
 	technologies                     []string
 	args                             []string
-	depsRepo                         string
-	ignoreConfigFile                 bool
 	installCommandArgs               []string
+	dependenciesForApplicabilityScan []string
 }
 
 func (abp *AuditBasicParams) DirectDependencies() []string {
@@ -70,6 +75,12 @@ func (abp *AuditBasicParams) SetInstallCommandArgs(installCommandArgs []string) 
 	abp.installCommandArgs = installCommandArgs
 	return abp
 }
+
+func (abp *AuditBasicParams) SetInstallCommandName(installCommandName string) *AuditBasicParams {
+	abp.installCommandName = installCommandName
+	return abp
+}
+
 func (abp *AuditBasicParams) PipRequirementsFile() string {
 	return abp.pipRequirementsFile
 }
@@ -127,6 +138,10 @@ func (abp *AuditBasicParams) Args() []string {
 	return abp.args
 }
 
+func (abp *AuditBasicParams) InstallCommandName() string {
+	return abp.installCommandName
+}
+
 func (abp *AuditBasicParams) InstallCommandArgs() []string {
 	return abp.installCommandArgs
 }
@@ -165,5 +180,14 @@ func (abp *AuditBasicParams) IgnoreConfigFile() bool {
 
 func (abp *AuditBasicParams) SetIgnoreConfigFile(ignoreConfigFile bool) *AuditBasicParams {
 	abp.ignoreConfigFile = ignoreConfigFile
+	return abp
+}
+
+func (abp *AuditBasicParams) IsMavenDepTreeInstalled() bool {
+	return abp.isMavenDepTreeInstalled
+}
+
+func (abp *AuditBasicParams) SetIsMavenDepTreeInstalled(isMavenDepTreeInstalled bool) *AuditBasicParams {
+	abp.isMavenDepTreeInstalled = isMavenDepTreeInstalled
 	return abp
 }

@@ -281,8 +281,8 @@ func (tpm *TransferProgressMng) GetBarMng() *ProgressBarMng {
 
 func (tpm *TransferProgressMng) NewRunningTimeProgressBar() *TasksProgressBar {
 	return tpm.barMng.NewStringProgressBar(tpm.transferLabels.RunningFor, func() string {
-		runningTime, isRunning, err := state.GetRunningTime()
-		if err != nil || !isRunning {
+		runningTime := tpm.stateMng.GetRunningTimeString()
+		if runningTime == "" {
 			runningTime = "Running time not available"
 		}
 		return color.Green.Render(runningTime)

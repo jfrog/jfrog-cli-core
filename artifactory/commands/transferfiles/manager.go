@@ -205,8 +205,8 @@ type producerConsumerWrapper struct {
 }
 
 func newProducerConsumerWrapper() producerConsumerWrapper {
-	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
-	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
+	chunkUploaderProducerConsumer := parallel.NewRunner(GetChunkUploaderThreads(), tasksMaxCapacity, false)
+	chunkBuilderProducerConsumer := parallel.NewRunner(GetChunkBuilderThreads(), tasksMaxCapacity, false)
 	chunkUploaderProducerConsumer.SetFinishedNotification(true)
 	chunkBuilderProducerConsumer.SetFinishedNotification(true)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
@@ -310,7 +310,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 
 // Fill chunk data batch till full. Return if no new chunk data is available.
 func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunk) {
-	for chunksLifeCycleManager.totalChunks < GetThreads() {
+	for chunksLifeCycleManager.totalChunks < GetChunkUploaderThreads() {
 		select {
 		case data := <-uploadChunkChan:
 			currentNodeId := nodeId(data.NodeId)

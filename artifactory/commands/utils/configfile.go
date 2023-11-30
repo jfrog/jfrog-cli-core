@@ -170,6 +170,7 @@ func (configFile *ConfigFile) populateMavenConfigFromFlags(c *cli.Context) {
 	configFile.Deployer.ReleaseRepo = c.String(deploymentReleasesRepo)
 	configFile.Deployer.IncludePatterns = c.String(includePatterns)
 	configFile.Deployer.ExcludePatterns = c.String(excludePatterns)
+	configFile.UseWrapper = c.Bool(useWrapper)
 	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, resolutionSnapshotsRepo, resolutionReleasesRepo,
 		deploymentSnapshotsRepo, deploymentReleasesRepo, includePatterns, excludePatterns)
 }
@@ -273,6 +274,7 @@ func (configFile *ConfigFile) configMaven() error {
 		configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.Local)
 		configFile.setIncludeExcludePatterns()
 	}
+	configFile.UseWrapper = coreutils.AskYesNo("Use Maven wrapper?", true)
 	return nil
 }
 
@@ -317,7 +319,7 @@ func (configFile *ConfigFile) configGradle() error {
 
 func (configFile *ConfigFile) readGradleGlobalConfig() {
 	configFile.UsePlugin = coreutils.AskYesNo("Is the Gradle Artifactory Plugin already applied in the build script?", false)
-	configFile.UseWrapper = coreutils.AskYesNo("Use Gradle wrapper?", false)
+	configFile.UseWrapper = coreutils.AskYesNo("Use Gradle wrapper?", true)
 }
 
 func (configFile *ConfigFile) configTerraform() error {

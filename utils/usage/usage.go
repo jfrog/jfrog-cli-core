@@ -6,11 +6,14 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	ecosysusage "github.com/jfrog/jfrog-client-go/utils/usage"
+	xrayusage "github.com/jfrog/jfrog-client-go/xray/usage"
+
 	"golang.org/x/sync/errgroup"
 )
 
@@ -46,6 +49,7 @@ func NewUsageReporter(productId string, serverDetails *config.ServerDetails) *Us
 		serverDetails:     serverDetails,
 		reportWaitGroup:   new(errgroup.Group),
 		sendToEcosystem:   true,
+		sendToXray:        true,
 		sendToArtifactory: true,
 	}
 }
@@ -80,11 +84,23 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 		log.Debug("Usage info is disabled.")
 		return
 	}
+	if len(features) == 0 {
+		log.Debug(ReportUsagePrefix, "Nothing to send.")
+		return
+	}
 	log.Debug(ReportUsagePrefix, "Sending info...")
 	if ur.sendToEcosystem {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToEcosystem(features...); err != nil {
-				err = fmt.Errorf("ecosystem, %s", err.Error())
+				err = fmt.Errorf("ecosystem, %w", err)
+			}
+			return
+		})
+	}
+	if ur.sendToXray {
+		ur.reportWaitGroup.Go(func() (err error) {
+			if err = ur.reportToXray(features...); err != nil {
+				err = fmt.Errorf("xray, %w", err)
 			}
 			return
 		})
@@ -92,7 +108,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 	if ur.sendToArtifactory {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToArtifactory(features...); err != nil {
-				err = fmt.Errorf("artifactory, %s", err.Error())
+				err = fmt.Errorf("artifactory, %w", err)
 			}
 			return
 		})
@@ -122,18 +138,35 @@ func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error
 	return ecosysusage.SendEcosystemUsageReports(reports...)
 }
 
+func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
+	events := ur.convertAttributesToXrayEvents(features...)
+	if len(events) == 0 {
+		err = errorutils.CheckErrorf("Nothing to send.")
+		return
+	}
+	if ur.serverDetails.XrayUrl == "" {
+		err = errorutils.CheckErrorf("Xray Url is not set.")
+		return
+	}
+	serviceManager, err := xrayutils.CreateXrayServiceManager(ur.serverDetails)
+	if err != nil {
+		return
+	}
+	return xrayusage.SendXrayUsageEvents(*serviceManager, events...)
+}
+
 func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err error) {
+	converted := ur.convertAttributesToArtifactoryFeatures(features...)
+	if len(converted) == 0 {
+		err = errorutils.CheckErrorf("nothing to send")
+		return
+	}
 	if ur.serverDetails.ArtifactoryUrl == "" {
 		err = errorutils.CheckErrorf("Artifactory URL is not set")
 		return
 	}
 	serviceManager, err := utils.CreateServiceManager(ur.serverDetails, -1, 0, false)
 	if err != nil {
-		return
-	}
-	converted := ur.convertAttributesToArtifactoryFeatures(features...)
-	if len(converted) == 0 {
-		err = errorutils.CheckErrorf("nothing to send")
 		return
 	}
 	return usage.ReportUsageToArtifactory(ur.ProductId, serviceManager, converted...)
@@ -160,6 +193,29 @@ func (ur *UsageReporter) convertAttributesToArtifactoryFeatures(reportFeatures .
 			Attributes: convertAttributesToMap(feature),
 		}
 		features = append(features, featureInfo)
+	}
+	return
+}
+
+func (ur *UsageReporter) convertAttributesToXrayEvents(reportFeatures ...ReportFeature) (events []xrayusage.ReportXrayEventData) {
+	for _, feature := range reportFeatures {
+		convertedAttributes := []xrayusage.ReportUsageAttribute{}
+		for _, attribute := range feature.Attributes {
+			convertedAttributes = append(convertedAttributes, xrayusage.ReportUsageAttribute{
+				AttributeName:  attribute.AttributeName,
+				AttributeValue: attribute.AttributeValue,
+			})
+		}
+		if feature.ClientId != "" {
+			// Add clientId as attribute
+			convertedAttributes = append(convertedAttributes, xrayusage.ReportUsageAttribute{
+				AttributeName:  clientIdAttributeName,
+				AttributeValue: feature.ClientId,
+			})
+		}
+		events = append(events, xrayusage.CreateUsageEvent(
+			ur.ProductId, feature.FeatureId, convertedAttributes...,
+		))
 	}
 	return
 }

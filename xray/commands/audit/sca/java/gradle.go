@@ -10,11 +10,9 @@ import (
 	"strings"
 
 	"github.com/jfrog/build-info-go/build"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -22,12 +20,12 @@ import (
 )
 
 const (
-	remoteDepTreePath    = "artifactory/oss-release-local"
-	gradlew              = "gradlew"
-	gradleDepTreeJarFile = "gradle-dep-tree.jar"
-	depTreeInitFile      = "gradledeptree.init"
-	depTreeOutputFile    = "gradledeptree.out"
-	depTreeInitScript    = `initscript {
+	remoteDepTreePath       = "artifactory/oss-release-local"
+	gradlew                 = "gradlew"
+	gradleDepTreeJarFile    = "gradle-dep-tree.jar"
+	gradleDepTreeInitFile   = "gradledeptree.init"
+	gradleDepTreeOutputFile = "gradledeptree.out"
+	gradleDepTreeInitScript = `initscript {
 	repositories { %s
 		mavenCentral()
 	}
@@ -51,30 +49,15 @@ allprojects {
 		}`
 )
 
-//go:embed gradle-dep-tree.jar
+//go:embed resources/gradle-dep-tree.jar
 var gradleDepTreeJar []byte
 
-type depTreeManager struct {
-	server       *config.ServerDetails
-	releasesRepo string
-	depsRepo     string
-	useWrapper   bool
+type gradleDepTreeManager struct {
+	DepTreeManager
 }
 
-func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	manager := &depTreeManager{useWrapper: params.UseWrapper}
-	if params.IgnoreConfigFile {
-		// In case we don't need to use the gradle config file,
-		// use the server and depsRepo values that were usually given from Frogbot
-		manager.depsRepo = params.DepsRepo
-		manager.server = params.Server
-	} else {
-		manager.depsRepo, manager.server, err = getGradleConfig()
-		if err != nil {
-			return
-		}
-	}
-
+func buildGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+	manager := &gradleDepTreeManager{DepTreeManager: NewDepTreeManager(params)}
 	outputFileContent, err := manager.runGradleDepTree()
 	if err != nil {
 		return
@@ -83,47 +66,48 @@ func buildGradleDependencyTree(params *DependencyTreeParams) (dependencyTree []*
 	return
 }
 
-func (dtp *depTreeManager) runGradleDepTree() (outputFileContent []byte, err error) {
+func (gdt *gradleDepTreeManager) runGradleDepTree() ([]byte, error) {
 	// Create the script file in the repository
-	depTreeDir, err := dtp.createDepTreeScriptAndGetDir()
+	depTreeDir, err := gdt.createDepTreeScriptAndGetDir()
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer func() {
 		err = errors.Join(err, fileutils.RemoveTempDir(depTreeDir))
 	}()
 
-	if dtp.useWrapper {
-		dtp.useWrapper, err = isGradleWrapperExist()
+	if gdt.useWrapper {
+		gdt.useWrapper, err = isGradleWrapperExist()
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 
-	return dtp.execGradleDepTree(depTreeDir)
+	return gdt.execGradleDepTree(depTreeDir)
 }
 
-func (dtp *depTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err error) {
+func (gdt *gradleDepTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err error) {
 	tmpDir, err = fileutils.CreateTempDir()
 	if err != nil {
 		return
 	}
-	dtp.releasesRepo, dtp.depsRepo, err = getRemoteRepos(dtp.depsRepo, dtp.server)
+	var releasesRepo string
+	releasesRepo, gdt.depsRepo, err = getRemoteRepos(gdt.depsRepo, gdt.server)
 	if err != nil {
 		return
 	}
 	gradleDepTreeJarPath := filepath.Join(tmpDir, gradleDepTreeJarFile)
-	if err = errorutils.CheckError(os.WriteFile(gradleDepTreeJarPath, gradleDepTreeJar, 0666)); err != nil {
+	if err = errorutils.CheckError(os.WriteFile(gradleDepTreeJarPath, gradleDepTreeJar, 0600)); err != nil {
 		return
 	}
 	gradleDepTreeJarPath = ioutils.DoubleWinPathSeparator(gradleDepTreeJarPath)
 
-	depTreeInitScript := fmt.Sprintf(depTreeInitScript, dtp.releasesRepo, gradleDepTreeJarPath, dtp.depsRepo)
-	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, depTreeInitFile), []byte(depTreeInitScript), 0666))
+	depTreeInitScript := fmt.Sprintf(gradleDepTreeInitScript, releasesRepo, gradleDepTreeJarPath, gdt.depsRepo)
+	return tmpDir, errorutils.CheckError(os.WriteFile(filepath.Join(tmpDir, gradleDepTreeInitFile), []byte(depTreeInitScript), 0666))
 }
 
 // getRemoteRepos constructs the sections of Artifactory's remote repositories in the gradle-dep-tree init script.
-// depsRemoteRepo - name of the remote repository that proxies the dependencies server, e.g. maven central.
+// depsRemoteRepo - name of the remote repository that proxies the relevant registry, e.g. maven central.
 // server - the Artifactory server details on which the repositories reside in.
 // Returns the constructed sections.
 func getRemoteRepos(depsRepo string, server *config.ServerDetails) (string, string, error) {
@@ -152,21 +136,21 @@ func constructReleasesRemoteRepo() (string, error) {
 	}
 
 	releasesPath := fmt.Sprintf("%s/%s", repoName, remoteDepTreePath)
-	log.Debug("The `gradledeptree` will be resolved from", repoName)
+	log.Debug("The `"+gradleDepTreeJarFile+"` will be resolved from", repoName)
 	return getDepTreeArtifactoryRepository(releasesPath, releasesServer)
 }
 
-func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {
-	gradleExecPath, err := build.GetGradleExecPath(dtp.useWrapper)
+func (gdt *gradleDepTreeManager) execGradleDepTree(depTreeDir string) (outputFileContent []byte, err error) {
+	gradleExecPath, err := build.GetGradleExecPath(gdt.useWrapper)
 	if err != nil {
 		err = errorutils.CheckError(err)
 		return
 	}
 
-	outputFilePath := filepath.Join(depTreeDir, depTreeOutputFile)
+	outputFilePath := filepath.Join(depTreeDir, gradleDepTreeOutputFile)
 	tasks := []string{
 		"clean",
-		"generateDepTrees", "-I", filepath.Join(depTreeDir, depTreeInitFile),
+		"generateDepTrees", "-I", filepath.Join(depTreeDir, gradleDepTreeInitFile),
 		"-q",
 		fmt.Sprintf("-Dcom.jfrog.depsTreeOutputFile=%s", outputFilePath),
 		"-Dcom.jfrog.includeAllBuildFiles=true"}
@@ -175,10 +159,7 @@ func (dtp *depTreeManager) execGradleDepTree(depTreeDir string) (outputFileConte
 		return nil, errorutils.CheckErrorf("error running gradle-dep-tree: %s\n%s", err.Error(), string(output))
 	}
 	defer func() {
-		e := errorutils.CheckError(os.Remove(outputFilePath))
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, errorutils.CheckError(os.Remove(outputFilePath)))
 	}()
 
 	outputFileContent, err = os.ReadFile(outputFilePath)
@@ -190,49 +171,17 @@ func getDepTreeArtifactoryRepository(remoteRepo string, server *config.ServerDet
 	if remoteRepo == "" || server.IsEmpty() {
 		return "", nil
 	}
-	pass := server.Password
-	user := server.User
-	if server.AccessToken != "" {
-		pass = server.AccessToken
-		if user == "" {
-			user = auth.ExtractUsernameFromAccessToken(pass)
-		}
+	username, password, err := getArtifactoryAuthFromServer(server)
+	if err != nil {
+		return "", err
 	}
-	if pass == "" && user == "" {
-		errString := "either username/password or access token must be set for "
-		if server.Url != "" {
-			errString += server.Url
-		} else {
-			errString += server.ArtifactoryUrl
-		}
-		return "", errors.New(errString)
-	}
+
 	log.Debug("The project dependencies will be resolved from", server.ArtifactoryUrl, "from the", remoteRepo, "repository")
 	return fmt.Sprintf(artifactoryRepository,
 		strings.TrimSuffix(server.ArtifactoryUrl, "/"),
 		remoteRepo,
-		user,
-		pass), nil
-}
-
-// getGradleConfig the remote repository and server details defined in the .jfrog/projects/gradle.yaml file, if configured.
-func getGradleConfig() (string, *config.ServerDetails, error) {
-	var exists bool
-	configFilePath, exists, err := utils.GetProjectConfFilePath(utils.Gradle)
-	if err != nil || !exists {
-		return "", nil, err
-	}
-	log.Debug("Using resolver config from", configFilePath)
-	configContent, err := utils.ReadConfigFile(configFilePath, utils.YAML)
-	if err != nil {
-		return "", nil, err
-	}
-	var repository string
-	if configContent.IsSet("resolver.repo") {
-		repository = fmt.Sprint(configContent.Get("resolver.repo"))
-	}
-	server, err := utils.GetServerDetails(configContent)
-	return repository, server, err
+		username,
+		password), nil
 }
 
 // This function assumes that the Gradle wrapper is in the root directory.

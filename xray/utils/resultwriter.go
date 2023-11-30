@@ -52,10 +52,6 @@ type ResultsWriter struct {
 	isMultipleRoots bool
 	// PrintExtended, If true, show extended results.
 	printExtended bool
-	// IncludeSecrets, If true, also include secrets results as part of the output.
-	includeSecrets bool
-	// WriteFullScanResults, If true, write the full scan results to a file.
-	writeFullScanResults bool
 	// The scanType (binary,dependency)
 	scanType services.ScanType
 	// Messages - Option array of messages, to be displayed if the format is Table
@@ -63,7 +59,7 @@ type ResultsWriter struct {
 }
 
 func NewResultsWriter(scanResults *Results) *ResultsWriter {
-	return &ResultsWriter{results: scanResults, includeSecrets: true, writeFullScanResults: true}
+	return &ResultsWriter{results: scanResults}
 }
 
 func (rw *ResultsWriter) SetOutputFormat(format OutputFormat) *ResultsWriter {
@@ -91,11 +87,6 @@ func (rw *ResultsWriter) SetIncludeLicenses(licenses bool) *ResultsWriter {
 	return rw
 }
 
-func (rw *ResultsWriter) SetIncludeSecrets(includeSecrets bool) *ResultsWriter {
-	rw.includeSecrets = includeSecrets
-	return rw
-}
-
 func (rw *ResultsWriter) SetIsMultipleRootProject(isMultipleRootProject bool) *ResultsWriter {
 	rw.isMultipleRoots = isMultipleRootProject
 	return rw
@@ -109,11 +100,7 @@ func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWrite
 func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 	rw.messages = messages
 	return rw
-}
 
-func (rw *ResultsWriter) SetWriteFullScanResults(writeFullScanResults bool) *ResultsWriter {
-	rw.writeFullScanResults = writeFullScanResults
-	return rw
 }
 
 // PrintScanResults prints the scan results in the specified format.
@@ -138,7 +125,7 @@ func (rw *ResultsWriter) PrintScanResults() error {
 func (rw *ResultsWriter) printScanResultsTables() (err error) {
 	printMessages(rw.messages)
 	violations, vulnerabilities, licenses := SplitScanResults(rw.results.ScaResults)
-	if rw.writeFullScanResults && rw.results.IsIssuesFound() {
+	if rw.results.IsIssuesFound() {
 		var resultsPath string
 		if resultsPath, err = writeJsonResults(rw.results); err != nil {
 			return
@@ -159,10 +146,8 @@ func (rw *ResultsWriter) printScanResultsTables() (err error) {
 			return
 		}
 	}
-	if rw.includeSecrets {
-		if err = PrintSecretsTable(rw.results.ExtendedScanResults.SecretsScanResults, rw.results.ExtendedScanResults.EntitledForJas); err != nil {
-			return
-		}
+	if err = PrintSecretsTable(rw.results.ExtendedScanResults.SecretsScanResults, rw.results.ExtendedScanResults.EntitledForJas); err != nil {
+		return
 	}
 	if err = PrintIacTable(rw.results.ExtendedScanResults.IacScanResults, rw.results.ExtendedScanResults.EntitledForJas); err != nil {
 		return

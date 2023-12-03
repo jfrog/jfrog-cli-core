@@ -133,7 +133,11 @@ func (asm *ApplicabilityScanManager) Run(module jfrogappsconfig.Module) (err err
 }
 
 func (asm *ApplicabilityScanManager) shouldRunApplicabilityScan(technologies []coreutils.Technology) bool {
-	return coreutils.ContainsApplicabilityScannableTech(technologies)
+	return asm.cvesExists() && coreutils.ContainsApplicabilityScannableTech(technologies)
+}
+
+func (asm *ApplicabilityScanManager) cvesExists() bool {
+	return len(asm.indirectDependenciesCves) > 0 || len(asm.directDependenciesCves) > 0
 }
 
 type applicabilityScanConfig struct {

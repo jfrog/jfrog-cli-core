@@ -72,8 +72,8 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 
 // Calculate the scans to preform
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
-	recursive := len(currentWorkingDir) > 0
-	for _, requestedDirectory := range getRequestedDirectoriesToScan(currentWorkingDir, params) {
+	requestedDirectories, recursive := getRequestedDirectoriesToScan(currentWorkingDir, params)
+	for _, requestedDirectory := range requestedDirectories {
 		// Detect descriptors and technologies in the requested directory.
 		techToWorkingDirs, err := coreutils.DetectTechnologiesDescriptors(requestedDirectory, recursive, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, recursive))
 		if err != nil {
@@ -116,15 +116,15 @@ func getExcludePattern(params *AuditParams, recursive bool) string {
 	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, recursive)
 }
 
-func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams) []string {
+func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams) ([]string, bool) {
 	workingDirs := datastructures.MakeSet[string]()
 	for _, wd := range params.workingDirs {
 		workingDirs.Add(wd)
 	}
-	if workingDirs.Size() == 0 {
-		workingDirs.Add(currentWorkingDir)
+	if len(params.workingDirs) == 0 {
+		return []string{currentWorkingDir}, true
 	}
-	return workingDirs.ToSlice()
+	return workingDirs.ToSlice(), false
 }
 
 // Preform the SCA scan for the given scan information.

@@ -166,6 +166,43 @@ func TestGetExcludePattern(t *testing.T) {
 	}
 }
 
+func TestGetRequestedDirectoriesToScan(t *testing.T) {
+	tests := []struct {
+		name              string
+		cwd               string
+		params            func() *AuditParams
+		expectedRecursive bool
+		expectedDirs      []string
+	}{
+		{
+			name: "Test specific directories",
+			cwd:  "/tmp",
+			params: func() *AuditParams {
+				param := NewAuditParams()
+				param.SetWorkingDirs([]string{"/tmp/dir1", "/tmp/dir2"})
+				return param
+			},
+			expectedRecursive: false,
+			expectedDirs:      []string{"/tmp/dir1", "/tmp/dir2"},
+		},
+		{
+			name:              "Test recursive",
+			cwd:               "/tmp",
+			params:            NewAuditParams,
+			expectedRecursive: true,
+			expectedDirs:      []string{"/tmp"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			dirs, recursive := getRequestedDirectoriesToScan(test.cwd, test.params())
+			assert.ElementsMatch(t, test.expectedDirs, dirs)
+			assert.Equal(t, test.expectedRecursive, recursive)
+		})
+	}
+}
+
 func TestGetScaScansToPreform(t *testing.T) {
 
 	dir, cleanUp := createTestDir(t)

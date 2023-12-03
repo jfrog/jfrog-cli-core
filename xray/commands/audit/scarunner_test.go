@@ -176,21 +176,21 @@ func TestGetRequestedDirectoriesToScan(t *testing.T) {
 	}{
 		{
 			name: "Test specific directories",
-			cwd:  "/tmp",
+			cwd:  "tmp",
 			params: func() *AuditParams {
 				param := NewAuditParams()
-				param.SetWorkingDirs([]string{"/tmp/dir1", "/tmp/dir2"})
+				param.SetWorkingDirs([]string{filepath.Join("tmp", "dir1"), filepath.Join("tmp", "dir2")})
 				return param
 			},
 			expectedRecursive: false,
-			expectedDirs:      []string{"/tmp/dir1", "/tmp/dir2"},
+			expectedDirs:      []string{filepath.Join("tmp", "dir1"), filepath.Join("tmp", "dir2")},
 		},
 		{
 			name:              "Test recursive",
-			cwd:               "/tmp",
+			cwd:               "tmp",
 			params:            NewAuditParams,
 			expectedRecursive: true,
-			expectedDirs:      []string{"/tmp"},
+			expectedDirs:      []string{"tmp"},
 		},
 	}
 

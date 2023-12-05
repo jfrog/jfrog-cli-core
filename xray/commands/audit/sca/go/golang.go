@@ -1,15 +1,16 @@
 package _go
 
 import (
-	"github.com/jfrog/build-info-go/utils"
+	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"os"
-	"strings"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"os"
+	"strings"
 )
 
 const (
@@ -17,11 +18,19 @@ const (
 	goSourceCodePrefix      = "github.com/golang/go:v"
 )
 
-func BuildDependencyTree(server *config.ServerDetails, remoteGoRepo string) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func BuildDependencyTree(params utils.AuditParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
 	}
+
+	server, err := params.ServerDetails()
+	if err != nil {
+		err = fmt.Errorf("failed while getting server details: %s", err.Error())
+		return
+	}
+
+	remoteGoRepo := params.DepsRepo()
 	if remoteGoRepo != "" {
 		if err = setGoProxy(server, remoteGoRepo); err != nil {
 			return
@@ -94,7 +103,7 @@ func populateGoDependencyTree(currNode *xrayUtils.GraphNode, dependenciesGraph m
 }
 
 func getGoVersionAsDependency() (*xrayUtils.GraphNode, error) {
-	goVersion, err := utils.GetParsedGoVersion()
+	goVersion, err := biutils.GetParsedGoVersion()
 	if err != nil {
 		return nil, err
 	}

@@ -172,6 +172,8 @@ func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSiz
 // Set relevant information of files and storage we need to transfer in phase3
 func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSize int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
+		state.CurrentRepo.Phase3Info.TransferredUnits = 0
+		state.CurrentRepo.Phase3Info.TransferredSizeBytes = 0
 		state.CurrentRepo.Phase3Info.TotalSizeBytes = totalSize
 		state.CurrentRepo.Phase3Info.TotalUnits = filesNumber
 		return nil

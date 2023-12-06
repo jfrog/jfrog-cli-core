@@ -3,6 +3,8 @@ package java
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -224,6 +226,33 @@ func TestRunProjectsCmd(t *testing.T) {
 	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
 	output, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
-	pomPathOccurrences := strings.Count(string(output), "pomPath")
+	pomPathOccurrences := strings.Count(output, "pomPath")
 	assert.Equal(t, 4, pomPathOccurrences)
+}
+
+func TestRemoveMavenConfig(t *testing.T) {
+	tmpDir := t.TempDir()
+	currentDir, err := os.Getwd()
+	assert.NoError(t, err)
+	restoreDir := tests.ChangeDirWithCallback(t, currentDir, tmpDir)
+	defer restoreDir()
+
+	// No maven.config exists
+	restoreFunc, err := removeMavenConfig()
+	assert.Nil(t, restoreFunc)
+	assert.Nil(t, err)
+
+	// Create maven.config
+	err = fileutils.CreateDirIfNotExist(".mvn")
+	assert.NoError(t, err)
+	_, err = os.Create(mavenConfigPath)
+	assert.NoError(t, err)
+	restoreFunc, err = removeMavenConfig()
+	assert.NoError(t, err)
+	_, err = os.Stat(mavenConfigPath)
+	assert.Error(t, err)
+	err = restoreFunc()
+	assert.NoError(t, err)
+	_, err = os.Stat(mavenConfigPath)
+	assert.NoError(t, err)
 }

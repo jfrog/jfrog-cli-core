@@ -126,7 +126,7 @@ func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd,
 		err = errors.Join(err, yarn.RestoreConfigurationsFromBackup(backupEnvMap, restoreYarnrcFunc))
 	}()
 
-	log.Info("Resolving dependencies from", serverDetails.Url, "from repo '", depsRepo, "'")
+	log.Info(fmt.Sprintf("Resolving dependencies from '%s' from repo '%s'", serverDetails.Url, depsRepo))
 	return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
 }
 

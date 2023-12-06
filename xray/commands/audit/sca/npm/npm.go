@@ -84,6 +84,7 @@ func configNpmResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFu
 		return
 	}
 	restoreNpmrcFunc = npmCmd.RestoreNpmrcFunc()
+	log.Info("Resolving dependencies from", serverDetails.Url, "from repo '", depsRepo, "'")
 	return
 }
 

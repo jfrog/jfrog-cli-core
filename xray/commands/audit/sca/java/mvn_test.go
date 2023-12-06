@@ -224,6 +224,6 @@ func TestRunProjectsCmd(t *testing.T) {
 	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
 	output, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
-	pomPathOccurrences := strings.Count(string(output), "pomPath")
+	pomPathOccurrences := strings.Count(output, "pomPath")
 	assert.Equal(t, 4, pomPathOccurrences)
 }

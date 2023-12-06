@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -57,19 +58,19 @@ func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDe
 
 func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
-	outputFileContent, err := manager.RunMavenDepTree()
+	outputFilePaths, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
 	}
-	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFileContent)
+	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFilePaths)
 	return
 }
 
-func (mdt *MavenDepTreeManager) RunMavenDepTree() ([]byte, error) {
+func (mdt *MavenDepTreeManager) RunMavenDepTree() (string, error) {
 	// Create a temp directory for all the files that are required for the maven-dep-tree run
 	depTreeExecDir, err := fileutils.CreateTempDir()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer func() {
 		err = errors.Join(err, fileutils.RemoveTempDir(depTreeExecDir))
@@ -78,13 +79,18 @@ func (mdt *MavenDepTreeManager) RunMavenDepTree() ([]byte, error) {
 	// Create a settings.xml file that sets the dependency resolution from the given server and repository
 	if mdt.depsRepo != "" {
 		if err = mdt.createSettingsXmlWithConfiguredArtifactory(depTreeExecDir); err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
-		return nil, err
+		return "", err
 	}
-	return mdt.execMavenDepTree(depTreeExecDir)
+
+	depTreeOutput, err := mdt.execMavenDepTree(depTreeExecDir)
+	if err != nil {
+		return "", err
+	}
+	return depTreeOutput, nil
 }
 
 func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string) error {
@@ -104,28 +110,34 @@ func GetMavenPluginInstallationGoals(pluginPath string) []string {
 	return []string{"org.apache.maven.plugins:maven-install-plugin:3.1.1:install-file", "-Dfile=" + pluginPath, "-B"}
 }
 
-func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
+func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) (string, error) {
 	if mdt.cmdName == Tree {
 		return mdt.runTreeCmd(depTreeExecDir)
 	}
 	return mdt.runProjectsCmd()
 }
 
-func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error) {
+func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) (string, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath, "-B"}
 	if _, err := mdt.RunMvnCmd(goals); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	mavenDepTreeOutput, err := os.ReadFile(mavenDepTreePath)
-	err = errorutils.CheckError(err)
-	return mavenDepTreeOutput, err
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return string(mavenDepTreeOutput), nil
 }
 
-func (mdt *MavenDepTreeManager) runProjectsCmd() ([]byte, error) {
+func (mdt *MavenDepTreeManager) runProjectsCmd() (string, error) {
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q"}
-	return mdt.RunMvnCmd(goals)
+	output, err := mdt.RunMvnCmd(goals)
+	if err != nil {
+		return "", err
+	}
+	return coreutils.GetAllJsonsInString(string(output)), nil
 }
 
 func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) ([]byte, error) {

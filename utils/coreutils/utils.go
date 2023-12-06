@@ -628,3 +628,29 @@ func SetPermissionsRecursively(dirPath string, mode os.FileMode) error {
 	}
 	return nil
 }
+
+// GetAllJsonsInString function extracts valid JSON objects from a provided string input.
+// It identifies JSON structures within the input string and returns them string with these objects separated by newlines.
+// For example, for the input "aaa { 'key': 'value' } bbb" the return value is a slice containing "{ 'key': 'value' }"
+func GetAllJsonsInString(input string) string {
+	var result strings.Builder
+	var depth int
+	var startIndex int
+
+	for i, char := range input {
+		if char == '{' {
+			if depth == 0 {
+				startIndex = i
+			}
+			depth++
+		} else if char == '}' {
+			depth--
+			if depth == 0 {
+				result.WriteString(input[startIndex : i+1])
+				result.WriteString("\n")
+			}
+		}
+	}
+
+	return strings.TrimSuffix(result.String(), "\n")
+}

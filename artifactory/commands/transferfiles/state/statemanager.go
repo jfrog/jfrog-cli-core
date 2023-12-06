@@ -136,18 +136,19 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted() error {
 // Increasing Transferred Diff files (modified files) and SizeByBytes value in suitable repository progress state
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	err := ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase1Info.TransferredSizeBytes += chunkTotalSizeInBytes
-		state.CurrentRepo.Phase1Info.TransferredUnits += chunkTotalFiles
+		AtomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredSizeBytes, chunkTotalSizeInBytes, true)
+		AtomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredUnits, chunkTotalFiles, true)
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.OverallTransfer.TransferredSizeBytes += chunkTotalSizeInBytes
-		transferRunStatus.OverallTransfer.TransferredUnits += chunkTotalFiles
+		AtomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredSizeBytes, chunkTotalSizeInBytes, true)
+		AtomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredUnits, chunkTotalFiles, true)
+
 		if transferRunStatus.BuildInfoRepo {
-			transferRunStatus.OverallBiFiles.TransferredUnits += chunkTotalFiles
+			AtomicallyAddInt64(&transferRunStatus.OverallBiFiles.TransferredUnits, chunkTotalFiles, true)
 		}
 		return nil
 	})
@@ -155,16 +156,16 @@ func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles
 
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase2(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase2Info.TransferredSizeBytes += chunkTotalSizeInBytes
-		state.CurrentRepo.Phase2Info.TransferredUnits += chunkTotalFiles
+		AtomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredSizeBytes, chunkTotalSizeInBytes, true)
+		AtomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredUnits, chunkTotalFiles, true)
 		return nil
 	})
 }
 
 func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSize int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase2Info.TotalSizeBytes += totalSize
-		state.CurrentRepo.Phase2Info.TotalUnits += filesNumber
+		AtomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalSizeBytes, totalSize, true)
+		AtomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalUnits, filesNumber, true)
 		return nil
 	})
 }
@@ -172,8 +173,8 @@ func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSiz
 // Set relevant information of files and storage we need to transfer in phase3
 func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSize int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase3Info.TotalSizeBytes = totalSize
-		state.CurrentRepo.Phase3Info.TotalUnits = filesNumber
+		AtomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalSizeBytes, totalSize, true)
+		AtomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalUnits, filesNumber, true)
 		return nil
 	})
 }
@@ -181,8 +182,8 @@ func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSiz
 // Increase transferred storage and files in phase 3
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase3(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase3Info.TransferredSizeBytes += chunkTotalSizeInBytes
-		state.CurrentRepo.Phase3Info.TransferredUnits += chunkTotalFiles
+		AtomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredSizeBytes, chunkTotalSizeInBytes, true)
+		AtomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredUnits, chunkTotalFiles, true)
 		return nil
 	})
 }
@@ -288,29 +289,21 @@ func (ts *TransferStateManager) GetDiffHandlingRange() (start, end time.Time, er
 
 func (ts *TransferStateManager) IncVisitedFolders() error {
 	return ts.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.VisitedFolders++
+		AtomicallyAddUint64(&transferRunStatus.VisitedFolders, 1, true)
 		return nil
 	})
 }
 
 func (ts *TransferStateManager) ChangeDelayedFilesCountBy(count uint64, increase bool) error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		if increase {
-			transferRunStatus.DelayedFiles += count
-		} else {
-			transferRunStatus.DelayedFiles -= count
-		}
+		AtomicallyAddUint64(&transferRunStatus.DelayedFiles, count, increase)
 		return nil
 	})
 }
 
-func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint, increase bool) error {
+func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint64, increase bool) error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		if increase {
-			transferRunStatus.TransferFailures += count
-		} else {
-			transferRunStatus.TransferFailures -= count
-		}
+		AtomicallyAddUint64(&transferRunStatus.TransferFailures, count, increase)
 		return nil
 	})
 }

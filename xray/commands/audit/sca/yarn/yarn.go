@@ -130,21 +130,6 @@ func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd,
 	return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
 }
 
-/*
-// Verifies the project's installation status by examining the presence of the yarn.lock file.
-// Notice!: If alterations are made manually in the package.json file, it necessitates a manual update to the yarn.lock file as well.
-func isYarnProjectInstalled(currentDir string) (projectInstalled bool, err error) {
-	yarnLockExits, err := fileutils.IsFileExists(filepath.Join(currentDir, yarn.YarnLockFileName), false)
-	if err != nil {
-		err = fmt.Errorf("failed to check the existence of '%s' file: %s", filepath.Join(currentDir, yarn.YarnLockFileName), err.Error())
-		return
-	}
-	projectInstalled = yarnLockExits
-	return
-}
-
-*/
-
 func isInstallRequired(currentDir string, installCommandArgs []string) (installRequired bool, err error) {
 	yarnLockExits, err := fileutils.IsFileExists(filepath.Join(currentDir, yarn.YarnLockFileName), false)
 	if err != nil {

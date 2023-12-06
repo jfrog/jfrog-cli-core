@@ -50,13 +50,12 @@ func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils
 		return
 	}
 
-	projectInstalled, err := isYarnProjectInstalled(currentDir)
+	installRequired, err := isInstallRequired(currentDir, params.InstallCommandArgs())
 	if err != nil {
 		return
 	}
 
-	if !projectInstalled || len(params.InstallCommandArgs()) != 0 {
-		// In case project is not "installed" or in case the user has provided an 'install' command to run
+	if installRequired {
 		err = configureYarnResolutionServerAndRunInstall(params, currentDir, executablePath)
 		if err != nil {
 			err = fmt.Errorf("failed to configure an Artifactory resolution server or running and install command: %s", err.Error())
@@ -127,18 +126,22 @@ func configureYarnResolutionServerAndRunInstall(params utils.AuditParams, curWd,
 		err = errors.Join(err, yarn.RestoreConfigurationsFromBackup(backupEnvMap, restoreYarnrcFunc))
 	}()
 
+	log.Info(fmt.Sprintf("Resolving dependencies from '%s' from repo '%s'", serverDetails.Url, depsRepo))
 	return runYarnInstallAccordingToVersion(curWd, yarnExecPath, params.InstallCommandArgs())
 }
 
-// Verifies the project's installation status by examining the presence of the yarn.lock file.
-// Notice!: If alterations are made manually in the package.json file, it necessitates a manual update to the yarn.lock file as well.
-func isYarnProjectInstalled(currentDir string) (projectInstalled bool, err error) {
+func isInstallRequired(currentDir string, installCommandArgs []string) (installRequired bool, err error) {
 	yarnLockExits, err := fileutils.IsFileExists(filepath.Join(currentDir, yarn.YarnLockFileName), false)
 	if err != nil {
 		err = fmt.Errorf("failed to check the existence of '%s' file: %s", filepath.Join(currentDir, yarn.YarnLockFileName), err.Error())
 		return
 	}
-	projectInstalled = yarnLockExits
+
+	// We verify the project's installation status by examining the presence of the yarn.lock file and the presence of an installation command provided by the user.
+	// Notice!: If alterations are made manually in the package.json file, it necessitates a manual update to the yarn.lock file as well.
+	if len(installCommandArgs) > 0 || !yarnLockExits {
+		installRequired = true
+	}
 	return
 }
 

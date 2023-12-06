@@ -113,7 +113,7 @@ func runDotnetRestoreAndLoadSolution(params utils.AuditParams, originalWd string
 			return
 		}
 
-		log.Info("Resolving dependencies from", serverDetails.Url, "from repo '", depsRepo, "'")
+		log.Info(fmt.Sprintf("Resolving dependencies from '%s' from repo '%s'", serverDetails.Url, depsRepo))
 
 		var configFile *os.File
 		configFile, err = dotnet.InitNewConfig(tmpWd, depsRepo, serverDetails, false)

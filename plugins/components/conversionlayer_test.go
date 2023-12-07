@@ -9,12 +9,6 @@ import (
 )
 
 func TestCreateCommandUsages(t *testing.T) {
-	// TODO: Add support for arguments that can be either mandatory or changed to be used with a flag instead (spec flag for pattern arg).
-	// TODO: More than one arg can be changed with a single flag (see move)
-	// TODO: usage can be specified not base on args (const arg as cmd with their opts) (see ocstartbuild)
-	// TODO: Arguments that can be optional
-	// added support for optional arguments (see download) use [] and not <>.
-
 	appNameSpace := "test-app"
 	cmdName := "test-command"
 	expectedPrefix := fmt.Sprintf("%s %s %s", coreutils.GetCliExecutableName(), appNameSpace, cmdName)

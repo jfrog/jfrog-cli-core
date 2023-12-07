@@ -2,33 +2,130 @@ package components
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
-func TestCreateCommandUsage(t *testing.T) {
-	cmd := Command{
-		Name: "test-command",
-		Flags: []Flag{
-			StringFlag{
-				Name: "dummyFlag",
+func TestCreateCommandUsages(t *testing.T) {
+	// TODO: Add support for arguments that can be either mandatory or changed to be used with a flag instead (spec flag for pattern arg).
+	// TODO: More than one arg can be changed with a single flag (see move)
+	// TODO: usage can be specified not base on args (const arg as cmd with their opts) (see ocstartbuild)
+	// TODO: Arguments that can be optional
+	// added support for optional arguments (see download) use [] and not <>.
+
+	appNameSpace := "test-app"
+	cmdName := "test-command"
+	expectedPrefix := fmt.Sprintf("%s %s %s", coreutils.GetCliExecutableName(), appNameSpace, cmdName)
+
+	optFlag := BoolFlag{Name: "dummyFlag"}
+	optStrFlag := StringFlag{Name: "optFlag", ValueAlias: "alias"}
+	strFlag := StringFlag{Name: "flag", Mandatory: true}
+
+	override := []string{"usage override", "usage override 2", "usage override 3"}
+	expectedOverride := []string{
+		fmt.Sprintf("%s %s", expectedPrefix, "usage override"),
+		fmt.Sprintf("%s %s", expectedPrefix, "usage override 2"),
+		fmt.Sprintf("%s %s", expectedPrefix, "usage override 3"),
+	}
+
+	tests := []struct {
+		name        string
+		cmd         Command
+		stringFlags map[string]StringFlag
+		expected    []string
+		expectErr   bool
+	}{
+		{
+			name:     "no flags, no args",
+			cmd:      Command{Name: cmdName},
+			expected: []string{expectedPrefix},
+		},
+		{
+			name:     "one optional flag, no args",
+			cmd:      Command{Name: cmdName, Flags: []Flag{optFlag}},
+			expected: []string{fmt.Sprintf("%s [command options]", expectedPrefix)},
+		},
+		{
+			name:        "one mandatory flag, no args",
+			cmd:         Command{Name: cmdName, Flags: []Flag{strFlag}},
+			stringFlags: map[string]StringFlag{strFlag.Name: strFlag},
+			expected:    []string{fmt.Sprintf("%s --%s=<value>", expectedPrefix, strFlag.Name)},
+		},
+		{
+			name:        "multiple flags, no args",
+			cmd:         Command{Name: cmdName, Flags: []Flag{strFlag, optStrFlag, optFlag}},
+			stringFlags: map[string]StringFlag{strFlag.Name: strFlag, optStrFlag.Name: optStrFlag},
+			expected:    []string{fmt.Sprintf("%s [command options] --%s=<value>", expectedPrefix, strFlag.Name)},
+		},
+		{
+			name:     "no flags, mandatory args",
+			cmd:      Command{Name: cmdName, Arguments: []Argument{{Name: "first argument"}, {Name: "second"}}},
+			expected: []string{fmt.Sprintf("%s <%s> <%s>", expectedPrefix, "first argument", "second")},
+		},
+		{
+			name:     "no flags, one optional arg",
+			cmd:      Command{Name: cmdName, Arguments: []Argument{{Name: "first argument"}, {Name: "second", Optional: true}}},
+			expected: []string{fmt.Sprintf("%s <%s> [%s]", expectedPrefix, "first argument", "second")},
+		},
+		{
+			name: "with flag and args with replace",
+			cmd: Command{
+				Name:      cmdName,
+				Flags:     []Flag{optStrFlag},
+				Arguments: []Argument{{Name: "first argument"}, {Name: "second", ReplaceWithFlag: optStrFlag.Name}, {Name: "third", Optional: true, ReplaceWithFlag: optStrFlag.Name}},
+			},
+			stringFlags: map[string]StringFlag{optStrFlag.Name: optStrFlag},
+			expected: []string{
+				fmt.Sprintf("%s [command options] <%s> <%s> [%s]", expectedPrefix, "first argument", "second", "third"),
+				fmt.Sprintf("%s --%s=<%s> <%s>", expectedPrefix, optStrFlag.Name, optStrFlag.ValueAlias, "first argument"),
 			},
 		},
-		Arguments: []Argument{
-			{
-				Name:        "first argument",
-				Description: "this is the first argument.",
+		{
+			name:      "replacement error",
+			cmd:       Command{Name: cmdName, Arguments: []Argument{{Name: "first argument"}, {Name: "second", ReplaceWithFlag: "not-exist"}}},
+			expected:  []string{},
+			expectErr: true,
+		},
+		{
+			name: "with special usage cases",
+			cmd: Command{
+				Name:         cmdName,
+				Flags:        []Flag{optStrFlag, optFlag},
+				Arguments:    []Argument{{Name: "first argument"}, {Name: "second", ReplaceWithFlag: optStrFlag.Name}},
+				UsageOptions: &UsageOptions{Usage: override},
 			},
-			{
-				Name:        "second",
-				Description: "this is the second.",
+			stringFlags: map[string]StringFlag{optStrFlag.Name: optStrFlag},
+			expected: append(expectedOverride,
+				fmt.Sprintf("%s [command options] <%s> <%s>", expectedPrefix, "first argument", "second"),
+				fmt.Sprintf("%s [command options] --%s=<%s> <%s>", expectedPrefix, optStrFlag.Name, optStrFlag.ValueAlias, "first argument"),
+			),
+		},
+		{
+			name: "with special usage cases, override",
+			cmd: Command{
+				Name:         "test-command",
+				Flags:        []Flag{strFlag, optStrFlag, optFlag},
+				Arguments:    []Argument{{Name: "first argument"}, {Name: "second", ReplaceWithFlag: optStrFlag.Name}},
+				UsageOptions: &UsageOptions{Usage: override, ReplaceAutoGeneratedUsage: true},
 			},
+			stringFlags: map[string]StringFlag{optStrFlag.Name: optStrFlag, strFlag.Name: strFlag},
+			expected:    expectedOverride,
 		},
 	}
-	appName := "test-app"
-	expected := fmt.Sprintf("%s %s %s [command options] <%s> <%s>", coreutils.GetCliExecutableName(), appName, cmd.Name, cmd.Arguments[0].Name, cmd.Arguments[1].Name)
-	assert.Equal(t, createCommandUsage(cmd, appName), expected)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			usage, err := createCommandUsages(test.cmd, test.stringFlags, appNameSpace)
+			if test.expectErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.ElementsMatch(t, test.expected, usage)
+			}
+		})
+	}
 }
 
 func TestCreateArgumentsSummary(t *testing.T) {
@@ -40,6 +137,7 @@ func TestCreateArgumentsSummary(t *testing.T) {
 			},
 			{
 				Name:        "second",
+				Optional:    true,
 				Description: "this is the second.",
 			},
 		},
@@ -48,7 +146,7 @@ func TestCreateArgumentsSummary(t *testing.T) {
 		`	first argument
 		this is the first argument.
 
-	second
+	second [Optional]
 		this is the second.
 `
 	assert.Equal(t, createArgumentsSummary(cmd), expected)
@@ -100,12 +198,16 @@ func (f invalidFlag) GetDescription() string {
 	return f.Usage
 }
 
+func (f invalidFlag) IsMandatory() bool {
+	return false
+}
+
 func TestConvertByTypeFailWithInvalidFlag(t *testing.T) {
 	invalid := invalidFlag{
 		Name:  "invalid",
 		Usage: "",
 	}
-	_, err := convertByType(invalid)
+	_, _, err := convertByType(invalid)
 	assert.Error(t, err)
 }
 
@@ -115,23 +217,22 @@ func TestConvertStringFlagDefault(t *testing.T) {
 		Description:  "This is how you use it.",
 		DefaultValue: "def",
 	}
-	converted, err := convertByType(f)
-	assert.NoError(t, err)
-	if err != nil {
+	converted, pointerF, err := convertByType(f)
+	if assert.NoError(t, err) {
 		return
 	}
+	assert.Equal(t, pointerF, &f)
 
 	expected := "--string-flag  \t[Default: def] This is how you use it."
 	assert.Equal(t, converted.String(), expected)
 
 	// Verify that when both Default and Mandatory are passed, only Default is shown.
 	f.Mandatory = true
-	converted, err = convertByType(f)
-	assert.NoError(t, err)
-	if err != nil {
+	converted, pointerF, err = convertByType(f)
+	if assert.NoError(t, err) {
 		return
 	}
-
+	assert.Equal(t, pointerF, &f)
 	assert.Equal(t, converted.String(), expected)
 }
 
@@ -141,22 +242,21 @@ func TestConvertStringFlagMandatory(t *testing.T) {
 		Description: "This is how you use it.",
 		Mandatory:   true,
 	}
-	converted, err := convertByType(f)
-	assert.NoError(t, err)
-	if err != nil {
+	converted, pointerF, err := convertByType(f)
+	if assert.NoError(t, err) {
 		return
 	}
+	assert.Equal(t, pointerF, &f)
 
 	assert.Equal(t, converted.String(), "--string-flag  \t[Mandatory] This is how you use it.")
 
 	// Test optional.
 	f.Mandatory = false
-	converted, err = convertByType(f)
-	assert.NoError(t, err)
-	if err != nil {
+	converted, pointerF, err = convertByType(f)
+	if assert.NoError(t, err) {
 		return
 	}
-
+	assert.Equal(t, pointerF, &f)
 	assert.Equal(t, converted.String(), "--string-flag  \t[Optional] This is how you use it.")
 }
 
@@ -166,22 +266,20 @@ func TestConvertBoolFlag(t *testing.T) {
 		Description:  "This is how you use it.",
 		DefaultValue: true,
 	}
-	converted, err := convertByType(f)
-	assert.NoError(t, err)
-	if err != nil {
+	converted, pointerF, err := convertByType(f)
+	if assert.NoError(t, err) {
 		return
 	}
-
+	assert.Nil(t, pointerF)
 	assert.Equal(t, converted.String(), "--bool-flag  \t[Default: true] This is how you use it.")
 
 	// Test optional.
 	f.DefaultValue = false
-	converted, err = convertByType(f)
-	assert.NoError(t, err)
-	if err != nil {
+	converted, pointerF, err = convertByType(f)
+	if assert.NoError(t, err) {
 		return
 	}
-
+	assert.Nil(t, pointerF)
 	assert.Equal(t, converted.String(), "--bool-flag  \t[Default: false] This is how you use it.")
 }
 

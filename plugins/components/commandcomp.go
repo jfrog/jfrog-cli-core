@@ -1,8 +1,11 @@
 package components
 
 type Argument struct {
-	Name        string
-	Description string
+	Name     string
+	Optional bool
+	// This field will be used for help usage, creating one usage with the argument and one with its (optional) flag replacement.
+	ReplaceWithFlag string
+	Description     string
 }
 
 type EnvVar struct {
@@ -14,9 +17,11 @@ type EnvVar struct {
 type ActionFunc func(c *Context) error
 
 type Context struct {
-	Arguments   []string
-	stringFlags map[string]string
-	boolFlags   map[string]bool
+	Arguments        []string
+	CommandName      string
+	stringFlags      map[string]string
+	boolFlags        map[string]bool
+	PrintCommandHelp func(commandName string) error
 }
 
 func (c *Context) GetStringFlagValue(flagName string) string {
@@ -29,15 +34,18 @@ func (c *Context) GetBoolFlagValue(flagName string) bool {
 
 type Flag interface {
 	GetName() string
+	IsMandatory() bool
 	GetDescription() string
 }
 
 type StringFlag struct {
 	Name        string
 	Description string
+	Mandatory   bool
 	// A flag with default value cannot be mandatory.
 	DefaultValue string
-	Mandatory    bool
+	// Optional. If provided, this field will be used for help usage. --<Name>=<ValueAlias> else: --<Name>=<value>
+	ValueAlias string
 }
 
 func (f StringFlag) GetName() string {
@@ -50,6 +58,10 @@ func (f StringFlag) GetDescription() string {
 
 func (f StringFlag) GetDefault() string {
 	return f.DefaultValue
+}
+
+func (f StringFlag) IsMandatory() bool {
+	return f.Mandatory
 }
 
 type BoolFlag struct {
@@ -68,4 +80,8 @@ func (f BoolFlag) GetDescription() string {
 
 func (f BoolFlag) GetDefault() bool {
 	return f.DefaultValue
+}
+
+func (f BoolFlag) IsMandatory() bool {
+	return false
 }

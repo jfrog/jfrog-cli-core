@@ -55,7 +55,7 @@ func TestParseYarnDependenciesList(t *testing.T) {
 func TestIsInstallRequired(t *testing.T) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
-	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
+	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-projects", "yarn-v2")
 	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
 	installRequired, err := isInstallRequired(tempDirPath, []string{})
 	assert.NoError(t, err)
@@ -76,16 +76,37 @@ func TestIsInstallRequired(t *testing.T) {
 }
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
-	// Testing default 'install' command
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{})
-	// Testing user provided 'install' command
-	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", v1IgnoreScriptsFlag})
+	testcases := []struct {
+		projectDir             string
+		providedInstallCommand []string
+	}{
+		{
+			projectDir: "yarn-v1",
+		},
+
+		{
+			projectDir: "yarn-v2",
+		},
+		{
+			projectDir: "yarn-v3",
+		},
+		// Checking installation with user provided 'install' command
+		{
+			projectDir:             "yarn-v1",
+			providedInstallCommand: []string{"install", v1IgnoreScriptsFlag},
+		},
+	}
+
+	for _, testcase := range testcases {
+		executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, testcase.projectDir, testcase.providedInstallCommand)
+	}
+
 }
 
-func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, params []string) {
+func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, projectDir string, params []string) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
-	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
+	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-projects", projectDir)
 	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
 
 	executablePath, err := biutils.GetYarnExecutable()

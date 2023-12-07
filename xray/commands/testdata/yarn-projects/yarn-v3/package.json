@@ -1,0 +1,9 @@
+{
+  "name": "yarn2-final",
+  "packageManager": "yarn@3.6.1",
+  "dependencies": {
+    "json": "9.0.6",
+    "minimist": "1.2.5",
+    "tough-cookie": "2.5.0"
+  }
+}

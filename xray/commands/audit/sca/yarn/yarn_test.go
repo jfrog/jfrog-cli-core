@@ -100,7 +100,6 @@ func TestRunYarnInstallAccordingToVersion(t *testing.T) {
 	for _, testcase := range testcases {
 		executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, testcase.projectDir, testcase.providedInstallCommand)
 	}
-
 }
 
 func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, projectDir string, params []string) {

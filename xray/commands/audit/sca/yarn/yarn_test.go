@@ -83,7 +83,6 @@ func TestRunYarnInstallAccordingToVersion(t *testing.T) {
 		{
 			projectDir: "yarn-v1",
 		},
-
 		{
 			projectDir: "yarn-v2",
 		},

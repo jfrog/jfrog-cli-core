@@ -26,11 +26,14 @@ const (
 	v1SilentFlag = "--silent"
 	// Disable interactive prompts, like when there’s an invalid version of a dependency.
 	v1NonInteractiveFlag = "--non-interactive"
-	// Skips linking and fetch only packages that are missing from yarn.lock file
-	v2UpdateLockfileFlag = "--mode=update-lockfile"
 	// Ignores any build scripts
-	v2SkipBuildFlag     = "--mode=skip-build"
+	v2SkipBuildFlag = "--skip-builds"
+	// Skips linking and fetch only packages that are missing from yarn.lock file
+	v3UpdateLockfileFlag = "--mode=update-lockfile"
+	// Ignores any build scripts
+	v3SkipBuildFlag     = "--mode=skip-build"
 	yarnV2Version       = "2.0.0"
+	yarnV3Version       = "3.0.0"
 	yarnV4Version       = "4.0.0"
 	nodeModulesRepoName = "node_modules"
 )
@@ -161,7 +164,8 @@ func runYarnInstallAccordingToVersion(curWd, yarnExecPath string, installCommand
 		return
 	}
 
-	isYarnV1 := version.NewVersion(executableVersionStr).Compare(yarnV2Version) > 0
+	yarnVersion := version.NewVersion(executableVersionStr)
+	isYarnV1 := yarnVersion.Compare(yarnV2Version) > 0
 
 	if isYarnV1 {
 		// When executing 'yarn install...', the node_modules directory is automatically generated.
@@ -181,9 +185,15 @@ func runYarnInstallAccordingToVersion(curWd, yarnExecPath string, installCommand
 
 		installCommandArgs = append(installCommandArgs, v1IgnoreScriptsFlag, v1SilentFlag, v1NonInteractiveFlag)
 	} else {
-		installCommandArgs = append(installCommandArgs, v2UpdateLockfileFlag, v2SkipBuildFlag)
+		// Checks if the version is V2 or V3 to insert the correct flags
+		if yarnVersion.Compare(yarnV3Version) > 0 {
+			installCommandArgs = append(installCommandArgs, v2SkipBuildFlag)
+		} else {
+			installCommandArgs = append(installCommandArgs, v3UpdateLockfileFlag, v3SkipBuildFlag)
+		}
 	}
-	return build.RunYarnCommand(yarnExecPath, curWd, installCommandArgs...)
+	err = build.RunYarnCommand(yarnExecPath, curWd, installCommandArgs...)
+	return
 }
 
 // Parse the dependencies into a Xray dependency tree format

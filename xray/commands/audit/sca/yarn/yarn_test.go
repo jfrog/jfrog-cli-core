@@ -52,22 +52,27 @@ func TestParseYarnDependenciesList(t *testing.T) {
 	assert.True(t, tests.CompareTree(expectedTree, xrayDependenciesTree), "expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
 }
 
-func TestIsYarnProjectInstalled(t *testing.T) {
+func TestIsInstallRequired(t *testing.T) {
 	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
 	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
-	projectInstalled, err := isYarnProjectInstalled(tempDirPath)
+	installRequired, err := isInstallRequired(tempDirPath, []string{})
 	assert.NoError(t, err)
-	assert.False(t, projectInstalled)
+	assert.True(t, installRequired)
 	executablePath, err := biutils.GetYarnExecutable()
 	assert.NoError(t, err)
 
-	// We install the project and check again to verify we get the correct answer
-	assert.NoError(t, build.RunYarnCommand(executablePath, tempDirPath, "install"))
-	projectInstalled, err = isYarnProjectInstalled(tempDirPath)
+	// We provide a user defined 'install' command and expect to get 'true' as an answer
+	installRequired, err = isInstallRequired(tempDirPath, []string{"yarn", "install"})
 	assert.NoError(t, err)
-	assert.True(t, projectInstalled)
+	assert.True(t, installRequired)
+
+	// We install the project so yarn.lock will be created and expect to get 'false' as an answer
+	assert.NoError(t, build.RunYarnCommand(executablePath, tempDirPath, "install"))
+	installRequired, err = isInstallRequired(tempDirPath, []string{})
+	assert.NoError(t, err)
+	assert.False(t, installRequired)
 }
 
 func TestRunYarnInstallAccordingToVersion(t *testing.T) {
@@ -89,8 +94,8 @@ func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, 
 	err = runYarnInstallAccordingToVersion(tempDirPath, executablePath, params)
 	assert.NoError(t, err)
 
-	// Checking the installation worked
-	projectInstalled, err := isYarnProjectInstalled(tempDirPath)
+	// Checking the installation worked - we expect to get a 'false' answer when checking whether the project is installed
+	installRequired, err := isInstallRequired(tempDirPath, []string{})
 	assert.NoError(t, err)
-	assert.True(t, projectInstalled)
+	assert.False(t, installRequired)
 }

@@ -32,8 +32,8 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 				"Make sure the details you entered are correct and that Artifactory meets the version requirement."))
 		return
 	}
-	log.Info("Please log in to the JFrog platform using the opened browser.")
-	if err = browser.OpenURL(clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrogCLI"); err != nil {
+	log.Info("After you login using the browser, you’ll be asked to enter the verification code:\n"+uuidStr[len(uuidStr)-4:])
+	if err = browser.OpenURL(clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrog-CLI&jfClientCode=1"); err != nil {
 		return
 	}
 	time.Sleep(1 * time.Second)

@@ -4,6 +4,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -11,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	path2 "path"
 	"path/filepath"
 	"strings"
 )
@@ -39,24 +42,26 @@ var mavenDepTreeJar []byte
 type MavenDepTreeManager struct {
 	DepTreeManager
 	isInstalled     bool
+	isCurationCmd   bool
 	cmdName         MavenDepTreeCmd
 	settingsXmlPath string
 }
 
-func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDepTreeInstalled bool) *MavenDepTreeManager {
+func NewMavenDepTreeManager(params xrayutils.AuditParams, serverDetails *config.ServerDetails, cmdName MavenDepTreeCmd) *MavenDepTreeManager {
 	depTreeManager := NewDepTreeManager(&DepTreeParams{
-		Server:   params.Server,
-		DepsRepo: params.DepsRepo,
+		Server:   serverDetails,
+		DepsRepo: params.DepsRepo(),
 	})
 	return &MavenDepTreeManager{
 		DepTreeManager: depTreeManager,
-		isInstalled:    isDepTreeInstalled,
+		isInstalled:    params.IsMavenDepTreeInstalled(),
+		isCurationCmd:  params.IsCurationCmd(),
 		cmdName:        cmdName,
 	}
 }
 
-func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
+func buildMavenDependencyTree(params xrayutils.AuditParams, serverDetails *config.ServerDetails) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+	manager := NewMavenDepTreeManager(params, serverDetails, Tree)
 	outputFileContent, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
@@ -114,6 +119,13 @@ func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte,
 func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath, "-B"}
+	if mdt.isCurationCmd {
+		mavenCacheFolder, err := config.GetCurationMavenCacheFolder()
+		if err != nil {
+			return nil, err
+		}
+		goals = append(goals, "-Dmaven.repo.local="+mavenCacheFolder)
+	}
 	if _, err := mdt.RunMvnCmd(goals); err != nil {
 		return nil, err
 	}
@@ -122,7 +134,6 @@ func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error
 	err = errorutils.CheckError(err)
 	return mavenDepTreeOutput, err
 }
-
 func (mdt *MavenDepTreeManager) runProjectsCmd() ([]byte, error) {
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q"}
 	return mdt.RunMvnCmd(goals)
@@ -151,7 +162,11 @@ func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path 
 	if err != nil {
 		return err
 	}
-	remoteRepositoryFullPath, err := url.JoinPath(mdt.server.ArtifactoryUrl, mdt.depsRepo)
+	endPoint := mdt.depsRepo
+	if mdt.isCurationCmd {
+		endPoint = path2.Join("api/curation/ca", endPoint)
+	}
+	remoteRepositoryFullPath, err := url.JoinPath(mdt.server.ArtifactoryUrl, endPoint)
 	if err != nil {
 		return err
 	}

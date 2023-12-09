@@ -473,6 +473,34 @@ func GetJfrogDependenciesPath() (string, error) {
 	return filepath.Join(jfrogHome, coreutils.JfrogDependenciesDirName), nil
 }
 
+func GetJfrogCurationFolder() (string, error) {
+	dependenciesDir := os.Getenv(coreutils.CurationsDir)
+	if dependenciesDir != "" {
+		return utils.AddTrailingSlashIfNeeded(dependenciesDir), nil
+	}
+	jfrogHome, err := coreutils.GetJfrogHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(jfrogHome, coreutils.JfrogCurationDirName), nil
+}
+
+func GetCurationCacheFolder() (string, error) {
+	curationFolder, err := GetJfrogCurationFolder()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(curationFolder, "cache"), nil
+}
+
+func GetCurationMavenCacheFolder() (string, error) {
+	curationFolder, err := GetCurationCacheFolder()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(curationFolder, "maven"), nil
+}
+
 func getConfFilePath() (string, error) {
 	confPath, err := coreutils.GetJfrogHomeDir()
 	if err != nil {

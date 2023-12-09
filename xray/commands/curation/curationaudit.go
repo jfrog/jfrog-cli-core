@@ -50,7 +50,8 @@ const (
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
-	coreutils.Npm: {},
+	coreutils.Npm:   {},
+	coreutils.Maven: {},
 }
 
 type ErrorsResp struct {
@@ -194,10 +195,13 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 }
 
 func (ca *CurationAuditCommand) getAuditParamsByTech(tech coreutils.Technology) utils.AuditParams {
-	if tech == coreutils.Npm {
+	switch tech {
+	case coreutils.Npm:
 		return utils.AuditNpmParams{AuditParams: ca.AuditParams}.
 			SetNpmIgnoreNodeModules(true).
 			SetNpmOverwritePackageLock(true)
+	case coreutils.Maven:
+		ca.AuditParams.SetIsMavenDepTreeInstalled(true)
 	}
 	return ca.AuditParams
 }
@@ -325,19 +329,13 @@ func (ca *CurationAuditCommand) CommandName() string {
 func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 	switch tech {
 	case coreutils.Npm:
-		configFilePath, exists, err := rtUtils.GetProjectConfFilePath(rtUtils.Npm)
+		resolverParams, err := ca.getRepoParams(rtUtils.Npm)
 		if err != nil {
 			return err
 		}
-		if !exists {
-			return errorutils.CheckErrorf("no config file was found! Before running the npm command on a " +
-				"project for the first time, the project should be configured using the 'jf npmc' command")
-		}
-		vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
-		if err != nil {
-			return err
-		}
-		resolverParams, err := rtUtils.GetRepoConfigByPrefix(configFilePath, rtUtils.ProjectConfigResolverPrefix, vConfig)
+		ca.setPackageManagerConfig(resolverParams)
+	case coreutils.Maven:
+		resolverParams, err := ca.getRepoParams(rtUtils.Maven)
 		if err != nil {
 			return err
 		}
@@ -346,6 +344,26 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.String())
 	}
 	return nil
+}
+
+func (ca *CurationAuditCommand) getRepoParams(projectType rtUtils.ProjectType) (*rtUtils.RepositoryConfig, error) {
+	configFilePath, exists, err := rtUtils.GetProjectConfFilePath(projectType)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errorutils.CheckErrorf("no config file was found! Before running the " + projectType.String() + " command on a " +
+			"project for the first time, the project should be configured using the 'jf " + projectType.String() + "c' command")
+	}
+	vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
+	if err != nil {
+		return nil, err
+	}
+	resolverParams, err := rtUtils.GetRepoConfigByPrefix(configFilePath, rtUtils.ProjectConfigResolverPrefix, vConfig)
+	if err != nil {
+		return nil, err
+	}
+	return resolverParams, nil
 }
 
 func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap *sync.Map,
@@ -514,7 +532,23 @@ func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo
 	if tech == coreutils.Npm {
 		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.String())
 	}
+	if tech == coreutils.Maven {
+		return getMavenNameScopeAndVersion(nodeId, artiUrl, repo)
+	}
 	return
+}
+
+// input- id: gav://org.apache.tomcat.embed:tomcat-embed-jasper:8.0.33
+// input - repo: libs-release
+// output - downloadUrl: <arti-url>/libs-release/org/apache/tomcat/embed/tomcat-embed-jasper/8.0.33/tomcat-embed-jasper-8.0.33.jar
+func getMavenNameScopeAndVersion(id, artiUrl, repo string) (downloadUrl, name, scope, version string) {
+	id = strings.TrimPrefix(id, "gav://")
+	allParts := strings.Split(id, ":")
+	nameVersion := allParts[1] + "-" + allParts[2]
+	packagePath := strings.Join(strings.Split(allParts[0], "."), "/") + "/" +
+		allParts[1] + "/" + allParts[2] + "/" + nameVersion + ".jar"
+	downloadUrl = strings.TrimSuffix(artiUrl, "/") + "/" + repo + "/" + packagePath
+	return downloadUrl, strings.Join(allParts[:2], ":"), "", allParts[2]
 }
 
 // The graph holds, for each node, the component ID (xray representation)

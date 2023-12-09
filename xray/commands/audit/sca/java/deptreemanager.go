@@ -27,7 +27,7 @@ func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology
 		DepsRepo:   params.DepsRepo(),
 	}
 	if tech == coreutils.Maven {
-		return buildMavenDependencyTree(depTreeParams, params.IsMavenDepTreeInstalled())
+		return buildMavenDependencyTree(params, serverDetails)
 	}
 	return buildGradleDependencyTree(depTreeParams)
 }

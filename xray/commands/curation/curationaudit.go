@@ -327,22 +327,11 @@ func (ca *CurationAuditCommand) CommandName() string {
 }
 
 func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
-	switch tech {
-	case coreutils.Npm:
-		resolverParams, err := ca.getRepoParams(rtUtils.Npm)
-		if err != nil {
-			return err
-		}
-		ca.setPackageManagerConfig(resolverParams)
-	case coreutils.Maven:
-		resolverParams, err := ca.getRepoParams(rtUtils.Maven)
-		if err != nil {
-			return err
-		}
-		ca.setPackageManagerConfig(resolverParams)
-	default:
-		return errorutils.CheckErrorf(errorTemplateUnsupportedTech, tech.String())
+	resolverParams, err := ca.getRepoParams(rtUtils.TechType[tech])
+	if err != nil {
+		return err
 	}
+	ca.setPackageManagerConfig(resolverParams)
 	return nil
 }
 

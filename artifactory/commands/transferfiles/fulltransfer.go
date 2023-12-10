@@ -288,9 +288,7 @@ func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffse
 	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
-	if disabledDistinctiveAql {
-		query += `.distinct(false)`
-	}
+	query += appendDistinctIfNeeded(disabledDistinctiveAql)
 	return query
 }
 

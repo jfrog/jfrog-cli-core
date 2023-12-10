@@ -208,8 +208,22 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		return
 	}
 	if !exists {
-		log.Debug(fmt.Sprintf("No %s.yaml configuration file was found. Resolving dependencies from %s default registry", tech.String(), tech.String()))
-		return
+		// Nuget and Dotnet are identified similarly in the detection process. To prevent redundancy, Dotnet is filtered out earlier in the process, focusing solely on detecting Nuget.
+		// Consequently, it becomes necessary to verify the presence of dotnet.yaml when Nuget detection occurs.
+		if tech == coreutils.Nuget {
+			configFilePath, exists, err = GetProjectConfFilePath(techType[coreutils.Dotnet])
+			if err != nil {
+				err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+				return
+			}
+			if !exists {
+				log.Debug(fmt.Sprintf("No %s.yaml nor %s.yaml configuration file was found. Resolving dependencies from %s default registry", coreutils.Nuget.String(), coreutils.Dotnet.String(), tech.String()))
+				return
+			}
+		} else {
+			log.Debug(fmt.Sprintf("No %s.yaml configuration file was found. Resolving dependencies from %s default registry", tech.String(), tech.String()))
+			return
+		}
 	}
 
 	log.Debug("Using resolver config from", configFilePath)

@@ -2,18 +2,19 @@ package utils
 
 import (
 	"fmt"
-	buildinfoutils "github.com/jfrog/build-info-go/utils"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/jfrog/build-info-go/utils/pythonutils"
+	"github.com/jfrog/gofrog/io"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
-	"net/url"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 const (
@@ -91,7 +92,7 @@ func runPoetryConfigCommand(args []string, maskArgs bool) error {
 		logMessage += strings.Join(args, " ")
 	}
 	log.Info(fmt.Sprintf("Running Poetry %s", logMessage))
-	cmd := buildinfoutils.NewCommand("poetry", "config", args)
+	cmd := io.NewCommand("poetry", "config", args)
 	err := gofrogcmd.RunCmd(cmd)
 	if err != nil {
 		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
@@ -113,7 +114,7 @@ func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {
 	}
 	log.Info(fmt.Sprintf("Added tool.poetry.source name:%q url:%q", poetryRepoName, repoUrl))
 	log.Info("Running Poetry update")
-	cmd := buildinfoutils.NewCommand("poetry", "update", []string{})
+	cmd := io.NewCommand("poetry", "update", []string{})
 	err = gofrogcmd.RunCmd(cmd)
 	if err != nil {
 		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())

@@ -3,6 +3,7 @@ package java
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -93,7 +94,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 		GavPackageTypeIdentifier + "hsqldb:hsqldb:1.8.0.10",
 	}
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&xrayutils.AuditBasicParams{}, nil)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
@@ -143,7 +144,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 		GavPackageTypeIdentifier + "javax.servlet:servlet-api:2.5",
 	}
 
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&xrayutils.AuditBasicParams{}, nil)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
@@ -221,7 +222,7 @@ func TestRunProjectsCmd(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := sca.CreateTestWorkspace(t, "maven-example")
 	defer cleanUp()
-	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
+	mvnDepTreeManager := NewMavenDepTreeManager(&xrayutils.AuditBasicParams{}, nil, Projects)
 	output, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
 	pomPathOccurrences := strings.Count(string(output), "pomPath")

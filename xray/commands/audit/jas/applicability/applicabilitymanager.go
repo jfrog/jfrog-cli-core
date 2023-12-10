@@ -67,8 +67,8 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 // bool: true if the user is entitled to the applicability scan, false otherwise.
 // error: An error object (if any).
 func RunApplicabilityWithScanCves(xrayResults []services.ScanResponse, cveList []string,
-	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner, thirdPartyContextualAnalysis bool) (results []*sarif.Run, err error) {
-	applicabilityScanManager := newApplicabilityScanManagerCves(xrayResults, cveList, scanner, thirdPartyContextualAnalysis)
+	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner) (results []*sarif.Run, err error) {
+	applicabilityScanManager := newApplicabilityScanManagerCves(xrayResults, cveList, scanner)
 	if err = applicabilityScanManager.scanner.Run(applicabilityScanManager); err != nil {
 		err = utils.ParseAnalyzerManagerError(utils.Applicability, err)
 		return
@@ -77,13 +77,13 @@ func RunApplicabilityWithScanCves(xrayResults []services.ScanResponse, cveList [
 	return
 }
 
-func newApplicabilityScanManagerCves(xrayScanResults []services.ScanResponse, cveList []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
+func newApplicabilityScanManagerCves(xrayScanResults []services.ScanResponse, cveList []string, scanner *jas.JasScanner) (manager *ApplicabilityScanManager) {
 	return &ApplicabilityScanManager{
 		applicabilityScanResults: []*sarif.Run{},
 		directDependenciesCves:   cveList,
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
-		thirdPartyScan:           thirdPartyScan,
+		thirdPartyScan:           false,
 		commandType:              applicabilityDockerScanScanType,
 	}
 }

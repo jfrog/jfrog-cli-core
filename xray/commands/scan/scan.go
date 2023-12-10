@@ -265,10 +265,8 @@ func (scanCmd *ScanCommand) Run() (err error) {
 
 	if scanResults.ExtendedScanResults.EntitledForJas {
 		cveList := cveListFromVulnerabilities(flatResults)
-		multiScanId := "" // Also empty for audit
-		thirdPartyApplicabilityScan := false
 		workingDirs := []string{scanCmd.spec.Files[0].Pattern}
-		scanResults.JasError = runJasScannersAndSetResults(scanResults, cveList, scanCmd.serverDetails, workingDirs, multiScanId, thirdPartyApplicabilityScan)
+		scanResults.JasError = runJasScannersAndSetResults(scanResults, cveList, scanCmd.serverDetails, workingDirs)
 	}
 
 	if err = xrutils.NewResultsWriter(scanResults).

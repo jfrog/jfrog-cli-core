@@ -37,7 +37,7 @@ func runJasScannersAndSetResults(scanResults *utils.Results, cveList []string,
 		return
 	}
 
-	scanResults.ExtendedScanResults.SecretsScanResults, err = secrets.RunSecretsScan(scanner, secrets.SecretsScannerDockerType)
+	scanResults.ExtendedScanResults.SecretsScanResults, err = secrets.RunSecretsScan(scanner, secrets.SecretsScannerDockerScanType)
 	if err != nil {
 		return
 	}

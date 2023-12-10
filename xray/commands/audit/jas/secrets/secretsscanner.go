@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	secretsScanCommand       = "sec"
-	SecretsScannerType       = "secrets-scan"        // #nosec
-	SecretsScannerDockerType = "secrets-docker-scan" // #nosec
-	secretsDocsUrlSuffix     = "secrets"
+	secretsScanCommand           = "sec"
+	SecretsScannerType           = "secrets-scan"        // #nosec
+	SecretsScannerDockerScanType = "secrets-docker-scan" // #nosec
+	secretsDocsUrlSuffix         = "secrets"
 )
 
 type SecretScanManager struct {

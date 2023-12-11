@@ -127,7 +127,7 @@ func GetOldTransferDirectoryStructureError() error {
 // addr     - Pointer to int64 variable
 // delta    - The change to do
 // increase - True to increment, false to decrement
-func AtomicallyAddInt64(addr *int64, delta int64, increase bool) {
+func atomicallyAddInt64(addr *int64, delta int64, increase bool) {
 	if increase {
 		atomic.AddInt64(addr, delta)
 	} else {
@@ -139,7 +139,7 @@ func AtomicallyAddInt64(addr *int64, delta int64, increase bool) {
 // addr     - Pointer to uint64 variable
 // delta    - The change to do
 // increase - True to increment, false to decrement
-func AtomicallyAddUint64(addr *uint64, delta uint64, increase bool) {
+func atomicallyAddUint64(addr *uint64, delta uint64, increase bool) {
 	if increase {
 		atomic.AddUint64(addr, delta)
 	} else {

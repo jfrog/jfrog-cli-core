@@ -223,7 +223,7 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 	case coreutils.Yarn:
 		fullDependencyTrees, uniqueDeps, err = yarn.BuildDependencyTree(params)
 	case coreutils.Go:
-		fullDependencyTrees, uniqueDeps, err = _go.BuildDependencyTree(serverDetails, params.DepsRepo())
+		fullDependencyTrees, uniqueDeps, err = _go.BuildDependencyTree(params)
 	case coreutils.Pipenv, coreutils.Pip, coreutils.Poetry:
 		fullDependencyTrees, uniqueDeps, err = python.BuildDependencyTree(&python.AuditPython{
 			Server:              serverDetails,

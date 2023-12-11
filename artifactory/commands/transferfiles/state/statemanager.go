@@ -136,19 +136,19 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted() error {
 // Increasing Transferred Diff files (modified files) and SizeByBytes value in suitable repository progress state
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	err := ts.TransferState.Action(func(state *TransferState) error {
-		atomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredSizeBytes, chunkTotalSizeInBytes, true)
-		atomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredUnits, chunkTotalFiles, true)
+		atomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredUnits, chunkTotalFiles)
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		atomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredSizeBytes, chunkTotalSizeInBytes, true)
-		atomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredUnits, chunkTotalFiles, true)
+		atomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredUnits, chunkTotalFiles)
 
 		if transferRunStatus.BuildInfoRepo {
-			atomicallyAddInt64(&transferRunStatus.OverallBiFiles.TransferredUnits, chunkTotalFiles, true)
+			atomicallyAddInt64(&transferRunStatus.OverallBiFiles.TransferredUnits, chunkTotalFiles)
 		}
 		return nil
 	})
@@ -156,16 +156,16 @@ func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles
 
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase2(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredSizeBytes, chunkTotalSizeInBytes, true)
-		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredUnits, chunkTotalFiles, true)
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredUnits, chunkTotalFiles)
 		return nil
 	})
 }
 
 func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSize int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalSizeBytes, totalSize, true)
-		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalUnits, filesNumber, true)
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalSizeBytes, totalSize)
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalUnits, filesNumber)
 		return nil
 	})
 }
@@ -175,8 +175,8 @@ func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSiz
 	return ts.TransferState.Action(func(state *TransferState) error {
 		state.CurrentRepo.Phase3Info.TransferredUnits = 0
 		state.CurrentRepo.Phase3Info.TransferredSizeBytes = 0
-		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalSizeBytes, totalSize, true)
-		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalUnits, filesNumber, true)
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalSizeBytes, totalSize)
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalUnits, filesNumber)
 		return nil
 	})
 }
@@ -184,8 +184,8 @@ func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSiz
 // Increase transferred storage and files in phase 3
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase3(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredSizeBytes, chunkTotalSizeInBytes, true)
-		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredUnits, chunkTotalFiles, true)
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredUnits, chunkTotalFiles)
 		return nil
 	})
 }

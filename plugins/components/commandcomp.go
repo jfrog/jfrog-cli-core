@@ -32,6 +32,16 @@ func (c *Context) GetBoolFlagValue(flagName string) bool {
 	return c.boolFlags[flagName]
 }
 
+func (c *Context) IsFlagSet(flagName string) bool {
+	if _, ok := c.stringFlags[flagName]; ok {
+		return true
+	}
+	if _, ok := c.boolFlags[flagName]; ok {
+		return true
+	}
+	return false
+}
+
 type Flag interface {
 	GetName() string
 	IsMandatory() bool

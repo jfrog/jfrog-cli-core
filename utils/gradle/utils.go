@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -45,6 +46,26 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	}
 	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractor, props)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
+}
+
+func splitGradleTasks(tasks string) []string {
+	var isInQuote bool
+	var quoteType rune
+
+	// FieldsFunc splits the tasks based on spaces except within quotes
+	return strings.FieldsFunc(tasks, func(currentChar rune) bool {
+		if currentChar == '"' || currentChar == '\'' {
+			if !isInQuote {
+				isInQuote = true
+				quoteType = currentChar
+			} else if currentChar == quoteType {
+				isInQuote = false
+				// Reset quoteType to an empty rune
+				quoteType = 0
+			}
+		}
+		return unicode.IsSpace(currentChar) && !isInQuote
+	})
 }
 
 func getGradleDependencyLocalPath() (string, error) {

@@ -273,11 +273,11 @@ func convertFlags(cmd Command) ([]cli.Flag, map[string]StringFlag, error) {
 }
 
 func convertByType(flag Flag) (cli.Flag, *StringFlag, error) {
-	if f, ok := flag.(StringFlag); ok {
-		return convertStringFlag(f), &f, nil
-	}
-	if f, ok := flag.(BoolFlag); ok {
-		return convertBoolFlag(f), nil, nil
+	switch actualType := flag.(type) {
+	case StringFlag:
+		return convertStringFlag(actualType), &actualType, nil
+	case BoolFlag:
+		return convertBoolFlag(actualType), nil, nil
 	}
 	return nil, nil, errorutils.CheckErrorf("flag '%s' does not match any known flag type", flag.GetName())
 }

@@ -1,9 +1,14 @@
 package components
 
+import "strconv"
+
 type Argument struct {
 	Name     string
 	Optional bool
-	// This field will be used for help usage, creating one usage with the argument and one with its (optional) flag replacement.
+	// Optional. When provided, this field is used for creating help usages.
+	// Generating a usage with the argument and another usage where the argument is replaced with the specified flag name. For instance:
+	// 1) Without FlagReplacement: .... <Name> <Name2>
+	// 2) With FlagReplacement: .... --<FlagReplacement>=<Value> <Name2>
 	ReplaceWithFlag string
 	Description     string
 }
@@ -33,13 +38,11 @@ func (c *Context) GetBoolFlagValue(flagName string) bool {
 }
 
 func (c *Context) IsFlagSet(flagName string) bool {
-	if _, ok := c.stringFlags[flagName]; ok {
+	if _, exist := c.stringFlags[flagName]; exist {
 		return true
 	}
-	if _, ok := c.boolFlags[flagName]; ok {
-		return true
-	}
-	return false
+	_, exist := c.boolFlags[flagName]
+	return exist
 }
 
 type Flag interface {
@@ -48,22 +51,44 @@ type Flag interface {
 	GetDescription() string
 }
 
-type StringFlag struct {
+type BaseFlag struct {
 	Name        string
 	Description string
-	Mandatory   bool
-	// A flag with default value cannot be mandatory.
-	DefaultValue string
-	// Optional. If provided, this field will be used for help usage. --<Name>=<ValueAlias> else: --<Name>=<value>
-	ValueAlias string
 }
 
-func (f StringFlag) GetName() string {
+func NewFlag(name, description string) BaseFlag {
+	return BaseFlag{Name: name, Description: description}
+}
+
+func (f BaseFlag) GetName() string {
 	return f.Name
 }
 
-func (f StringFlag) GetDescription() string {
+func (f BaseFlag) GetDescription() string {
 	return f.Description
+}
+
+func (f BaseFlag) IsMandatory() bool {
+	return false
+}
+
+type StringFlag struct {
+	BaseFlag
+	Mandatory bool
+	// A flag with default value cannot be mandatory.
+	DefaultValue string
+	// Optional. If provided, this field will be used for help usage. --<Name>=<HelpValue> else: --<Name>=<value>
+	HelpValue string
+}
+
+type StringFlagOption func(f *StringFlag)
+
+func NewStringFlag(name, description string, options ...StringFlagOption) StringFlag {
+	f := StringFlag{BaseFlag: NewFlag(name, description)}
+	for _, option := range options {
+		option(&f)
+	}
+	return f
 }
 
 func (f StringFlag) GetDefault() string {
@@ -74,24 +99,51 @@ func (f StringFlag) IsMandatory() bool {
 	return f.Mandatory
 }
 
+func WithStrDefaultValue(defaultValue string) StringFlagOption {
+	return func(f *StringFlag) {
+		f.DefaultValue = defaultValue
+	}
+}
+
+func WithIntDefaultValue(defaultValue int) StringFlagOption {
+	return func(f *StringFlag) {
+		f.DefaultValue = strconv.Itoa(defaultValue)
+	}
+}
+
+func SetMandatory() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Mandatory = true
+	}
+}
+
+func WithHelpValue(helpValue string) StringFlagOption {
+	return func(f *StringFlag) {
+		f.HelpValue = helpValue
+	}
+}
+
 type BoolFlag struct {
-	Name         string
-	Description  string
+	BaseFlag
 	DefaultValue bool
 }
 
-func (f BoolFlag) GetName() string {
-	return f.Name
-}
-
-func (f BoolFlag) GetDescription() string {
-	return f.Description
-}
+type BoolFlagOption func(f *BoolFlag)
 
 func (f BoolFlag) GetDefault() bool {
 	return f.DefaultValue
 }
 
-func (f BoolFlag) IsMandatory() bool {
-	return false
+func NewBoolFlag(name, description string, options ...BoolFlagOption) BoolFlag {
+	f := BoolFlag{BaseFlag: NewFlag(name, description)}
+	for _, option := range options {
+		option(&f)
+	}
+	return f
+}
+
+func WithBoolDefaultValue(defaultValue bool) BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.DefaultValue = defaultValue
+	}
 }

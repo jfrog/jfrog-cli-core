@@ -11,10 +11,7 @@ import (
 
 // Get the common 'server-id' flag
 func GetServerIdFlag() components.StringFlag {
-	return components.StringFlag{
-		Name:        "server-id",
-		Description: "Server ID configured using the config command.",
-	}
+	return components.NewStringFlag("server-id", "Server ID configured using the config command.")
 }
 
 // Return the Artifactory Details of the provided 'server-id', or the default one.

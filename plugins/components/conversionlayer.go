@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/docs/common"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/urfave/cli"
 )
 
@@ -65,7 +66,7 @@ func convertCommand(cmd Command, appName string) (cli.Command, error) {
 
 // Create the command usage strings that will be shown in the help.
 func createCommandUsages(cmd Command, convertedStringFlags map[string]StringFlag, appName string) (usages []string, err error) {
-	usagePrefix := fmt.Sprintf(coreutils.GetCliExecutableName()+" %s %s", appName, cmd.Name)
+	usagePrefix := fmt.Sprintf("%s %s %s", coreutils.GetCliExecutableName(), appName, cmd.Name)
 	// Handle manual usages provided.
 	if cmd.UsageOptions != nil {
 		for _, manualUsage := range cmd.UsageOptions.Usage {
@@ -137,9 +138,8 @@ func getArgsUsagePart(cmd Command) (usage string) {
 func getArgumentUsage(argument Argument) string {
 	if argument.Optional {
 		return fmt.Sprintf(" [%s]", argument.Name)
-	} else {
-		return fmt.Sprintf(" <%s>", argument.Name)
 	}
+	return fmt.Sprintf(" <%s>", argument.Name)
 }
 
 func getArgsUsagePartWithReplacements(cmd Command, convertedStringFlags map[string]StringFlag) (usage string, flagReplacements *datastructures.Set[string], err error) {
@@ -195,8 +195,8 @@ func getFlagUsagePart(cmd Command, convertedStringFlags map[string]StringFlag, f
 	for flagName, flag := range convertedStringFlags {
 		if flag.Mandatory {
 			valueAlias := "value"
-			if flag.ValueAlias != "" {
-				valueAlias = flag.ValueAlias
+			if flag.HelpValue != "" {
+				valueAlias = flag.HelpValue
 			}
 			usage += fmt.Sprintf(" --%s=<%s>", flagName, valueAlias)
 		}
@@ -216,8 +216,8 @@ func getMandatoryFlagCount(cmd Command) int {
 
 func getMandatoryFlagUsage(flag StringFlag) string {
 	valueAlias := "value"
-	if flag.ValueAlias != "" {
-		valueAlias = flag.ValueAlias
+	if flag.HelpValue != "" {
+		valueAlias = flag.HelpValue
 	}
 	return fmt.Sprintf(" --%s=<%s>", flag.Name, valueAlias)
 }
@@ -279,7 +279,7 @@ func convertByType(flag Flag) (cli.Flag, *StringFlag, error) {
 	if f, ok := flag.(BoolFlag); ok {
 		return convertBoolFlag(f), nil, nil
 	}
-	return nil, nil, fmt.Errorf("flag '%s' does not match any known flag type", flag.GetName())
+	return nil, nil, errorutils.CheckErrorf("flag '%s' does not match any known flag type", flag.GetName())
 }
 
 func convertStringFlag(f StringFlag) cli.Flag {

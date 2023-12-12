@@ -13,9 +13,9 @@ func TestCreateCommandUsages(t *testing.T) {
 	cmdName := "test-command"
 	expectedPrefix := fmt.Sprintf("%s %s %s", coreutils.GetCliExecutableName(), appNameSpace, cmdName)
 
-	optFlag := BoolFlag{Name: "dummyFlag"}
-	optStrFlag := StringFlag{Name: "optFlag", ValueAlias: "alias"}
-	strFlag := StringFlag{Name: "flag", Mandatory: true}
+	optFlag := NewBoolFlag("dummyFlag", "")
+	optStrFlag := NewStringFlag("optFlag", "", WithHelpValue("alias"))
+	strFlag := NewStringFlag("flag", "", SetMandatory())
 
 	override := []string{"usage override", "usage override 2", "usage override 3"}
 	expectedOverride := []string{
@@ -73,7 +73,7 @@ func TestCreateCommandUsages(t *testing.T) {
 			stringFlags: map[string]StringFlag{optStrFlag.Name: optStrFlag},
 			expected: []string{
 				fmt.Sprintf("%s [command options] <%s> <%s> [%s]", expectedPrefix, "first argument", "second", "third"),
-				fmt.Sprintf("%s --%s=<%s> <%s>", expectedPrefix, optStrFlag.Name, optStrFlag.ValueAlias, "first argument"),
+				fmt.Sprintf("%s --%s=<%s> <%s>", expectedPrefix, optStrFlag.Name, optStrFlag.HelpValue, "first argument"),
 			},
 		},
 		{
@@ -93,7 +93,7 @@ func TestCreateCommandUsages(t *testing.T) {
 			stringFlags: map[string]StringFlag{optStrFlag.Name: optStrFlag},
 			expected: append(expectedOverride,
 				fmt.Sprintf("%s [command options] <%s> <%s>", expectedPrefix, "first argument", "second"),
-				fmt.Sprintf("%s [command options] --%s=<%s> <%s>", expectedPrefix, optStrFlag.Name, optStrFlag.ValueAlias, "first argument"),
+				fmt.Sprintf("%s [command options] --%s=<%s> <%s>", expectedPrefix, optStrFlag.Name, optStrFlag.HelpValue, "first argument"),
 			),
 		},
 		{
@@ -206,11 +206,7 @@ func TestConvertByTypeFailWithInvalidFlag(t *testing.T) {
 }
 
 func TestConvertStringFlagDefault(t *testing.T) {
-	f := StringFlag{
-		Name:         "string-flag",
-		Description:  "This is how you use it.",
-		DefaultValue: "def",
-	}
+	f := NewStringFlag("string-flag", "This is how you use it.", WithStrDefaultValue("def"))
 	converted, pointerF, err := convertByType(f)
 	if assert.NoError(t, err) {
 		return
@@ -231,11 +227,7 @@ func TestConvertStringFlagDefault(t *testing.T) {
 }
 
 func TestConvertStringFlagMandatory(t *testing.T) {
-	f := StringFlag{
-		Name:        "string-flag",
-		Description: "This is how you use it.",
-		Mandatory:   true,
-	}
+	f := NewStringFlag("string-flag", "This is how you use it.", SetMandatory())
 	converted, pointerF, err := convertByType(f)
 	if assert.NoError(t, err) {
 		return
@@ -255,11 +247,7 @@ func TestConvertStringFlagMandatory(t *testing.T) {
 }
 
 func TestConvertBoolFlag(t *testing.T) {
-	f := BoolFlag{
-		Name:         "bool-flag",
-		Description:  "This is how you use it.",
-		DefaultValue: true,
-	}
+	f := NewBoolFlag("bool-flag", "This is how you use it.", WithBoolDefaultValue(true))
 	converted, pointerF, err := convertByType(f)
 	if assert.NoError(t, err) {
 		return
@@ -278,11 +266,7 @@ func TestConvertBoolFlag(t *testing.T) {
 }
 
 func TestGetValueForStringFlag(t *testing.T) {
-	f := StringFlag{
-		Name:        "string-flag",
-		Description: "This is how you use it.",
-		Mandatory:   false,
-	}
+	f := NewStringFlag("string-flag", "This is how you use it.")
 
 	// Not received, no default or mandatory.
 	finalValue, err := getValueForStringFlag(f, "")

@@ -183,7 +183,7 @@ func removeMavenConfig() (func() error, error) {
 	}
 	err = os.Remove(mavenConfigPath)
 	if err != nil {
-		err = errorutils.CheckErrorf("failed to remove %s while building the maven dependencies tree. Error received:\n%w", mavenConfigPath, err)
+		err = errorutils.CheckErrorf("failed to remove %s while building the maven dependencies tree. Error received:\n%s", mavenConfigPath, err.Error())
 	}
 	return restoreMavenConfig, err
 }

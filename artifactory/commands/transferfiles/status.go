@@ -80,7 +80,7 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2)
 	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 2)
 	addString(output, "⌛", "Estimated time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
-	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
+	failureTxt := strconv.FormatUint(stateManager.TransferFailures, 10)
 	if stateManager.TransferFailures > 0 {
 		failureTxt += " (" + progressbar.RetryFailureContentNote + ")"
 	}

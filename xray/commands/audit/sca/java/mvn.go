@@ -22,8 +22,9 @@ const (
 	// Changing this version also requires a change in MAVEN_DEP_TREE_VERSION within buildscripts/download_jars.sh
 	mavenDepTreeVersion = "1.0.2"
 	settingsXmlFile     = "settings.xml"
-	mavenConfigPath     = ".mvn/maven.config"
 )
+
+var mavenConfigPath = filepath.Join(".mvn", "maven.config")
 
 type MavenDepTreeCmd string
 
@@ -177,10 +178,6 @@ func removeMavenConfig() (func() error, error) {
 		return nil, nil
 	}
 	restoreMavenConfig, err := utils.BackupFile(mavenConfigPath, "maven.config.bkp")
-	if err != nil {
-		return nil, err
-	}
-	err = os.Chmod(mavenConfigPath, 0666)
 	if err != nil {
 		return nil, err
 	}

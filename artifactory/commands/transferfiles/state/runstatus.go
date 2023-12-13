@@ -40,7 +40,7 @@ type TransferRunStatus struct {
 	WorkingThreads        int    `json:"working_threads,omitempty"`
 	VisitedFolders        uint64 `json:"visited_folders,omitempty"`
 	DelayedFiles          uint64 `json:"delayed_files,omitempty"`
-	TransferFailures      uint   `json:"transfer_failures,omitempty"`
+	TransferFailures      uint64 `json:"transfer_failures,omitempty"`
 	TimeEstimationManager `json:"time_estimation,omitempty"`
 	StaleChunks           []StaleChunks `json:"stale_chunks,omitempty"`
 }

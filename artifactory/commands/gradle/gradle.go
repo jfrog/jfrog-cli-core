@@ -11,6 +11,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
+	"strings"
+	"unicode"
 )
 
 type GradleCommand struct {
@@ -219,4 +221,26 @@ func (gc *GradleCommand) Result() *commandsutils.Result {
 func (gc *GradleCommand) setResult(result *commandsutils.Result) *GradleCommand {
 	gc.result = result
 	return gc
+}
+
+func SplitGradleTasks(tasks ...string) []string {
+	var splitTasks []string
+	for _, task := range tasks {
+		var isInQuote bool
+		var quoteType rune
+		splitTasks = append(splitTasks, strings.FieldsFunc(task, func(currentChar rune) bool {
+			if currentChar == '"' || currentChar == '\'' {
+				if !isInQuote {
+					isInQuote = true
+					quoteType = currentChar
+				} else if currentChar == quoteType {
+					isInQuote = false
+					// Reset quoteType to an empty rune
+					quoteType = 0
+				}
+			}
+			return unicode.IsSpace(currentChar) && !isInQuote
+		})...)
+	}
+	return splitTasks
 }

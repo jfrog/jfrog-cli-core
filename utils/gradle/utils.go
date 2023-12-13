@@ -2,15 +2,12 @@ package gradleutils
 
 import (
 	"fmt"
-	"path/filepath"
-	"strings"
-	"unicode"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/spf13/viper"
+	"path/filepath"
 )
 
 const (
@@ -18,7 +15,7 @@ const (
 	useWrapper = "usewrapper"
 )
 
-func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
+func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
 	buildInfoService := utils.CreateBuildInfoService()
 	buildName, err := configuration.GetBuildName()
 	if err != nil {
@@ -44,28 +41,8 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	if err != nil {
 		return err
 	}
-	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractor, props)
+	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), tasks, wrapper, plugin, utils.DownloadExtractor, props)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
-}
-
-func splitGradleTasks(tasks string) []string {
-	var isInQuote bool
-	var quoteType rune
-
-	// FieldsFunc splits the tasks based on spaces except within quotes
-	return strings.FieldsFunc(tasks, func(currentChar rune) bool {
-		if currentChar == '"' || currentChar == '\'' {
-			if !isInQuote {
-				isInQuote = true
-				quoteType = currentChar
-			} else if currentChar == quoteType {
-				isInQuote = false
-				// Reset quoteType to an empty rune
-				quoteType = 0
-			}
-		}
-		return unicode.IsSpace(currentChar) && !isInQuote
-	})
 }
 
 func getGradleDependencyLocalPath() (string, error) {

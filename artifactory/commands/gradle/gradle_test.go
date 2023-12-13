@@ -23,13 +23,13 @@ func TestSplitGradleTasks(t *testing.T) {
 		},
 		{
 			name:           "Test with tasks containing double quotes",
-			input:          []string{`task1 "task2 task3" task4`},
-			expectedOutput: []string{"task1", `"task2 task3"`, "task4"},
+			input:          []string{`task1 -Dproperty="value1 value2" task4`},
+			expectedOutput: []string{"task1", `-Dproperty="value1 value2"`, "task4"},
 		},
 		{
 			name:           "Test with tasks containing single quotes",
-			input:          []string{`task1 'task2 task3' task4`},
-			expectedOutput: []string{"task1", `"task2 task3"`, "task4"},
+			input:          []string{`task1 -Dproperty='value1 value2' task4`},
+			expectedOutput: []string{"task1", `-Dproperty='value1 value2'`, "task4"},
 		},
 		{
 			name:           "Test with empty input",

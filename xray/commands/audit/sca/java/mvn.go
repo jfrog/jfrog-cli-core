@@ -180,7 +180,11 @@ func removeMavenConfig() (func() error, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = os.RemoveAll(mavenConfigPath)
+	err = os.Chmod(mavenConfigPath, 0666)
+	if err != nil {
+		return nil, err
+	}
+	err = os.Remove(mavenConfigPath)
 	if err != nil {
 		err = errorutils.CheckErrorf("failed to remove %s while building the maven dependencies tree. Error received:\n%w", mavenConfigPath, err)
 	}

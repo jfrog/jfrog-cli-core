@@ -279,3 +279,38 @@ func TestGetMaskedCommandString(t *testing.T) {
 		"pip -i ***@someurl.com/repo --access-token=***",
 		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo", "--access-token=123")))
 }
+
+func TestGetAllJsonsInString(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Test with 3 nested json",
+			input:    `{ "field1": "value1" } { "field2": "value2" } { "field3": "value3" }`,
+			expected: "{ \"field1\": \"value1\" }\n{ \"field2\": \"value2\" }\n{ \"field3\": \"value3\" }",
+		},
+		{
+			name:     "Test with no json",
+			input:    `no json here`,
+			expected: "",
+		},
+		{
+			name:     "Test with nested json object",
+			input:    `{ "field1": "value1", "nested": { "nestedField": "nestedValue" } }`,
+			expected: "{ \"field1\": \"value1\", \"nested\": { \"nestedField\": \"nestedValue\" } }",
+		},
+		{
+			name:     "Test with multiple nested json object",
+			input:    `{ "field1": "value1", "nested": { "nestedField1": "nestedValue1" } } { "field2": "value2", "nested": { "nestedField2": "nestedValue2" } }`,
+			expected: "{ \"field1\": \"value1\", \"nested\": { \"nestedField1\": \"nestedValue1\" } }\n{ \"field2\": \"value2\", \"nested\": { \"nestedField2\": \"nestedValue2\" } }",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actual := GetAllJsonsInString(tt.input)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}

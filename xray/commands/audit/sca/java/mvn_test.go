@@ -2,9 +2,9 @@ package java
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -231,10 +231,7 @@ func TestRunProjectsCmd(t *testing.T) {
 }
 
 func TestRemoveMavenConfig(t *testing.T) {
-	tmpDir := t.TempDir()
-	currentDir, err := os.Getwd()
-	assert.NoError(t, err)
-	restoreDir := tests.ChangeDirWithCallback(t, currentDir, tmpDir)
+	_, restoreDir := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer restoreDir()
 
 	// No maven.config exists
@@ -249,10 +246,8 @@ func TestRemoveMavenConfig(t *testing.T) {
 	assert.NoError(t, err)
 	restoreFunc, err = removeMavenConfig()
 	assert.NoError(t, err)
-	_, err = os.Stat(mavenConfigPath)
-	assert.Error(t, err)
+	assert.NoFileExists(t, mavenConfigPath)
 	err = restoreFunc()
 	assert.NoError(t, err)
-	_, err = os.Stat(mavenConfigPath)
-	assert.NoError(t, err)
+	assert.FileExists(t, mavenConfigPath)
 }

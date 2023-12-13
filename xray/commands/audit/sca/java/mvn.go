@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -177,15 +176,14 @@ func removeMavenConfig() (func() error, error) {
 	if !mavenConfigExists {
 		return nil, nil
 	}
-	restoreMavenConfig, err := utils.BackupFile(mavenConfigPath, "maven.config.bkp")
+	backupPath := mavenConfigPath + ".bkp"
+	err = os.Rename(mavenConfigPath, backupPath)
 	if err != nil {
-		return nil, err
+		err = errorutils.CheckErrorf("failed to rename %s to %s while building the maven dependencies tree. Error received:\n%s", mavenConfigPath, backupPath, err.Error())
 	}
-	err = os.Remove(mavenConfigPath)
-	if err != nil {
-		err = errorutils.CheckErrorf("failed to remove %s while building the maven dependencies tree. Error received:\n%s", mavenConfigPath, err.Error())
-	}
-	return restoreMavenConfig, err
+	return func() error {
+		return os.Rename(backupPath, mavenConfigPath)
+	}, err
 }
 
 // Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.

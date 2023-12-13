@@ -245,7 +245,9 @@ func TestRemoveMavenConfig(t *testing.T) {
 	// Create maven.config
 	err = fileutils.CreateDirIfNotExist(".mvn")
 	assert.NoError(t, err)
-	_, err = os.Create(mavenConfigPath)
+	file, err := os.Create(mavenConfigPath)
+	assert.NoError(t, err)
+	err = file.Close()
 	assert.NoError(t, err)
 	restoreFunc, err = removeMavenConfig()
 	assert.NoError(t, err)

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -56,33 +57,33 @@ const (
 )
 
 type ConfigFile struct {
-	Interactive bool             `yaml:"-"`
-	Version     int              `yaml:"version,omitempty"`
-	ConfigType  string           `yaml:"type,omitempty"`
-	Resolver    utils.Repository `yaml:"resolver,omitempty"`
-	Deployer    utils.Repository `yaml:"deployer,omitempty"`
-	UsePlugin   bool             `yaml:"usePlugin,omitempty"`
-	UseWrapper  bool             `yaml:"useWrapper,omitempty"`
+	Interactive bool               `yaml:"-"`
+	Version     int                `yaml:"version,omitempty"`
+	ConfigType  string             `yaml:"type,omitempty"`
+	Resolver    project.Repository `yaml:"resolver,omitempty"`
+	Deployer    project.Repository `yaml:"deployer,omitempty"`
+	UsePlugin   bool               `yaml:"usePlugin,omitempty"`
+	UseWrapper  bool               `yaml:"useWrapper,omitempty"`
 }
 
-func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
+func NewConfigFile(confType project.ProjectType, c *cli.Context) *ConfigFile {
 	configFile := &ConfigFile{
 		Version:    BuildConfVersion,
 		ConfigType: confType.String(),
 	}
 	configFile.populateConfigFromFlags(c)
 	switch confType {
-	case utils.Maven:
+	case project.Maven:
 		configFile.populateMavenConfigFromFlags(c)
-	case utils.Gradle:
+	case project.Gradle:
 		configFile.populateGradleConfigFromFlags(c)
-	case utils.Nuget, utils.Dotnet:
+	case project.Nuget, project.Dotnet:
 		configFile.populateNugetConfigFromFlags(c)
 	}
 	return configFile
 }
 
-func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
+func CreateBuildConfig(c *cli.Context, confType project.ProjectType) (err error) {
 	global := c.Bool(global)
 	projectDir, err := utils.GetProjectDir(global)
 	if err != nil {
@@ -98,25 +99,25 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 	}
 	if configFile.Interactive {
 		switch confType {
-		case utils.Go:
+		case project.Go:
 			err = configFile.configGo()
-		case utils.Pip:
+		case project.Pip:
 			err = configFile.configPip()
-		case utils.Pipenv:
+		case project.Pipenv:
 			err = configFile.configPipenv()
-		case utils.Poetry:
+		case project.Poetry:
 			err = configFile.configPoetry()
-		case utils.Yarn:
+		case project.Yarn:
 			err = configFile.configYarn()
-		case utils.Npm:
+		case project.Npm:
 			err = configFile.configNpm()
-		case utils.Nuget, utils.Dotnet:
+		case project.Nuget, project.Dotnet:
 			err = configFile.configDotnet()
-		case utils.Maven:
+		case project.Maven:
 			err = configFile.configMaven()
-		case utils.Gradle:
+		case project.Gradle:
 			err = configFile.configGradle()
-		case utils.Terraform:
+		case project.Terraform:
 			err = configFile.configTerraform()
 		}
 		if err != nil {
@@ -392,7 +393,7 @@ func (configFile *ConfigFile) setUseNugetV2() {
 	configFile.Resolver.NugetV2 = coreutils.AskYesNo("Use NuGet V2 Protocol?", false)
 }
 
-func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) error {
+func validateRepositoryConfig(repository *project.Repository, errorPrefix string) error {
 	releaseRepo := repository.ReleaseRepo
 	snapshotRepo := repository.SnapshotRepo
 

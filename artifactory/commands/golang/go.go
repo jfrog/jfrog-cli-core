@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
@@ -24,9 +25,9 @@ import (
 
 type GoCommand struct {
 	goArg              []string
-	buildConfiguration *utils.BuildConfiguration
-	deployerParams     *utils.RepositoryConfig
-	resolverParams     *utils.RepositoryConfig
+	buildConfiguration *buildUtils.BuildConfiguration
+	deployerParams     *project.RepositoryConfig
+	resolverParams     *project.RepositoryConfig
 	configFilePath     string
 	noFallback         bool
 }
@@ -40,17 +41,17 @@ func (gc *GoCommand) SetConfigFilePath(configFilePath string) *GoCommand {
 	return gc
 }
 
-func (gc *GoCommand) SetResolverParams(resolverParams *utils.RepositoryConfig) *GoCommand {
+func (gc *GoCommand) SetResolverParams(resolverParams *project.RepositoryConfig) *GoCommand {
 	gc.resolverParams = resolverParams
 	return gc
 }
 
-func (gc *GoCommand) SetDeployerParams(deployerParams *utils.RepositoryConfig) *GoCommand {
+func (gc *GoCommand) SetDeployerParams(deployerParams *project.RepositoryConfig) *GoCommand {
 	gc.deployerParams = deployerParams
 	return gc
 }
 
-func (gc *GoCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoCommand {
+func (gc *GoCommand) SetBuildConfiguration(buildConfiguration *buildUtils.BuildConfiguration) *GoCommand {
 	gc.buildConfiguration = buildConfiguration
 	return gc
 }
@@ -75,37 +76,37 @@ func (gc *GoCommand) ServerDetails() (*config.ServerDetails, error) {
 		return gc.resolverParams.ServerDetails()
 	}
 
-	vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
+	vConfig, err := project.ReadConfigFile(gc.configFilePath, project.YAML)
 	if err != nil {
 		return nil, err
 	}
-	return utils.GetServerDetails(vConfig)
+	return buildUtils.GetServerDetails(vConfig)
 }
 
 func (gc *GoCommand) Run() error {
 	// Read config file.
 	log.Debug("Preparing to read the config file", gc.configFilePath)
-	vConfig, err := utils.ReadConfigFile(gc.configFilePath, utils.YAML)
+	vConfig, err := project.ReadConfigFile(gc.configFilePath, project.YAML)
 	if err != nil {
 		return err
 	}
 
 	// Extract resolution params.
-	gc.resolverParams, err = utils.GetRepoConfigByPrefix(gc.configFilePath, utils.ProjectConfigResolverPrefix, vConfig)
+	gc.resolverParams, err = project.GetRepoConfigByPrefix(gc.configFilePath, project.ProjectConfigResolverPrefix, vConfig)
 	if err != nil {
 		return err
 	}
 
-	if vConfig.IsSet(utils.ProjectConfigDeployerPrefix) {
+	if vConfig.IsSet(project.ProjectConfigDeployerPrefix) {
 		// Extract deployer params.
-		gc.deployerParams, err = utils.GetRepoConfigByPrefix(gc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+		gc.deployerParams, err = project.GetRepoConfigByPrefix(gc.configFilePath, project.ProjectConfigDeployerPrefix, vConfig)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Extract build info information from the args.
-	gc.goArg, gc.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(gc.goArg)
+	gc.goArg, gc.buildConfiguration, err = buildUtils.ExtractBuildDetailsFromArgs(gc.goArg)
 	if err != nil {
 		return err
 	}
@@ -137,7 +138,7 @@ func (gc *GoCommand) run() (err error) {
 	if err != nil {
 		return
 	}
-	goBuildInfo, err := utils.PrepareBuildPrerequisites(gc.buildConfiguration)
+	goBuildInfo, err := buildUtils.PrepareBuildPrerequisites(gc.buildConfiguration)
 	if err != nil {
 		return
 	}

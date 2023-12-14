@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
@@ -89,7 +90,7 @@ func getNpmRepositoryUrl(repo, url string) string {
 }
 
 // Remove all the none npm CLI flags from args.
-func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *build.BuildConfiguration, err error) {
 	cleanArgs = append([]string(nil), args...)
 	cleanArgs, detailedSummary, err = coreutils.ExtractDetailedSummaryFromArgs(cleanArgs)
 	if err != nil {
@@ -109,7 +110,7 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 	if err != nil {
 		return
 	}
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
+	cleanArgs, buildConfig, err = build.ExtractBuildDetailsFromArgs(cleanArgs)
 	return
 }
 

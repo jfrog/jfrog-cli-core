@@ -10,6 +10,8 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	utilsconfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artclientutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -30,7 +32,7 @@ const (
 )
 
 type BuildAddGitCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	dotGitPath         string
 	configFilePath     string
 	serverId           string
@@ -56,7 +58,7 @@ func (config *BuildAddGitCommand) SetDotGitPath(dotGitPath string) *BuildAddGitC
 	return config
 }
 
-func (config *BuildAddGitCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildAddGitCommand {
+func (config *BuildAddGitCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildAddGitCommand {
 	config.buildConfiguration = buildConfiguration
 	return config
 }
@@ -76,7 +78,7 @@ func (config *BuildAddGitCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = utils.SaveBuildGeneralDetails(buildName, buildNumber, config.buildConfiguration.GetProject())
+	err = build.SaveBuildGeneralDetails(buildName, buildNumber, config.buildConfiguration.GetProject())
 	if err != nil {
 		return err
 	}
@@ -127,7 +129,7 @@ func (config *BuildAddGitCommand) Run() error {
 			}
 		}
 	}
-	err = utils.SavePartialBuildInfo(buildName, buildNumber, config.buildConfiguration.GetProject(), populateFunc)
+	err = build.SavePartialBuildInfo(buildName, buildNumber, config.buildConfiguration.GetProject(), populateFunc)
 	if err != nil {
 		return err
 	}
@@ -148,7 +150,7 @@ func (config *BuildAddGitCommand) ServerDetails() (*utilsconfig.ServerDetails, e
 	} else if config.configFilePath != "" {
 		// Get the server ID from the conf file.
 		var vConfig *viper.Viper
-		vConfig, err := utils.ReadConfigFile(config.configFilePath, utils.YAML)
+		vConfig, err := project.ReadConfigFile(config.configFilePath, project.YAML)
 		if err != nil {
 			return nil, err
 		}
@@ -372,7 +374,7 @@ func (config *BuildAddGitCommand) getLatestBuildInfo(issuesConfig *IssuesConfigu
 
 func (ic *IssuesConfiguration) populateIssuesConfigsFromSpec(configFilePath string) (err error) {
 	var vConfig *viper.Viper
-	vConfig, err = utils.ReadConfigFile(configFilePath, utils.YAML)
+	vConfig, err = project.ReadConfigFile(configFilePath, project.YAML)
 	if err != nil {
 		return err
 	}

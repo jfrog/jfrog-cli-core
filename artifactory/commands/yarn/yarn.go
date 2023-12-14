@@ -10,10 +10,12 @@ import (
 	"strings"
 
 	"github.com/jfrog/build-info-go/build"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/yarn"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -43,7 +45,7 @@ type YarnCommand struct {
 	yarnArgs           []string
 	threads            int
 	serverDetails      *config.ServerDetails
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *buildUtils.BuildConfiguration
 	buildInfoModule    *build.YarnModule
 }
 
@@ -149,13 +151,13 @@ func (yc *YarnCommand) validateSupportedCommand() error {
 
 func (yc *YarnCommand) readConfigFile() error {
 	log.Debug("Preparing to read the config file", yc.configFilePath)
-	vConfig, err := utils.ReadConfigFile(yc.configFilePath, utils.YAML)
+	vConfig, err := project.ReadConfigFile(yc.configFilePath, project.YAML)
 	if err != nil {
 		return err
 	}
 
 	// Extract resolution params
-	resolverParams, err := utils.GetRepoConfigByPrefix(yc.configFilePath, utils.ProjectConfigResolverPrefix, vConfig)
+	resolverParams, err := project.GetRepoConfigByPrefix(yc.configFilePath, project.ProjectConfigResolverPrefix, vConfig)
 	if err != nil {
 		return err
 	}
@@ -191,7 +193,7 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		return err
 	}
 
-	buildInfoService := utils.CreateBuildInfoService()
+	buildInfoService := buildUtils.CreateBuildInfoService()
 	npmBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, yc.buildConfiguration.GetProject())
 	if err != nil {
 		return errorutils.CheckError(err)

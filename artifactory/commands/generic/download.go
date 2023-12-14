@@ -10,6 +10,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	gofrog "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	serviceutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -22,7 +23,7 @@ import (
 )
 
 type DownloadCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	GenericCommand
 	configuration *utils.DownloadConfiguration
 	progress      ioUtils.ProgressMgr
@@ -32,7 +33,7 @@ func NewDownloadCommand() *DownloadCommand {
 	return &DownloadCommand{GenericCommand: *NewGenericCommand()}
 }
 
-func (dc *DownloadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *DownloadCommand {
+func (dc *DownloadCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *DownloadCommand {
 	dc.buildConfiguration = buildConfiguration
 	return dc
 }
@@ -88,7 +89,7 @@ func (dc *DownloadCommand) download() (err error) {
 		if err != nil {
 			return err
 		}
-		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, dc.buildConfiguration.GetProject()); err != nil {
+		if err = build.SaveBuildGeneralDetails(buildName, buildNumber, dc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
 	}
@@ -207,7 +208,7 @@ func (dc *DownloadCommand) download() (err error) {
 			partial.ModuleId = dc.buildConfiguration.GetModule()
 			partial.ModuleType = buildinfo.Generic
 		}
-		return utils.SavePartialBuildInfo(buildName, buildNumber, dc.buildConfiguration.GetProject(), populateFunc)
+		return build.SavePartialBuildInfo(buildName, buildNumber, dc.buildConfiguration.GetProject(), populateFunc)
 	}
 
 	return err

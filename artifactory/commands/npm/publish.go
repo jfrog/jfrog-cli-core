@@ -15,6 +15,8 @@ import (
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -111,11 +113,11 @@ func (npc *NpmPublishCommand) Init() error {
 	if npc.configFilePath != "" {
 		// Read config file.
 		log.Debug("Preparing to read the config file", npc.configFilePath)
-		vConfig, err := utils.ReadConfigFile(npc.configFilePath, utils.YAML)
+		vConfig, err := project.ReadConfigFile(npc.configFilePath, project.YAML)
 		if err != nil {
 			return err
 		}
-		deployerParams, err := utils.GetRepoConfigByPrefix(npc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+		deployerParams, err := project.GetRepoConfigByPrefix(npc.configFilePath, project.ProjectConfigDeployerPrefix, vConfig)
 		if err != nil {
 			return err
 		}
@@ -148,7 +150,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 			return err
 		}
 		project = npc.buildConfiguration.GetProject()
-		buildInfoService := utils.CreateBuildInfoService()
+		buildInfoService := buildUtils.CreateBuildInfoService()
 		npmBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, project)
 		if err != nil {
 			return errorutils.CheckError(err)
@@ -312,11 +314,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			if err != nil {
 				return err
 			}
-			err = utils.SaveBuildGeneralDetails(buildName, buildNumber, npc.buildConfiguration.GetProject())
+			err = buildUtils.SaveBuildGeneralDetails(buildName, buildNumber, npc.buildConfiguration.GetProject())
 			if err != nil {
 				return err
 			}
-			up.BuildProps, err = utils.CreateBuildProperties(buildName, buildNumber, npc.buildConfiguration.GetProject())
+			up.BuildProps, err = buildUtils.CreateBuildProperties(buildName, buildNumber, npc.buildConfiguration.GetProject())
 			if err != nil {
 				return err
 			}

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
@@ -45,7 +45,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 
 	log.Info("Publishing", moduleName, "to", targetRepo)
 
-	props, err := utils.CreateBuildProperties(buildName, buildNumber, projectKey)
+	props, err := build.CreateBuildProperties(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, nil, err
 	}

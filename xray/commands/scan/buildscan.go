@@ -2,7 +2,7 @@ package scan
 
 import (
 	"errors"
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -20,7 +20,7 @@ const (
 type BuildScanCommand struct {
 	serverDetails          *config.ServerDetails
 	outputFormat           xrutils.OutputFormat
-	buildConfiguration     *rtutils.BuildConfiguration
+	buildConfiguration     *build.BuildConfiguration
 	includeVulnerabilities bool
 	failBuild              bool
 	printExtendedTable     bool
@@ -45,7 +45,7 @@ func (bsc *BuildScanCommand) ServerDetails() (*config.ServerDetails, error) {
 	return bsc.serverDetails, nil
 }
 
-func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *rtutils.BuildConfiguration) *BuildScanCommand {
+func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildScanCommand {
 	bsc.buildConfiguration = buildConfiguration
 	return bsc
 }

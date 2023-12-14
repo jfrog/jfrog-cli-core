@@ -16,7 +16,8 @@ import (
 	"strings"
 
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -77,7 +78,7 @@ func (nc *NpmCommand) SetArgs(args []string) *NpmCommand {
 	return nc
 }
 
-func (nc *NpmCommand) SetRepoConfig(conf *utils.RepositoryConfig) *NpmCommand {
+func (nc *NpmCommand) SetRepoConfig(conf *project.RepositoryConfig) *NpmCommand {
 	serverDetails, _ := conf.ServerDetails()
 	nc.SetRepo(conf.TargetRepo()).SetServerDetails(serverDetails)
 	return nc
@@ -96,12 +97,12 @@ func (nc *NpmCommand) SetRepo(repo string) *NpmCommand {
 func (nc *NpmCommand) Init() error {
 	// Read config file.
 	log.Debug("Preparing to read the config file", nc.configFilePath)
-	vConfig, err := utils.ReadConfigFile(nc.configFilePath, utils.YAML)
+	vConfig, err := project.ReadConfigFile(nc.configFilePath, project.YAML)
 	if err != nil {
 		return err
 	}
 	// Extract resolution params.
-	resolverParams, err := utils.GetRepoConfigByPrefix(nc.configFilePath, utils.ProjectConfigResolverPrefix, vConfig)
+	resolverParams, err := project.GetRepoConfigByPrefix(nc.configFilePath, project.ProjectConfigResolverPrefix, vConfig)
 	if err != nil {
 		return err
 	}
@@ -113,7 +114,7 @@ func (nc *NpmCommand) Init() error {
 	return nil
 }
 
-func (nc *NpmCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *NpmCommand {
+func (nc *NpmCommand) SetBuildConfiguration(buildConfiguration *buildUtils.BuildConfiguration) *NpmCommand {
 	nc.buildConfiguration = buildConfiguration
 	return nc
 }
@@ -315,7 +316,7 @@ func (nc *NpmCommand) prepareBuildInfoModule() error {
 	if err != nil {
 		return err
 	}
-	buildInfoService := utils.CreateBuildInfoService()
+	buildInfoService := buildUtils.CreateBuildInfoService()
 	npmBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, nc.buildConfiguration.GetProject())
 	if err != nil {
 		return errorutils.CheckError(err)

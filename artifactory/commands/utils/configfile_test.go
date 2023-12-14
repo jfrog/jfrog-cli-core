@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -31,11 +31,11 @@ func TestGoConfigFile(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
-	err := CreateBuildConfig(context, utils.Go)
+	err := CreateBuildConfig(context, project.Go)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Go.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Go.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
@@ -51,11 +51,11 @@ func TestGoConfigFileWithDefaultServerId(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
-	err = CreateBuildConfig(context, utils.Go)
+	err = CreateBuildConfig(context, project.Go)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Go.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, project.Go.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "test", config.GetString("deployer.serverId"))
@@ -69,11 +69,11 @@ func TestPipConfigFile(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
-	err := CreateBuildConfig(context, utils.Pip)
+	err := CreateBuildConfig(context, project.Pip)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Pip.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Pip.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
@@ -89,11 +89,11 @@ func TestPipConfigFileWithDefaultServerId(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
-	err = CreateBuildConfig(context, utils.Pip)
+	err = CreateBuildConfig(context, project.Pip)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Pip.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, project.Pip.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "test", config.GetString("deployer.serverId"))
@@ -109,11 +109,11 @@ func TestPipenvConfigFile(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
-	err := CreateBuildConfig(context, utils.Pipenv)
+	err := CreateBuildConfig(context, project.Pipenv)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Pipenv.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Pipenv.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
@@ -129,11 +129,11 @@ func TestPipenvConfigFileWithDefaultServerId(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
-	err = CreateBuildConfig(context, utils.Pipenv)
+	err = CreateBuildConfig(context, project.Pipenv)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Pipenv.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, project.Pipenv.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "test", config.GetString("deployer.serverId"))
@@ -147,11 +147,11 @@ func TestNpmConfigFile(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
-	err := CreateBuildConfig(context, utils.Npm)
+	err := CreateBuildConfig(context, project.Npm)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Npm.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Npm.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
@@ -167,11 +167,11 @@ func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local")
-	err = CreateBuildConfig(context, utils.Npm)
+	err = CreateBuildConfig(context, project.Npm)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Npm.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, project.Npm.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "test", config.GetString("deployer.serverId"))
@@ -185,11 +185,11 @@ func TestNugetConfigFile(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo")
-	err := CreateBuildConfig(context, utils.Nuget)
+	err := CreateBuildConfig(context, project.Nuget)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Nuget.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Nuget.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, true, config.GetBool("resolver.nugetV2"))
@@ -204,11 +204,11 @@ func TestNugetConfigFileWithDefaultServerId(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionRepo+"=repo")
-	err = CreateBuildConfig(context, utils.Nuget)
+	err = CreateBuildConfig(context, project.Nuget)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Nuget.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, project.Nuget.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, true, config.GetBool("resolver.nugetV2"))
@@ -223,11 +223,11 @@ func TestMavenConfigFile(t *testing.T) {
 	context := createContext(t, resolutionServerId+"=relServer", resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
 		deploymentServerId+"=depServer", deploymentReleasesRepo+"=release-repo-local", deploymentSnapshotsRepo+"=snapshot-repo-local",
 		includePatterns+"=*pattern*;second", excludePatterns+"=excluding;*pattern")
-	err := CreateBuildConfig(context, utils.Maven)
+	err := CreateBuildConfig(context, project.Maven)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Maven.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Maven.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "snapshot-repo", config.GetString("resolver.snapshotRepo"))
 	assert.Equal(t, "release-repo", config.GetString("resolver.releaseRepo"))
@@ -248,11 +248,11 @@ func TestMavenConfigFileWithDefaultServerId(t *testing.T) {
 	// Create build config
 	context := createContext(t, resolutionReleasesRepo+"=release-repo", resolutionSnapshotsRepo+"=snapshot-repo",
 		deploymentReleasesRepo+"=release-repo-local", deploymentSnapshotsRepo+"=snapshot-repo-local")
-	err = CreateBuildConfig(context, utils.Maven)
+	err = CreateBuildConfig(context, project.Maven)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Maven.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, project.Maven.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "snapshot-repo", config.GetString("resolver.snapshotRepo"))
 	assert.Equal(t, "release-repo", config.GetString("resolver.releaseRepo"))
@@ -269,11 +269,11 @@ func TestGradleConfigFile(t *testing.T) {
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local",
 		ivyDescPattern+"=[ivy]/[pattern]", ivyArtifactsPattern+"=[artifact]/[pattern]")
-	err := CreateBuildConfig(context, utils.Gradle)
+	err := CreateBuildConfig(context, project.Gradle)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Gradle.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Gradle.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
@@ -296,11 +296,11 @@ func TestGradleConfigFileWithDefaultServerId(t *testing.T) {
 	// Create build config
 	context := createContext(t, resolutionRepo+"=repo", deploymentRepo+"=repo-local",
 		ivyDescPattern+"=[ivy]/[pattern]", ivyArtifactsPattern+"=[artifact]/[pattern]")
-	err = CreateBuildConfig(context, utils.Gradle)
+	err = CreateBuildConfig(context, project.Gradle)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Gradle.String(), os.Getenv(coreutils.HomeDir))
+	config := checkCommonAndGetConfiguration(t, project.Gradle.String(), os.Getenv(coreutils.HomeDir))
 	assert.Equal(t, "test", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "test", config.GetString("deployer.serverId"))
@@ -320,11 +320,11 @@ func TestGradleConfigFileDefaultPatterns(t *testing.T) {
 
 	// Create build config
 	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
-	err := CreateBuildConfig(context, utils.Gradle)
+	err := CreateBuildConfig(context, project.Gradle)
 	assert.NoError(t, err)
 
 	// Check configuration
-	config := checkCommonAndGetConfiguration(t, utils.Gradle.String(), tempDirPath)
+	config := checkCommonAndGetConfiguration(t, project.Gradle.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
@@ -341,7 +341,7 @@ func TestValidateConfigResolver(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
 	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
-	configFile := NewConfigFile(utils.Go, createContext(t))
+	configFile := NewConfigFile(project.Go, createContext(t))
 	err := configFile.validateConfig()
 	assert.NoError(t, err)
 
@@ -382,7 +382,7 @@ func TestValidateConfigDeployer(t *testing.T) {
 	// Create and check empty config
 	tempDirPath := createTempEnv(t)
 	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
-	configFile := NewConfigFile(utils.Go, createContext(t))
+	configFile := NewConfigFile(project.Go, createContext(t))
 	err := configFile.validateConfig()
 	assert.NoError(t, err)
 
@@ -458,7 +458,7 @@ func setStringFlags(flagSet *flag.FlagSet, flags ...string) []string {
 
 // Read yaml configuration from disk, check version and type.
 func checkCommonAndGetConfiguration(t *testing.T, projectType string, tempDirPath string) *viper.Viper {
-	config, err := utils.ReadConfigFile(filepath.Join(tempDirPath, "projects", projectType+".yaml"), utils.YAML)
+	config, err := project.ReadConfigFile(filepath.Join(tempDirPath, "projects", projectType+".yaml"), project.YAML)
 	assert.NoError(t, err)
 	assert.Equal(t, BuildConfVersion, config.GetInt("version"))
 	assert.Equal(t, projectType, config.GetString("type"))

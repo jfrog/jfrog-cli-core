@@ -4,6 +4,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
@@ -16,7 +18,7 @@ import (
 type GradleCommand struct {
 	tasks              string
 	configPath         string
-	configuration      *utils.BuildConfiguration
+	configuration      *build.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	threads            int
 	detailedSummary    bool
@@ -37,11 +39,11 @@ func (gc *GradleCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Get the serverDetails from the config file.
 	var err error
 	if gc.serverDetails == nil {
-		vConfig, err := utils.ReadConfigFile(gc.configPath, utils.YAML)
+		vConfig, err := project.ReadConfigFile(gc.configPath, project.YAML)
 		if err != nil {
 			return nil, err
 		}
-		gc.serverDetails, err = utils.GetServerDetails(vConfig)
+		gc.serverDetails, err = build.GetServerDetails(vConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +58,7 @@ func (gc *GradleCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 
 func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 	// Read config
-	vConfig, err = utils.ReadConfigFile(gc.configPath, utils.YAML)
+	vConfig, err = project.ReadConfigFile(gc.configPath, project.YAML)
 	if err != nil {
 		return
 	}
@@ -169,7 +171,7 @@ func (gc *GradleCommand) CommandName() string {
 	return "rt_gradle"
 }
 
-func (gc *GradleCommand) SetConfiguration(configuration *utils.BuildConfiguration) *GradleCommand {
+func (gc *GradleCommand) SetConfiguration(configuration *build.BuildConfiguration) *GradleCommand {
 	gc.configuration = configuration
 	return gc
 }

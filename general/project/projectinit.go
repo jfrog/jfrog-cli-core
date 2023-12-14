@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	artifactoryCommandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -222,8 +222,8 @@ func createProjectBuildConfigs(tech coreutils.Technology, projectPath string, se
 		Version:    artifactoryCommandsUtils.BuildConfVersion,
 		ConfigType: techName,
 	}
-	configFile.Resolver = artifactoryUtils.Repository{ServerId: serverId}
-	configFile.Deployer = artifactoryUtils.Repository{ServerId: serverId}
+	configFile.Resolver = project.Repository{ServerId: serverId}
+	configFile.Deployer = project.Repository{ServerId: serverId}
 	switch tech {
 	case coreutils.Maven:
 		configFile.Resolver.ReleaseRepo = MavenVirtualDefaultName

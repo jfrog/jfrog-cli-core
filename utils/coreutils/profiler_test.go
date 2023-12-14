@@ -52,6 +52,7 @@ func TestThreadInterval(t *testing.T) {
 	assert.Contains(t, output, "Thread dump #"+strconv.FormatUint(uint64(expectedRepetitions)-1, 10))
 }
 
+// In the thread dump test, we look for this function name in the output to ensure that functions executed in goroutines are recorded.
 func dummyZzzz() {
 	time.Sleep(2 * time.Second)
 }

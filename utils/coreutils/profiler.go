@@ -7,14 +7,19 @@ import (
 	"runtime/pprof"
 	"time"
 
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 )
 
 const (
-	defaultInterval    = time.Second
+	// The default interval between 2 profiling actions
+	defaultInterval = time.Second
+	// The default number of profilings
 	defaultRepetitions = 3
 )
 
+// This struct wraps the "pprof" profiler in Go.
+// It is used for thread dumping.
 type Profiler struct {
 	interval    time.Duration
 	repetitions uint
@@ -51,7 +56,7 @@ func (p *Profiler) ThreadDump() (output string, err error) {
 		return
 	}
 	defer func() {
-		err = errors.Join(err, os.Remove(outputFilePath))
+		err = errors.Join(err, errorutils.CheckError(os.Remove(outputFilePath)))
 	}()
 	return p.convertFileToString(outputFilePath)
 }
@@ -62,13 +67,13 @@ func (p *Profiler) threadDumpToFile() (outputFilePath string, err error) {
 		return
 	}
 	defer func() {
-		err = errors.Join(err, outputFile.Close())
+		err = errors.Join(err, errorutils.CheckError(outputFile.Close()))
 	}()
 
 	for i := 0; i < int(p.repetitions); i++ {
 		fmt.Fprintf(outputFile, "========== Thread dump #%d ==========\n", i)
 		prof := pprof.Lookup("goroutine")
-		if err = prof.WriteTo(outputFile, 1); err != nil {
+		if err = errorutils.CheckError(prof.WriteTo(outputFile, 1)); err != nil {
 			return
 		}
 		time.Sleep(p.interval)
@@ -76,11 +81,10 @@ func (p *Profiler) threadDumpToFile() (outputFilePath string, err error) {
 	return outputFile.Name(), nil
 }
 
-func (p *Profiler) convertFileToString(outputFilePath string) (output string, err error) {
-	var outputBytes []byte
-	if outputBytes, err = os.ReadFile(outputFilePath); err != nil {
-		return
+func (p *Profiler) convertFileToString(outputFilePath string) (string, error) {
+	if outputBytes, err := os.ReadFile(outputFilePath); err != nil {
+		return "", errorutils.CheckError(err)
+	} else {
+		return string(outputBytes), nil
 	}
-	output = string(outputBytes)
-	return
 }

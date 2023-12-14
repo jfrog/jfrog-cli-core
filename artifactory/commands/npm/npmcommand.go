@@ -19,6 +19,7 @@ import (
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -161,7 +162,7 @@ func (nc *NpmCommand) PreparePrerequisites(repo string) error {
 }
 
 func (nc *NpmCommand) setRestoreNpmrcFunc() error {
-	restoreNpmrcFunc, err := commandUtils.BackupFile(filepath.Join(nc.workingDirectory, npmrcFileName), npmrcBackupFileName)
+	restoreNpmrcFunc, err := ioutils.BackupFile(filepath.Join(nc.workingDirectory, npmrcFileName), npmrcBackupFileName)
 	if err != nil {
 		return err
 	}

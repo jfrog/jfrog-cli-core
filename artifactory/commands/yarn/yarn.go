@@ -18,6 +18,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -97,7 +98,7 @@ func (yc *YarnCommand) Run() (err error) {
 		}()
 	}
 
-	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), YarnrcBackupFileName)
+	restoreYarnrcFunc, err := ioutils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), YarnrcBackupFileName)
 	if err != nil {
 		return errors.Join(err, restoreYarnrcFunc())
 	}

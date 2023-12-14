@@ -9,10 +9,10 @@ import (
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/dependencies"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/spf13/viper"
 )
@@ -108,7 +108,7 @@ func RunMvn(mu *MvnUtils) error {
 	mavenModule.SetExtractorDetails(dependencyLocalPath,
 		filepath.Join(coreutils.GetCliPersistentTempDirPath(), buildUtils.PropertiesTempPath),
 		mu.goals,
-		utils.DownloadExtractor,
+		dependencies.DownloadExtractor,
 		props,
 		useWrapper).
 		SetOutputWriter(mu.outputWriter)

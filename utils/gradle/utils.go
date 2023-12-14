@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/dependencies"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/spf13/viper"
 )
@@ -45,7 +45,7 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	if err != nil {
 		return err
 	}
-	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), build.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractor, props)
+	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), build.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, dependencies.DownloadExtractor, props)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 

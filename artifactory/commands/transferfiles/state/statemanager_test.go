@@ -1,6 +1,7 @@
 package state
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -146,6 +147,48 @@ func TestReposOverallBiFiles(t *testing.T) {
 	assert.Equal(t, int64(8), stateManager.OverallBiFiles.TransferredUnits)
 }
 
+func TestChangeDelayedFilesCountBy(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Increase delayed files count
+	assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(2, true))
+	assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(4, true))
+	assert.Equal(t, uint64(6), stateManager.DelayedFiles)
+
+	// Decrease delayed files count
+	assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(3, false))
+	assert.Equal(t, uint64(3), stateManager.DelayedFiles)
+}
+
+func TestVisitedFolders(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Increase visited folders count
+	assert.NoError(t, stateManager.IncVisitedFolders())
+	assert.NoError(t, stateManager.IncVisitedFolders())
+	assert.Equal(t, uint64(2), stateManager.VisitedFolders)
+
+	// Set repository state and ensure the visited folders became 0
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, true, true))
+	assert.Zero(t, stateManager.VisitedFolders)
+}
+
+func TestChangeTransferFailureCountBy(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Increase failures count
+	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(2, true))
+	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(4, true))
+	assert.Equal(t, uint64(6), stateManager.TransferFailures)
+
+	// Decrease failures count
+	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(3, false))
+	assert.Equal(t, uint64(3), stateManager.TransferFailures)
+}
+
 func assertReposTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
 	totalTransferredSize, err := stateManager.GetReposTransferredSizeBytes(repoKeys...)
 	assert.NoError(t, err)
@@ -192,4 +235,127 @@ func TestTryLockStateManager(t *testing.T) {
 
 	assert.NoError(t, stateManager.tryLockStateManager())
 	assert.ErrorIs(t, new(AlreadyLockedError), stateManager.tryLockStateManager())
+}
+
+func TestRunning(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Assert no running=false
+	running, err := stateManager.Running()
+	assert.NoError(t, err)
+	assert.False(t, running)
+
+	// Lock to simulate transfer
+	assert.NoError(t, stateManager.TryLockTransferStateManager())
+
+	// Assert running=true
+	running, err = stateManager.Running()
+	assert.NoError(t, err)
+	assert.True(t, running)
+}
+
+func TestInitStartTimestamp(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Init start timestamp and expect timestamp zero
+	running, err := stateManager.InitStartTimestamp()
+	assert.NoError(t, err)
+	assert.False(t, running)
+	assert.True(t, stateManager.startTimestamp.IsZero())
+
+	// Lock to simulate transfer
+	assert.NoError(t, stateManager.TryLockTransferStateManager())
+
+	// Init start timestamp and expect timestamp non-zero
+	running, err = stateManager.InitStartTimestamp()
+	assert.NoError(t, err)
+	assert.True(t, running)
+	assert.False(t, stateManager.startTimestamp.IsZero())
+}
+
+var getRunningTimeStringCases = []struct {
+	startTimestamp time.Time
+	expectedString string
+}{
+	{time.Now(), "Less than a minute"},
+	{time.Now().Add(-time.Second), "Less than a minute"},
+	{time.Now().Add(-time.Minute), "1 minute"},
+	{time.Now().Add(-time.Hour), "1 hour"},
+	{time.Now().Add(-time.Hour).Add(time.Minute), "59 minutes"},
+	{time.Now().Add(-time.Hour).Add(time.Minute).Add(10 * time.Second), "58 minutes"},
+}
+
+func TestGetRunningTimeString(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	runningTime := stateManager.GetRunningTimeString()
+	assert.Empty(t, runningTime)
+
+	// Lock and init start timestamp to simulate transfer
+	assert.NoError(t, stateManager.TryLockTransferStateManager())
+	running, err := stateManager.InitStartTimestamp()
+	assert.NoError(t, err)
+	assert.True(t, running)
+
+	// Run test cases
+	for _, testCase := range getRunningTimeStringCases {
+		t.Run(testCase.startTimestamp.String(), func(t *testing.T) {
+			// Set start timestamp
+			stateManager.startTimestamp = testCase.startTimestamp
+
+			// Assert running time string
+			assert.Equal(t, testCase.expectedString, stateManager.GetRunningTimeString())
+		})
+	}
+}
+
+func TestStateConcurrency(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Concurrently increment variables in the state
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(1, 1))
+			assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase2(1, 1))
+			assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase3(1, 1))
+			assert.NoError(t, stateManager.IncVisitedFolders())
+			assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(1, true))
+			assert.NoError(t, stateManager.ChangeTransferFailureCountBy(1, true))
+		}()
+	}
+	wg.Wait()
+
+	// Assert 1000 in all values
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase1Info.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase1Info.TransferredUnits))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase2Info.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase2Info.TransferredUnits))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase3Info.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase3Info.TransferredUnits))
+	assert.Equal(t, 1000, int(stateManager.OverallTransfer.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.VisitedFolders))
+	assert.Equal(t, 1000, int(stateManager.DelayedFiles))
+	assert.Equal(t, 1000, int(stateManager.TransferFailures))
+
+	// Concurrently decrement delayed artifacts and transfer failures
+	for i := 0; i < 500; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(1, false))
+			assert.NoError(t, stateManager.ChangeTransferFailureCountBy(1, false))
+		}()
+	}
+	wg.Wait()
+
+	// Assert 500 in delayed artifacts and transfer failures
+	assert.Equal(t, 500, int(stateManager.DelayedFiles))
+	assert.Equal(t, 500, int(stateManager.TransferFailures))
 }

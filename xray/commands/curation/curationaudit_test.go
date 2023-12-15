@@ -138,7 +138,7 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 			componentId:     "npm://test:1.0.0",
 			artiUrl:         "http://localhost:8000/artifactory",
 			repo:            "npm",
-			tech:            coreutils.Npm.ToString(),
+			tech:            coreutils.Npm.String(),
 			wantDownloadUrl: "http://localhost:8000/artifactory/api/npm/npm/test/-/test-1.0.0.tgz",
 			wantName:        "test",
 			wantVersion:     "1.0.0",
@@ -148,7 +148,7 @@ func TestGetNameScopeAndVersion(t *testing.T) {
 			componentId:     "npm://dev/test:1.0.0",
 			artiUrl:         "http://localhost:8000/artifactory",
 			repo:            "npm",
-			tech:            coreutils.Npm.ToString(),
+			tech:            coreutils.Npm.String(),
 			wantDownloadUrl: "http://localhost:8000/artifactory/api/npm/npm/dev/test/-/test-1.0.0.tgz",
 			wantName:        "test",
 			wantVersion:     "1.0.0",
@@ -414,6 +414,7 @@ func TestDoCurationAudit(t *testing.T) {
 			}()
 			curationCmd := NewCurationAuditCommand()
 			curationCmd.parallelRequests = 3
+			curationCmd.SetIgnoreConfigFile(true)
 			rootDir, err := os.Getwd()
 			assert.NoError(t, err)
 			// Set the working dir for npm project.

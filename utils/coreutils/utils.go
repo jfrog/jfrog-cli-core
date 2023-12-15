@@ -2,8 +2,10 @@ package coreutils
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -501,6 +503,16 @@ func parseYesNo(s string, def bool) (ans, valid bool) {
 	return false, false
 }
 
+func GetJsonIndent(o any) (strJson string, err error) {
+	byteJson, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		err = errorutils.CheckError(err)
+		return
+	}
+	strJson = string(byteJson)
+	return
+}
+
 func GetCliUserAgent() string {
 	if cliUserAgentVersion == "" {
 		return cliUserAgentName
@@ -598,4 +610,21 @@ func GetMaskedCommandString(cmd *exec.Cmd) string {
 		cmdString = strings.ReplaceAll(cmdString, matchedResults[1], "***")
 	}
 	return cmdString
+}
+
+func SetPermissionsRecursively(dirPath string, mode os.FileMode) error {
+	err := filepath.WalkDir(dirPath, func(path string, info fs.DirEntry, e error) error {
+		if e != nil {
+			return e
+		}
+		e = os.Chmod(path, mode)
+		if e != nil {
+			return e
+		}
+		return nil
+	})
+	if err != nil {
+		return errorutils.CheckErrorf("failed while setting permission to '%s' files: %s", dirPath, err.Error())
+	}
+	return nil
 }

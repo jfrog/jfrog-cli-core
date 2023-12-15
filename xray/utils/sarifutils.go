@@ -2,10 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"strconv"
+	"path/filepath"
 	"strings"
 
-	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/owenrumney/go-sarif/v2/sarif"
 )
@@ -81,98 +80,12 @@ func AggregateMultipleRunsIntoSingle(runs []*sarif.Run, destination *sarif.Run) 
 	}
 }
 
-func getRunInformationUri(run *sarif.Run) string {
-	if run != nil && run.Tool.Driver != nil && run.Tool.Driver.InformationURI != nil {
-		return *run.Tool.Driver.InformationURI
-	}
-	return ""
-}
-
-// Calculate new information that exists at the run and not at the source
-func GetDiffFromRun(sources []*sarif.Run, targets []*sarif.Run) (runWithNewOnly *sarif.Run) {
-	// Combine
-	combinedSource := sarif.NewRunWithInformationURI(sources[0].Tool.Driver.Name, getRunInformationUri(sources[0])).WithInvocations([]*sarif.Invocation{})
-	AggregateMultipleRunsIntoSingle(sources, combinedSource)
-	if combinedSource == nil {
-		return
-	}
-	if len(targets) == 0 {
-		return combinedSource
-	}
-	combinedTarget := sarif.NewRunWithInformationURI(targets[0].Tool.Driver.Name, getRunInformationUri(targets[0])).WithInvocations([]*sarif.Invocation{})
-	AggregateMultipleRunsIntoSingle(targets, combinedTarget)
-	if combinedTarget == nil {
-		return combinedSource
-	}
-	// Get diff
-	runWithNewOnly = sarif.NewRun(combinedSource.Tool).WithInvocations(combinedSource.Invocations)
-	for _, sourceResult := range combinedSource.Results {
-		targetMatchingResults := GetResultsByRuleId(combinedTarget, *sourceResult.RuleID)
-		if len(targetMatchingResults) == 0 {
-			runWithNewOnly.AddResult(sourceResult)
-			if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
-				runWithNewOnly.Tool.Driver.AddRule(rule)
-			}
-			continue
-		}
-		for _, targetMatchingResult := range targetMatchingResults {
-			if len(sourceResult.Locations) > len(targetMatchingResult.Locations) ||
-				len(sourceResult.CodeFlows) > len(targetMatchingResult.CodeFlows) {
-				runWithNewOnly.AddResult(sourceResult)
-				if rule, _ := combinedSource.GetRuleById(*sourceResult.RuleID); rule != nil {
-					runWithNewOnly.Tool.Driver.AddRule(rule)
-				}
-			}
-		}
-	}
-	return
-}
-
-// Calculate new information that exists at the result and not at the source
-func GetDiffFromResult(result *sarif.Result, source *sarif.Result) *sarif.Result {
-	newLocations := datastructures.MakeSet[*sarif.Location]()
-	newCodeFlows := []*sarif.CodeFlow{}
-	for _, targetLocation := range result.Locations {
-		if !IsLocationInResult(targetLocation, source) {
-			newLocations.Add(targetLocation)
-			newCodeFlows = append(newCodeFlows, GetLocationRelatedCodeFlowsFromResult(targetLocation, result)...)
-			continue
-		}
-		// Location in result, compare related code flows
-		for _, targetCodeFlow := range GetLocationRelatedCodeFlowsFromResult(targetLocation, result) {
-			for _, sourceCodeFlow := range GetLocationRelatedCodeFlowsFromResult(targetLocation, source) {
-				if !IsSameCodeFlow(targetCodeFlow, sourceCodeFlow) {
-					// Code flow does not exist at source, add it and it's related location
-					newLocations.Add(targetLocation)
-					newCodeFlows = append(newCodeFlows, targetCodeFlow)
-				}
-			}
-		}
-	}
-	// Create the result only with new information
-	return sarif.NewRuleResult(*result.RuleID).
-		WithKind(*result.Kind).
-		WithMessage(&result.Message).
-		WithLevel(*result.Level).
-		WithLocations(newLocations.ToSlice()).
-		WithCodeFlows(newCodeFlows)
-}
-
-func FilterResultsByRuleIdAndMsgText(source []*sarif.Result, ruleId, msgText string) (results []*sarif.Result) {
-	for _, result := range source {
-		if ruleId == *result.RuleID && msgText == GetResultMsgText(result) {
-			results = append(results, result)
-		}
-	}
-	return
-}
-
 func GetLocationRelatedCodeFlowsFromResult(location *sarif.Location, result *sarif.Result) (codeFlows []*sarif.CodeFlow) {
 	for _, codeFlow := range result.CodeFlows {
 		for _, stackTrace := range codeFlow.ThreadFlows {
 			// The threadFlow is reverse stack trace.
 			// The last location is the location that it relates to.
-			if IsSameLocation(location, stackTrace.Locations[len(stackTrace.Locations)-1].Location) {
+			if isSameLocation(location, stackTrace.Locations[len(stackTrace.Locations)-1].Location) {
 				codeFlows = append(codeFlows, codeFlow)
 			}
 		}
@@ -180,41 +93,7 @@ func GetLocationRelatedCodeFlowsFromResult(location *sarif.Location, result *sar
 	return
 }
 
-func IsSameCodeFlow(codeFlow *sarif.CodeFlow, other *sarif.CodeFlow) bool {
-	if len(codeFlow.ThreadFlows) != len(other.ThreadFlows) {
-		return false
-	}
-	// ThreadFlows is unordered list of stack trace
-	for _, stackTrace := range codeFlow.ThreadFlows {
-		foundMatch := false
-		for _, otherStackTrace := range other.ThreadFlows {
-			if len(stackTrace.Locations) != len(otherStackTrace.Locations) {
-				continue
-			}
-			for i, stackTraceLocation := range stackTrace.Locations {
-				if !IsSameLocation(stackTraceLocation.Location, otherStackTrace.Locations[i].Location) {
-					continue
-				}
-			}
-			foundMatch = true
-		}
-		if !foundMatch {
-			return false
-		}
-	}
-	return true
-}
-
-func IsLocationInResult(location *sarif.Location, result *sarif.Result) bool {
-	for _, resultLocation := range result.Locations {
-		if IsSameLocation(location, resultLocation) {
-			return true
-		}
-	}
-	return false
-}
-
-func IsSameLocation(location *sarif.Location, other *sarif.Location) bool {
+func isSameLocation(location *sarif.Location, other *sarif.Location) bool {
 	if location == other {
 		return true
 	}
@@ -235,24 +114,6 @@ func GetResultsLocationCount(runs ...*sarif.Run) (count int) {
 	return
 }
 
-func GetLevelResultsLocationCount(run *sarif.Run, level SarifLevel) (count int) {
-	for _, result := range run.Results {
-		if level == SarifLevel(*result.Level) {
-			count += len(result.Locations)
-		}
-	}
-	return
-}
-
-func GetResultsByRuleId(run *sarif.Run, ruleId string) (results []*sarif.Result) {
-	for _, result := range run.Results {
-		if *result.RuleID == ruleId {
-			results = append(results, result)
-		}
-	}
-	return
-}
-
 func GetResultMsgText(result *sarif.Result) string {
 	if result.Message.Text != nil {
 		return *result.Message.Text
@@ -261,19 +122,11 @@ func GetResultMsgText(result *sarif.Result) string {
 }
 
 func GetLocationSnippet(location *sarif.Location) string {
-	snippet := GetLocationSnippetPointer(location)
-	if snippet == nil {
-		return ""
-	}
-	return *snippet
-}
-
-func GetLocationSnippetPointer(location *sarif.Location) *string {
 	region := getLocationRegion(location)
 	if region != nil && region.Snippet != nil {
-		return region.Snippet.Text
+		return *region.Snippet.Text
 	}
-	return nil
+	return ""
 }
 
 func SetLocationSnippet(location *sarif.Location, snippet string) {
@@ -283,15 +136,33 @@ func SetLocationSnippet(location *sarif.Location, snippet string) {
 }
 
 func GetLocationFileName(location *sarif.Location) string {
-	filePath := location.PhysicalLocation.ArtifactLocation.URI
-	if filePath != nil {
-		return *filePath
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.ArtifactLocation != nil && location.PhysicalLocation.ArtifactLocation.URI != nil {
+		return *location.PhysicalLocation.ArtifactLocation.URI
 	}
 	return ""
 }
 
+func GetRelativeLocationFileName(location *sarif.Location, invocations []*sarif.Invocation) string {
+	wd := ""
+	if len(invocations) > 0 {
+		wd = GetInvocationWorkingDirectory(invocations[0])
+	}
+	filePath := GetLocationFileName(location)
+	if filePath != "" {
+		return ExtractRelativePath(filePath, wd)
+	}
+	return ""
+}
+
+func GetFullLocationFileName(relative string, invocations []*sarif.Invocation) string {
+	if len(invocations) == 0 {
+		return relative
+	}
+	return filepath.Join(GetInvocationWorkingDirectory(invocations[0]), relative)
+}
+
 func SetLocationFileName(location *sarif.Location, fileName string) {
-	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.Region != nil && location.PhysicalLocation.Region.Snippet != nil {
+	if location != nil && location.PhysicalLocation != nil && location.PhysicalLocation.ArtifactLocation != nil {
 		location.PhysicalLocation.ArtifactLocation.URI = &fileName
 	}
 }
@@ -335,22 +206,15 @@ func GetLocationEndColumn(location *sarif.Location) int {
 	return 0
 }
 
-func GetStartLocationInFile(location *sarif.Location) string {
-	startLine := location.PhysicalLocation.Region.StartLine
-	startColumn := location.PhysicalLocation.Region.StartColumn
-	if startLine != nil && startColumn != nil {
-		return strconv.Itoa(*startLine) + ":" + strconv.Itoa(*startColumn)
-	}
-	return ""
-}
-
 func ExtractRelativePath(resultPath string, projectRoot string) string {
 	// Remove OS-specific file prefix
 	resultPath = strings.TrimPrefix(resultPath, "file:///private")
 	resultPath = strings.TrimPrefix(resultPath, "file://")
 
 	// Get relative path
-	return strings.ReplaceAll(resultPath, projectRoot, "")
+	relativePath := strings.ReplaceAll(resultPath, projectRoot, "")
+	trimSlash := strings.TrimPrefix(relativePath, string(filepath.Separator))
+	return strings.TrimPrefix(trimSlash, "/")
 }
 
 func GetResultSeverity(result *sarif.Result) string {
@@ -396,7 +260,7 @@ func GetRunRules(run *sarif.Run) []*sarif.ReportingDescriptor {
 }
 
 func GetInvocationWorkingDirectory(invocation *sarif.Invocation) string {
-	if invocation.WorkingDirectory != nil && invocation.WorkingDirectory.URI != nil {
+	if invocation != nil && invocation.WorkingDirectory != nil && invocation.WorkingDirectory.URI != nil {
 		return *invocation.WorkingDirectory.URI
 	}
 	return ""

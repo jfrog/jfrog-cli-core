@@ -41,6 +41,7 @@ func CreateSpecFromFile(specFilePath string, specVars map[string]string) (spec *
 
 type File struct {
 	Aql                     utils.Aql
+	PathMapping             utils.PathMapping
 	Pattern                 string
 	Exclusions              []string
 	Target                  string
@@ -148,6 +149,7 @@ func (f *File) ToCommonParams() (*utils.CommonParams, error) {
 	}
 
 	params.Aql = f.Aql
+	params.PathMapping = f.PathMapping
 	params.Pattern = f.Pattern
 	params.Exclusions = f.Exclusions
 	params.Target = f.Target
@@ -171,6 +173,7 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 
 	for _, file := range files {
 		isAql := len(file.Aql.ItemsFind) > 0
+		isPathMapping := len(file.PathMapping.Input) > 0 && len(file.PathMapping.Output) > 0
 		isPattern := len(file.Pattern) > 0
 		isExclusions := len(file.Exclusions) > 0 && len(file.Exclusions[0]) > 0
 		isTarget := len(file.Target) > 0
@@ -193,7 +196,17 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isExplode, _ := file.IsExplode(false)
 		isBypassArchiveInspection, _ := file.IsBypassArchiveInspection(false)
 		isTransitive, _ := file.IsTransitive(false)
-
+		if isPathMapping {
+			if !isAql {
+				return errorutils.CheckErrorf("pathMapping is supported only with aql")
+			}
+			if isTarget {
+				return fileSpecValidationError("pathMapping", "target")
+			}
+			if isPattern {
+				return fileSpecValidationError("pathMapping", "pattern")
+			}
+		}
 		if isTargetMandatory && !isTarget {
 			return errorutils.CheckErrorf("spec must include target")
 		}

@@ -118,18 +118,20 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 // If there is no file at filePath, a backup file won't be created, and the restore function will delete the file at filePath.
 func BackupFile(filePath, backupFileName string) (restore func() error, err error) {
 	fileInfo, err := os.Stat(filePath)
-	if err != nil {
+	if errorutils.CheckError(err) != nil {
 		if os.IsNotExist(err) {
-			return createRestoreFileFunc(filePath, backupFileName), nil
+			restore = createRestoreFileFunc(filePath, backupFileName)
+			err = nil
 		}
-		return nil, errorutils.CheckError(err)
+		return
 	}
 
 	if err = cloneFile(filePath, backupFileName, fileInfo.Mode()); err != nil {
-		return nil, err
+		return
 	}
 	log.Debug("The file", filePath, "was backed up successfully to", backupFileName)
-	return createRestoreFileFunc(filePath, backupFileName), nil
+	restore = createRestoreFileFunc(filePath, backupFileName)
+	return
 }
 
 func cloneFile(origFile, newName string, fileMode os.FileMode) (err error) {
@@ -163,7 +165,16 @@ func createRestoreFileFunc(filePath, backupFileName string) func() error {
 		backupPath := filepath.Join(filepath.Dir(filePath), backupFileName)
 		if _, err := os.Stat(backupPath); err != nil {
 			if os.IsNotExist(err) {
-				err = os.Remove(filePath)
+				// We verify the existence of the file in the specified filePath before initiating its deletion in order to prevent errors that might occur when attempting to remove a non-existent file
+				var fileExists bool
+				fileExists, err = fileutils.IsFileExists(filePath, false)
+				if err != nil {
+					err = fmt.Errorf("failed to check for the existence of '%s' before deleting the file: %s", filePath, err.Error())
+					return errorutils.CheckError(err)
+				}
+				if fileExists {
+					err = os.Remove(filePath)
+				}
 				return errorutils.CheckError(err)
 			}
 			return errorutils.CheckErrorf(createRestoreErrorPrefix(filePath, backupPath) + err.Error())

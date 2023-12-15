@@ -68,15 +68,17 @@ func TestShowStatus(t *testing.T) {
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
-	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
-	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files.)")
+	assert.Contains(t, results, "Estimated time remaining:	Not available yet")
+	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files)")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
-	assert.Contains(t, results, "Name:		repo1")
-	assert.Contains(t, results, "Phase:		Transferring all files in the repository (1/3)")
-	assert.Contains(t, results, "Storage:		4.9 KiB / 9.8 KiB (50.0%)")
-	assert.Contains(t, results, "Files:		500 / 10000 (5.0%)")
+	assert.Contains(t, results, "Name:			repo1")
+	assert.Contains(t, results, "Phase:			Transferring all files in the repository (1/3)")
+	assert.Contains(t, results, "Visited folders:		15")
+	assert.Contains(t, results, "Delayed files:		20 (Files to be transferred last, after all other files)")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 9.8 KiB (50.0%)")
+	assert.Contains(t, results, "Files:			500 / 10000 (5.0%)")
 }
 
 func TestShowStatusDiffPhase(t *testing.T) {
@@ -98,15 +100,17 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:		16")
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
-	assert.Contains(t, results, "Estimated time remaining:	Not available in this phase")
-	assert.Contains(t, results, "Transfer failures:		223")
+	assert.Contains(t, results, "Estimated time remaining:	Not available yet")
+	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files)")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
-	assert.Contains(t, results, "Name:		repo1")
-	assert.Contains(t, results, "Phase:		Transferring newly created and modified files (2/3)")
-	assert.NotContains(t, results, "Storage:		4.9 KiB / 9.8 KiB (50.0%)")
-	assert.NotContains(t, results, "Files:		500 / 10000 (5.0%)")
+	assert.Contains(t, results, "Name:			repo1")
+	assert.Contains(t, results, "Phase:			Transferring newly created and modified files (2/3)")
+	assert.Contains(t, results, "Delayed files:		20 (Files to be transferred last, after all other files)")
+	assert.NotContains(t, results, "Visited folders")
+	assert.NotContains(t, results, "Storage:			4.9 KiB / 9.8 KiB (50.0%)")
+	assert.NotContains(t, results, "Files:			500 / 10000 (5.0%)")
 }
 
 func TestShowBuildInfoRepo(t *testing.T) {
@@ -127,16 +131,18 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	assert.Contains(t, results, "Storage:			4.9 KiB / 10.9 KiB (45.0%)")
 	assert.Contains(t, results, "Repositories:		15 / 1111 (1.4%)")
 	assert.Contains(t, results, "Working threads:		16")
-	assert.Contains(t, results, "Transfer speed:		Not available while transferring a build-info repository")
-	assert.Contains(t, results, "Estimated time remaining:	Less than a minute")
+	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
+	assert.Contains(t, results, "Estimated time remaining:	Not available yet")
 	assert.Contains(t, results, "Transfer failures:		223")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
-	assert.Contains(t, results, "Name:		repo1")
-	assert.Contains(t, results, "Phase:		Retrying transfer failures (3/3)")
-	assert.Contains(t, results, "Storage:		4.9 KiB / 9.8 KiB (50.0%)")
-	assert.Contains(t, results, "Files:		500 / 10000 (5.0%)")
+	assert.Contains(t, results, "Name:			repo1")
+	assert.Contains(t, results, "Phase:			Retrying transfer failures and transfer delayed files (3/3)")
+	assert.Contains(t, results, "Delayed files:		20 (Files to be transferred last, after all other files)")
+	assert.Contains(t, results, "Storage:			4.9 KiB / 9.8 KiB (50.0%)")
+	assert.Contains(t, results, "Files:			500 / 10000 (5.0%)")
+	assert.NotContains(t, results, "Visited folders")
 }
 
 func TestShowStaleChunks(t *testing.T) {
@@ -173,12 +179,15 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool, staleChunks
 	stateManager.OverallTransfer.TotalSizeBytes = 11111
 	stateManager.TotalRepositories.TotalUnits = 1111
 	stateManager.TotalRepositories.TransferredUnits = 15
+	stateManager.CurrentTotalTransferredBytes = 15
 	stateManager.WorkingThreads = 16
+	stateManager.VisitedFolders = 15
+	stateManager.DelayedFiles = 20
 	stateManager.TransferFailures = 223
 
-	stateManager.TimeEstimationManager.LastSpeeds = []float64{12}
-	stateManager.TimeEstimationManager.LastSpeedsSum = 12
-	stateManager.TimeEstimationManager.SpeedsAverage = 12
+	stateManager.LastSpeeds = []float64{12}
+	stateManager.LastSpeedsSum = 12
+	stateManager.SpeedsAverage = 12
 
 	if staleChunks {
 		stateManager.StaleChunks = append(stateManager.StaleChunks, state.StaleChunks{

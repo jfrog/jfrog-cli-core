@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -19,7 +20,12 @@ const sizeUnits = "KMGTPE"
 
 func ShowStatus() error {
 	var output strings.Builder
-	runningTime, isRunning, err := state.GetRunningTime()
+	stateManager, err := state.NewTransferStateManager(true)
+	if err != nil {
+		return err
+	}
+
+	isRunning, err := stateManager.InitStartTimestamp()
 	if err != nil {
 		return err
 	}
@@ -38,11 +44,7 @@ func ShowStatus() error {
 		return nil
 	}
 
-	stateManager, err := state.NewTransferStateManager(true)
-	if err != nil {
-		return err
-	}
-	addOverallStatus(stateManager, &output, runningTime)
+	addOverallStatus(stateManager, &output, stateManager.GetRunningTimeString())
 	if stateManager.CurrentRepoKey != "" {
 		transferState, exists, err := state.LoadTransferState(stateManager.CurrentRepoKey, false)
 		if err != nil {
@@ -78,9 +80,9 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2)
 	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 2)
 	addString(output, "⌛", "Estimated time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
-	failureTxt := strconv.FormatUint(uint64(stateManager.TransferFailures), 10)
+	failureTxt := strconv.FormatUint(stateManager.TransferFailures, 10)
 	if stateManager.TransferFailures > 0 {
-		failureTxt += " (" + "In Phase 3 and in subsequent executions, we'll retry transferring the failed files." + ")"
+		failureTxt += " (" + progressbar.RetryFailureContentNote + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 2)
 }
@@ -94,20 +96,28 @@ func calcPercentageInt64(transferred, total int64) string {
 
 func setRepositoryStatus(stateManager *state.TransferStateManager, output *strings.Builder) {
 	addTitle(output, "Current Repository Status")
-	addString(output, "🏷 ", "Name", stateManager.CurrentRepoKey, 2)
+	addString(output, "🏷 ", "Name", stateManager.CurrentRepoKey, 3)
 	currentRepo := stateManager.CurrentRepo
 	switch stateManager.CurrentRepoPhase {
 	case api.Phase1, api.Phase3:
 		if stateManager.CurrentRepoPhase == api.Phase1 {
-			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 2)
+			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 3)
 		} else {
-			addString(output, "🔢", "Phase", "Retrying transfer failures (3/3)", 2)
+			addString(output, "🔢", "Phase", "Retrying transfer failures and transfer delayed files (3/3)", 3)
 		}
-		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.Phase1Info.TransferredSizeBytes)+" / "+sizeToString(currentRepo.Phase1Info.TotalSizeBytes)+calcPercentageInt64(currentRepo.Phase1Info.TransferredSizeBytes, currentRepo.Phase1Info.TotalSizeBytes), 2)
-		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits)+calcPercentageInt64(currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits), 2)
+		addString(output, "🗄 ", "Storage", sizeToString(currentRepo.Phase1Info.TransferredSizeBytes)+" / "+sizeToString(currentRepo.Phase1Info.TotalSizeBytes)+calcPercentageInt64(currentRepo.Phase1Info.TransferredSizeBytes, currentRepo.Phase1Info.TotalSizeBytes), 3)
+		addString(output, "📄", "Files", fmt.Sprintf("%d / %d", currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits)+calcPercentageInt64(currentRepo.Phase1Info.TransferredUnits, currentRepo.Phase1Info.TotalUnits), 3)
 	case api.Phase2:
-		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 2)
+		addString(output, "🔢", "Phase", "Transferring newly created and modified files (2/3)", 3)
 	}
+	if stateManager.CurrentRepoPhase == api.Phase1 {
+		addString(output, "📁", "Visited folders", strconv.FormatUint(stateManager.VisitedFolders, 10), 2)
+	}
+	delayedTxt := strconv.FormatUint(stateManager.DelayedFiles, 10)
+	if stateManager.DelayedFiles > 0 {
+		delayedTxt += " (" + progressbar.DelayedFilesContentNote + ")"
+	}
+	addString(output, "✋", "Delayed files", delayedTxt, 2)
 }
 
 func addStaleChunks(stateManager *state.TransferStateManager, output *strings.Builder) {

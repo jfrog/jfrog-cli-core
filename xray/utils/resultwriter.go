@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	"github.com/owenrumney/go-sarif/v2/sarif"
+	"golang.org/x/exp/slices"
 )
 
 type OutputFormat string
@@ -25,6 +26,8 @@ const (
 	Json       OutputFormat = "json"
 	SimpleJson OutputFormat = "simple-json"
 	Sarif      OutputFormat = "sarif"
+
+	BaseDocumentationURL = "https://docs.jfrog-applications.jfrog.io/jfrog-security-features/"
 )
 
 const MissingCveScore = "0"
@@ -34,106 +37,122 @@ var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), st
 
 var CurationOutputFormats = []string{string(Table), string(Json)}
 
+type ResultsWriter struct {
+	// The scan results.
+	results *Results
+	// SimpleJsonError  Errors to be added to output of the SimpleJson format.
+	simpleJsonError []formats.SimpleJsonError
+	// Format  The output format.
+	format OutputFormat
+	// IncludeVulnerabilities  If true, include all vulnerabilities as part of the output. Else, include violations only.
+	includeVulnerabilities bool
+	// IncludeLicenses  If true, also include license violations as part of the output.
+	includeLicenses bool
+	// IsMultipleRoots  multipleRoots is set to true, in case the given results array contains (or may contain) results of several projects (like in binary scan).
+	isMultipleRoots bool
+	// PrintExtended, If true, show extended results.
+	printExtended bool
+	// The scanType (binary,dependency)
+	scanType services.ScanType
+	// Messages - Option array of messages, to be displayed if the format is Table
+	messages []string
+}
+
+func NewResultsWriter(scanResults *Results) *ResultsWriter {
+	return &ResultsWriter{results: scanResults}
+}
+
+func (rw *ResultsWriter) SetOutputFormat(format OutputFormat) *ResultsWriter {
+	rw.format = format
+	return rw
+}
+
+func (rw *ResultsWriter) SetScanType(scanType services.ScanType) *ResultsWriter {
+	rw.scanType = scanType
+	return rw
+}
+
+func (rw *ResultsWriter) SetSimpleJsonError(jsonErrors []formats.SimpleJsonError) *ResultsWriter {
+	rw.simpleJsonError = jsonErrors
+	return rw
+}
+
+func (rw *ResultsWriter) SetIncludeVulnerabilities(includeVulnerabilities bool) *ResultsWriter {
+	rw.includeVulnerabilities = includeVulnerabilities
+	return rw
+}
+
+func (rw *ResultsWriter) SetIncludeLicenses(licenses bool) *ResultsWriter {
+	rw.includeLicenses = licenses
+	return rw
+}
+
+func (rw *ResultsWriter) SetIsMultipleRootProject(isMultipleRootProject bool) *ResultsWriter {
+	rw.isMultipleRoots = isMultipleRootProject
+	return rw
+}
+
+func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWriter {
+	rw.printExtended = extendedTable
+	return rw
+}
+
+func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
+	rw.messages = messages
+	return rw
+
+}
+
 // PrintScanResults prints the scan results in the specified format.
 // Note that errors are printed only with SimpleJson format.
-//
-// results - The scan results.
-// simpleJsonError - Errors to be added to output of the SimpleJson format.
-// format - The output format.
-// includeVulnerabilities - If trie, include all vulnerabilities as part of the output. Else, include violations only.
-// includeLicenses - If true, also include license violations as part of the output.
-// isMultipleRoots - multipleRoots is set to true, in case the given results array contains (or may contain) results of several projects (like in binary scan).
-// printExtended -If true, show extended results.
-// scan - If true, use an output layout suitable for `jf scan` or `jf docker scan` results. Otherwise, use a layout compatible for `jf audit` .
-// messages - Option array of messages, to be displayed if the format is Table
-func PrintScanResults(results *ExtendedScanResults, simpleJsonError []formats.SimpleJsonError, format OutputFormat, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, isBinaryScan bool, messages []string) error {
-	switch format {
+func (rw *ResultsWriter) PrintScanResults() error {
+	switch rw.format {
 	case Table:
-		return printScanResultsTables(results, isBinaryScan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended, messages)
+		return rw.printScanResultsTables()
 	case SimpleJson:
-		jsonTable, err := convertScanToSimpleJson(results, simpleJsonError, isMultipleRoots, includeLicenses, false)
+		jsonTable, err := rw.convertScanToSimpleJson()
 		if err != nil {
 			return err
 		}
 		return PrintJson(jsonTable)
 	case Json:
-		return PrintJson(results.getXrayScanResults())
+		return PrintJson(rw.results.GetScaScansXrayResults())
 	case Sarif:
-		sarifFile, err := GenerateSarifContentFromResults(results, isMultipleRoots, includeLicenses, false)
-		if err != nil {
-			return err
-		}
-		log.Output(sarifFile)
+		return PrintSarif(rw.results, rw.isMultipleRoots, rw.includeLicenses)
 	}
 	return nil
 }
-
-func printScanResultsTables(results *ExtendedScanResults, isBinaryScan, includeVulnerabilities, includeLicenses, isMultipleRoots, printExtended bool, messages []string) (err error) {
-	printMessages(messages)
-	violations, vulnerabilities, licenses := SplitScanResults(results.getXrayScanResults())
-	if len(results.getXrayScanResults()) > 0 {
+func (rw *ResultsWriter) printScanResultsTables() (err error) {
+	printMessages(rw.messages)
+	violations, vulnerabilities, licenses := SplitScanResults(rw.results.ScaResults)
+	if rw.results.IsIssuesFound() {
 		var resultsPath string
-		if resultsPath, err = writeJsonResults(results); err != nil {
+		if resultsPath, err = writeJsonResults(rw.results); err != nil {
 			return
 		}
 		printMessage(coreutils.PrintTitle("The full scan results are available here: ") + coreutils.PrintLink(resultsPath))
 	}
 	log.Output()
-	if includeVulnerabilities {
-		err = PrintVulnerabilitiesTable(vulnerabilities, results, isMultipleRoots, printExtended, isBinaryScan)
+	if rw.includeVulnerabilities {
+		err = PrintVulnerabilitiesTable(vulnerabilities, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
 	} else {
-		err = PrintViolationsTable(violations, results, isMultipleRoots, printExtended, isBinaryScan)
+		err = PrintViolationsTable(violations, rw.results, rw.isMultipleRoots, rw.printExtended, rw.scanType)
 	}
 	if err != nil {
 		return
 	}
-	if includeLicenses {
-		if err = PrintLicensesTable(licenses, printExtended, isBinaryScan); err != nil {
+	if rw.includeLicenses {
+		if err = PrintLicensesTable(licenses, rw.printExtended, rw.scanType); err != nil {
 			return
 		}
 	}
-	ConvertRunsPathsToRelative(results.SecretsScanResults)
-	if err = PrintSecretsTable(results.SecretsScanResults, results.EntitledForJas); err != nil {
+	if err = PrintSecretsTable(rw.results.ExtendedScanResults.SecretsScanResults, rw.results.ExtendedScanResults.EntitledForJas); err != nil {
 		return
 	}
-	ConvertRunsPathsToRelative(results.IacScanResults)
-	if err = PrintIacTable(results.IacScanResults, results.EntitledForJas); err != nil {
+	if err = PrintIacTable(rw.results.ExtendedScanResults.IacScanResults, rw.results.ExtendedScanResults.EntitledForJas); err != nil {
 		return
 	}
-	if !IsSastSupported() {
-		return
-	}
-	ConvertRunsPathsToRelative(results.SastScanResults)
-	return PrintSastTable(results.SastScanResults, results.EntitledForJas)
-}
-
-// The paths at Sarif runs are absolute.
-// Use this method if you need to translate the file paths to relative
-func ConvertRunsPathsToRelative(runs []*sarif.Run) {
-	for _, sarifRun := range runs {
-		for _, invocation := range sarifRun.Invocations {
-			if wd := GetInvocationWorkingDirectory(invocation); len(wd) > 0 {
-				ConvertRunPathsToRelative(sarifRun, wd)
-			}
-		}
-	}
-}
-
-func ConvertRunPathsToRelative(sarifRun *sarif.Run, wd string) {
-	for _, sarifResult := range sarifRun.Results {
-		// Convert paths in locations
-		for _, location := range sarifResult.Locations {
-			SetLocationFileName(location, ExtractRelativePath(GetLocationFileName(location), wd))
-		}
-		// Convert paths in code flows
-		for _, codeFlows := range sarifResult.CodeFlows {
-			for _, threadFlows := range codeFlows.ThreadFlows {
-				for _, location := range threadFlows.Locations {
-					SetLocationFileName(location.Location, ExtractRelativePath(GetLocationFileName(location.Location), wd))
-				}
-			}
-		}
-	}
+	return PrintSastTable(rw.results.ExtendedScanResults.SastScanResults, rw.results.ExtendedScanResults.EntitledForJas)
 }
 
 func printMessages(messages []string) {
@@ -149,39 +168,42 @@ func printMessage(message string) {
 	log.Output("💬" + message)
 }
 
-func GenerateSarifContentFromResults(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (sarifStr string, err error) {
-	report, err := NewReport()
+func GenereateSarifReportFromResults(results *Results, isMultipleRoots, includeLicenses bool, allowedLicenses []string) (report *sarif.Report, err error) {
+	report, err = NewReport()
 	if err != nil {
 		return
 	}
-	xrayRun, err := convertXrayResponsesToSarifRun(extendedResults, isMultipleRoots, includeLicenses, markdownOutput)
+	xrayRun, err := convertXrayResponsesToSarifRun(results, isMultipleRoots, includeLicenses, allowedLicenses)
 	if err != nil {
 		return
 	}
 
 	report.Runs = append(report.Runs, xrayRun)
-	report.Runs = append(report.Runs, extendedResults.ApplicabilityScanResults...)
-	report.Runs = append(report.Runs, extendedResults.IacScanResults...)
-	report.Runs = append(report.Runs, extendedResults.SecretsScanResults...)
-	report.Runs = append(report.Runs, extendedResults.SastScanResults...)
+	report.Runs = append(report.Runs, results.ExtendedScanResults.ApplicabilityScanResults...)
+	report.Runs = append(report.Runs, results.ExtendedScanResults.IacScanResults...)
+	report.Runs = append(report.Runs, results.ExtendedScanResults.SecretsScanResults...)
+	report.Runs = append(report.Runs, results.ExtendedScanResults.SastScanResults...)
 
+	return
+}
+
+func ConvertSarifReportToString(report *sarif.Report) (sarifStr string, err error) {
 	out, err := json.Marshal(report)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
-
 	return clientUtils.IndentJson(out), nil
 }
 
-func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, markdownOutput bool) (run *sarif.Run, err error) {
-	xrayJson, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, true)
+func convertXrayResponsesToSarifRun(results *Results, isMultipleRoots, includeLicenses bool, allowedLicenses []string) (run *sarif.Run, err error) {
+	xrayJson, err := ConvertXrayScanToSimpleJson(results, isMultipleRoots, includeLicenses, true, allowedLicenses)
 	if err != nil {
 		return
 	}
-	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray Sca", "https://jfrog.com/xray/")
-	xrayRun.Tool.Driver.Version = &extendedResults.XrayVersion
-	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 {
-		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson, markdownOutput); err != nil {
+	xrayRun := sarif.NewRunWithInformationURI("JFrog Xray SCA", BaseDocumentationURL+"sca")
+	xrayRun.Tool.Driver.Version = &results.XrayVersion
+	if len(xrayJson.Vulnerabilities) > 0 || len(xrayJson.SecurityViolations) > 0 || len(xrayJson.LicensesViolations) > 0 {
+		if err = extractXrayIssuesToSarifRun(xrayRun, xrayJson); err != nil {
 			return
 		}
 	}
@@ -189,104 +211,165 @@ func convertXrayResponsesToSarifRun(extendedResults *ExtendedScanResults, isMult
 	return
 }
 
-func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults, markdownOutput bool) error {
+func extractXrayIssuesToSarifRun(run *sarif.Run, xrayJson formats.SimpleJsonResults) error {
 	for _, vulnerability := range xrayJson.Vulnerabilities {
-		if err := addXrayCveIssueToSarifRun(
-			vulnerability.Cves,
-			vulnerability.IssueId,
-			vulnerability.Severity,
-			vulnerability.Technology.GetPackageDescriptor(),
-			vulnerability.Components,
-			vulnerability.Applicable,
-			vulnerability.ImpactedDependencyName,
-			vulnerability.ImpactedDependencyVersion,
-			vulnerability.Summary,
-			vulnerability.FixedVersions,
-			markdownOutput,
-			run,
-		); err != nil {
+		if err := addXrayCveIssueToSarifRun(vulnerability, run); err != nil {
 			return err
 		}
 	}
 	for _, violation := range xrayJson.SecurityViolations {
-		if err := addXrayCveIssueToSarifRun(
-			violation.Cves,
-			violation.IssueId,
-			violation.Severity,
-			violation.Technology.GetPackageDescriptor(),
-			violation.Components,
-			violation.Applicable,
-			violation.ImpactedDependencyName,
-			violation.ImpactedDependencyVersion,
-			violation.Summary,
-			violation.FixedVersions,
-			markdownOutput,
-			run,
-		); err != nil {
+		if err := addXrayCveIssueToSarifRun(violation, run); err != nil {
 			return err
 		}
 	}
 	for _, license := range xrayJson.LicensesViolations {
-		msg := getVulnerabilityOrViolationSarifHeadline(license.LicenseKey, license.ImpactedDependencyName, license.ImpactedDependencyVersion)
-		if rule, isNewRule := addResultToSarifRun(license.LicenseKey, msg, license.Severity, nil, run); isNewRule {
-			rule.WithDescription("License watch violations")
+		if err := addXrayLicenseViolationToSarifRun(license, run); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func addXrayCveIssueToSarifRun(cves []formats.CveRow, issueId, severity, file string, components []formats.ComponentRow, applicable, impactedDependencyName, impactedDependencyVersion, summary string, fixedVersions []string, markdownOutput bool, run *sarif.Run) error {
-	maxCveScore, err := findMaxCVEScore(cves)
+func addXrayCveIssueToSarifRun(issue formats.VulnerabilityOrViolationRow, run *sarif.Run) (err error) {
+	maxCveScore, err := findMaxCVEScore(issue.Cves)
 	if err != nil {
-		return err
+		return
 	}
-	cveId := getCves(cves, issueId)
-	msg := getVulnerabilityOrViolationSarifHeadline(impactedDependencyName, impactedDependencyVersion, cveId)
-	location := sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri(file)))
-
-	if rule, isNewRule := addResultToSarifRun(cveId, msg, severity, location, run); isNewRule {
-		cveRuleProperties := sarif.NewPropertyBag()
-		if maxCveScore != MissingCveScore {
-			cveRuleProperties.Add("security-severity", maxCveScore)
-		}
-		rule.WithProperties(cveRuleProperties.Properties)
-		if markdownOutput {
-			formattedDirectDependencies, err := getDirectDependenciesFormatted(components)
-			if err != nil {
-				return err
-			}
-			markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicable, fixedVersions) + "\n"
-			rule.WithMarkdownHelp(markdownDescription)
-		} else {
-			rule.WithDescription(summary)
-		}
+	location, err := getXrayIssueLocationIfValidExists(issue.Technology, run)
+	if err != nil {
+		return
 	}
-	return nil
-}
-
-func addResultToSarifRun(issueId, msg, severity string, location *sarif.Location, run *sarif.Run) (rule *sarif.ReportingDescriptor, isNewRule bool) {
-	if rule, _ = run.GetRuleById(issueId); rule == nil {
-		isNewRule = true
-		rule = run.AddRule(issueId)
+	formattedDirectDependencies, err := getDirectDependenciesFormatted(issue.Components)
+	if err != nil {
+		return
 	}
-	if result := run.CreateResultForRule(issueId).WithMessage(sarif.NewTextMessage(msg)).WithLevel(ConvertToSarifLevel(severity)); location != nil {
-		result.AddLocation(location)
-	}
+	cveId := GetIssueIdentifier(issue.Cves, issue.IssueId)
+	markdownDescription := getSarifTableDescription(formattedDirectDependencies, maxCveScore, issue.Applicable, issue.FixedVersions)
+	addXrayIssueToSarifRun(
+		cveId,
+		issue.ImpactedDependencyName,
+		issue.ImpactedDependencyVersion,
+		issue.Severity,
+		maxCveScore,
+		issue.Summary,
+		getXrayIssueSarifHeadline(issue.ImpactedDependencyName, issue.ImpactedDependencyVersion, cveId),
+		markdownDescription,
+		issue.Components,
+		location,
+		run,
+	)
 	return
 }
 
-func convertXrayScanToSimpleJson(extendedResults *ExtendedScanResults, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
-	violations, vulnerabilities, licenses := SplitScanResults(extendedResults.XrayResults)
+func addXrayLicenseViolationToSarifRun(license formats.LicenseRow, run *sarif.Run) (err error) {
+	formattedDirectDependencies, err := getDirectDependenciesFormatted(license.Components)
+	if err != nil {
+		return
+	}
+	addXrayIssueToSarifRun(
+		license.LicenseKey,
+		license.ImpactedDependencyName,
+		license.ImpactedDependencyVersion,
+		license.Severity,
+		MissingCveScore,
+		getLicenseViolationSummary(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
+		getXrayLicenseSarifHeadline(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey),
+		getLicenseViolationMarkdown(license.ImpactedDependencyName, license.ImpactedDependencyVersion, license.LicenseKey, formattedDirectDependencies),
+		license.Components,
+		getXrayIssueLocation(""),
+		run,
+	)
+	return
+}
+
+func addXrayIssueToSarifRun(issueId, impactedDependencyName, impactedDependencyVersion, severity, severityScore, summary, title, markdownDescription string, components []formats.ComponentRow, location *sarif.Location, run *sarif.Run) {
+	// Add rule if not exists
+	ruleId := getXrayIssueSarifRuleId(impactedDependencyName, impactedDependencyVersion, issueId)
+	if rule, _ := run.GetRuleById(ruleId); rule == nil {
+		addXrayRule(ruleId, title, severityScore, summary, markdownDescription, run)
+	}
+	// Add result for each component
+	for _, directDependency := range components {
+		msg := getXrayIssueSarifHeadline(directDependency.Name, directDependency.Version, issueId)
+		if result := run.CreateResultForRule(ruleId).WithMessage(sarif.NewTextMessage(msg)).WithLevel(ConvertToSarifLevel(severity)); location != nil {
+			result.AddLocation(location)
+		}
+	}
+
+}
+
+func getDescriptorFullPath(tech coreutils.Technology, run *sarif.Run) (string, error) {
+	descriptors := tech.GetPackageDescriptor()
+	if len(descriptors) == 1 {
+		// Generate the full path
+		return GetFullLocationFileName(strings.TrimSpace(descriptors[0]), run.Invocations), nil
+	}
+	for _, descriptor := range descriptors {
+		// If multiple options return first to match
+		absolutePath := GetFullLocationFileName(strings.TrimSpace(descriptor), run.Invocations)
+		if exists, err := fileutils.IsFileExists(absolutePath, false); err != nil {
+			return "", err
+		} else if exists {
+			return absolutePath, nil
+		}
+	}
+	return "", nil
+}
+
+// Get the descriptor location with the Xray issues if exists.
+func getXrayIssueLocationIfValidExists(tech coreutils.Technology, run *sarif.Run) (location *sarif.Location, err error) {
+	descriptorPath, err := getDescriptorFullPath(tech, run)
+	if err != nil {
+		return
+	}
+	return getXrayIssueLocation(descriptorPath), nil
+}
+
+func getXrayIssueLocation(filePath string) *sarif.Location {
+	if strings.TrimSpace(filePath) == "" {
+		filePath = "Package-Descriptor"
+	}
+	return sarif.NewLocation().WithPhysicalLocation(sarif.NewPhysicalLocation().WithArtifactLocation(sarif.NewArtifactLocation().WithUri("file://" + filePath)))
+}
+
+func addXrayRule(ruleId, ruleDescription, maxCveScore, summary, markdownDescription string, run *sarif.Run) {
+	rule := run.AddRule(ruleId)
+
+	if maxCveScore != MissingCveScore {
+		cveRuleProperties := sarif.NewPropertyBag()
+		cveRuleProperties.Add("security-severity", maxCveScore)
+		rule.WithProperties(cveRuleProperties.Properties)
+	}
+
+	rule.WithDescription(ruleDescription)
+	rule.WithHelp(&sarif.MultiformatMessageString{
+		Text:     &summary,
+		Markdown: &markdownDescription,
+	})
+}
+
+func ConvertXrayScanToSimpleJson(results *Results, isMultipleRoots, includeLicenses, simplifiedOutput bool, allowedLicenses []string) (formats.SimpleJsonResults, error) {
+	violations, vulnerabilities, licenses := SplitScanResults(results.ScaResults)
 	jsonTable := formats.SimpleJsonResults{}
 	if len(vulnerabilities) > 0 {
-		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, extendedResults, isMultipleRoots, simplifiedOutput)
+		vulJsonTable, err := PrepareVulnerabilities(vulnerabilities, results, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
 		jsonTable.Vulnerabilities = vulJsonTable
 	}
+	if includeLicenses || len(allowedLicenses) > 0 {
+		licJsonTable, err := PrepareLicenses(licenses)
+		if err != nil {
+			return formats.SimpleJsonResults{}, err
+		}
+		if includeLicenses {
+			jsonTable.Licenses = licJsonTable
+		}
+		jsonTable.LicensesViolations = GetViolatedLicenses(allowedLicenses, licJsonTable)
+	}
 	if len(violations) > 0 {
-		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, extendedResults, isMultipleRoots, simplifiedOutput)
+		secViolationsJsonTable, licViolationsJsonTable, opRiskViolationsJsonTable, err := PrepareViolations(violations, results, isMultipleRoots, simplifiedOutput)
 		if err != nil {
 			return formats.SimpleJsonResults{}, err
 		}
@@ -294,54 +377,74 @@ func convertXrayScanToSimpleJson(extendedResults *ExtendedScanResults, isMultipl
 		jsonTable.LicensesViolations = licViolationsJsonTable
 		jsonTable.OperationalRiskViolations = opRiskViolationsJsonTable
 	}
-	if includeLicenses {
-		licJsonTable, err := PrepareLicenses(licenses)
-		if err != nil {
-			return formats.SimpleJsonResults{}, err
-		}
-		jsonTable.Licenses = licJsonTable
-	}
-
 	return jsonTable, nil
 }
 
-func convertScanToSimpleJson(extendedResults *ExtendedScanResults, errors []formats.SimpleJsonError, isMultipleRoots, includeLicenses, simplifiedOutput bool) (formats.SimpleJsonResults, error) {
-	jsonTable, err := convertXrayScanToSimpleJson(extendedResults, isMultipleRoots, includeLicenses, simplifiedOutput)
+func GetViolatedLicenses(allowedLicenses []string, licenses []formats.LicenseRow) (violatedLicenses []formats.LicenseRow) {
+	if len(allowedLicenses) == 0 {
+		return
+	}
+	for _, license := range licenses {
+		if !slices.Contains(allowedLicenses, license.LicenseKey) {
+			violatedLicenses = append(violatedLicenses, license)
+		}
+	}
+	return
+}
+
+func (rw *ResultsWriter) convertScanToSimpleJson() (formats.SimpleJsonResults, error) {
+	jsonTable, err := ConvertXrayScanToSimpleJson(rw.results, rw.isMultipleRoots, rw.includeLicenses, false, nil)
 	if err != nil {
 		return formats.SimpleJsonResults{}, err
 	}
-	if len(extendedResults.SecretsScanResults) > 0 {
-		jsonTable.Secrets = PrepareSecrets(extendedResults.SecretsScanResults)
+	if len(rw.results.ExtendedScanResults.SecretsScanResults) > 0 {
+		jsonTable.Secrets = PrepareSecrets(rw.results.ExtendedScanResults.SecretsScanResults)
 	}
-	if len(extendedResults.IacScanResults) > 0 {
-		jsonTable.Iacs = PrepareIacs(extendedResults.IacScanResults)
+	if len(rw.results.ExtendedScanResults.IacScanResults) > 0 {
+		jsonTable.Iacs = PrepareIacs(rw.results.ExtendedScanResults.IacScanResults)
 	}
-	if len(extendedResults.SastScanResults) > 0 {
-		jsonTable.Sast = PrepareSast(extendedResults.SastScanResults)
+	if len(rw.results.ExtendedScanResults.SastScanResults) > 0 {
+		jsonTable.Sast = PrepareSast(rw.results.ExtendedScanResults.SastScanResults)
 	}
-	jsonTable.Errors = errors
+	jsonTable.Errors = rw.simpleJsonError
 
 	return jsonTable, nil
 }
 
-func getCves(cvesRow []formats.CveRow, issueId string) string {
-	var cvesStr string
+func GetIssueIdentifier(cvesRow []formats.CveRow, issueId string) string {
+	var identifier string
 	if len(cvesRow) != 0 {
 		var cvesBuilder strings.Builder
 		for _, cve := range cvesRow {
 			cvesBuilder.WriteString(cve.Id + ", ")
 		}
-		cvesStr = strings.TrimSuffix(cvesBuilder.String(), ", ")
+		identifier = strings.TrimSuffix(cvesBuilder.String(), ", ")
 	}
-	if cvesStr == "" {
-		cvesStr = issueId
+	if identifier == "" {
+		identifier = issueId
 	}
 
-	return cvesStr
+	return identifier
 }
 
-func getVulnerabilityOrViolationSarifHeadline(depName, version, key string) string {
+func getXrayIssueSarifRuleId(depName, version, key string) string {
+	return fmt.Sprintf("%s_%s_%s", key, depName, version)
+}
+
+func getXrayIssueSarifHeadline(depName, version, key string) string {
 	return fmt.Sprintf("[%s] %s %s", key, depName, version)
+}
+
+func getXrayLicenseSarifHeadline(depName, version, key string) string {
+	return fmt.Sprintf("License violation [%s] %s %s", key, depName, version)
+}
+
+func getLicenseViolationSummary(depName, version, key string) string {
+	return fmt.Sprintf("Dependency %s version %s is using a license (%s) that is not allowed.", depName, version, key)
+}
+
+func getLicenseViolationMarkdown(depName, version, key, formattedDirectDependencies string) string {
+	return fmt.Sprintf("**The following direct dependencies are utilizing the `%s %s` dependency with `%s` license violation:**\n%s", depName, version, key, formattedDirectDependencies)
 }
 
 func getDirectDependenciesFormatted(directDependencies []formats.ComponentRow) (string, error) {
@@ -359,7 +462,7 @@ func getSarifTableDescription(formattedDirectDependencies, maxCveScore, applicab
 	if len(fixedVersions) > 0 {
 		descriptionFixVersions = strings.Join(fixedVersions, ", ")
 	}
-	if applicable == string(NotScanned) {
+	if applicable == NotScanned.String() {
 		return fmt.Sprintf("| Severity Score | Direct Dependencies | Fixed Versions     |\n| :---:        |    :----:   |          :---: |\n| %s      | %s       | %s   |",
 			maxCveScore, formattedDirectDependencies, descriptionFixVersions)
 	}
@@ -391,19 +494,21 @@ func findMaxCVEScore(cves []formats.CveRow) (string, error) {
 }
 
 // Splits scan responses into aggregated lists of violations, vulnerabilities and licenses.
-func SplitScanResults(results []services.ScanResponse) ([]services.Violation, []services.Vulnerability, []services.License) {
+func SplitScanResults(results []ScaScanResult) ([]services.Violation, []services.Vulnerability, []services.License) {
 	var violations []services.Violation
 	var vulnerabilities []services.Vulnerability
 	var licenses []services.License
-	for _, result := range results {
-		violations = append(violations, result.Violations...)
-		vulnerabilities = append(vulnerabilities, result.Vulnerabilities...)
-		licenses = append(licenses, result.Licenses...)
+	for _, scan := range results {
+		for _, result := range scan.XrayResults {
+			violations = append(violations, result.Violations...)
+			vulnerabilities = append(vulnerabilities, result.Vulnerabilities...)
+			licenses = append(licenses, result.Licenses...)
+		}
 	}
 	return violations, vulnerabilities, licenses
 }
 
-func writeJsonResults(results *ExtendedScanResults) (resultsPath string, err error) {
+func writeJsonResults(results *Results) (resultsPath string, err error) {
 	out, err := fileutils.CreateTempFile()
 	if errorutils.CheckError(err) != nil {
 		return
@@ -437,6 +542,19 @@ func PrintJson(output interface{}) error {
 		return errorutils.CheckError(err)
 	}
 	log.Output(clientUtils.IndentJson(results))
+	return nil
+}
+
+func PrintSarif(results *Results, isMultipleRoots, includeLicenses bool) error {
+	sarifReport, err := GenereateSarifReportFromResults(results, isMultipleRoots, includeLicenses, nil)
+	if err != nil {
+		return err
+	}
+	sarifFile, err := ConvertSarifReportToString(sarifReport)
+	if err != nil {
+		return err
+	}
+	log.Output(sarifFile)
 	return nil
 }
 

@@ -214,7 +214,7 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string
 }
 
 func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
-	query := generateDiffAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	query := generateDiffAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
 	return runAql(f.context, f.srcRtDetails, query)
 }
 
@@ -225,7 +225,7 @@ func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimesta
 // to get all artifacts in its path (that includes the "manifest.json" file itself and all its layouts).
 func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
 	// Get all newly created or modified manifest files ("manifest.json" and "list.manifest.json" files)
-	query := generateDockerManifestAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset)
+	query := generateDockerManifestAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
 	manifestFilesResult, err := runAql(f.context, f.srcRtDetails, query)
 	if err != nil {
 		return
@@ -261,11 +261,10 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 	return
 }
 
-func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
+func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int, disabledDistinctiveAql bool) string {
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","type":"any"}]})`, fromTimestamp, toTimestamp, repoKey)
 	query += `.include("repo","path","name","type","modified","size")`
-	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
-	return query
+	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
 }
 
 // This function generates an AQL that searches for all the content in the list of provided Artifactory paths.
@@ -283,10 +282,15 @@ func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 }
 
 // This function generates an AQL that searches for all files named "manifest.json" and "list.manifest.json" in a specific repository.
-func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int) string {
+func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int, disabledDistinctiveAql bool) string {
 	query := `items.find({"$and":`
 	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}`, repoKey, fromTimestamp, toTimestamp)
 	query += `]}).include("repo","path","name","type","modified")`
-	query += fmt.Sprintf(`.sort({"$asc":["modified"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
-	return query
+	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
+}
+
+func generateAqlSortingPart(paginationOffset int, disabledDistinctiveAql bool) string {
+	sortingPart := fmt.Sprintf(`.sort({"$asc":["name","path"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
+	sortingPart += appendDistinctIfNeeded(disabledDistinctiveAql)
+	return sortingPart
 }

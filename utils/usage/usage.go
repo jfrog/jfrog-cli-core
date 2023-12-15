@@ -2,19 +2,19 @@ package usage
 
 import (
 	"fmt"
-	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-
-	"golang.org/x/sync/errgroup"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	ecosysusage "github.com/jfrog/jfrog-client-go/utils/usage"
 	xrayusage "github.com/jfrog/jfrog-client-go/xray/usage"
+
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -84,20 +84,33 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 		log.Debug("Usage info is disabled.")
 		return
 	}
+	if len(features) == 0 {
+		log.Debug(ReportUsagePrefix, "Nothing to send.")
+		return
+	}
 	log.Debug(ReportUsagePrefix, "Sending info...")
 	if ur.sendToEcosystem {
-		ur.reportWaitGroup.Go(func() error {
-			return ur.reportToEcosystem(features...)
+		ur.reportWaitGroup.Go(func() (err error) {
+			if err = ur.reportToEcosystem(features...); err != nil {
+				err = fmt.Errorf("ecosystem, %w", err)
+			}
+			return
 		})
 	}
 	if ur.sendToXray {
-		ur.reportWaitGroup.Go(func() error {
-			return ur.reportToXray(features...)
+		ur.reportWaitGroup.Go(func() (err error) {
+			if err = ur.reportToXray(features...); err != nil {
+				err = fmt.Errorf("xray, %w", err)
+			}
+			return
 		})
 	}
 	if ur.sendToArtifactory {
-		ur.reportWaitGroup.Go(func() error {
-			return ur.reportToArtifactory(features...)
+		ur.reportWaitGroup.Go(func() (err error) {
+			if err = ur.reportToArtifactory(features...); err != nil {
+				err = fmt.Errorf("artifactory, %w", err)
+			}
+			return
 		})
 	}
 }
@@ -111,18 +124,26 @@ func (ur *UsageReporter) WaitForResponses() (err error) {
 
 func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error) {
 	if ur.serverDetails.Url == "" {
-		err = errorutils.CheckErrorf("platform Url is not set")
+		err = errorutils.CheckErrorf("platform URL is not set")
 		return
 	}
 	reports, err := ur.convertAttributesToEcosystemReports(features...)
-	if len(reports) == 0 || err != nil {
-		err = errorutils.CheckErrorf("Nothing to send.")
+	if err != nil {
+		return
+	}
+	if len(reports) == 0 {
+		err = errorutils.CheckErrorf("nothing to send")
 		return
 	}
 	return ecosysusage.SendEcosystemUsageReports(reports...)
 }
 
 func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
+	events := ur.convertAttributesToXrayEvents(features...)
+	if len(events) == 0 {
+		err = errorutils.CheckErrorf("Nothing to send.")
+		return
+	}
 	if ur.serverDetails.XrayUrl == "" {
 		err = errorutils.CheckErrorf("Xray Url is not set.")
 		return
@@ -131,26 +152,21 @@ func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
 	if err != nil {
 		return
 	}
-	events := ur.convertAttributesToXrayEvents(features...)
-	if len(events) == 0 {
-		err = errorutils.CheckErrorf("Nothing to send.")
-		return
-	}
 	return xrayusage.SendXrayUsageEvents(*serviceManager, events...)
 }
 
 func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err error) {
+	converted := ur.convertAttributesToArtifactoryFeatures(features...)
+	if len(converted) == 0 {
+		err = errorutils.CheckErrorf("nothing to send")
+		return
+	}
 	if ur.serverDetails.ArtifactoryUrl == "" {
-		err = errorutils.CheckErrorf("Artifactory Url is not set..")
+		err = errorutils.CheckErrorf("Artifactory URL is not set")
 		return
 	}
 	serviceManager, err := utils.CreateServiceManager(ur.serverDetails, -1, 0, false)
 	if err != nil {
-		return
-	}
-	converted := ur.convertAttributesToArtifactoryFeatures(features...)
-	if len(converted) == 0 {
-		err = errorutils.CheckErrorf("Nothing to send.")
 		return
 	}
 	return usage.ReportUsageToArtifactory(ur.ProductId, serviceManager, converted...)

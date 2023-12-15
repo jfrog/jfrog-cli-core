@@ -89,19 +89,25 @@ type DelayedArtifactsFile struct {
 }
 
 // Collect all the delayed artifact files that were created up to this point for the repository and transfer their artifacts using handleDelayedArtifactsFiles
-func consumeAllDelayFiles(base phaseBase) error {
+func consumeAllDelayFiles(base phaseBase) (err error) {
 	filesToConsume, err := getDelayFiles([]string{base.repoKey})
-	if err != nil {
-		return err
+	if err != nil || len(filesToConsume) == 0 {
+		return
 	}
 	delayFunctions := getDelayUploadComparisonFunctions(base.repoSummary.PackageType)
-	if len(filesToConsume) > 0 && len(delayFunctions) > 0 {
-		log.Info("Starting to handle delayed artifacts uploads...")
-		if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:]); err == nil {
-			log.Info("Done handling delayed artifacts uploads.")
-		}
+	if len(delayFunctions) == 0 {
+		return
 	}
-	return err
+
+	log.Info("Starting to handle delayed artifacts uploads...")
+	// Each delay function causes the transfer to skip a specific group of files.
+	// Within the handleDelayedArtifactsFiles function, we recursively remove the first delay function from the slice to transfer the first set of files every time.
+	if err = handleDelayedArtifactsFiles(filesToConsume, base, delayFunctions[1:]); err != nil {
+		return
+	}
+
+	log.Info("Done handling delayed artifacts uploads.")
+	return deleteAllFiles(filesToConsume)
 }
 
 // Call consumeAllDelayFiles only if there are no failed transferred files for the repository up to this point.
@@ -120,7 +126,7 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	if len(addedDelayFiles) > 0 && phase.progressBar != nil {
 		phaseTaskProgressBar := phase.progressBar.phases[phase.phaseId].GetTasksProgressBar()
 		oldTotal := phaseTaskProgressBar.GetTotal()
-		delayCount, err := countDelayFilesContent(addedDelayFiles)
+		delayCount, _, err := countDelayFilesContent(addedDelayFiles)
 		if err != nil {
 			return err
 		}
@@ -129,16 +135,18 @@ func consumeDelayFilesIfNoErrors(phase phaseBase, addedDelayFiles []string) erro
 	return nil
 }
 
-func countDelayFilesContent(filePaths []string) (int, error) {
-	count := 0
+func countDelayFilesContent(filePaths []string) (count int, storage int64, err error) {
 	for _, file := range filePaths {
 		delayFile, err := readDelayFile(file)
 		if err != nil {
-			return 0, err
+			return 0, storage, err
 		}
 		count += len(delayFile.DelayedArtifacts)
+		for _, delay := range delayFile.DelayedArtifacts {
+			storage += delay.Size
+		}
 	}
-	return count, nil
+	return
 }
 
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
@@ -152,7 +160,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	delayAction := func(pBase phaseBase, addedDelayFiles []string) error {
 		// We call this method as a recursion in order to have inner order base on the comparison function list.
 		// Remove the first delay comparison function one by one to no longer delay it until the list is empty.
-		if len(filesToConsume) > 0 && len(delayUploadComparisonFunctions) > 0 {
+		if len(addedDelayFiles) > 0 && len(delayUploadComparisonFunctions) > 0 {
 			return handleDelayedArtifactsFiles(addedDelayFiles, pBase, delayUploadComparisonFunctions[1:])
 		}
 		return nil
@@ -161,6 +169,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 }
 
 func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunk, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	log.Debug(fmt.Sprintf("Starting to handle delayed artifacts files. Found %d files.", len(filesToConsume)))
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
 		delayedArtifactsFile, err := readDelayFile(filePath)
@@ -173,12 +182,12 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 			return err
 		}
 
-		// Remove the file, so it won't be consumed again.
-		if err = os.Remove(filePath); err != nil {
-			return errorutils.CheckError(err)
+		if base.progressBar != nil {
+			base.progressBar.changeNumberOfDelayedFiles(-1 * len(delayedArtifactsFile.DelayedArtifacts))
 		}
-
-		log.Debug("Done handling delayed artifacts file: '" + filePath + "'. Deleting it...")
+		if err = base.stateManager.ChangeDelayedFilesCountBy(uint64(len(delayedArtifactsFile.DelayedArtifacts)), false); err != nil {
+			log.Warn("Couldn't decrease the delayed files counter", err.Error())
+		}
 	}
 	return nil
 }
@@ -202,6 +211,23 @@ func getDelayFiles(repoKeys []string) (filesPaths []string, err error) {
 	return getErrorOrDelayFiles(repoKeys, getJfrogTransferRepoDelaysDir)
 }
 
+func getDelayedFilesCount(repoKeys []string) (int, error) {
+	files, err := getDelayFiles(repoKeys)
+	if err != nil {
+		return -1, err
+	}
+
+	count := 0
+	for _, file := range files {
+		delayedFiles, err := readDelayFile(file)
+		if err != nil {
+			return -1, err
+		}
+		count += len(delayedFiles.DelayedArtifacts)
+	}
+	return count, nil
+}
+
 const (
 	maven  = "Maven"
 	gradle = "Gradle"
@@ -220,7 +246,7 @@ func getDelayUploadComparisonFunctions(packageType string) []shouldDelayUpload {
 	switch packageType {
 	case maven, gradle, ivy:
 		return []shouldDelayUpload{func(fileName string) bool {
-			return filepath.Ext(fileName) == ".pom"
+			return filepath.Ext(fileName) == ".pom" || fileName == "pom.xml"
 		}}
 	case docker:
 		return []shouldDelayUpload{func(fileName string) bool {
@@ -255,6 +281,12 @@ func (delayHelper delayUploadHelper) delayUploadIfNecessary(phase phaseBase, fil
 		if shouldDelay(file.Name) {
 			delayed = true
 			delayHelper.delayedArtifactsChannelMng.add(file)
+			if phase.progressBar != nil {
+				phase.progressBar.changeNumberOfDelayedFiles(1)
+			}
+			if err := phase.stateManager.ChangeDelayedFilesCountBy(1, true); err != nil {
+				log.Warn("Couldn't increase the delayed files counter", err.Error())
+			}
 		}
 	}
 	return
@@ -336,6 +368,11 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 		if err := w.writer.Close(); err != nil {
 			return err
 		}
+		defer func() {
+			// Reset writer and counter.
+			w.recordCount = 0
+			w.writer = nil
+		}()
 		if w.writer.GetFilePath() != "" {
 			fullPath, err := getUniqueErrorOrDelayFilePath(w.dirPath, func() string {
 				return w.filePrefix
@@ -351,9 +388,6 @@ func (w *SplitContentWriter) closeCurrentFile() error {
 			w.fileIndex++
 		}
 	}
-	// Reset writer and counter.
-	w.recordCount = 0
-	w.writer = nil
 	return nil
 }
 

@@ -3,6 +3,7 @@ package npm
 import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"testing"
@@ -102,7 +103,7 @@ func TestParseNpmDependenciesList(t *testing.T) {
 	}
 	expectedUniqueDeps := []string{xrayDependenciesTree.Id}
 	for _, dep := range dependencies {
-		expectedUniqueDeps = append(expectedUniqueDeps, npmPackageTypeIdentifier+dep.Id)
+		expectedUniqueDeps = append(expectedUniqueDeps, utils.NpmPackageTypeIdentifier+dep.Id)
 	}
 	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 
@@ -115,6 +116,7 @@ func TestIgnoreScripts(t *testing.T) {
 
 	// The package.json file contain a postinstall script running an "exit 1" command.
 	// Without the "--ignore-scripts" flag, the test will fail.
-	_, _, err := BuildDependencyTree([]string{})
+	params := &utils.AuditBasicParams{}
+	_, _, err := BuildDependencyTree(params)
 	assert.NoError(t, err)
 }

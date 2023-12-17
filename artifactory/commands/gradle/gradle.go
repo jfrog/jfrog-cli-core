@@ -182,7 +182,7 @@ func (gc *GradleCommand) SetConfigPath(configPath string) *GradleCommand {
 }
 
 func (gc *GradleCommand) SetTasks(tasks []string) *GradleCommand {
-	gc.tasks = tasks
+	gc.tasks = splitGradleTasks(tasks...)
 	return gc
 }
 
@@ -223,7 +223,9 @@ func (gc *GradleCommand) setResult(result *commandsutils.Result) *GradleCommand 
 	return gc
 }
 
-func SplitGradleTasks(tasks ...string) []string {
+// splitGradleTasks splits Gradle tasks into individual components, handling spaces
+// while respecting quoted strings enclosed in single or double quotes.
+func splitGradleTasks(tasks ...string) []string {
 	var splitTasks []string
 	for _, task := range tasks {
 		var isInQuote bool

@@ -13,7 +13,7 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20230616125104-99d496ca653d
 	github.com/google/uuid v1.3.1
 	github.com/gookit/color v1.5.4
-	github.com/jfrog/build-info-go v1.9.16
+	github.com/jfrog/build-info-go v1.9.17
 	github.com/jfrog/gofrog v1.3.2
 	github.com/jfrog/jfrog-apps-config v1.0.1
 	github.com/jfrog/jfrog-client-go v1.35.0
@@ -100,8 +100,8 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/omerzi/jfrog-client-go v1.13.2-0.20231213071843-930f7b85e2c1
+replace github.com/jfrog/jfrog-client-go => github.com/omerzi/jfrog-client-go v1.13.2-0.20231217095705-839ef48bad50
 
-replace github.com/jfrog/build-info-go => github.com/omerzi/build-info-go v1.3.1-0.20231212142444-f419eddc6264
+replace github.com/jfrog/build-info-go => github.com/omerzi/build-info-go v1.3.1-0.20231217083011-980ea1b7cd2d
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.3.2-0.20231130091721-6d742be8bc7a

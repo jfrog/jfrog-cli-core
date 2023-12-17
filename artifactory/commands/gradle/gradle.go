@@ -181,7 +181,7 @@ func (gc *GradleCommand) SetConfigPath(configPath string) *GradleCommand {
 	return gc
 }
 
-func (gc *GradleCommand) SetTasks(tasks []string) *GradleCommand {
+func (gc *GradleCommand) SetTasks(tasks ...string) *GradleCommand {
 	gc.tasks = splitGradleTasks(tasks...)
 	return gc
 }

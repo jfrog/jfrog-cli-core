@@ -13,10 +13,10 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20230616125104-99d496ca653d
 	github.com/google/uuid v1.3.1
 	github.com/gookit/color v1.5.4
-	github.com/jfrog/build-info-go v1.9.16
+	github.com/jfrog/build-info-go v1.9.17
 	github.com/jfrog/gofrog v1.3.2
 	github.com/jfrog/jfrog-apps-config v1.0.1
-	github.com/jfrog/jfrog-client-go v1.35.0
+	github.com/jfrog/jfrog-client-go v1.35.1
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.3.0

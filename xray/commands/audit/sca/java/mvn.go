@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -25,6 +26,8 @@ const (
 	mavenDepTreeVersion = "1.0.2"
 	settingsXmlFile     = "settings.xml"
 )
+
+var mavenConfigPath = filepath.Join(".mvn", "maven.config")
 
 type MavenDepTreeCmd string
 
@@ -66,15 +69,15 @@ func buildMavenDependencyTree(params xrayutils.AuditParams, serverDetails *confi
 	if err != nil {
 		return
 	}
-	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFileContent)
+	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFilePaths)
 	return
 }
 
-func (mdt *MavenDepTreeManager) RunMavenDepTree() ([]byte, error) {
+func (mdt *MavenDepTreeManager) RunMavenDepTree() (string, error) {
 	// Create a temp directory for all the files that are required for the maven-dep-tree run
 	depTreeExecDir, err := fileutils.CreateTempDir()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer func() {
 		err = errors.Join(err, fileutils.RemoveTempDir(depTreeExecDir))
@@ -83,13 +86,18 @@ func (mdt *MavenDepTreeManager) RunMavenDepTree() ([]byte, error) {
 	// Create a settings.xml file that sets the dependency resolution from the given server and repository
 	if mdt.depsRepo != "" {
 		if err = mdt.createSettingsXmlWithConfiguredArtifactory(depTreeExecDir); err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
-		return nil, err
+		return "", err
 	}
-	return mdt.execMavenDepTree(depTreeExecDir)
+
+	depTreeOutput, err := mdt.execMavenDepTree(depTreeExecDir)
+	if err != nil {
+		return "", err
+	}
+	return depTreeOutput, nil
 }
 
 func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string) error {
@@ -109,14 +117,14 @@ func GetMavenPluginInstallationGoals(pluginPath string) []string {
 	return []string{"org.apache.maven.plugins:maven-install-plugin:3.1.1:install-file", "-Dfile=" + pluginPath, "-B"}
 }
 
-func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) ([]byte, error) {
+func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) (string, error) {
 	if mdt.cmdName == Tree {
 		return mdt.runTreeCmd(depTreeExecDir)
 	}
 	return mdt.runProjectsCmd()
 }
 
-func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error) {
+func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) (string, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath, "-B"}
 	if mdt.isCurationCmd {
@@ -127,32 +135,69 @@ func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) ([]byte, error
 		goals = append(goals, "-Dmaven.repo.local="+mavenCacheFolder)
 	}
 	if _, err := mdt.RunMvnCmd(goals); err != nil {
-		return nil, err
+		return "", err
 	}
 
 	mavenDepTreeOutput, err := os.ReadFile(mavenDepTreePath)
-	err = errorutils.CheckError(err)
-	return mavenDepTreeOutput, err
-}
-func (mdt *MavenDepTreeManager) runProjectsCmd() ([]byte, error) {
-	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q"}
-	return mdt.RunMvnCmd(goals)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return string(mavenDepTreeOutput), nil
 }
 
-func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) ([]byte, error) {
+func (mdt *MavenDepTreeManager) runProjectsCmd() (string, error) {
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q"}
+	output, err := mdt.RunMvnCmd(goals)
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
+
+func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) (cmdOutput []byte, err error) {
+	restoreMavenConfig, err := removeMavenConfig()
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		if restoreMavenConfig != nil {
+			err = errors.Join(err, restoreMavenConfig())
+		}
+	}()
+
 	if mdt.settingsXmlPath != "" {
 		goals = append(goals, "-s", mdt.settingsXmlPath)
 	}
 
 	//#nosec G204
-	cmdOutput, err := exec.Command("mvn", goals...).CombinedOutput()
+	cmdOutput, err = exec.Command("mvn", goals...).CombinedOutput()
 	if err != nil {
 		if len(cmdOutput) > 0 {
 			log.Info(string(cmdOutput))
 		}
 		err = fmt.Errorf("failed running command 'mvn %s': %s", strings.Join(goals, " "), err.Error())
 	}
-	return cmdOutput, err
+	return
+}
+
+func removeMavenConfig() (func() error, error) {
+	mavenConfigExists, err := fileutils.IsFileExists(mavenConfigPath, false)
+	if err != nil {
+		return nil, err
+	}
+	if !mavenConfigExists {
+		return nil, nil
+	}
+	restoreMavenConfig, err := utils.BackupFile(mavenConfigPath, "maven.config.bkp")
+	if err != nil {
+		return nil, err
+	}
+	err = os.Remove(mavenConfigPath)
+	if err != nil {
+		err = errorutils.CheckErrorf("failed to remove %s while building the maven dependencies tree. Error received:\n%s", mavenConfigPath, err.Error())
+	}
+	return restoreMavenConfig, err
 }
 
 // Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.

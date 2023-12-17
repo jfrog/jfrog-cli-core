@@ -60,8 +60,8 @@ type depTreeNode struct {
 
 // getGraphFromDepTree reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
 // It takes the output of the plugin's run (which is a byte representation of a list of paths of the output files, separated by newlines) as input.
-func getGraphFromDepTree(depTreeOutput []byte) (depsGraph []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	modules, err := parseDepTreeFiles(depTreeOutput)
+func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+	modules, err := parseDepTreeFiles(outputFilePaths)
 	if err != nil {
 		return
 	}
@@ -97,8 +97,8 @@ func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, mo
 	}
 }
 
-func parseDepTreeFiles(jsonFilePaths []byte) ([]*moduleDepTree, error) {
-	outputFilePaths := strings.Split(strings.TrimSpace(string(jsonFilePaths)), "\n")
+func parseDepTreeFiles(jsonFilePaths string) ([]*moduleDepTree, error) {
+	outputFilePaths := strings.Split(strings.TrimSpace(jsonFilePaths), "\n")
 	var modules []*moduleDepTree
 	for _, path := range outputFilePaths {
 		results, err := parseDepTreeFile(path)

@@ -121,3 +121,18 @@ func TestGetValidStreamsString(t *testing.T) {
 	assert.Equal(t, 3, len(validStreams.StreamsMap))
 	assert.Equal(t, validStreams.GetValidStreamsString(), "public_data, exposures and contextual_analysis")
 }
+
+func TestLogV3UpdateFileChecksum(t *testing.T) {
+	tests := []struct {
+		item     V3UpdateResponseItem
+		expected string
+	}{
+		{item: V3UpdateResponseItem{DownloadUrl: "http://www.example.com/some/path/filename.tar.zst", Sha256: "0000000000000000000000000000000000000000000000000000000000000000"}, expected: "filename.tar.zst"},
+		{item: V3UpdateResponseItem{DownloadUrl: ">bad_url%+o", Sha256: "0000000000000000000000000000000000000000000000000000000000000000"}, expected: ">bad_url%+o"},
+		{item: V3UpdateResponseItem{DownloadUrl: "http://www.example.com/some/path/filename.tar.zst"}, expected: "filename.tar.zst"},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expected, getV3UpdateFilename(test.item))
+	}
+}

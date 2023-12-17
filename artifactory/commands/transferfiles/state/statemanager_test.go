@@ -1,6 +1,7 @@
 package state
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -181,11 +182,11 @@ func TestChangeTransferFailureCountBy(t *testing.T) {
 	// Increase failures count
 	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(2, true))
 	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(4, true))
-	assert.Equal(t, uint(6), stateManager.TransferFailures)
+	assert.Equal(t, uint64(6), stateManager.TransferFailures)
 
 	// Decrease failures count
 	assert.NoError(t, stateManager.ChangeTransferFailureCountBy(3, false))
-	assert.Equal(t, uint(3), stateManager.TransferFailures)
+	assert.Equal(t, uint64(3), stateManager.TransferFailures)
 }
 
 func assertReposTransferredSize(t *testing.T, stateManager *TransferStateManager, expectedSize int64, repoKeys ...string) {
@@ -309,4 +310,52 @@ func TestGetRunningTimeString(t *testing.T) {
 			assert.Equal(t, testCase.expectedString, stateManager.GetRunningTimeString())
 		})
 	}
+}
+
+func TestStateConcurrency(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	// Concurrently increment variables in the state
+	var wg sync.WaitGroup
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(1, 1))
+			assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase2(1, 1))
+			assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase3(1, 1))
+			assert.NoError(t, stateManager.IncVisitedFolders())
+			assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(1, true))
+			assert.NoError(t, stateManager.ChangeTransferFailureCountBy(1, true))
+		}()
+	}
+	wg.Wait()
+
+	// Assert 1000 in all values
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase1Info.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase1Info.TransferredUnits))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase2Info.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase2Info.TransferredUnits))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase3Info.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase3Info.TransferredUnits))
+	assert.Equal(t, 1000, int(stateManager.OverallTransfer.TransferredSizeBytes))
+	assert.Equal(t, 1000, int(stateManager.VisitedFolders))
+	assert.Equal(t, 1000, int(stateManager.DelayedFiles))
+	assert.Equal(t, 1000, int(stateManager.TransferFailures))
+
+	// Concurrently decrement delayed artifacts and transfer failures
+	for i := 0; i < 500; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			assert.NoError(t, stateManager.ChangeDelayedFilesCountBy(1, false))
+			assert.NoError(t, stateManager.ChangeTransferFailureCountBy(1, false))
+		}()
+	}
+	wg.Wait()
+
+	// Assert 500 in delayed artifacts and transfer failures
+	assert.Equal(t, 500, int(stateManager.DelayedFiles))
+	assert.Equal(t, 500, int(stateManager.TransferFailures))
 }

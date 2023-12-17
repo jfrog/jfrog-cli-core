@@ -236,7 +236,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 		if e != nil {
 			return e
 		}
-		tdc.stateManager.TransferFailures = uint(numberInitialErrors)
+		tdc.stateManager.TransferFailures = uint64(numberInitialErrors)
 
 		numberInitialDelays, e := getDelayedFilesCount(allSourceLocalRepos)
 		if e != nil {
@@ -515,6 +515,10 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 		if <-tdc.stopSignal == nil {
 			// The stopSignal channel is closed
 			return
+		}
+		// Before interrupting the process, do a thread dump
+		if err := doThreadDump(); err != nil {
+			log.Error(err)
 		}
 		tdc.cancelFunc()
 		if newPhase != nil {
@@ -808,4 +812,15 @@ func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err erro
 
 func assertSupportedTransferDirStructure() error {
 	return state.VerifyTransferRunStatusVersion()
+}
+
+func doThreadDump() error {
+	log.Info("Starting thread dumping...")
+	threadDump, err := coreutils.NewProfiler().ThreadDump()
+	if err != nil {
+		return err
+	}
+	log.Info(threadDump)
+	log.Info("Thread dump ended successfully")
+	return nil
 }

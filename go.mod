@@ -25,11 +25,11 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.14
 	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20231006140011-7918f672742d
-	golang.org/x/mod v0.13.0
-	golang.org/x/sync v0.4.0
-	golang.org/x/term v0.13.0
-	golang.org/x/text v0.13.0
+	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
+	golang.org/x/mod v0.14.0
+	golang.org/x/sync v0.5.0
+	golang.org/x/term v0.15.0
+	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -41,7 +41,6 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
-	github.com/acomagu/bufpipe v1.0.4 // indirect
 	github.com/andybalholm/brotli v1.0.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -52,7 +51,7 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
-	github.com/go-git/go-git/v5 v5.9.0 // indirect
+	github.com/go-git/go-git/v5 v5.11.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/snappy v0.0.2 // indirect
@@ -80,7 +79,7 @@ require (
 	github.com/sagikazarmark/locafero v0.3.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
-	github.com/skeema/knownhosts v1.2.0 // indirect
+	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
 	github.com/spf13/afero v1.10.0 // indirect
 	github.com/spf13/cast v1.5.1 // indirect
@@ -92,16 +91,16 @@ require (
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/tools v0.14.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/tools v0.16.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/omerzi/jfrog-client-go v1.13.2-0.20231217095705-839ef48bad50
+replace github.com/jfrog/jfrog-client-go => github.com/omerzi/jfrog-client-go v1.13.2-0.20231220103415-a8555e4e598f
 
-replace github.com/jfrog/build-info-go => github.com/omerzi/build-info-go v1.3.1-0.20231217083011-980ea1b7cd2d
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20231220102935-c8776c613ad8
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.3.2-0.20231130091721-6d742be8bc7a

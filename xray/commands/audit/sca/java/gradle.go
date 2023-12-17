@@ -66,11 +66,11 @@ func buildGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUti
 	return
 }
 
-func (gdt *gradleDepTreeManager) runGradleDepTree() ([]byte, error) {
+func (gdt *gradleDepTreeManager) runGradleDepTree() (string, error) {
 	// Create the script file in the repository
 	depTreeDir, err := gdt.createDepTreeScriptAndGetDir()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer func() {
 		err = errors.Join(err, fileutils.RemoveTempDir(depTreeDir))
@@ -79,11 +79,15 @@ func (gdt *gradleDepTreeManager) runGradleDepTree() ([]byte, error) {
 	if gdt.useWrapper {
 		gdt.useWrapper, err = isGradleWrapperExist()
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 	}
 
-	return gdt.execGradleDepTree(depTreeDir)
+	output, err := gdt.execGradleDepTree(depTreeDir)
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
 }
 
 func (gdt *gradleDepTreeManager) createDepTreeScriptAndGetDir() (tmpDir string, err error) {

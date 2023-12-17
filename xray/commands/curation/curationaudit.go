@@ -50,8 +50,7 @@ const (
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
-	coreutils.Npm:   {},
-	coreutils.Maven: {},
+	coreutils.Npm: {},
 }
 
 type ErrorsResp struct {

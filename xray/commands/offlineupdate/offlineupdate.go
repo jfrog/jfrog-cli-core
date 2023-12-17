@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"golang.org/x/exp/maps"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -99,9 +100,11 @@ func getURLsToDownloadDBSyncV3(responseBody []byte, isPeriodicUpdate bool) ([]st
 		}
 		for _, packageUrl := range periodicResponse.Update {
 			urlsToDownload = append(urlsToDownload, packageUrl.DownloadUrl)
+			logV3UpdateFileChecksum(packageUrl)
 		}
 		for _, packageUrl := range periodicResponse.Deletion {
 			urlsToDownload = append(urlsToDownload, packageUrl.DownloadUrl)
+			logV3UpdateFileChecksum(packageUrl)
 		}
 	} else {
 		err = json.Unmarshal(responseBody, &onboardingResponse)
@@ -110,9 +113,27 @@ func getURLsToDownloadDBSyncV3(responseBody []byte, isPeriodicUpdate bool) ([]st
 		}
 		for _, packageUrl := range onboardingResponse {
 			urlsToDownload = append(urlsToDownload, packageUrl.DownloadUrl)
+			logV3UpdateFileChecksum(packageUrl)
 		}
 	}
 	return urlsToDownload, nil
+}
+
+func getV3UpdateFilename(updateFileItem V3UpdateResponseItem) string {
+	parsedUrl, err := url.Parse(updateFileItem.DownloadUrl)
+	if err != nil {
+		return updateFileItem.DownloadUrl
+	}
+	pathParts := strings.Split(parsedUrl.Path, "/")
+	return pathParts[len(pathParts)-1]
+}
+
+func logV3UpdateFileChecksum(updateFileItem V3UpdateResponseItem) {
+	if updateFileItem.Sha256 == "" {
+		return
+	}
+	filename := getV3UpdateFilename(updateFileItem)
+	log.Info(fmt.Sprintf("Got info on update package [%s] with sha256 [%s]", filename, updateFileItem.Sha256))
 }
 
 func createV3MetadataFile(state string, body []byte, destFolder string) (err error) {
@@ -444,6 +465,7 @@ type FilesList struct {
 type V3UpdateResponseItem struct {
 	DownloadUrl string `json:"download_url"`
 	Timestamp   int64  `json:"timestamp"`
+	Sha256      string `json:"sha256,omitempty"`
 }
 
 type V3PeriodicUpdateResponse struct {

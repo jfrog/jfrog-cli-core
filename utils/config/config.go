@@ -229,22 +229,23 @@ func getConfigFile() (content []byte, err error) {
 	}
 	// Try to look for older config files
 	for i := coreutils.GetCliConfigVersion() - 1; i >= 3; i-- {
-		versionedConfigPath, err := getLegacyConfigFilePath(i)
+		var versionedConfigPath string
+		versionedConfigPath, err = getLegacyConfigFilePath(i)
 		if err != nil {
-			return nil, err
+			return
 		}
-		exists, err := fileutils.IsFileExists(versionedConfigPath, false)
+		exists, err = fileutils.IsFileExists(versionedConfigPath, false)
 		if err != nil {
-			return nil, err
+			return
 		}
 		if exists {
 			// If an old config file was found returns its content or an error.
 			content, err = fileutils.ReadFile(versionedConfigPath)
-			return content, err
+			return
 		}
 	}
 
-	return content, nil
+	return
 }
 
 func (config *Config) Clone() (*Config, error) {
@@ -392,7 +393,7 @@ func createHomeDirBackup() error {
 		return err
 	}
 
-	// Copy homedir contents to backup dir, excluding redundant dirs and the backup dir itself.
+	// Copy homedir contents to back up dir, excluding redundant dirs and the backup dir itself.
 	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)

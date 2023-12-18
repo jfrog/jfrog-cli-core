@@ -30,6 +30,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/maps"
 )
 
 const (
@@ -41,10 +42,6 @@ const (
 	SyncErrorStatusCode = 404
 
 	StopFileName = "stop"
-)
-
-type (
-	nodeId string
 )
 
 var AqlPaginationLimit = DefaultAqlPaginationLimit
@@ -69,9 +66,16 @@ type ChunksLifeCycleManager struct {
 	// In each node, we store a map of the chunks that are currently in progress and their matching files.
 	// In case network fails, and the uploaded chunks data is lost,
 	// These chunks files will be written to the errors file using this map.
-	nodeToChunksMap map[nodeId]map[api.ChunkId]UploadedChunkData
-	// Counts the total of chunks that are currently in progress by the source Artifactory instance.
-	totalChunks int
+	nodeToChunksMap map[api.NodeId]map[api.ChunkId]UploadedChunkData
+}
+
+// Convert to map of nodeID to list of chunk IDs to allow printing it
+func (clcm *ChunksLifeCycleManager) GetNodeIdToChunkIdsMap() map[api.NodeId][]api.ChunkId {
+	nodeIdToChunks := make(map[api.NodeId][]api.ChunkId, len(clcm.nodeToChunksMap))
+	for nodeId, chunks := range clcm.nodeToChunksMap {
+		nodeIdToChunks[nodeId] = maps.Keys(chunks)
+	}
+	return nodeIdToChunks
 }
 
 func (clcm *ChunksLifeCycleManager) GetInProgressTokensSlice() []api.ChunkId {
@@ -85,7 +89,7 @@ func (clcm *ChunksLifeCycleManager) GetInProgressTokensSlice() []api.ChunkId {
 	return inProgressTokens
 }
 
-func (clcm *ChunksLifeCycleManager) GetInProgressTokensSliceByNodeId(nodeId nodeId) []api.ChunkId {
+func (clcm *ChunksLifeCycleManager) GetInProgressTokensSliceByNodeId(nodeId api.NodeId) []api.ChunkId {
 	var inProgressTokens []api.ChunkId
 	for chunkId := range clcm.nodeToChunksMap[nodeId] {
 		inProgressTokens = append(inProgressTokens, chunkId)

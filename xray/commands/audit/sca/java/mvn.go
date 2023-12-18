@@ -4,9 +4,9 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -69,7 +69,7 @@ func buildMavenDependencyTree(params xrayutils.AuditParams, serverDetails *confi
 	if err != nil {
 		return
 	}
-	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFilePaths)
+	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFileContent)
 	return
 }
 
@@ -130,7 +130,7 @@ func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) (string, error
 	if mdt.isCurationCmd {
 		mavenCacheFolder, err := config.GetCurationMavenCacheFolder()
 		if err != nil {
-			return nil, err
+			return "", err
 		}
 		goals = append(goals, "-Dmaven.repo.local="+mavenCacheFolder)
 	}

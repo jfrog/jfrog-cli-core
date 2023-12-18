@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/parallel"
@@ -50,7 +51,8 @@ const (
 )
 
 var supportedTech = map[coreutils.Technology]struct{}{
-	coreutils.Npm: {},
+	coreutils.Npm:   {},
+	coreutils.Maven: {},
 }
 
 type ErrorsResp struct {
@@ -152,6 +154,7 @@ func (ca *CurationAuditCommand) Run() (err error) {
 		ca.workingDirs = append(ca.workingDirs, rootDir)
 	}
 	results := map[string][]*PackageStatus{}
+	start := time.Now()
 	for _, workDir := range ca.workingDirs {
 		var absWd string
 		absWd, err = filepath.Abs(workDir)
@@ -169,6 +172,7 @@ func (ca *CurationAuditCommand) Run() (err error) {
 			err = errors.Join(err, e)
 		}
 	}
+	log.Info("curation took: %v", time.Since(start))
 	if ca.Progress() != nil {
 		err = errors.Join(err, ca.Progress().Quit())
 	}

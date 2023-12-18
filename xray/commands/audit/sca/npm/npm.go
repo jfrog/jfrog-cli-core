@@ -1,8 +1,11 @@
 package npm
 
 import (
+	"errors"
+	"fmt"
 	biutils "github.com/jfrog/build-info-go/build/utils"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -15,7 +18,7 @@ const (
 	ignoreScriptsFlag = "--ignore-scripts"
 )
 
-func BuildDependencyTree(npmArgs []string) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func BuildDependencyTree(params utils.AuditParams) (dependencyTrees []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	currentDir, err := coreutils.GetWorkingDirectory()
 	if err != nil {
 		return
@@ -24,14 +27,26 @@ func BuildDependencyTree(npmArgs []string) (dependencyTrees []*xrayUtils.GraphNo
 	if err != nil {
 		return
 	}
-	packageInfo, err := biutils.ReadPackageInfoFromPackageJson(currentDir, npmVersion)
+	packageInfo, err := biutils.ReadPackageInfoFromPackageJsonIfExists(currentDir, npmVersion)
 	if err != nil {
 		return
 	}
-	npmArgs = addIgnoreScriptsFlag(npmArgs)
+
+	treeDepsParam := createTreeDepsParam(params)
+
+	restoreNpmrcFunc, err := configNpmResolutionServerIfNeeded(params)
+	if err != nil {
+		err = fmt.Errorf("failed while configuring a resolution server: %s", err.Error())
+		return
+	}
+	defer func() {
+		if restoreNpmrcFunc != nil {
+			err = errors.Join(err, restoreNpmrcFunc())
+		}
+	}()
 
 	// Calculate npm dependencies
-	dependenciesMap, err := biutils.CalculateDependenciesMap(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), npmArgs, log.Logger)
+	dependenciesMap, err := biutils.CalculateDependenciesMap(npmExecutablePath, currentDir, packageInfo.BuildInfoModuleId(), treeDepsParam, log.Logger)
 	if err != nil {
 		log.Info("Used npm version:", npmVersion.GetVersion())
 		return
@@ -44,6 +59,50 @@ func BuildDependencyTree(npmArgs []string) (dependencyTrees []*xrayUtils.GraphNo
 	dependencyTree, uniqueDeps := parseNpmDependenciesList(dependenciesList, packageInfo)
 	dependencyTrees = []*xrayUtils.GraphNode{dependencyTree}
 	return
+}
+
+// Generates a .npmrc file to configure an Artifactory server as the resolver server.
+func configNpmResolutionServerIfNeeded(params utils.AuditParams) (restoreNpmrcFunc func() error, err error) {
+	if params == nil {
+		err = fmt.Errorf("got empty params upon configuring resolution server")
+		return
+	}
+	serverDetails, err := params.ServerDetails()
+	if err != nil || serverDetails == nil {
+		return
+	}
+	depsRepo := params.DepsRepo()
+	if depsRepo == "" {
+		return
+	}
+
+	npmCmd := npm.NewNpmCommand("install", false).SetServerDetails(serverDetails)
+	if err = npmCmd.PreparePrerequisites(depsRepo); err != nil {
+		return
+	}
+	if err = npmCmd.CreateTempNpmrc(); err != nil {
+		return
+	}
+	restoreNpmrcFunc = npmCmd.RestoreNpmrcFunc()
+	log.Info(fmt.Sprintf("Resolving dependencies from '%s' from repo '%s'", serverDetails.Url, depsRepo))
+	return
+}
+
+func createTreeDepsParam(params utils.AuditParams) biutils.NpmTreeDepListParam {
+	if params == nil {
+		return biutils.NpmTreeDepListParam{
+			Args: addIgnoreScriptsFlag([]string{}),
+		}
+	}
+	npmTreeDepParam := biutils.NpmTreeDepListParam{
+		Args:               addIgnoreScriptsFlag(params.Args()),
+		InstallCommandArgs: params.InstallCommandArgs(),
+	}
+	if npmParams, ok := params.(utils.AuditNpmParams); ok {
+		npmTreeDepParam.IgnoreNodeModules = npmParams.NpmIgnoreNodeModules()
+		npmTreeDepParam.OverwritePackageLock = npmParams.NpmOverwritePackageLock()
+	}
+	return npmTreeDepParam
 }
 
 // Add the --ignore-scripts to prevent execution of npm scripts during npm install.

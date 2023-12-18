@@ -101,7 +101,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 		Rescan:      bsc.rescan,
 	}
 
-	isFailBuildResponse, err := bsc.runBuildScanAndPrintResults(xrayManager, params)
+	isFailBuildResponse, err := bsc.runBuildScanAndPrintResults(xrayManager, xrayVersion, params)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (bsc *BuildScanCommand) Run() (err error) {
 	return
 }
 
-func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayServicesManager, params services.XrayBuildParams) (isFailBuildResponse bool, err error) {
+func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayServicesManager, xrayVersion string, params services.XrayBuildParams) (isFailBuildResponse bool, err error) {
 	buildScanResults, noFailBuildPolicy, err := xrayManager.BuildScan(params, bsc.includeVulnerabilities)
 	if err != nil {
 		return false, err
@@ -126,9 +126,11 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		XrayDataUrl:     buildScanResults.MoreDetailsUrl,
 	}}
 
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: scanResponse}
+	scanResults := xrutils.NewAuditResults()
+	scanResults.XrayVersion = xrayVersion
+	scanResults.ScaResults = []xrutils.ScaScanResult{{XrayResults: scanResponse}}
 
-	resultsPrinter := xrutils.NewResultsWriter(extendedScanResults).
+	resultsPrinter := xrutils.NewResultsWriter(scanResults).
 		SetOutputFormat(bsc.outputFormat).
 		SetIncludeVulnerabilities(bsc.includeVulnerabilities).
 		SetIncludeLicenses(false).

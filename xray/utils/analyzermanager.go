@@ -3,7 +3,6 @@ package utils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"os"
 	"os/exec"
 	"path"
@@ -15,16 +14,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/jfrog/jfrog-client-go/xray/services"
-	"github.com/owenrumney/go-sarif/v2/sarif"
 )
 
 const (
 	EntitlementsMinVersion                    = "3.66.5"
 	ApplicabilityFeatureId                    = "contextual_analysis"
 	AnalyzerManagerZipName                    = "analyzerManager.zip"
-	defaultAnalyzerManagerVersion             = "1.3.2.2019257"
-	minAnalyzerManagerVersionForSast          = "1.3"
+	defaultAnalyzerManagerVersion             = "1.6.0"
 	analyzerManagerDownloadPath               = "xsc-gen-exe-analyzer-manager-local/v1"
 	analyzerManagerDirName                    = "analyzerManager"
 	analyzerManagerExecutableName             = "analyzerManager"
@@ -80,22 +76,6 @@ var exitCodeErrorsMap = map[int]string{
 	unsupportedOsExitCode:      "got unsupported operating system error from analyzer manager",
 }
 
-type ExtendedScanResults struct {
-	XrayResults         []services.ScanResponse
-	XrayVersion         string
-	ScannedTechnologies []coreutils.Technology
-
-	ApplicabilityScanResults []*sarif.Run
-	SecretsScanResults       []*sarif.Run
-	IacScanResults           []*sarif.Run
-	SastScanResults          []*sarif.Run
-	EntitledForJas           bool
-}
-
-func (e *ExtendedScanResults) getXrayScanResults() []services.ScanResponse {
-	return e.XrayResults
-}
-
 type AnalyzerManager struct {
 	AnalyzerManagerFullPath string
 	MultiScanId             string
@@ -148,10 +128,6 @@ func GetAnalyzerManagerVersion() string {
 		return analyzerManagerVersion
 	}
 	return defaultAnalyzerManagerVersion
-}
-
-func IsSastSupported() bool {
-	return version.NewVersion(GetAnalyzerManagerVersion()).AtLeast(minAnalyzerManagerVersionForSast)
 }
 
 func GetAnalyzerManagerDirAbsolutePath() (string, error) {

@@ -2,22 +2,22 @@ package utils
 
 import (
 	"fmt"
-	"path/filepath"
-	"reflect"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
+	"path/filepath"
+	"reflect"
 )
 
 const (
 	ProjectConfigResolverPrefix = "resolver"
 	ProjectConfigDeployerPrefix = "deployer"
 	ProjectConfigRepo           = "repo"
+	ProjectConfigReleaseRepo    = "releaseRepo"
 	ProjectConfigServerId       = "serverId"
 )
 
@@ -37,6 +37,11 @@ const (
 	Build
 	Terraform
 )
+
+// Associates a technology with another of a different type in the structure.
+// Docker is not present, as there is no docker-config command and, consequently, no docker.yaml file we need to operate on.
+var techType = map[coreutils.Technology]ProjectType{coreutils.Maven: Maven, coreutils.Gradle: Gradle, coreutils.Npm: Npm, coreutils.Yarn: Yarn, coreutils.Go: Go, coreutils.Pip: Pip,
+	coreutils.Pipenv: Pipenv, coreutils.Poetry: Poetry, coreutils.Nuget: Nuget, coreutils.Dotnet: Dotnet}
 
 var ProjectTypes = []string{
 	"go",
@@ -126,8 +131,11 @@ func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) 
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)
 	if repo == "" {
-		err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
-		return
+		// In the maven.yaml config, there's a resolver repository field named "releaseRepo"
+		if repo = vConfig.GetString(prefix + "." + ProjectConfigReleaseRepo); repo == "" {
+			err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
+			return
+		}
 	}
 	serverId := vConfig.GetString(prefix + "." + ProjectConfigServerId)
 	if serverId == "" {
@@ -186,4 +194,45 @@ func ReadResolutionOnlyConfiguration(confFilePath string) (*RepositoryConfig, er
 		return nil, err
 	}
 	return GetRepoConfigByPrefix(confFilePath, ProjectConfigResolverPrefix, vConfig)
+}
+
+// Verifies the existence of depsRepo. If it doesn't exist, it searches for a configuration file based on the technology type. If found, it assigns depsRepo in the AuditParams.
+func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Technology) (err error) {
+	if params.DepsRepo() != "" || params.IgnoreConfigFile() {
+		return
+	}
+
+	configFilePath, exists, err := GetProjectConfFilePath(techType[tech])
+	if err != nil {
+		err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+		return
+	}
+	if !exists {
+		// Nuget and Dotnet are identified similarly in the detection process. To prevent redundancy, Dotnet is filtered out earlier in the process, focusing solely on detecting Nuget.
+		// Consequently, it becomes necessary to verify the presence of dotnet.yaml when Nuget detection occurs.
+		if tech == coreutils.Nuget {
+			configFilePath, exists, err = GetProjectConfFilePath(techType[coreutils.Dotnet])
+			if err != nil {
+				err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+				return
+			}
+			if !exists {
+				log.Debug(fmt.Sprintf("No %s.yaml nor %s.yaml configuration file was found. Resolving dependencies from %s default registry", coreutils.Nuget.String(), coreutils.Dotnet.String(), tech.String()))
+				return
+			}
+		} else {
+			log.Debug(fmt.Sprintf("No %s.yaml configuration file was found. Resolving dependencies from %s default registry", tech.String(), tech.String()))
+			return
+		}
+	}
+
+	log.Debug("Using resolver config from", configFilePath)
+	repoConfig, err := ReadResolutionOnlyConfiguration(configFilePath)
+	if err != nil {
+		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
+		return
+	}
+	params.SetServerDetails(repoConfig.serverDetails)
+	params.SetDepsRepo(repoConfig.targetRepo)
+	return
 }

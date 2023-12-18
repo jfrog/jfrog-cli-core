@@ -116,6 +116,7 @@ func TestIgnoreScripts(t *testing.T) {
 
 	// The package.json file contain a postinstall script running an "exit 1" command.
 	// Without the "--ignore-scripts" flag, the test will fail.
-	_, _, err := BuildDependencyTree([]string{})
+	params := &utils.AuditBasicParams{}
+	_, _, err := BuildDependencyTree(params)
 	assert.NoError(t, err)
 }

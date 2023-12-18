@@ -152,7 +152,7 @@ func assertGetTransferStateAndSnapshot(t *testing.T, reset bool, expectedTransfe
 func getRootAndAddSnapshotData(t *testing.T, stateManager *TransferStateManager) (root *reposnapshot.Node) {
 	root, err := stateManager.LookUpNode(".")
 	assert.NoError(t, err)
-	assert.NoError(t, root.IncrementFilesCount())
+	assert.NoError(t, root.IncrementFilesCount(10))
 	assert.NoError(t, root.AddChildNode("child", nil))
 	return
 }

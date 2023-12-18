@@ -25,6 +25,7 @@ const (
 	YarnrcFileName       = ".yarnrc.yml"
 	YarnrcBackupFileName = "jfrog.yarnrc.backup"
 	NpmScopesConfigName  = "npmScopes"
+	YarnLockFileName     = "yarn.lock"
 	//#nosec G101
 	yarnNpmRegistryServerEnv = "YARN_NPM_REGISTRY_SERVER"
 	yarnNpmAuthIndent        = "YARN_NPM_AUTH_IDENT"

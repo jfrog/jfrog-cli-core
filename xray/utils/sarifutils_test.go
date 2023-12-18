@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/owenrumney/go-sarif/v2/sarif"
@@ -291,6 +292,32 @@ func TestGetRelativeLocationFileName(t *testing.T) {
 
 	for _, test := range tests {
 		assert.Equal(t, test.expectedOutput, GetRelativeLocationFileName(test.location, test.invocations))
+	}
+}
+
+func TestGetFullLocationFileName(t *testing.T) {
+	tests := []struct {
+		file           string
+		invocations    []*sarif.Invocation
+		expectedOutput string
+	}{
+		{
+			file:           filepath.Join("root", "someDir", "another", "file"),
+			invocations:    []*sarif.Invocation{},
+			expectedOutput: filepath.Join("root", "someDir", "another", "file"),
+		},
+		{
+			file: filepath.Join("another", "file"),
+			invocations: []*sarif.Invocation{
+				{WorkingDirectory: sarif.NewSimpleArtifactLocation(filepath.Join("root", "someDir"))},
+				{WorkingDirectory: sarif.NewSimpleArtifactLocation(filepath.Join("not", "relevant"))},
+			},
+			expectedOutput: filepath.Join("root", "someDir", "another", "file"),
+		},
+	}
+
+	for _, test := range tests {
+		assert.Equal(t, test.expectedOutput, GetFullLocationFileName(test.file, test.invocations))
 	}
 }
 

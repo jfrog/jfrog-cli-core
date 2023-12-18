@@ -13,7 +13,8 @@ import (
 const zeroUint32 uint32 = 0
 
 func TestStopGracefully(t *testing.T) {
-	pBase := &phaseBase{pcDetails: newProducerConsumerWrapper()}
+	pcWrapper := newProducerConsumerWrapper()
+	pBase := &phaseBase{pcDetails: &pcWrapper}
 	chunkUploaderProducerConsumer := pBase.pcDetails.chunkUploaderProducerConsumer
 	chunkBuilderProducerConsumer := pBase.pcDetails.chunkBuilderProducerConsumer
 	go func() {

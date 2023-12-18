@@ -40,7 +40,8 @@ type transferDelayAction func(phase phaseBase, addedDelayFiles []string) error
 
 // Transfer files using the 'producer-consumer' mechanism and apply a delay action.
 func (ftm *transferManager) doTransferWithProducerConsumer(transferAction transferActionWithProducerConsumerType, delayAction transferDelayAction) error {
-	ftm.pcDetails = newProducerConsumerWrapper()
+	// Set the producer-consumer value into the referenced value. This allow the Graceful Stop mechanism to access ftm.pcDetails when needed to stop the transfer.
+	*ftm.pcDetails = newProducerConsumerWrapper()
 	return ftm.doTransfer(ftm.pcDetails, transferAction, delayAction)
 }
 
@@ -203,14 +204,14 @@ type producerConsumerWrapper struct {
 	errorsQueue *clientUtils.ErrorsQueue
 }
 
-func newProducerConsumerWrapper() *producerConsumerWrapper {
-	chunkUploaderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
-	chunkBuilderProducerConsumer := parallel.NewRunner(GetThreads(), tasksMaxCapacity, false)
+func newProducerConsumerWrapper() producerConsumerWrapper {
+	chunkUploaderProducerConsumer := parallel.NewRunner(GetChunkUploaderThreads(), tasksMaxCapacity, false)
+	chunkBuilderProducerConsumer := parallel.NewRunner(GetChunkBuilderThreads(), tasksMaxCapacity, false)
 	chunkUploaderProducerConsumer.SetFinishedNotification(true)
 	chunkBuilderProducerConsumer.SetFinishedNotification(true)
 	errorsQueue := clientUtils.NewErrorsQueue(1)
 
-	return &producerConsumerWrapper{
+	return producerConsumerWrapper{
 		chunkUploaderProducerConsumer: chunkUploaderProducerConsumer,
 		chunkBuilderProducerConsumer:  chunkBuilderProducerConsumer,
 		errorsQueue:                   errorsQueue,
@@ -228,6 +229,8 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	go func() {
 		// Wait till notified that the builder has no additional tasks, and close the builder producer consumer.
 		<-pcWrapper.chunkBuilderProducerConsumer.GetFinishedNotification()
+		log.Debug("Chunk builder producer consumer has completed all tasks. " +
+			"All files relevant to this phase were found and added to chunks that are being uploaded...")
 		pcWrapper.chunkBuilderProducerConsumer.Done()
 	}()
 
@@ -261,6 +264,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 	}
 	for i := 0; ; i++ {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
+			log.Debug("Stop signal received while polling on uploads...")
 			return
 		}
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
@@ -284,6 +288,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// it will be written to the error channel
 		if chunksLifeCycleManager.totalChunks == 0 {
 			if shouldStopPolling(doneChan) {
+				log.Debug("Stopping to poll on uploads...")
 				return
 			}
 			continue
@@ -305,7 +310,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 
 // Fill chunk data batch till full. Return if no new chunk data is available.
 func fillChunkDataBatch(chunksLifeCycleManager *ChunksLifeCycleManager, uploadChunkChan chan UploadedChunk) {
-	for chunksLifeCycleManager.totalChunks < GetThreads() {
+	for chunksLifeCycleManager.totalChunks < GetChunkUploaderThreads() {
 		select {
 		case data := <-uploadChunkChan:
 			currentNodeId := nodeId(data.NodeId)
@@ -386,6 +391,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 			stopped := handleFilesOfCompletedChunk(chunk.Files, errorsChannelMng)
 			// In case an error occurred while writing errors status's to the errors file - stop transferring.
 			if stopped {
+				log.Debug("Stop signal received while handling chunks statuses...")
 				return true
 			}
 			err = setChunkCompletedInRepoSnapshot(phase.stateManager, chunk.Files)

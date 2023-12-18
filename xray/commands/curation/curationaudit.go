@@ -4,6 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"sync"
+
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/parallel"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -17,13 +25,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
-	"net/http"
-	"os"
-	"path/filepath"
-	"regexp"
-	"sort"
-	"strings"
-	"sync"
 )
 
 const (
@@ -111,13 +112,13 @@ type CurationAuditCommand struct {
 	workingDirs          []string
 	OriginPath           string
 	parallelRequests     int
-	*utils.AuditBasicParams
+	utils.AuditParams
 }
 
 func NewCurationAuditCommand() *CurationAuditCommand {
 	return &CurationAuditCommand{
 		extractPoliciesRegex: regexp.MustCompile(extractPoliciesRegexTemplate),
-		AuditBasicParams:     &utils.AuditBasicParams{},
+		AuditParams:          &utils.AuditBasicParams{},
 	}
 }
 
@@ -192,8 +193,17 @@ func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatu
 	return nil
 }
 
+func (ca *CurationAuditCommand) getAuditParamsByTech(tech coreutils.Technology) utils.AuditParams {
+	if tech == coreutils.Npm {
+		return utils.AuditNpmParams{AuditParams: ca.AuditParams}.
+			SetNpmIgnoreNodeModules(true).
+			SetNpmOverwritePackageLock(true)
+	}
+	return ca.AuditParams
+}
+
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
-	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.AuditBasicParams, tech)
+	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.getAuditParamsByTech(tech), tech)
 	if err != nil {
 		return err
 	}

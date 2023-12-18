@@ -1,13 +1,15 @@
 package yarn
 
 import (
+	"github.com/jfrog/build-info-go/build"
+	biutils "github.com/jfrog/build-info-go/build/utils"
+	utils2 "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
+	"path/filepath"
 	"testing"
-
-	biutils "github.com/jfrog/build-info-go/build/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 )
 
 func TestParseYarnDependenciesList(t *testing.T) {
@@ -48,4 +50,52 @@ func TestParseYarnDependenciesList(t *testing.T) {
 	xrayDependenciesTree, uniqueDeps := parseYarnDependenciesMap(yarnDependencies, rootXrayId)
 	assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 	assert.True(t, tests.CompareTree(expectedTree, xrayDependenciesTree), "expected:", expectedTree.Nodes, "got:", xrayDependenciesTree.Nodes)
+}
+
+func TestIsInstallRequired(t *testing.T) {
+	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
+	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
+	installRequired, err := isInstallRequired(tempDirPath, []string{})
+	assert.NoError(t, err)
+	assert.True(t, installRequired)
+	executablePath, err := biutils.GetYarnExecutable()
+	assert.NoError(t, err)
+
+	// We provide a user defined 'install' command and expect to get 'true' as an answer
+	installRequired, err = isInstallRequired(tempDirPath, []string{"yarn", "install"})
+	assert.NoError(t, err)
+	assert.True(t, installRequired)
+
+	// We install the project so yarn.lock will be created and expect to get 'false' as an answer
+	assert.NoError(t, build.RunYarnCommand(executablePath, tempDirPath, "install"))
+	installRequired, err = isInstallRequired(tempDirPath, []string{})
+	assert.NoError(t, err)
+	assert.False(t, installRequired)
+}
+
+func TestRunYarnInstallAccordingToVersion(t *testing.T) {
+	// Testing default 'install' command
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{})
+	// Testing user provided 'install' command
+	executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t, []string{"install", v1IgnoreScriptsFlag})
+}
+
+func executeRunYarnInstallAccordingToVersionAndVerifyInstallation(t *testing.T, params []string) {
+	tempDirPath, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+	yarnProjectPath := filepath.Join("..", "..", "..", "testdata", "yarn-project")
+	assert.NoError(t, utils2.CopyDir(yarnProjectPath, tempDirPath, true, nil))
+
+	executablePath, err := biutils.GetYarnExecutable()
+	assert.NoError(t, err)
+
+	err = runYarnInstallAccordingToVersion(tempDirPath, executablePath, params)
+	assert.NoError(t, err)
+
+	// Checking the installation worked - we expect to get a 'false' answer when checking whether the project is installed
+	installRequired, err := isInstallRequired(tempDirPath, []string{})
+	assert.NoError(t, err)
+	assert.False(t, installRequired)
 }

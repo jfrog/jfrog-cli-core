@@ -48,7 +48,8 @@ type (
 )
 
 var AqlPaginationLimit = DefaultAqlPaginationLimit
-var curThreads int
+var curChunkBuilderThreads int
+var curChunkUploaderThreads int
 
 type UploadedChunk struct {
 	api.UploadChunkResponse
@@ -131,7 +132,7 @@ func (m *InterruptionErr) Error() string {
 }
 
 func createTransferServiceManager(ctx context.Context, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
-	return utils.CreateServiceManagerWithContext(ctx, serverDetails, false, 0, retries, retriesWaitMilliSecs)
+	return utils.CreateServiceManagerWithContext(ctx, serverDetails, false, 0, retries, retriesWaitMilliSecs, time.Minute)
 }
 
 func createSrcRtUserPluginServiceManager(ctx context.Context, sourceRtDetails *config.ServerDetails) (*srcUserPluginService, error) {
@@ -140,6 +141,13 @@ func createSrcRtUserPluginServiceManager(ctx context.Context, sourceRtDetails *c
 		return nil, err
 	}
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
+}
+
+func appendDistinctIfNeeded(disabledDistinctiveAql bool) string {
+	if disabledDistinctiveAql {
+		return `.distinct(false)`
+	}
+	return ""
 }
 
 func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
@@ -190,7 +198,7 @@ var processedUploadChunksMutex sync.Mutex
 func incrCurProcessedChunksWhenPossible() bool {
 	processedUploadChunksMutex.Lock()
 	defer processedUploadChunksMutex.Unlock()
-	if curProcessedUploadChunks < GetThreads() {
+	if curProcessedUploadChunks < GetChunkUploaderThreads() {
 		curProcessedUploadChunks++
 		return true
 	}
@@ -318,8 +326,12 @@ func newUploadedChunkStruct(uploadChunkResponse api.UploadChunkResponse, chunk a
 	}
 }
 
-func GetThreads() int {
-	return curThreads
+func GetChunkBuilderThreads() int {
+	return curChunkBuilderThreads
+}
+
+func GetChunkUploaderThreads() int {
+	return curChunkUploaderThreads
 }
 
 // Periodically reads settings file and updates the number of threads.
@@ -349,16 +361,20 @@ func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error
 	if err != nil || settings == nil {
 		return err
 	}
-	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
-	if curThreads != calculatedNumberOfThreads {
+	calculatedChunkBuilderThreads, calculatedChunkUploaderThreads := settings.CalcNumberOfThreads(buildInfoRepo)
+	if curChunkUploaderThreads != calculatedChunkUploaderThreads {
 		if pcWrapper != nil {
-			updateProducerConsumerMaxParallel(pcWrapper.chunkBuilderProducerConsumer, calculatedNumberOfThreads)
-			updateProducerConsumerMaxParallel(pcWrapper.chunkUploaderProducerConsumer, calculatedNumberOfThreads)
+			if curChunkBuilderThreads != calculatedChunkBuilderThreads {
+				updateProducerConsumerMaxParallel(pcWrapper.chunkBuilderProducerConsumer, calculatedChunkBuilderThreads)
+			}
+			updateProducerConsumerMaxParallel(pcWrapper.chunkUploaderProducerConsumer, calculatedChunkUploaderThreads)
 		}
-		log.Info(fmt.Sprintf("Number of threads have been updated to %s (was %s).", strconv.Itoa(calculatedNumberOfThreads), strconv.Itoa(curThreads)))
-		curThreads = calculatedNumberOfThreads
+		log.Info(fmt.Sprintf("Number of threads has been updated to %s (was %s).", strconv.Itoa(calculatedChunkUploaderThreads), strconv.Itoa(curChunkUploaderThreads)))
+		curChunkBuilderThreads = calculatedChunkBuilderThreads
+		curChunkUploaderThreads = calculatedChunkUploaderThreads
 	} else {
-		log.Debug("No change to the number of threads have been detected.")
+		log.Debug(fmt.Sprintf("No change to the number of threads has been detected. Max chunks builder threads: %d. Max chunks uploader threads: %d.",
+			calculatedChunkBuilderThreads, calculatedChunkUploaderThreads))
 	}
 	return nil
 }
@@ -374,7 +390,10 @@ func interruptIfRequested(stopSignal chan os.Signal) error {
 		return err
 	}
 	if exist {
-		stopSignal <- os.Interrupt
+		select {
+		case stopSignal <- os.Interrupt:
+		default:
+		}
 	}
 	return nil
 }
@@ -729,6 +748,14 @@ func getUniqueErrorOrDelayFilePath(dirPath string, getFileNamePrefix func() stri
 			break
 		}
 		index++
+	}
+	return
+}
+
+func deleteAllFiles(filesToDelete []string) (err error) {
+	for _, fileToDelete := range filesToDelete {
+		log.Debug("Deleting:", fileToDelete, "...")
+		err = errors.Join(err, errorutils.CheckError(os.Remove(fileToDelete)))
 	}
 	return
 }

@@ -54,6 +54,7 @@ type Flag interface {
 type BaseFlag struct {
 	Name        string
 	Description string
+	Hidden      bool
 }
 
 func NewFlag(name, description string) BaseFlag {
@@ -123,6 +124,12 @@ func WithHelpValue(helpValue string) StringFlagOption {
 	}
 }
 
+func SetHiddenStrFlag() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Hidden = true
+	}
+}
+
 type BoolFlag struct {
 	BaseFlag
 	DefaultValue bool
@@ -145,5 +152,11 @@ func NewBoolFlag(name, description string, options ...BoolFlagOption) BoolFlag {
 func WithBoolDefaultValue(defaultValue bool) BoolFlagOption {
 	return func(f *BoolFlag) {
 		f.DefaultValue = defaultValue
+	}
+}
+
+func SetHiddenBoolFlag() BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.Hidden = true
 	}
 }

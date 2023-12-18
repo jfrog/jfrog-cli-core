@@ -5,11 +5,11 @@ import (
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
@@ -23,7 +23,7 @@ type GradleCommand struct {
 	threads            int
 	detailedSummary    bool
 	xrayScan           bool
-	scanOutputFormat   xrutils.OutputFormat
+	scanOutputFormat   format.OutputFormat
 	result             *commandsutils.Result
 	deploymentDisabled bool
 	// File path for Gradle extractor in which all build's artifacts details will be listed at the end of the build.
@@ -209,7 +209,7 @@ func (gc *GradleCommand) IsXrayScan() bool {
 	return gc.xrayScan
 }
 
-func (gc *GradleCommand) SetScanOutputFormat(format xrutils.OutputFormat) *GradleCommand {
+func (gc *GradleCommand) SetScanOutputFormat(format format.OutputFormat) *GradleCommand {
 	gc.scanOutputFormat = format
 	return gc
 }

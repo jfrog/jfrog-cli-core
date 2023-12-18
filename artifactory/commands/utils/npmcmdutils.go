@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
@@ -83,7 +83,7 @@ func getNpmRepositoryUrl(repo, url string) string {
 }
 
 // Remove all the none npm CLI flags from args.
-func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *build.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat outFormat.OutputFormat, cleanArgs []string, buildConfig *build.BuildConfiguration, err error) {
 	cleanArgs = append([]string(nil), args...)
 	cleanArgs, detailedSummary, err = coreutils.ExtractDetailedSummaryFromArgs(cleanArgs)
 	if err != nil {
@@ -99,7 +99,7 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 	if err != nil {
 		return
 	}
-	scanOutputFormat, err = GetXrayOutputFormat(format)
+	scanOutputFormat, err = outFormat.GetOutputFormat(format)
 	if err != nil {
 		return
 	}

@@ -259,6 +259,25 @@ func TestInterruptIfRequested(t *testing.T) {
 	assert.Equal(t, os.Interrupt, actualSignal)
 }
 
+func TestGetNodeIdToChunkIdsMap(t *testing.T) {
+	// Test empty ChunksLifeCycleManager
+	chunksLifeCycleManager := ChunksLifeCycleManager{}
+	assert.Empty(t, chunksLifeCycleManager.GetNodeIdToChunkIdsMap())
+
+	// Create ChunksLifeCycleManager with 3 nodes
+	chunksLifeCycleManager = ChunksLifeCycleManager{
+		nodeToChunksMap: make(map[api.NodeId]map[api.ChunkId]UploadedChunkData),
+	}
+	chunksLifeCycleManager.nodeToChunksMap["nodeId-1"] = map[api.ChunkId]UploadedChunkData{"0": {}, "1": {}}
+	chunksLifeCycleManager.nodeToChunksMap["nodeId-2"] = map[api.ChunkId]UploadedChunkData{"2": {}}
+	chunksLifeCycleManager.nodeToChunksMap["nodeId-3"] = map[api.ChunkId]UploadedChunkData{}
+
+	nodeIdToChunkIdsMap := chunksLifeCycleManager.GetNodeIdToChunkIdsMap()
+	assert.ElementsMatch(t, nodeIdToChunkIdsMap["nodeId-1"], []api.ChunkId{"0", "1"})
+	assert.ElementsMatch(t, nodeIdToChunkIdsMap["nodeId-2"], []api.ChunkId{"2"})
+	assert.ElementsMatch(t, nodeIdToChunkIdsMap["nodeId-3"], []api.ChunkId{})
+}
+
 func TestStoreStaleChunksEmpty(t *testing.T) {
 	// Init state manager
 	stateManager, cleanUp := state.InitStateTest(t)
@@ -266,7 +285,7 @@ func TestStoreStaleChunksEmpty(t *testing.T) {
 
 	// Store empty stale chunks
 	chunksLifeCycleManager := ChunksLifeCycleManager{
-		nodeToChunksMap: make(map[nodeId]map[api.ChunkId]UploadedChunkData),
+		nodeToChunksMap: make(map[api.NodeId]map[api.ChunkId]UploadedChunkData),
 	}
 	assert.NoError(t, chunksLifeCycleManager.StoreStaleChunks(stateManager))
 
@@ -283,7 +302,7 @@ func TestStoreStaleChunksNoStale(t *testing.T) {
 
 	// Store chunk that is not stale
 	chunksLifeCycleManager := ChunksLifeCycleManager{
-		nodeToChunksMap: map[nodeId]map[api.ChunkId]UploadedChunkData{
+		nodeToChunksMap: map[api.NodeId]map[api.ChunkId]UploadedChunkData{
 			staleChunksNodeIdOne: {
 				staleChunksChunkId: {
 					TimeSent:   time.Now().Add(-time.Minute),
@@ -308,7 +327,7 @@ func TestStoreStaleChunksStale(t *testing.T) {
 	// Store stale chunk
 	sent := time.Now().Add(-time.Hour)
 	chunksLifeCycleManager := ChunksLifeCycleManager{
-		nodeToChunksMap: map[nodeId]map[api.ChunkId]UploadedChunkData{
+		nodeToChunksMap: map[api.NodeId]map[api.ChunkId]UploadedChunkData{
 			staleChunksNodeIdOne: {
 				staleChunksChunkId: {
 					TimeSent:   sent,
@@ -338,7 +357,7 @@ func TestStoreStaleChunksTwoNodes(t *testing.T) {
 
 	// Store 1 stale chunk and 1 non-stale chunk
 	chunksLifeCycleManager := ChunksLifeCycleManager{
-		nodeToChunksMap: map[nodeId]map[api.ChunkId]UploadedChunkData{
+		nodeToChunksMap: map[api.NodeId]map[api.ChunkId]UploadedChunkData{
 			staleChunksNodeIdOne: {
 				staleChunksChunkId: {
 					TimeSent:   time.Now().Add(-time.Hour), // Older than 0.5 hours

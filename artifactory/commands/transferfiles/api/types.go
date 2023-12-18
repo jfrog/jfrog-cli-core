@@ -9,6 +9,7 @@ import (
 type ProcessStatusType string
 type ChunkFileStatusType string
 type ChunkId string
+type NodeId string
 
 const (
 	Done       ProcessStatusType = "DONE"

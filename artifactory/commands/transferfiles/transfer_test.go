@@ -428,8 +428,7 @@ func getSampleChunkStatus() api.UploadChunksStatusResponse {
 func TestCheckChunkStatusSync(t *testing.T) {
 	chunkStatus := getSampleChunkStatus()
 	manager := ChunksLifeCycleManager{
-		nodeToChunksMap: map[nodeId]map[api.ChunkId]UploadedChunkData{},
-		totalChunks:     2,
+		nodeToChunksMap: map[api.NodeId]map[api.ChunkId]UploadedChunkData{},
 	}
 	manager.nodeToChunksMap[nodeIdForTest] = map[api.ChunkId]UploadedChunkData{}
 	manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest] = UploadedChunkData{}

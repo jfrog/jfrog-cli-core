@@ -126,7 +126,7 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (repoConfig *RepositoryConfig, err error) {
 	defer func() {
 		if err != nil {
-			err = errors.Join(err, fmt.Errorf("\nPlease run 'jf %s-config' with your %s repository information", vConfig.GetString("type"), prefix))
+			err = errors.Join(err, fmt.Errorf("please run 'jf %s-config' with your %s repository information", vConfig.GetString("type"), prefix))
 		}
 	}()
 	if !vConfig.IsSet(prefix) {
@@ -231,20 +231,21 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		}
 	}
 
-	log.Debug("Using resolver config from", configFilePath)
 	repoConfig, err := ReadResolutionOnlyConfiguration(configFilePath)
-	var isMissingResolverErr bool
 	if err != nil {
 		var missingResolverErr *MissingResolverErr
-		isMissingResolverErr = errors.As(err, &missingResolverErr)
-		if !isMissingResolverErr {
+		if !errors.As(err, &missingResolverErr) {
 			err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
 			return
 		}
+		// When the resolver repository is absent from the configuration file, ReadResolutionOnlyConfiguration throws an error.
+		// However, this situation isn't considered an error here as the resolver repository isn't mandatory for constructing the dependencies tree.
 		err = nil
 	}
 
-	if !isMissingResolverErr {
+	// If the resolver repository doesn't exist and triggers a MissingResolverErr in ReadResolutionOnlyConfiguration, the repoConfig becomes nil. In this scenario, there is no depsRepo to set, nor is there a necessity to do so.
+	if repoConfig != nil {
+		log.Debug("Using resolver config from", configFilePath)
 		params.SetServerDetails(repoConfig.serverDetails)
 		params.SetDepsRepo(repoConfig.targetRepo)
 	}

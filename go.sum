@@ -89,9 +89,8 @@ github.com/jfrog/build-info-go v1.9.17 h1:sUA6V3P8i+awYlK7dkwm4l6IuLE2W964F5Pb18
 github.com/jfrog/build-info-go v1.9.17/go.mod h1:/5VZXH2Ud0IK3cOFwPykjwPOaEcHhzzbjnRiou+YKpM=
 github.com/jfrog/gofrog v1.3.2 h1:TktKP+PdZdxjkYZxWWIq4DkTGSYtr9Slsy+egZpEhUY=
 github.com/jfrog/gofrog v1.3.2/go.mod h1:AQo5Fq0G9nDEF6icH7MYQK0iohR4HuEAXl8jaxRuT6Q=
+github.com/jfrog/jfrog-apps-config v1.0.1 h1:mtv6k7g8A8BVhlHGlSveapqf4mJfonwvXYLipdsOFMY=
 github.com/jfrog/jfrog-apps-config v1.0.1/go.mod h1:8AIIr1oY9JuH5dylz2S6f8Ym2MaadPLR6noCBO4C22w=
-github.com/jfrog/jfrog-apps-config/go v0.0.0-20230906095207-1df7b671a040 h1:93yM7IHRrJBBeGNPD2xLj+w2eaDaifD8pUDvYWO24ks=
-github.com/jfrog/jfrog-apps-config/go v0.0.0-20230906095207-1df7b671a040/go.mod h1:T6F18QqHsCaCbXVKfVyCrakZNBWVtoKn4WOmFB2/L/Q=
 github.com/jfrog/jfrog-client-go v1.28.1-0.20231218145716-9ded9d0ce973 h1:aNtDofhHGtc5T821kaDZVdParAyjQNYHFZhAhg8MeDM=
 github.com/jfrog/jfrog-client-go v1.28.1-0.20231218145716-9ded9d0ce973/go.mod h1:p80RAyfQQ78M2r5LUw1uUTA8yxTmTNoPy7eJ4IzOge0=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
@@ -209,7 +208,7 @@ github.com/vmihailenco/msgpack/v4 v4.3.12/go.mod h1:gborTTJjAo/GWTqqRjrLCn9pgNN+
 github.com/vmihailenco/tagparser v0.1.1/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
-github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f h1:J9EGpcZtP0E/raorCMxlFGSTBrsSlaDGf3jU/qvAE2c=
+github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb h1:zGWFAtiMcyryUHoUjUJX0/lt1H2+i2Ka2n+D3DImSNo=
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 h1:EzJWgHovont7NscjpAxXsDA8S8BMYve8Y5+7cuRE7R0=
 github.com/xeipuuv/gojsonschema v1.2.0 h1:LhYJRs+L4fBtjZUfuSZIKGeVu0QRy8e5Xi7D17UxZ74=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=

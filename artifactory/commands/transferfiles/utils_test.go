@@ -272,6 +272,7 @@ func TestGetNodeIdToChunkIdsMap(t *testing.T) {
 	chunksLifeCycleManager.nodeToChunksMap["nodeId-2"] = map[api.ChunkId]UploadedChunkData{"2": {}}
 	chunksLifeCycleManager.nodeToChunksMap["nodeId-3"] = map[api.ChunkId]UploadedChunkData{}
 
+	// Generate the map and check response
 	nodeIdToChunkIdsMap := chunksLifeCycleManager.GetNodeIdToChunkIdsMap()
 	assert.ElementsMatch(t, nodeIdToChunkIdsMap["nodeId-1"], []api.ChunkId{"0", "1"})
 	assert.ElementsMatch(t, nodeIdToChunkIdsMap["nodeId-2"], []api.ChunkId{"2"})

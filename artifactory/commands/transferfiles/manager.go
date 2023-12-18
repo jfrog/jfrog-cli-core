@@ -294,7 +294,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 				log.Debug("Stopping to poll on uploads...")
 				return
 			}
-			log.Debug("Active chunks counter is 0, but we haven't done yet")
+			log.Debug("Active chunks counter is 0, but the 'done' signal hasn't been received yet")
 			continue
 		}
 

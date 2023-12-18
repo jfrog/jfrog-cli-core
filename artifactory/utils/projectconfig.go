@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -56,6 +57,14 @@ var ProjectTypes = []string{
 	"dotnet",
 	"build",
 	"terraform",
+}
+
+type MissingResolverErr struct {
+	message string
+}
+
+func (mre *MissingResolverErr) Error() string {
+	return mre.message
 }
 
 func (projectType ProjectType) String() string {
@@ -117,15 +126,11 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (repoConfig *RepositoryConfig, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%s\nPlease run 'jf %s-config' with your %s repository information",
-				err.Error(),
-				vConfig.GetString("type"),
-				prefix,
-			)
+			err = errors.Join(err, fmt.Errorf("\nPlease run 'jf %s-config' with your %s repository information", vConfig.GetString("type"), prefix))
 		}
 	}()
 	if !vConfig.IsSet(prefix) {
-		err = errorutils.CheckErrorf("the %s repository is missing from the config file (%s)", prefix, configFilePath)
+		err = &MissingResolverErr{fmt.Sprintf("the %s repository is missing from the config file (%s)", prefix, configFilePath)}
 		return
 	}
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
@@ -228,11 +233,20 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 
 	log.Debug("Using resolver config from", configFilePath)
 	repoConfig, err := ReadResolutionOnlyConfiguration(configFilePath)
+	var isMissingResolverErr bool
 	if err != nil {
-		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
-		return
+		var missingResolverErr *MissingResolverErr
+		isMissingResolverErr = errors.As(err, &missingResolverErr)
+		if !isMissingResolverErr {
+			err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
+			return
+		}
+		err = nil
 	}
-	params.SetServerDetails(repoConfig.serverDetails)
-	params.SetDepsRepo(repoConfig.targetRepo)
+
+	if !isMissingResolverErr {
+		params.SetServerDetails(repoConfig.serverDetails)
+		params.SetDepsRepo(repoConfig.targetRepo)
+	}
 	return
 }

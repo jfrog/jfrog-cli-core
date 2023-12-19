@@ -277,8 +277,7 @@ func getPackageVersion(repoName, packageName string, details auth.ServiceDetails
 	}
 	// Extract version from response
 	var version PackageVersionResponseContent
-	err = json.Unmarshal(body, &version)
-	if err != nil {
+	if err = json.Unmarshal(body, &version); err != nil {
 		return "", errorutils.CheckError(err)
 	}
 	return version.Version, nil

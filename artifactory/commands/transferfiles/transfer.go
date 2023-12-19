@@ -516,6 +516,10 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 			// The stopSignal channel is closed
 			return
 		}
+		// Before interrupting the process, do a thread dump
+		if err := doThreadDump(); err != nil {
+			log.Error(err)
+		}
 		tdc.cancelFunc()
 		if newPhase != nil {
 			newPhase.StopGracefully()
@@ -808,4 +812,15 @@ func parseErrorsFromLogFiles(logPaths []string) (allErrors FilesErrors, err erro
 
 func assertSupportedTransferDirStructure() error {
 	return state.VerifyTransferRunStatusVersion()
+}
+
+func doThreadDump() error {
+	log.Info("Starting thread dumping...")
+	threadDump, err := coreutils.NewProfiler().ThreadDump()
+	if err != nil {
+		return err
+	}
+	log.Info(threadDump)
+	log.Info("Thread dump ended successfully")
+	return nil
 }

@@ -33,6 +33,15 @@ func (c *Context) GetStringFlagValue(flagName string) string {
 	return c.stringFlags[flagName]
 }
 
+func (c *Context) GetIntFlagValue(flagName string) (value int, err error) {
+	parsed, err := strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
+	if err != nil {
+		return
+	}
+	value = int(parsed)
+	return
+}
+
 func (c *Context) GetBoolFlagValue(flagName string) bool {
 	return c.boolFlags[flagName]
 }

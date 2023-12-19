@@ -191,16 +191,15 @@ func (config *BuildAddGitCommand) collectBuildIssues(vcsUrl string) ([]buildinfo
 	return config.DoCollect(config.issuesConfig, lastVcsRevision)
 }
 
-func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, lastVcsRevision string) ([]buildinfo.AffectedIssue, error) {
-	var foundIssues []buildinfo.AffectedIssue
+func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, lastVcsRevision string) (foundIssues []buildinfo.AffectedIssue, err error) {
 	logRegExp, err := createLogRegExpHandler(issuesConfig, &foundIssues)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	errRegExp, err := createErrRegExpHandler(lastVcsRevision)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	// Get log with limit, starting from the latest commit.
@@ -209,36 +208,32 @@ func (config *BuildAddGitCommand) DoCollect(issuesConfig *IssuesConfiguration, l
 	// Change working dir to where .git is.
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
-		return nil, err
+		return
 	}
 	defer func() {
-		e := os.Chdir(wd)
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(os.Chdir(wd)))
 	}()
 	err = os.Chdir(config.dotGitPath)
 	if errorutils.CheckError(err) != nil {
-		return nil, err
+		return
 	}
 
 	// Run git command.
 	_, _, exitOk, err := gofrogcmd.RunCmdWithOutputParser(logCmd, false, logRegExp, errRegExp)
-	if err != nil {
-		if _, ok := err.(RevisionRangeError); ok {
+	if errorutils.CheckError(err) != nil {
+		var revisionRangeError RevisionRangeError
+		if errors.As(err, &revisionRangeError) {
 			// Revision not found in range. Ignore and don't collect new issues.
 			log.Info(err.Error())
 			return []buildinfo.AffectedIssue{}, nil
 		}
-		return nil, errorutils.CheckError(err)
+		return
 	}
 	if !exitOk {
 		// May happen when trying to run git log for non-existing revision.
-		return nil, errorutils.CheckErrorf("failed executing git log command")
+		err = errorutils.CheckErrorf("failed executing git log command")
 	}
-
-	// Return found issues.
-	return foundIssues, nil
+	return
 }
 
 // Creates a regexp handler to parse and fetch issues from the output of the git log command.

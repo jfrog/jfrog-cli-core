@@ -56,13 +56,14 @@ type gradleDepTreeManager struct {
 	DepTreeManager
 }
 
-func buildGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func buildFlatGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	manager := &gradleDepTreeManager{DepTreeManager: NewDepTreeManager(params)}
 	outputFileContent, err := manager.runGradleDepTree()
 	if err != nil {
 		return
 	}
-	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFileContent)
+	// TODO NOTICE change in functionality: create ONLY flat tree here
+	dependencyTree, uniqueDeps, err = getFlatGraphFromDepTree(outputFileContent)
 	return
 }
 

@@ -58,13 +58,14 @@ func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDe
 	}
 }
 
-func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func buildFlatMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
 	outputFilePaths, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
 	}
-	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFilePaths)
+	// TODO NOTICE change in functionality: create ONLY flat tree here
+	dependencyTree, uniqueDeps, err = getFlatGraphFromDepTree(outputFilePaths)
 	return
 }
 

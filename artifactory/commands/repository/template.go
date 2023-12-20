@@ -54,24 +54,24 @@ const (
 	BlockPushingSchema1          = "blockPushingSchema1"
 
 	// Mutual local and virtual repository configuration JSON keys
-	DebianTrivialLayout = "debianTrivialLayout"
+	DebianTrivialLayout             = "debianTrivialLayout"
 	OptionalIndexCompressionFormats = "optionalIndexCompressionFormats"
-        PrimaryKeyPairRef = "primaryKeyPairRef"
+	PrimaryKeyPairRef               = "primaryKeyPairRef"
 
 	// Mutual remote and virtual repository configuration JSON keys
 	ExternalDependenciesEnabled  = "externalDependenciesEnabled"
 	ExternalDependenciesPatterns = "externalDependenciesPatterns"
 
 	// Unique local repository configuration JSON keys
-	ChecksumPolicyType              = "checksumPolicyType"
-	MaxUniqueTags                   = "maxUniqueTags"
-	SnapshotVersionBehavior         = "snapshotVersionBehavior"
-	ArchiveBrowsingEnabled          = "archiveBrowsingEnabled"
-	CalculateYumMetadata            = "calculateYumMetadata"
-	YumRootDepth                    = "yumRootDepth"
-	DockerApiVersion                = "dockerApiVersion"
-	EnableFileListsIndexing         = "enableFileListsIndexing"
-	ForceNugetAuthentication        = "forceNugetAuthentication"
+	ChecksumPolicyType       = "checksumPolicyType"
+	MaxUniqueTags            = "maxUniqueTags"
+	SnapshotVersionBehavior  = "snapshotVersionBehavior"
+	ArchiveBrowsingEnabled   = "archiveBrowsingEnabled"
+	CalculateYumMetadata     = "calculateYumMetadata"
+	YumRootDepth             = "yumRootDepth"
+	DockerApiVersion         = "dockerApiVersion"
+	EnableFileListsIndexing  = "enableFileListsIndexing"
+	ForceNugetAuthentication = "forceNugetAuthentication"
 
 	// Unique remote repository configuration JSON keys
 	Url                               = "url"
@@ -251,7 +251,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	Username:                          {Text: Username},
 	Password:                          {Text: Password},
 	Proxy:                             {Text: Proxy},
-        PrimaryKeyPairRef:                 {Text: PrimaryKeyPairRef},
+	PrimaryKeyPairRef:                 {Text: PrimaryKeyPairRef},
 	RemoteRepoChecksumPolicyType:      {Text: RemoteRepoChecksumPolicyType},
 	HardFail:                          {Text: HardFail},
 	Offline:                           {Text: Offline},
@@ -409,7 +409,7 @@ var bowerVirtualRepoConfKeys = []string{
 }
 
 var debianVirtualRepoConfKeys = []string{
-	DebianTrivialLayout, 
+	DebianTrivialLayout,
 }
 
 var goVirtualRepoConfKeys = []string{
@@ -848,10 +848,10 @@ var questionMap = map[string]utils.QuestionInfo{
 		AllowVars: true,
 		Writer:    utils.WriteStringAnswer,
 	},
-        PrimaryKeyPairRef: utils.FreeStringQuestionInfo,
-	Username: utils.FreeStringQuestionInfo,
-	Password: utils.FreeStringQuestionInfo,
-	Proxy:    utils.FreeStringQuestionInfo,
+	PrimaryKeyPairRef: utils.FreeStringQuestionInfo,
+	Username:          utils.FreeStringQuestionInfo,
+	Password:          utils.FreeStringQuestionInfo,
+	Proxy:             utils.FreeStringQuestionInfo,
 	RemoteRepoChecksumPolicyType: {
 		Options: []prompt.Suggest{
 			{Text: GenerateIfAbsentPolicy},

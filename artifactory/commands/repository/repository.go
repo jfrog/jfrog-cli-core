@@ -109,7 +109,7 @@ var writersMap = map[string]utils.AnswerWriter{
 	DockerApiVersion:                  utils.WriteStringAnswer,
 	EnableFileListsIndexing:           utils.WriteBoolAnswer,
 	OptionalIndexCompressionFormats:   utils.WriteStringArrayAnswer,
-        PrimaryKeyPairRef:                 utils.WriteStringAnswer,
+	PrimaryKeyPairRef:                 utils.WriteStringAnswer,
 	Username:                          utils.WriteStringAnswer,
 	Password:                          utils.WriteStringAnswer,
 	Proxy:                             utils.WriteStringAnswer,

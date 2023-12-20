@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -56,6 +57,14 @@ var ProjectTypes = []string{
 	"dotnet",
 	"build",
 	"terraform",
+}
+
+type MissingResolverErr struct {
+	message string
+}
+
+func (mre *MissingResolverErr) Error() string {
+	return mre.message
 }
 
 func (projectType ProjectType) String() string {
@@ -117,15 +126,11 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (repoConfig *RepositoryConfig, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%s\nPlease run 'jf %s-config' with your %s repository information",
-				err.Error(),
-				vConfig.GetString("type"),
-				prefix,
-			)
+			err = errors.Join(err, fmt.Errorf("please run 'jf %s-config' with your %s repository information", vConfig.GetString("type"), prefix))
 		}
 	}()
 	if !vConfig.IsSet(prefix) {
-		err = errorutils.CheckErrorf("the %s repository is missing from the config file (%s)", prefix, configFilePath)
+		err = &MissingResolverErr{fmt.Sprintf("the %s repository is missing from the config file (%s)", prefix, configFilePath)}
 		return
 	}
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
@@ -226,13 +231,23 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		}
 	}
 
-	log.Debug("Using resolver config from", configFilePath)
 	repoConfig, err := ReadResolutionOnlyConfiguration(configFilePath)
 	if err != nil {
-		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
-		return
+		var missingResolverErr *MissingResolverErr
+		if !errors.As(err, &missingResolverErr) {
+			err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
+			return
+		}
+		// When the resolver repository is absent from the configuration file, ReadResolutionOnlyConfiguration throws an error.
+		// However, this situation isn't considered an error here as the resolver repository isn't mandatory for constructing the dependencies tree.
+		err = nil
 	}
-	params.SetServerDetails(repoConfig.serverDetails)
-	params.SetDepsRepo(repoConfig.targetRepo)
+
+	// If the resolver repository doesn't exist and triggers a MissingResolverErr in ReadResolutionOnlyConfiguration, the repoConfig becomes nil. In this scenario, there is no depsRepo to set, nor is there a necessity to do so.
+	if repoConfig != nil {
+		log.Debug("Using resolver config from", configFilePath)
+		params.SetServerDetails(repoConfig.serverDetails)
+		params.SetDepsRepo(repoConfig.targetRepo)
+	}
 	return
 }

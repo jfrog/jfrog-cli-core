@@ -10,18 +10,18 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.8
-	github.com/gocarina/gocsv v0.0.0-20230616125104-99d496ca653d
-	github.com/google/uuid v1.3.1
+	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
+	github.com/google/uuid v1.5.0
 	github.com/gookit/color v1.5.4
 	github.com/jfrog/build-info-go v1.9.17
 	github.com/jfrog/gofrog v1.3.2
 	github.com/jfrog/jfrog-apps-config v1.0.1
-	github.com/jfrog/jfrog-client-go v1.35.1
+	github.com/jfrog/jfrog-client-go v1.35.2
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/owenrumney/go-sarif/v2 v2.3.0
 	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
-	github.com/spf13/viper v1.17.0
+	github.com/spf13/viper v1.18.1
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.14
 	github.com/vbauerster/mpb/v7 v7.5.3
@@ -48,7 +48,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
 	github.com/go-git/go-git/v5 v5.11.0 // indirect
@@ -76,13 +76,13 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/sagikazarmark/locafero v0.3.0 // indirect
+	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/skeema/knownhosts v1.2.1 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect
-	github.com/spf13/afero v1.10.0 // indirect
-	github.com/spf13/cast v1.5.1 // indirect
+	github.com/spf13/afero v1.11.0 // indirect
+	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.9 // indirect

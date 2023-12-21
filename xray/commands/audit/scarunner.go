@@ -171,7 +171,7 @@ func runScaWithTech(tech coreutils.Technology, params *AuditParams, serverDetail
 	// Impacted paths will be constructed for the vulnerable dependencies only
 	if tech == coreutils.Gradle || tech == coreutils.Maven {
 		//TODO for Gradle and Maven build the "full tree" (== impact paths to vulnerable deps) here since fullDependencyTrees == nil!!!
-		techResults = java.BuildJavaImpactedPathsForScanResponse(techResults)
+		techResults = java.BuildJavaImpactedPathsForScanResponse(techResults, fullDependencyTrees)
 	} else {
 		techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
 	}

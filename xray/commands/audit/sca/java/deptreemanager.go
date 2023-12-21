@@ -68,14 +68,12 @@ func getFlatGraphFromDepTree(outputFilePaths string) (dependenciesWithChildren [
 	}
 	uniqueDepsSet := datastructures.MakeSet[string]()
 	for _, moduleTree := range modules {
-		/* TODO put back if its relevant to split dependencies by modules. if so add whatever created below to 'moduleDependency' and then add 'moduleDependency' to  dependenciesWithChildren
 		moduleDepId := GavPackageTypeIdentifier + moduleTree.Root
 		moduleDependency := &xrayUtils.GraphNode{
 			Id:    moduleDepId,
 			Nodes: []*xrayUtils.GraphNode{},
 		}
-		uniqueDepsSet.Add(moduleDepId)
-		*/
+		// uniqueDepsSet.Add(moduleDepId) TODO check if needed. the module suppost to be a child of itself and to be adder in the next loop
 
 		for depName, depNodes := range moduleTree.Nodes {
 			depId := GavPackageTypeIdentifier + depName
@@ -88,9 +86,9 @@ func getFlatGraphFromDepTree(outputFilePaths string) (dependenciesWithChildren [
 				childId := GavPackageTypeIdentifier + childName
 				curDependency.Nodes = append(curDependency.Nodes, &xrayUtils.GraphNode{Id: childId})
 			}
-			dependenciesWithChildren = append(dependenciesWithChildren, curDependency)
+			moduleDependency.Nodes = append(moduleDependency.Nodes, curDependency)
 		}
-		//dependenciesWithChildren = append(dependenciesWithChildren, directDependency)
+		dependenciesWithChildren = append(dependenciesWithChildren, moduleDependency)
 	}
 	uniqueDeps = uniqueDepsSet.ToSlice()
 	return

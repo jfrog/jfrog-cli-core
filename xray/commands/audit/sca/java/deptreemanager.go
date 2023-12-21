@@ -16,10 +16,10 @@ const (
 	GavPackageTypeIdentifier = "gav://"
 )
 
-func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
+func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]string, error) {
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	depTreeParams := &DepTreeParams{
 		UseWrapper: params.UseWrapper(),
@@ -60,31 +60,42 @@ type depTreeNode struct {
 
 // Reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
 // It takes the output of the plugin's run (which is a byte representation of a list of paths of the output files, separated by newlines) as input.
-func getFlatGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func getFlatGraphFromDepTree(outputFilePaths string) (uniqueDeps []string, err error) {
 	modules, err := parseDepTreeFiles(outputFilePaths)
 	if err != nil {
 		return
 	}
+	//var depsGraph []*xrayUtils.GraphNode
 	uniqueDepsSet := datastructures.MakeSet[string]()
 	for _, moduleTree := range modules {
-		directDepId := GavPackageTypeIdentifier + moduleTree.Root
+		directDepId := GavPackageTypeIdentifier + moduleTree.Root // TODO after checks put it straight to the set
 		/*
 			directDependency := &xrayUtils.GraphNode{
 				Id:    directDepId,
 				Nodes: []*xrayUtils.GraphNode{},
 			}
+
 		*/
+
 		uniqueDepsSet.Add(directDepId)
+
+		// TODO VERIFY we cover here deps with deeper dependencies and for multi-module
+		for childName := range moduleTree.Nodes {
+			childDepId := GavPackageTypeIdentifier + childName // TODO after checks put it straight to the set
+			uniqueDepsSet.Add(childDepId)
+		}
+
 		/*
 			populateDependencyTree(directDependency, moduleTree.Root, moduleTree, uniqueDepsSet)
 			depsGraph = append(depsGraph, directDependency)
+
 		*/
+
 	}
 	uniqueDeps = uniqueDepsSet.ToSlice()
 	return
 }
 
-/*
 func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, moduleTree *moduleDepTree, uniqueDepsSet *datastructures.Set[string]) {
 	if currNode.NodeHasLoop() {
 		return
@@ -101,8 +112,6 @@ func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, mo
 		currNode.Nodes = append(currNode.Nodes, childNode)
 	}
 }
-
-*/
 
 func parseDepTreeFiles(jsonFilePaths string) ([]*moduleDepTree, error) {
 	outputFilePaths := strings.Split(strings.TrimSpace(jsonFilePaths), "\n")

@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"net/url"
 	"os"
 	"os/exec"
@@ -58,14 +57,14 @@ func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDe
 	}
 }
 
-func buildFlatMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func buildFlatMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (uniqueDeps []string, err error) {
 	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
 	outputFilePaths, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
 	}
 	// TODO NOTICE change in functionality: create ONLY flat tree here
-	dependencyTree, uniqueDeps, err = getFlatGraphFromDepTree(outputFilePaths)
+	uniqueDeps, err = getFlatGraphFromDepTree(outputFilePaths)
 	return
 }
 

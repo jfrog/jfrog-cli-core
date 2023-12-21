@@ -207,12 +207,12 @@ func (ca *CurationAuditCommand) getAuditParamsByTech(tech coreutils.Technology) 
 }
 
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
-	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.getAuditParamsByTech(tech), tech)
+	flattenGraph, fullDependenciesTrees, err := audit.GetTechDependencyTree(ca.getAuditParamsByTech(tech), tech)
 	if err != nil {
 		return err
 	}
 	// Validate the graph isn't empty.
-	if len(fullDependenciesTree) == 0 {
+	if len(fullDependenciesTrees) == 0 {
 		return errorutils.CheckErrorf("found no dependencies for the audited project using '%v' as the package manager", tech.String())
 	}
 	if err = ca.SetRepo(tech); err != nil {
@@ -231,7 +231,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	if err != nil {
 		return err
 	}
-	rootNode := fullDependenciesTree[0]
+	rootNode := fullDependenciesTrees[0]
 	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, rootNode.Id, "", "")
 	if ca.Progress() != nil {
 		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph.Nodes)-1, projectName, projectVersion))
@@ -253,11 +253,16 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		tech:                 tech,
 		parallelRequests:     ca.parallelRequests,
 	}
-	packagesStatusMap := sync.Map{}
+
+	rootNodes := map[string]struct{}{}
+	for _, tree := range fullDependenciesTrees {
+		rootNodes[tree.Id] = struct{}{}
+	}
 	// Fetch status for each node from a flatten graph which, has no duplicate nodes.
-	err = analyzer.fetchNodesStatus(flattenGraph, &packagesStatusMap, rootNode.Id)
-	analyzer.fillGraphRelations(rootNode, &packagesStatusMap,
-		&packagesStatus, "", "", datastructures.MakeSet[string](), true)
+	packagesStatusMap := sync.Map{}
+	err = analyzer.fetchNodesStatus(flattenGraph, &packagesStatusMap, rootNodes)
+	analyzer.GraphsRelations(fullDependenciesTrees, &packagesStatusMap,
+		&packagesStatus)
 	sort.Slice(packagesStatus, func(i, j int) bool {
 		return packagesStatus[i].ParentName < packagesStatus[j].ParentName
 	})
@@ -355,6 +360,14 @@ func (ca *CurationAuditCommand) getRepoParams(projectType rtUtils.ProjectType) (
 	return resolverParams, nil
 }
 
+func (nc *treeAnalyzer) GraphsRelations(fullDependenciesTrees []*xrayUtils.GraphNode, preProcessMap *sync.Map, packagesStatus *[]*PackageStatus) {
+	visited := datastructures.MakeSet[string]()
+	for _, node := range fullDependenciesTrees {
+		nc.fillGraphRelations(node, preProcessMap,
+			packagesStatus, "", "", visited, true)
+	}
+}
+
 func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap *sync.Map,
 	packagesStatus *[]*PackageStatus, parent, parentVersion string, visited *datastructures.Set[string], isRoot bool) {
 	for _, child := range node.Nodes {
@@ -388,14 +401,15 @@ func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcess
 		nc.fillGraphRelations(child, preProcessMap, packagesStatus, parent, parentVersion, visited, false)
 	}
 }
-func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map, rootNodeId string) error {
+
+func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map, rootNodeIds map[string]struct{}) error {
 	var multiErrors error
 	consumerProducer := parallel.NewBounedRunner(nc.parallelRequests, false)
 	errorsQueue := clientutils.NewErrorsQueue(1)
 	go func() {
 		defer consumerProducer.Done()
 		for _, node := range graph.Nodes {
-			if node.Id == rootNodeId {
+			if _, ok := rootNodeIds[node.Id]; ok {
 				continue
 			}
 			getTask := func(node xrayUtils.GraphNode) func(threadId int) error {
@@ -417,6 +431,9 @@ func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map
 
 func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) error {
 	packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
+	if packageUrl == "" {
+		return nil
+	}
 	if scope != "" {
 		name = scope + "/" + name
 	}
@@ -533,9 +550,17 @@ func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo
 func getMavenNameScopeAndVersion(id, artiUrl, repo string) (downloadUrl, name, scope, version string) {
 	id = strings.TrimPrefix(id, "gav://")
 	allParts := strings.Split(id, ":")
+	if len(allParts) < 2 {
+		return
+	}
 	nameVersion := allParts[1] + "-" + allParts[2]
 	packagePath := strings.Join(strings.Split(allParts[0], "."), "/") + "/" +
-		allParts[1] + "/" + allParts[2] + "/" + nameVersion + ".jar"
+		allParts[1] + "/" + allParts[2] + "/" + nameVersion
+	if strings.HasSuffix(allParts[1], "war") {
+		packagePath += ".war"
+	} else {
+		packagePath += ".jar"
+	}
 	downloadUrl = strings.TrimSuffix(artiUrl, "/") + "/" + repo + "/" + packagePath
 	return downloadUrl, strings.Join(allParts[:2], ":"), "", allParts[2]
 }

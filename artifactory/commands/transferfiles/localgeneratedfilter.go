@@ -20,7 +20,7 @@ import (
 const (
 	locallyGeneratedApi                      = "api/localgenerated/filter/paths"
 	minArtifactoryVersionForLocallyGenerated = "7.55.0"
-	maxConcurrentLocallyGeneratedRequests    = 2
+	maxConcurrentLocallyGeneratedRequests    = 5
 )
 
 // The request and response payload of POST '/api/localgenerated/filter/paths'

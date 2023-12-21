@@ -4,16 +4,17 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/jfrog/gofrog/version"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/gofrog/version"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferconfig/configxmlutils"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -152,9 +153,6 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	tcc.LogTitle("Phase 5/5 - Import repositories to the target Artifactory")
-	if err = tcc.deleteConflictingRepositories(selectedRepos); err != nil {
-		return
-	}
 	if err = tcc.TransferRepositoriesToTarget(selectedRepos, remoteRepos); err != nil {
 		return
 	}
@@ -215,7 +213,7 @@ func (tcc *TransferConfigCommand) runPreChecks() error {
 		return err
 	}
 
-	return tcc.NewPreChecksRunner(remoteRepositories).Run(context.Background(), tcc.TargetServerDetails)
+	return tcc.NewPreChecksRunner(selectedRepos, remoteRepositories).Run(context.Background(), tcc.TargetServerDetails)
 }
 
 func (tcc *TransferConfigCommand) printWarnings() (err error) {
@@ -299,16 +297,17 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin() error {
 }
 
 // Creates the Pre-checks runner for the config import command
-func (tcc *TransferConfigCommand) NewPreChecksRunner(remoteRepositories []interface{}) (runner *commandsUtils.PreCheckRunner) {
-	runner = commandsUtils.NewPreChecksRunner()
+func (tcc *TransferConfigCommand) NewPreChecksRunner(selectedRepos map[utils.RepoType][]services.RepositoryDetails, remoteRepositories []interface{}) (runner *precheckrunner.PreCheckRunner) {
+	runner = precheckrunner.NewPreChecksRunner()
 
 	// Add pre-checks here
-	runner.AddCheck(commandsUtils.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, remoteRepositories))
+	runner.AddCheck(precheckrunner.NewRepositoryNamingCheck(selectedRepos))
+	runner.AddCheck(precheckrunner.NewRemoteRepositoryCheck(&tcc.TargetArtifactoryManager, remoteRepositories))
 
 	return
 }
 
-func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[utils.RepoType][]string) (configXml string, remoteRepositories []interface{}, err error) {
+func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[utils.RepoType][]services.RepositoryDetails) (configXml string, remoteRepositories []interface{}, err error) {
 	reactivateKeyEncryption, err := tcc.DeactivateKeyEncryption()
 	if err != nil {
 		return "", nil, err
@@ -327,10 +326,10 @@ func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[util
 	}
 
 	// Get all remote repositories from the source Artifactory server.
-	if remoteRepositoryNames, ok := selectedSourceRepos[utils.Remote]; ok && len(remoteRepositoryNames) > 0 {
-		remoteRepositories = make([]interface{}, len(remoteRepositoryNames))
-		for i, repoName := range remoteRepositoryNames {
-			if err = tcc.SourceArtifactoryManager.GetRepository(repoName, &remoteRepositories[i]); err != nil {
+	if remoteRepositoriesDetails, ok := selectedSourceRepos[utils.Remote]; ok && len(remoteRepositoriesDetails) > 0 {
+		remoteRepositories = make([]interface{}, len(remoteRepositoriesDetails))
+		for i, remoteRepositoryDetails := range remoteRepositoriesDetails {
+			if err = tcc.SourceArtifactoryManager.GetRepository(remoteRepositoryDetails.Key, &remoteRepositories[i]); err != nil {
 				return
 			}
 		}
@@ -350,13 +349,11 @@ func (tcc *TransferConfigCommand) exportSourceArtifactory() (string, func() erro
 	}
 
 	// Do export
-	trueValue := true
-	falseValue := false
 	exportParams := services.ExportParams{
 		ExportPath:      exportPath,
-		IncludeMetadata: &falseValue,
+		IncludeMetadata: clientutils.Pointer(false),
 		Verbose:         &tcc.verbose,
-		ExcludeContent:  &trueValue,
+		ExcludeContent:  clientutils.Pointer(true),
 	}
 	cleanUp := func() error { return fileutils.RemoveTempDir(exportPath) }
 	if err = tcc.SourceArtifactoryManager.Export(exportParams); err != nil {
@@ -477,6 +474,10 @@ func (tcc *TransferConfigCommand) createImportPollingAction(rtDetails *httputils
 		if err != nil {
 			return true, nil, err
 		}
+		tcc.TargetAccessManager, err = utils.CreateAccessServiceManager(newServerDetails, false)
+		if err != nil {
+			return true, nil, err
+		}
 		rtDetails, err = commandsUtils.CreateArtifactoryClientDetails(tcc.TargetArtifactoryManager)
 		if err != nil {
 			return true, nil, err
@@ -528,65 +529,51 @@ func (tcc *TransferConfigCommand) getWorkingDirParam() string {
 	return ""
 }
 
-func (tcc *TransferConfigCommand) deleteConflictingRepositories(selectedRepos map[utils.RepoType][]string) error {
-	log.Info("Deleting conflicting repositories in the target Artifactory server, if any exist...")
-	targetRepos, err := tcc.TargetArtifactoryManager.GetAllRepositories()
-	if err != nil {
-		return err
-	}
-	allSourceRepos := datastructures.MakeSet[string]()
-	for _, selectedReposWithType := range selectedRepos {
-		for _, selectedRepo := range selectedReposWithType {
-			allSourceRepos.Add(selectedRepo)
-		}
-	}
-
-	for _, targetRepo := range *targetRepos {
-		if allSourceRepos.Exists(targetRepo.Key) {
-			if err = tcc.TargetArtifactoryManager.DeleteRepository(targetRepo.Key); err != nil {
-				return err
-			}
-		}
-	}
-	log.Info("Done deleting conflicting repositories")
-	return nil
-}
-
 // Make sure that the source Artifactory version is sufficient.
 // Returns the source Artifactory version.
-func (tcc *TransferConfigCommand) validateMinVersion() error {
+func (tcc *TransferConfigCommand) validateMinVersion() (sourceArtifactoryVersion string, err error) {
 	log.Info("Verifying minimum version of the source server...")
-	sourceArtifactoryVersion, err := tcc.SourceArtifactoryManager.GetVersion()
+	sourceArtifactoryVersion, err = tcc.SourceArtifactoryManager.GetVersion()
 	if err != nil {
-		return err
+		return
 	}
-	targetArtifactoryVersion, err := tcc.TargetArtifactoryManager.GetVersion()
+	var targetArtifactoryVersion string
+	targetArtifactoryVersion, err = tcc.TargetArtifactoryManager.GetVersion()
 	if err != nil {
-		return err
+		return
 	}
 
 	// Validate minimal Artifactory version in the source server
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Artifactory, sourceArtifactoryVersion, minTransferConfigArtifactoryVersion)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Validate that the target Artifactory server version is >= than the source Artifactory server version
 	if !version.NewVersion(targetArtifactoryVersion).AtLeast(sourceArtifactoryVersion) {
-		return errorutils.CheckErrorf("The source Artifactory version (%s) can't be higher than the target Artifactory version (%s).", sourceArtifactoryVersion, targetArtifactoryVersion)
+		err = errorutils.CheckErrorf("The source Artifactory version (%s) can't be higher than the target Artifactory version (%s).", sourceArtifactoryVersion, targetArtifactoryVersion)
 	}
 
-	return nil
+	return
 }
 
-func (tcc *TransferConfigCommand) validateServerPrerequisites() error {
+func (tcc *TransferConfigCommand) validateServerPrerequisites() (err error) {
+	var sourceArtifactoryVersion string
 	// Make sure that the source Artifactory version is sufficient.
-	if err := tcc.validateMinVersion(); err != nil {
-		return err
+	if sourceArtifactoryVersion, err = tcc.validateMinVersion(); err != nil {
+		return
 	}
+
+	// Check connectivity to JFrog Access if the source Artifactory version is >= 7.0.0
+	if versionErr := clientutils.ValidateMinimumVersion(clientutils.Projects, sourceArtifactoryVersion, commandsUtils.MinJFrogProjectsArtifactoryVersion); versionErr == nil {
+		if err = tcc.ValidateAccessServerConnection(tcc.SourceServerDetails, tcc.SourceAccessManager); err != nil {
+			return
+		}
+	}
+
 	// Make sure source and target Artifactory URLs are different
-	if err := tcc.ValidateDifferentServers(); err != nil {
-		return err
+	if err = tcc.ValidateDifferentServers(); err != nil {
+		return
 	}
 	// Make sure that the target Artifactory is empty and the config-import plugin is installed
 	return tcc.validateTargetServer()

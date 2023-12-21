@@ -2,7 +2,7 @@ package transferinstall
 
 import (
 	"fmt"
-	downloadutils "github.com/jfrog/build-info-go/utils"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -10,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/pkg/errors"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,9 +36,9 @@ var (
 	originalDirPath = FileItem{"etc", "plugins"}
 	v7DirPath       = FileItem{"var", "etc", "artifactory", "plugins"}
 	// Error types
-	notValidDestinationErr = errors.Errorf("can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory.")
+	notValidDestinationErr = fmt.Errorf("can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory.")
 	downloadConnectionErr  = func(baseUrl, fileName, err string) error {
-		return errors.Errorf("Could not download the plugin file - '%s' from '%s' due to the following error: '%s'. If this machine has no network access to the download URL, you can download these files from another machine and place them in a directory on this machine. You can then run this command again with the --dir command option, with the directory containing the files as the value.", fileName, baseUrl, err)
+		return fmt.Errorf("Could not download the plugin file - '%s' from '%s' due to the following error: '%s'. If this machine has no network access to the download URL, you can download these files from another machine and place them in a directory on this machine. You can then run this command again with the --dir command option, with the directory containing the files as the value.", fileName, baseUrl, err)
 	}
 	// Plugin files
 	transferPluginFiles = PluginFiles{
@@ -217,8 +216,9 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 
 	// Flag override
 	if idtp.localJFrogHomePath != "" {
-		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s'.", idtp.localJFrogHomePath))
-		if exists, target, err = idtp.transferManger.findDestination(idtp.localJFrogHomePath); err != nil || exists {
+		jfrogHomeDir := strings.TrimSpace(idtp.localJFrogHomePath)
+		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s'.", jfrogHomeDir))
+		if exists, target, err = idtp.transferManger.findDestination(jfrogHomeDir); err != nil || exists {
 			return
 		}
 		if !exists {
@@ -228,8 +228,9 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 	}
 	// Environment variable override
 	if envVal, exists = os.LookupEnv(jfrogHomeEnvVar); exists {
-		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s' retrieved from the '%s' environment variable.", envVal, jfrogHomeEnvVar))
-		if exists, target, err = idtp.transferManger.findDestination(envVal); err != nil || exists {
+		jfrogHomeDir := strings.TrimSpace(envVal)
+		log.Debug(fmt.Sprintf("Searching for the 'plugins' directory in the JFrog home directory '%s' retrieved from the '%s' environment variable.", jfrogHomeDir, jfrogHomeEnvVar))
+		if exists, target, err = idtp.transferManger.findDestination(jfrogHomeDir); err != nil || exists {
 			return
 		}
 	}
@@ -292,7 +293,7 @@ func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error)
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = downloadutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
+		if err = biutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
 			err = downloadConnectionErr(src, fileName, err.Error())
 			return
 		}
@@ -310,7 +311,7 @@ func CopyFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
 		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
 			return
 		}
-		if err = fileutils.CopyFile(dstDirPath, srcPath); err != nil {
+		if err = biutils.CopyFile(dstDirPath, srcPath); err != nil {
 			return
 		}
 	}

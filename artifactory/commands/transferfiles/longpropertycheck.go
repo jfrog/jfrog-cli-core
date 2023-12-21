@@ -3,9 +3,13 @@ package transferfiles
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"sync"
+
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -13,13 +17,12 @@ import (
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"golang.org/x/exp/slices"
-	"io"
-	"sync"
 
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"time"
+
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 const (
@@ -28,6 +31,7 @@ const (
 	threadCount                = 10
 	maxAllowedValLength        = 2400
 	longPropertyCheckName      = "Properties with value longer than 2.4K characters"
+	propertiesRequestTimeout   = time.Minute * 30
 )
 
 // Property - Represents a property of an item
@@ -52,21 +56,22 @@ type FileWithLongProperty struct {
 }
 
 type LongPropertyCheck struct {
-	producerConsumer parallel.Runner
-	filesChan        chan FileWithLongProperty
-	errorsQueue      *clientutils.ErrorsQueue
-	repos            []string
+	producerConsumer       parallel.Runner
+	filesChan              chan FileWithLongProperty
+	errorsQueue            *clientutils.ErrorsQueue
+	repos                  []string
+	disabledDistinctiveAql bool
 }
 
-func NewLongPropertyCheck(repos []string) *LongPropertyCheck {
-	return &LongPropertyCheck{repos: repos}
+func NewLongPropertyCheck(repos []string, disabledDistinctiveAql bool) *LongPropertyCheck {
+	return &LongPropertyCheck{repos: repos, disabledDistinctiveAql: disabledDistinctiveAql}
 }
 
 func (lpc *LongPropertyCheck) Name() string {
 	return longPropertyCheckName
 }
 
-func (lpc *LongPropertyCheck) ExecuteCheck(args cmdutils.RunArguments) (passed bool, err error) {
+func (lpc *LongPropertyCheck) ExecuteCheck(args precheckrunner.RunArguments) (passed bool, err error) {
 	// Init producer consumer
 	lpc.producerConsumer = parallel.NewRunner(threadCount, maxThreadCapacity, false)
 	lpc.filesChan = make(chan FileWithLongProperty, threadCount)
@@ -110,9 +115,9 @@ func (lpc *LongPropertyCheck) ExecuteCheck(args cmdutils.RunArguments) (passed b
 
 // Search for long properties in the server and create a search task to find the files that contains them
 // Returns the number of long properties found
-func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args cmdutils.RunArguments) int {
+func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.TasksProgressBar, args precheckrunner.RunArguments) int {
 	// Init
-	serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs)
+	serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs, propertiesRequestTimeout)
 	if err != nil {
 		return 0
 	}
@@ -129,7 +134,7 @@ func (lpc *LongPropertyCheck) longPropertiesTaskProducer(progress *progressbar.T
 			if long := isLongProperty(property); long {
 				log.Debug(fmt.Sprintf(`Found long property ('@%s':'%s')`, property.Key, property.Value))
 				if lpc.producerConsumer != nil {
-					_, _ = lpc.producerConsumer.AddTaskWithError(createSearchPropertyTask(property, lpc.repos, args, lpc.filesChan, progress), lpc.errorsQueue.AddError)
+					_, _ = lpc.producerConsumer.AddTaskWithError(lpc.createSearchPropertyTask(property, args, progress), lpc.errorsQueue.AddError)
 				}
 				if progress != nil {
 					progress.IncGeneralProgressTotalBy(1)
@@ -172,25 +177,25 @@ func getSearchAllPropertiesQuery(pageNumber int) string {
 
 // Create a task that fetch from the server the files with the given property.
 // We keep only the files that are at the requested repos and pass them at the files channel
-func createSearchPropertyTask(property Property, repos []string, args cmdutils.RunArguments, filesChan chan FileWithLongProperty, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
+func (lpc *LongPropertyCheck) createSearchPropertyTask(property Property, args precheckrunner.RunArguments, progress *progressbar.TasksProgressBar) parallel.TaskFunc {
 	return func(threadId int) (err error) {
-		serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs)
+		serviceManager, err := utils.CreateServiceManagerWithContext(args.Context, args.ServerDetails, false, 0, retries, retriesWaitMilliSecs, propertiesRequestTimeout)
 		if err != nil {
 			return
 		}
 		// Search
 		var query *servicesUtils.AqlSearchResult
-		if query, err = runSearchPropertyInFilesAql(serviceManager, property); err != nil {
+		if query, err = lpc.runSearchPropertyInFilesAql(serviceManager, property); err != nil {
 			return
 		}
 		log.Debug(fmt.Sprintf("[Thread=%d] Got %d files from the query", threadId, len(query.Results)))
 		for _, item := range query.Results {
 			file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name}
 			// Keep only if in the requested repos
-			if slices.Contains(repos, file.Repo) {
+			if slices.Contains(lpc.repos, file.Repo) {
 				fileWithLongProperty := FileWithLongProperty{file, property.valueLength(), property}
 				log.Debug(fmt.Sprintf("[Thread=%d] Found File{Repo=%s, Path=%s, Name=%s} with matching entry of long property.", threadId, file.Repo, file.Path, file.Name))
-				filesChan <- fileWithLongProperty
+				lpc.filesChan <- fileWithLongProperty
 			}
 		}
 		// Notify end of search for the current property
@@ -202,15 +207,17 @@ func createSearchPropertyTask(property Property, repos []string, args cmdutils.R
 }
 
 // Get all the files that contains the given property using AQL
-func runSearchPropertyInFilesAql(serviceManager artifactory.ArtifactoryServicesManager, property Property) (result *servicesUtils.AqlSearchResult, err error) {
+func (lpc *LongPropertyCheck) runSearchPropertyInFilesAql(serviceManager artifactory.ArtifactoryServicesManager, property Property) (result *servicesUtils.AqlSearchResult, err error) {
 	result = &servicesUtils.AqlSearchResult{}
-	err = runAqlService(serviceManager, getSearchPropertyInFilesQuery(property), result)
+	err = runAqlService(serviceManager, lpc.getSearchPropertyInFilesQuery(property), result)
 	return
 }
 
 // Get the query that search files with specific property
-func getSearchPropertyInFilesQuery(property Property) string {
-	return fmt.Sprintf(`items.find({"type": {"$eq":"any"},"@%s":"%s"}).include("repo","path","name")`, property.Key, property.Value)
+func (lpc *LongPropertyCheck) getSearchPropertyInFilesQuery(property Property) string {
+	query := fmt.Sprintf(`items.find({"type": {"$eq":"any"},"@%s":"%s"}).include("repo","path","name")`, property.Key, property.Value)
+	query += appendDistinctIfNeeded(lpc.disabledDistinctiveAql)
+	return query
 }
 
 // Run AQL service that return a result in the given format structure 'v'

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -205,6 +207,13 @@ func TestSplitRepoAndServerId(t *testing.T) {
 			repoName:      "",
 			err:           nil,
 		},
+		{
+			serverAndRepo: "myServer/my/Repo",
+			remoteEnv:     ReleasesRemoteEnv,
+			serverID:      "myServer",
+			repoName:      "my/Repo",
+			err:           nil,
+		},
 	}
 	for _, test := range tests {
 		func() {
@@ -215,10 +224,58 @@ func TestSplitRepoAndServerId(t *testing.T) {
 			serverID, repoName, err := GetServerIdAndRepo(test.remoteEnv)
 			if err != nil {
 				assert.Equal(t, test.err.Error(), err.Error())
+				return
 			}
 			// Assert the results
 			assert.Equal(t, test.serverID, serverID)
 			assert.Equal(t, test.repoName, repoName)
 		}()
 	}
+}
+
+func TestGetFullPathsWorkingDirs(t *testing.T) {
+	currentDir, err := GetWorkingDirectory()
+	assert.NoError(t, err)
+	dir1, err := filepath.Abs("dir1")
+	assert.NoError(t, err)
+	dir2, err := filepath.Abs("dir2")
+	assert.NoError(t, err)
+	tests := []struct {
+		name         string
+		workingDirs  []string
+		expectedDirs []string
+	}{
+		{
+			name:         "EmptyWorkingDirs",
+			workingDirs:  []string{},
+			expectedDirs: []string{currentDir},
+		},
+		{
+			name:         "ValidWorkingDirs",
+			workingDirs:  []string{"dir1", "dir2"},
+			expectedDirs: []string{dir1, dir2},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			actualDirs, err := GetFullPathsWorkingDirs(test.workingDirs)
+			assert.NoError(t, err)
+			assert.Equal(t, test.expectedDirs, actualDirs, "Incorrect full paths of working directories")
+		})
+	}
+}
+
+func TestGetMaskedCommandString(t *testing.T) {
+	assert.Equal(t,
+		"pip -i ***@someurl.com/repo",
+		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo")))
+
+	assert.Equal(t,
+		"pip -i ***@someurl.com/repo --password=***",
+		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo", "--password=123")))
+
+	assert.Equal(t,
+		"pip -i ***@someurl.com/repo --access-token=***",
+		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo", "--access-token=123")))
 }

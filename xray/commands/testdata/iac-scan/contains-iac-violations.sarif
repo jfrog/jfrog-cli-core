@@ -1,0 +1,129 @@
+{
+    "runs": [
+        {
+            "tool": {
+                "driver": {
+                    "name": "JFrog Terraform scanner",
+                    "rules": [],
+                    "version": ""
+                }
+            },
+            "invocations": [
+                {
+                    "executionSuccessful": true,
+                    "arguments": [
+                        "./tf_scanner",
+                        "scan",
+                        "scan.yaml"
+                    ],
+                    "workingDirectory": {
+                        "uri": "file:///Users/ilya/Downloads/tf-scanner-main/src/dist/tf_scanner"
+                    }
+                }
+            ],
+            "results": [
+                {
+                    "message": {
+                        "text": "AWS Load balancer using insecure communications"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/ilya/Downloads/tf-scanner-main/tests/hcl/applicable/req_sw_terraform_aws_alb_https_only.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 12,
+                                    "snippet": {
+                                        "text": "vulnerable_example"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 1
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_alb_https_only"
+                },
+                {
+                    "message": {
+                        "text": "authorization=NONE was detected"
+                    },
+                    "level": "error",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/ilya/Downloads/tf-scanner-main/tests/hcl/applicable/req_sw_terraform_aws_api_gateway_auth.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 6,
+                                    "snippet": {
+                                        "text": "vulnerable_method"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 1
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_api_gateway_auth"
+                },
+                {
+                    "message": {
+                        "text": "cache_data_encrypted=False was detected"
+                    },
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/ilya/Downloads/tf-scanner-main/tests/hcl/applicable/req_sw_terraform_aws_api_gateway_encrypt_cache.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 8,
+                                    "snippet": {
+                                        "text": "vulnerable_example"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 1
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_api_gateway_encrypt_cache"
+                },
+                {
+                    "message": {
+                        "text": "security_policy!=TLS_1_2 was detected"
+                    },
+                    "level": "note",
+                    "locations": [
+                        {
+                            "physicalLocation": {
+                                "artifactLocation": {
+                                    "uri": "file:///Users/ilya/Downloads/tf-scanner-main/tests/hcl/applicable/req_sw_terraform_aws_api_gateway_tls_version.tf"
+                                },
+                                "region": {
+                                    "endColumn": 2,
+                                    "endLine": 4,
+                                    "snippet": {
+                                        "text": "vulnerable_example"
+                                    },
+                                    "startColumn": 1,
+                                    "startLine": 1
+                                }
+                            }
+                        }
+                    ],
+                    "ruleId": "aws_api_gateway_tls_version"
+                }
+            ]
+        }
+    ],
+    "version": "2.1.0",
+    "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/cos02/schemas/sarif-schema-2.1.0.json"
+}

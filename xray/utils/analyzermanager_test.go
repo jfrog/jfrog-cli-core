@@ -1,22 +1,59 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
+	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestRemoveDuplicateValues(t *testing.T) {
+func TestScanTypeErrorMsg(t *testing.T) {
 	tests := []struct {
-		testedSlice    []string
-		expectedResult []string
+		scanner JasScanType
+		err     error
+		wantMsg string
 	}{
-		{testedSlice: []string{"1", "1", "1", "3"}, expectedResult: []string{"1", "3"}},
-		{testedSlice: []string{}, expectedResult: []string{}},
-		{testedSlice: []string{"1", "2", "3", "4"}, expectedResult: []string{"1", "2", "3", "4"}},
-		{testedSlice: []string{"1", "6", "1", "6", "2"}, expectedResult: []string{"1", "6", "2"}},
+		{
+			scanner: Applicability,
+			err:     errors.New("an error occurred"),
+			wantMsg: fmt.Sprintf(ErrFailedScannerRun, Applicability, "an error occurred"),
+		},
+		{
+			scanner: Applicability,
+			err:     nil,
+			wantMsg: "",
+		},
+		{
+			scanner: Secrets,
+			err:     nil,
+			wantMsg: "",
+		},
+		{
+			scanner: Secrets,
+			err:     errors.New("an error occurred"),
+			wantMsg: fmt.Sprintf(ErrFailedScannerRun, Secrets, "an error occurred"),
+		},
+		{
+			scanner: IaC,
+			err:     nil,
+			wantMsg: "",
+		},
+		{
+			scanner: IaC,
+			err:     errors.New("an error occurred"),
+			wantMsg: fmt.Sprintf(ErrFailedScannerRun, IaC, "an error occurred"),
+		},
 	}
 
 	for _, test := range tests {
-		assert.Equal(t, test.expectedResult, RemoveDuplicateValues(test.testedSlice))
+		t.Run(fmt.Sprintf("Scanner: %s", test.scanner), func(t *testing.T) {
+			gotMsg := test.scanner.FormattedError(test.err)
+			if gotMsg == nil {
+				assert.Nil(t, test.err)
+				return
+			}
+			assert.Equal(t, test.wantMsg, gotMsg.Error())
+		})
 	}
 }

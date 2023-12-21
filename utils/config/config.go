@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/buger/jsonparser"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
+	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -71,8 +73,14 @@ func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableT
 	return details, nil
 }
 
-// Disables refreshable tokens if set in details.
+// Disables the refreshable tokens mechanism if set in details.
+// We identify the refreshable tokens mechanism by having both conditions:
+// 1. Non-empty username and password
+// 2. Non-empty access and refresh token OR token refresh interval enabled
 func excludeRefreshableTokensFromDetails(details *ServerDetails) {
+	if details.WebLogin || details.User == "" || details.Password == "" {
+		return
+	}
 	if details.AccessToken != "" && details.ArtifactoryRefreshToken != "" ||
 		details.AccessToken != "" && details.RefreshToken != "" {
 		details.AccessToken = ""
@@ -218,26 +226,26 @@ func getConfigFile() (content []byte, err error) {
 	if exists {
 		content, err = fileutils.ReadFile(confFilePath)
 		return
-
 	}
 	// Try to look for older config files
 	for i := coreutils.GetCliConfigVersion() - 1; i >= 3; i-- {
-		versionedConfigPath, err := getLegacyConfigFilePath(i)
+		var versionedConfigPath string
+		versionedConfigPath, err = getLegacyConfigFilePath(i)
 		if err != nil {
-			return nil, err
+			return
 		}
-		exists, err := fileutils.IsFileExists(versionedConfigPath, false)
+		exists, err = fileutils.IsFileExists(versionedConfigPath, false)
 		if err != nil {
-			return nil, err
+			return
 		}
 		if exists {
 			// If an old config file was found returns its content or an error.
 			content, err = fileutils.ReadFile(versionedConfigPath)
-			return content, err
+			return
 		}
 	}
 
-	return content, nil
+	return
 }
 
 func (config *Config) Clone() (*Config, error) {
@@ -385,12 +393,12 @@ func createHomeDirBackup() error {
 		return err
 	}
 
-	// Copy homedir contents to backup dir, excluding redundant dirs and the backup dir itself.
+	// Copy homedir contents to back up dir, excluding redundant dirs and the backup dir itself.
 	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
 	exclude := []string{coreutils.JfrogBackupDirName, coreutils.JfrogDependenciesDirName, coreutils.JfrogLocksDirName, coreutils.JfrogLogsDirName}
-	return fileutils.CopyDir(homeDir, curBackupPath, true, exclude)
+	return biutils.CopyDir(homeDir, curBackupPath, true, exclude)
 }
 
 // Version key doesn't exist in version 0
@@ -567,6 +575,7 @@ type ServerDetails struct {
 	MissionControlUrl               string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
 	AccessUrl                       string `json:"accessUrl,omitempty"`
+	LifecycleUrl                    string `json:"-"`
 	User                            string `json:"user,omitempty"`
 	Password                        string `json:"password,omitempty"`
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
@@ -580,6 +589,7 @@ type ServerDetails struct {
 	ServerId                        string `json:"serverId,omitempty"`
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
+	WebLogin                        bool   `json:"webLogin,omitempty"`
 }
 
 // Deprecated
@@ -652,6 +662,10 @@ func (serverDetails *ServerDetails) GetAccessUrl() string {
 	return serverDetails.AccessUrl
 }
 
+func (serverDetails *ServerDetails) GetLifecycleUrl() string {
+	return serverDetails.LifecycleUrl
+}
+
 func (serverDetails *ServerDetails) GetUser() string {
 	return serverDetails.User
 }
@@ -706,6 +720,12 @@ func (serverDetails *ServerDetails) CreateAccessAuthConfig() (auth.ServiceDetail
 	return serverDetails.createAuthConfig(pAuth)
 }
 
+func (serverDetails *ServerDetails) CreateLifecycleAuthConfig() (auth.ServiceDetails, error) {
+	lcAuth := lifecycleAuth.NewLifecycleDetails()
+	lcAuth.SetUrl(serverDetails.LifecycleUrl)
+	return serverDetails.createAuthConfig(lcAuth)
+}
+
 func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {
 	details.SetSshUrl(serverDetails.SshUrl)
 	details.SetAccessToken(serverDetails.AccessToken)
@@ -729,6 +749,39 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 	details.SetSshKeyPath(serverDetails.SshKeyPath)
 	details.SetSshPassphrase(serverDetails.SshPassphrase)
 	return details, nil
+}
+
+// GetAuthenticationCredentials retrieves authentication credentials for the serverDetails instance.
+// If both a username and password are provided, they are returned.
+// If only an access token is provided, the function extracts the username from the access token,
+// and both the username and access token are returned.
+//
+// Returns:
+// - Username and password if both are provided.
+// - Username extracted from the access token, along with the access token, if the access token is provided.
+// - An error if neither username/password nor access token is provided, with details about the missing credentials.
+func (serverDetails *ServerDetails) GetAuthenticationCredentials() (string, string, error) {
+	// Username and password are set
+	if serverDetails.Password != "" && serverDetails.User != "" {
+		return serverDetails.User, serverDetails.Password, nil
+	}
+
+	// Access token is set, extract the username from the access token if needed
+	if serverDetails.AccessToken != "" {
+		if serverDetails.User == "" {
+			serverDetails.User = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
+		}
+		return serverDetails.User, serverDetails.AccessToken, nil
+	}
+
+	// Username/Password or Access token isn't set
+	errMissingCredsMsg := "either username/password or access token must be set for "
+	if serverDetails.Url != "" {
+		errMissingCredsMsg += serverDetails.Url
+	} else if serverDetails.ArtifactoryUrl != "" {
+		errMissingCredsMsg += serverDetails.ArtifactoryUrl
+	}
+	return "", "", errorutils.CheckErrorf(errMissingCredsMsg)
 }
 
 func (missionControlDetails *MissionControlDetails) GetAccessToken() string {

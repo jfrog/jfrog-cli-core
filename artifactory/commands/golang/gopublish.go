@@ -1,13 +1,13 @@
 package golang
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os/exec"
 
 	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -17,6 +17,7 @@ type GoPublishCommandArgs struct {
 	buildConfiguration *utils.BuildConfiguration
 	version            string
 	detailedSummary    bool
+	excludedPatterns   []string
 	result             *commandutils.Result
 	utils.RepositoryConfig
 }
@@ -37,6 +38,15 @@ func (gpc *GoPublishCommand) CommandName() string {
 
 func (gpc *GoPublishCommand) SetConfigFilePath(configFilePath string) *GoPublishCommand {
 	gpc.configFilePath = configFilePath
+	return gpc
+}
+
+func (gpc *GoPublishCommand) GetExcludedPatterns() []string {
+	return gpc.excludedPatterns
+}
+
+func (gpc *GoPublishCommandArgs) SetExcludedPatterns(excludedPatterns []string) *GoPublishCommandArgs {
+	gpc.excludedPatterns = excludedPatterns
 	return gpc
 }
 
@@ -72,7 +82,7 @@ func (gpc *GoPublishCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = coreutils.ValidateMinimumVersion(coreutils.Artifactory, artifactoryVersion, minSupportedArtifactoryVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Artifactory, artifactoryVersion, minSupportedArtifactoryVersion)
 	if err != nil {
 		return err
 	}
@@ -100,7 +110,7 @@ func (gpc *GoPublishCommand) Run() error {
 	}
 
 	// Publish the package to Artifactory.
-	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, project, serviceManager)
+	summary, artifacts, err := publishPackage(gpc.version, gpc.TargetRepo(), buildName, buildNumber, project, gpc.GetExcludedPatterns(), serviceManager)
 	if err != nil {
 		return err
 	}

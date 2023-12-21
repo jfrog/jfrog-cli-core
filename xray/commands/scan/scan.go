@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os/exec"
 	"path/filepath"
@@ -31,8 +31,9 @@ type FileContext func(string) parallel.TaskFunc
 type indexFileHandlerFunc func(file string)
 
 const (
-	indexingCommand          = "graph"
-	fileNotSupportedExitCode = 3
+	BypassArchiveLimitsMinXrayVersion = "3.59.0"
+	indexingCommand                   = "graph"
+	fileNotSupportedExitCode          = 3
 )
 
 type ScanCommand struct {
@@ -128,8 +129,8 @@ func (scanCmd *ScanCommand) SetBypassArchiveLimits(bypassArchiveLimits bool) *Sc
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.GraphNode, error) {
-	var indexerResults xrayUtils.GraphNode
+func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.BinaryGraphNode, error) {
+	var indexerResults xrayUtils.BinaryGraphNode
 	indexerCmd := exec.Command(scanCmd.indexerPath, indexingCommand, filePath, "--temp-dir", scanCmd.indexerTempDir)
 	if scanCmd.bypassArchiveLimits {
 		indexerCmd.Args = append(indexerCmd.Args, "--bypass-archive-limits")
@@ -140,7 +141,8 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.GraphNode, er
 	indexerCmd.Stderr = &stderr
 	err := indexerCmd.Run()
 	if err != nil {
-		if e, ok := err.(*exec.ExitError); ok {
+		var e *exec.ExitError
+		if errors.As(err, &e) {
 			if e.ExitCode() == fileNotSupportedExitCode {
 				log.Debug(fmt.Sprintf("File %s is not supported by Xray indexer app.", filePath))
 				return &indexerResults, nil
@@ -158,34 +160,35 @@ func (scanCmd *ScanCommand) indexFile(filePath string) (*xrayUtils.GraphNode, er
 func (scanCmd *ScanCommand) Run() (err error) {
 	defer func() {
 		if err != nil {
-			if e, ok := err.(*exec.ExitError); ok {
+			var e *exec.ExitError
+			if errors.As(err, &e) {
 				if e.ExitCode() != coreutils.ExitCodeVulnerableBuild.Code {
 					err = errors.New("Scan command failed. " + err.Error())
 				}
 			}
 		}
 	}()
-	xrayManager, xrayVersion, err := utils.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
+	xrayManager, xrayVersion, err := xrutils.CreateXrayServiceManagerAndGetVersion(scanCmd.serverDetails)
 	if err != nil {
 		return err
 	}
 
 	// Validate Xray minimum version for graph scan command
-	err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.GraphScanMinXrayVersion)
+	err = clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, scangraph.GraphScanMinXrayVersion)
 	if err != nil {
 		return err
 	}
 
 	if scanCmd.bypassArchiveLimits {
 		// Validate Xray minimum version for BypassArchiveLimits flag for indexer
-		err = coreutils.ValidateMinimumVersion(coreutils.Xray, xrayVersion, utils.BypassArchiveLimitsMinXrayVersion)
+		err = clientutils.ValidateMinimumVersion(clientutils.Xray, xrayVersion, BypassArchiveLimitsMinXrayVersion)
 		if err != nil {
 			return err
 		}
 	}
 	log.Info("JFrog Xray version is:", xrayVersion)
 	// First download Xray Indexer if needed
-	scanCmd.indexerPath, err = xrutils.DownloadIndexerIfNeeded(xrayManager, xrayVersion)
+	scanCmd.indexerPath, err = DownloadIndexerIfNeeded(xrayManager, xrayVersion)
 	if err != nil {
 		return err
 	}
@@ -238,15 +241,22 @@ func (scanCmd *ScanCommand) Run() (err error) {
 	}
 	scanErrors = appendErrorSlice(scanErrors, fileProducerErrors)
 	scanErrors = appendErrorSlice(scanErrors, indexedFileProducerErrors)
-	extendedScanResults := &xrutils.ExtendedScanResults{XrayResults: flatResults}
-	err = xrutils.PrintScanResults(extendedScanResults,
-		scanErrors,
-		scanCmd.outputFormat,
-		scanCmd.includeVulnerabilities,
-		scanCmd.includeLicenses,
-		true,
-		scanCmd.printExtendedTable, true, nil,
-	)
+
+	scanResults := xrutils.NewAuditResults()
+	scanResults.XrayVersion = xrayVersion
+	scanResults.ScaResults = []xrutils.ScaScanResult{{XrayResults: flatResults}}
+
+	if err = xrutils.NewResultsWriter(scanResults).
+		SetOutputFormat(scanCmd.outputFormat).
+		SetIncludeVulnerabilities(scanCmd.includeVulnerabilities).
+		SetIncludeLicenses(scanCmd.includeLicenses).
+		SetPrintExtendedTable(scanCmd.printExtendedTable).
+		SetIsMultipleRootProject(true).
+		SetScanType(services.Binary).
+		PrintScanResults(); err != nil {
+		return
+	}
+
 	if err != nil {
 		return err
 	}
@@ -314,7 +324,7 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 			// which will send the indexed binary to Xray and then will store the received result.
 			taskFunc := func(threadId int) (err error) {
 				params := &services.XrayGraphScanParams{
-					Graph:                  graph,
+					BinaryGraph:            graph,
 					RepoPath:               getXrayRepoPathFromTarget(file.Target),
 					Watches:                scanCmd.watches,
 					IncludeLicenses:        scanCmd.includeLicenses,
@@ -325,13 +335,13 @@ func (scanCmd *ScanCommand) createIndexerHandlerFunc(file *spec.File, indexedFil
 				if scanCmd.progress != nil {
 					scanCmd.progress.SetHeadlineMsg("Scanning 🔍")
 				}
-				scanGraphParams := utils.NewScanGraphParams().
+				scanGraphParams := scangraph.NewScanGraphParams().
 					SetServerDetails(scanCmd.serverDetails).
 					SetXrayGraphScanParams(params).
 					SetXrayVersion(xrayVersion).
 					SetFixableOnly(scanCmd.fixableOnly).
 					SetSeverityLevel(scanCmd.minSeverityFilter)
-				scanResults, err := utils.RunScanGraphAndGetResults(scanGraphParams)
+				scanResults, err := scangraph.RunScanGraphAndGetResults(scanGraphParams)
 				if err != nil {
 					log.Error(fmt.Sprintf("scanning '%s' failed with error: %s", graph.Id, err.Error()))
 					indexedFileErrors[threadId] = append(indexedFileErrors[threadId], formats.SimpleJsonError{FilePath: filePath, ErrorMessage: err.Error()})
@@ -393,7 +403,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 	if err != nil {
 		return err
 	}
-	excludePathPattern := fspatterns.PrepareExcludePathPattern(fileParams)
+	excludePathPattern := fspatterns.PrepareExcludePathPattern(fileParams.Exclusions, fileParams.GetPatternType(), fileParams.IsRecursive())
 	patternRegex, err := regexp.Compile(fileData.Pattern)
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -403,7 +413,7 @@ func collectPatternMatchingFiles(fileData spec.File, rootPath string, dataHandle
 		return err
 	}
 
-	paths, err := fspatterns.ListFiles(rootPath, recursive, false, false, excludePathPattern)
+	paths, err := fspatterns.ListFiles(rootPath, recursive, false, false, false, excludePathPattern)
 	if err != nil {
 		return err
 	}

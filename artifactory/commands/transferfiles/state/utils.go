@@ -2,14 +2,16 @@ package state
 
 import (
 	"fmt"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -36,9 +38,9 @@ func ConvertTimeToEpochMilliseconds(timeToConvert time.Time) string {
 	return strconv.FormatInt(timeToConvert.UnixMilli(), 10)
 }
 
-// secondsToLiteralTime converts a number of seconds to an easy-to-read string.
+// SecondsToLiteralTime converts a number of seconds to an easy-to-read string.
 // Prefix is not taken into account if the time is less than a minute.
-func secondsToLiteralTime(secondsToConvert int64, prefix string) string {
+func SecondsToLiteralTime(secondsToConvert int64, prefix string) string {
 	daysTime := secondsToConvert / secondsInDay
 	daysTimeInSecs := daysTime * secondsInDay
 	hoursTime := (secondsToConvert - daysTimeInSecs) / secondsInHour
@@ -119,4 +121,23 @@ func GetOldTransferDirectoryStructureError() error {
 		return err
 	}
 	return errorutils.CheckErrorf(oldTransferDirectoryStructureErrorFormat, transferDir)
+}
+
+// Atomically add to an int64 variable.
+// addr     - Pointer to int64 variable
+// delta    - The change to do
+func atomicallyAddInt64(addr *int64, delta int64) {
+	atomic.AddInt64(addr, delta)
+}
+
+// Atomically add to an uint64 variable.
+// addr     - Pointer to uint64 variable
+// delta    - The change to do
+// increase - True to increment, false to decrement
+func atomicallyAddUint64(addr *uint64, delta uint64, increase bool) {
+	if increase {
+		atomic.AddUint64(addr, delta)
+	} else {
+		atomic.AddUint64(addr, ^(delta - 1))
+	}
 }

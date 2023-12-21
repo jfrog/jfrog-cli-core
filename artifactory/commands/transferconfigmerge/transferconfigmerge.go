@@ -9,11 +9,9 @@ import (
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/access"
 	accessServices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
 )
@@ -21,10 +19,9 @@ import (
 type ConflictType string
 
 const (
-	Repository                         ConflictType = "Repository"
-	Project                            ConflictType = "Project"
-	logFilePrefix                                   = "transfer-config-conflicts"
-	minJFrogProjectsArtifactoryVersion              = "7.0.0"
+	Repository    ConflictType = "Repository"
+	Project       ConflictType = "Project"
+	logFilePrefix              = "transfer-config-conflicts"
 )
 
 // Repository key that should be filtered when comparing repositories (all must be lowercase)
@@ -34,8 +31,6 @@ type TransferConfigMergeCommand struct {
 	commandsUtils.TransferConfigBase
 	includeProjectsPatterns []string
 	excludeProjectsPatterns []string
-	sourceAccessManager     access.AccessServicesManager
-	targetAccessManager     access.AccessServicesManager
 }
 
 func NewTransferConfigMergeCommand(sourceServer, targetServer *config.ServerDetails) *TransferConfigMergeCommand {
@@ -58,7 +53,7 @@ func (tcmc *TransferConfigMergeCommand) SetExcludeProjectsPatterns(excludeProjec
 
 type mergeEntities struct {
 	projectsToTransfer []accessServices.Project
-	reposToTransfer    map[utils.RepoType][]string
+	reposToTransfer    map[utils.RepoType][]services.RepositoryDetails
 }
 
 type Conflict struct {
@@ -104,7 +99,7 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 		return
 	}
 	// Check if JFrog Projects supported by Source Artifactory version
-	versionErr := coreutils.ValidateMinimumVersion(coreutils.Projects, sourceArtifactoryVersion, minJFrogProjectsArtifactoryVersion)
+	versionErr := clientutils.ValidateMinimumVersion(clientutils.Projects, sourceArtifactoryVersion, commandsUtils.MinJFrogProjectsArtifactoryVersion)
 	if versionErr != nil {
 		// Projects not supported by Source Artifactory version
 		return
@@ -112,37 +107,13 @@ func (tcmc *TransferConfigMergeCommand) initServiceManagersAndValidateServers() 
 
 	projectsSupported = true
 
-	tcmc.sourceAccessManager, err = createAccessManagerAndValidateToken(tcmc.SourceServerDetails)
-	if err != nil {
+	if err = tcmc.ValidateAccessServerConnection(tcmc.SourceServerDetails, tcmc.SourceAccessManager); err != nil {
+		return
+	}
+	if err = tcmc.ValidateAccessServerConnection(tcmc.TargetServerDetails, tcmc.TargetAccessManager); err != nil {
 		return
 	}
 
-	tcmc.targetAccessManager, err = createAccessManagerAndValidateToken(tcmc.TargetServerDetails)
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func createAccessManagerAndValidateToken(serverDetails *config.ServerDetails) (accessManager access.AccessServicesManager, err error) {
-	if serverDetails.Password != "" {
-		err = fmt.Errorf("it looks like you configured the '%[1]s' instance with username and password.\n"+
-			"The transfer-config-merge command can be used with admin Access Token only.\n"+
-			"Please use the 'jf c edit %[1]s' command to configure the Access Token, and then re-run the command", serverDetails.ServerId)
-		return
-	}
-
-	manager, err := utils.CreateAccessServiceManager(serverDetails, false)
-	if err != nil {
-		return
-	}
-
-	if _, err = manager.Ping(); err != nil {
-		err = errorutils.CheckErrorf("The '%[1]s' instance Access Token is not valid. Please provide a valid access token by running the 'jf c edit %[1]s'", serverDetails.ServerId)
-		return
-	}
-	accessManager = *manager
 	return
 }
 
@@ -202,12 +173,12 @@ func (tcmc *TransferConfigMergeCommand) transferEntities(mergeEntities mergeEnti
 
 func (tcmc *TransferConfigMergeCommand) mergeProjects(conflicts *[]Conflict) (projectsToTransfer []accessServices.Project, err error) {
 	log.Info("Getting all Projects from the source ...")
-	sourceProjects, err := tcmc.sourceAccessManager.GetAllProjects()
+	sourceProjects, err := tcmc.SourceAccessManager.GetAllProjects()
 	if err != nil {
 		return
 	}
 	log.Info("Getting all Projects from the target ...")
-	targetProjects, err := tcmc.targetAccessManager.GetAllProjects()
+	targetProjects, err := tcmc.TargetAccessManager.GetAllProjects()
 	if err != nil {
 		return
 	}
@@ -272,8 +243,8 @@ func compareProjects(sourceProject, targetProject accessServices.Project) (*Conf
 	}, nil
 }
 
-func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer map[utils.RepoType][]string, err error) {
-	reposToTransfer = make(map[utils.RepoType][]string)
+func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict) (reposToTransfer map[utils.RepoType][]services.RepositoryDetails, err error) {
+	reposToTransfer = make(map[utils.RepoType][]services.RepositoryDetails)
 	sourceRepos, err := tcmc.SourceArtifactoryManager.GetAllRepositories()
 	if err != nil {
 		return
@@ -315,7 +286,7 @@ func (tcmc *TransferConfigMergeCommand) mergeRepositories(conflicts *[]Conflict)
 			}
 		} else {
 			repoType := utils.RepoTypeFromString(sourceRepo.Type)
-			reposToTransfer[repoType] = append(reposToTransfer[repoType], sourceRepo.Key)
+			reposToTransfer[repoType] = append(reposToTransfer[repoType], sourceRepo)
 		}
 	}
 	return
@@ -373,14 +344,14 @@ func compareInterfaces(first, second interface{}, filteredKeys ...string) (diff 
 func (tcmc *TransferConfigMergeCommand) transferProjectsToTarget(reposToTransfer []accessServices.Project) (err error) {
 	for _, project := range reposToTransfer {
 		log.Info(fmt.Sprintf("Transferring project '%s' ...", project.DisplayName))
-		if err = tcmc.targetAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: project}); err != nil {
+		if err = tcmc.TargetAccessManager.CreateProject(accessServices.ProjectParams{ProjectDetails: project}); err != nil {
 			return
 		}
 	}
 	return
 }
 
-func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remoteRepositoryNames []string) (remoteRepositories []interface{}, err error) {
+func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remoteRepositoriesDetails []services.RepositoryDetails) (remoteRepositories []interface{}, err error) {
 	// Decrypt source Artifactory to get remote repositories with raw text passwords
 	reactivateKeyEncryption, err := tcmc.DeactivateKeyEncryption()
 	if err != nil {
@@ -391,7 +362,11 @@ func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remot
 			err = reactivationErr
 		}
 	}()
-	return tcmc.GetAllRemoteRepositories(remoteRepositoryNames)
+	var remoteRepositoryKeys []string
+	for _, remoteRepositoryDetails := range remoteRepositoriesDetails {
+		remoteRepositoryKeys = append(remoteRepositoryKeys, remoteRepositoryDetails.Key)
+	}
+	return tcmc.GetAllRemoteRepositories(remoteRepositoryKeys)
 }
 
 type projectsMapper struct {

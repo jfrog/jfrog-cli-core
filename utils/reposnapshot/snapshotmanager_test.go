@@ -1,37 +1,48 @@
 package reposnapshot
 
 import (
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
+	"encoding/json"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
+
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 )
 
 const dummyRepoKey = "dummy-repo-local"
 
 var expectedFile = filepath.Join("testdata", dummyRepoKey)
 
-func TestLoad(t *testing.T) {
-	t.Run("repo snapshot doesn't exist", func(t *testing.T) { testLoad(t, "/path/to/file", false, CreateNewNode(".", nil)) })
-	t.Run("repo snapshot exists", func(t *testing.T) { testLoad(t, expectedFile, true, createTestSnapshotTree(t)) })
+func TestLoadDoesNotExist(t *testing.T) {
+	_, exists, err := LoadRepoSnapshotManager(dummyRepoKey, "/path/to/file")
+	assert.NoError(t, err)
+	assert.False(t, exists)
 }
 
-func testLoad(t *testing.T, snapshotPath string, expectedExists bool, expectedRoot *Node) {
-	sm, exists, err := LoadRepoSnapshotManager(dummyRepoKey, snapshotPath)
+func TestLoad(t *testing.T) {
+	sm, exists, err := LoadRepoSnapshotManager(dummyRepoKey, expectedFile)
 	assert.NoError(t, err)
-	assert.Equal(t, expectedExists, exists)
-	if expectedExists {
-		// Convert to wrapper in order to compare.
-		expectedWrapper, err := expectedRoot.convertToWrapper()
-		assert.NoError(t, err)
-		rootWrapper, err := sm.root.convertToWrapper()
-		assert.NoError(t, err)
-		assert.Equal(t, expectedWrapper, rootWrapper)
-		assert.Equal(t, snapshotPath, sm.snapshotFilePath)
-		assert.Equal(t, dummyRepoKey, sm.repoKey)
-	}
+	assert.True(t, exists)
+	// Convert to wrapper in order to compare
+	expectedRoot := createTestSnapshotTree(t)
+	expectedWrapper, err := expectedRoot.convertToWrapper()
+	assert.NoError(t, err)
+	rootWrapper, err := sm.root.convertToWrapper()
+	assert.NoError(t, err)
+
+	// Marshal json to compare strings
+	expected, err := json.Marshal(expectedWrapper)
+	assert.NoError(t, err)
+	actual, err := json.Marshal(rootWrapper)
+	assert.NoError(t, err)
+
+	// Compare
+	assert.Equal(t, clientutils.IndentJson(expected), clientutils.IndentJson(actual))
+	assert.Equal(t, expectedFile, sm.snapshotFilePath)
+	assert.Equal(t, dummyRepoKey, sm.repoKey)
 }
 
 func TestSaveToFile(t *testing.T) {
@@ -43,7 +54,7 @@ func TestSaveToFile(t *testing.T) {
 	assert.NoError(t, err)
 	actual, err := os.ReadFile(manager.snapshotFilePath)
 	assert.NoError(t, err)
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, clientutils.IndentJson(expected), clientutils.IndentJson(actual))
 }
 
 func TestNodeCompletedAndTreeCollapsing(t *testing.T) {
@@ -121,9 +132,6 @@ func TestLookUpNodeAndActualPath(t *testing.T) {
 		{"dir on root", "2", false},
 		{"complex path with separator suffix", "1/a/", false},
 		{"complex path with no separator suffix", "1/a", false},
-		{"repository provided", path.Join("test-local", "2"), true},
-		{"relative path includes root", "./2", true},
-		{"dir doesn't exist", "no/where", true},
 		{"empty path", "", true},
 	}
 
@@ -182,25 +190,9 @@ func createNodeBase(t *testing.T, name string, filesCount int, parent *Node) *No
 	node := CreateNewNode(name, parent)
 	node.NodeStatus = DoneExploring
 	for i := 0; i < filesCount; i++ {
-		assert.NoError(t, node.IncrementFilesCount())
+		assert.NoError(t, node.IncrementFilesCount(uint64(i)))
 	}
 	return node
-}
-
-func TestAddChildNode(t *testing.T) {
-	root := CreateNewNode(".", nil)
-	// Add child with no children pool.
-	addAndAssertChild(t, nil, root, CreateNewNode("no-pool", root))
-	// Add child with empty children pool.
-	addAndAssertChild(t, []*Node{}, root, CreateNewNode("empty-pool", root))
-	// Add child with pool.
-	exists := CreateNewNode("exists", root)
-	addAndAssertChild(t, []*Node{exists}, root, exists)
-}
-
-func addAndAssertChild(t *testing.T, childrenPool []*Node, root, expectedChild *Node) {
-	assert.NoError(t, root.AddChildNode(expectedChild.name, childrenPool))
-	assert.Equal(t, expectedChild, getChild(root, expectedChild.name))
 }
 
 func getChild(node *Node, childName string) *Node {

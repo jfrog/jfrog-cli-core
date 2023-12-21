@@ -34,6 +34,7 @@ type builder struct {
 	archive                 string
 	transitive              bool
 	targetPathInArchive     string
+	include                 []string
 }
 
 func NewBuilder() *builder {
@@ -185,6 +186,11 @@ func (b *builder) Transitive(transitive bool) *builder {
 	return b
 }
 
+func (b *builder) Include(include []string) *builder {
+	b.include = include
+	return b
+}
+
 func (b *builder) BuildSpec() *SpecFiles {
 	return &SpecFiles{
 		Files: []File{
@@ -218,6 +224,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				IncludeDeps:             strconv.FormatBool(b.includeDeps),
 				Symlinks:                strconv.FormatBool(b.symlinks),
 				Transitive:              strconv.FormatBool(b.transitive),
+				include:                 b.include,
 			},
 		},
 	}

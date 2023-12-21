@@ -51,7 +51,6 @@ type licenseScanTableRow struct {
 type licenseViolationTableRow struct {
 	licenseKey string `col-name:"License"`
 	severity   string `col-name:"Severity"`
-	applicable string `col-name:"Contextual\nAnalysis"`
 	// For sorting
 	severityNumValue          int
 	directDependencies        []directDependenciesTableRow `embed-table:"true"`
@@ -121,4 +120,18 @@ type cveTableRow struct {
 	id     string `col-name:"CVE"`
 	cvssV2 string `col-name:"CVSS\nv2" extended:"true"`
 	cvssV3 string `col-name:"CVSS\nv3" extended:"true"`
+}
+
+type secretsTableRow struct {
+	severity   string `col-name:"Severity"`
+	file       string `col-name:"File"`
+	lineColumn string `col-name:"Line:Column"`
+	secret     string `col-name:"Secret"`
+}
+
+type iacOrSastTableRow struct {
+	severity   string `col-name:"Severity"`
+	file       string `col-name:"File"`
+	lineColumn string `col-name:"Line:Column"`
+	finding    string `col-name:"Finding"`
 }

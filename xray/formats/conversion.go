@@ -1,6 +1,7 @@
 package formats
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -39,12 +40,11 @@ func ConvertToVulnerabilityScanTableRow(rows []VulnerabilityOrViolationRow) (tab
 	return
 }
 
-func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []licenseViolationTableRow) {
+func ConvertToLicenseViolationTableRow(rows []LicenseRow) (tableRows []licenseViolationTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseViolationTableRow{
 			licenseKey:                rows[i].LicenseKey,
 			severity:                  rows[i].Severity,
-			applicable:                rows[i].Applicable,
 			severityNumValue:          rows[i].SeverityNumValue,
 			impactedDependencyName:    rows[i].ImpactedDependencyName,
 			impactedDependencyVersion: rows[i].ImpactedDependencyVersion,
@@ -55,7 +55,7 @@ func ConvertToLicenseViolationTableRow(rows []LicenseViolationRow) (tableRows []
 	return
 }
 
-func ConvertToLicenseViolationScanTableRow(rows []LicenseViolationRow) (tableRows []licenseViolationScanTableRow) {
+func ConvertToLicenseViolationScanTableRow(rows []LicenseRow) (tableRows []licenseViolationScanTableRow) {
 	for i := range rows {
 		tableRows = append(tableRows, licenseViolationScanTableRow{
 			licenseKey:             rows[i].LicenseKey,
@@ -135,6 +135,30 @@ func ConvertToOperationalRiskViolationScanTableRow(rows []OperationalRiskViolati
 			latestVersion:          rows[i].LatestVersion,
 			riskReason:             rows[i].RiskReason,
 			eolMessage:             rows[i].EolMessage,
+		})
+	}
+	return
+}
+
+func ConvertToSecretsTableRow(rows []SourceCodeRow) (tableRows []secretsTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, secretsTableRow{
+			severity:   rows[i].Severity,
+			file:       rows[i].File,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			secret:     rows[i].Snippet,
+		})
+	}
+	return
+}
+
+func ConvertToIacOrSastTableRow(rows []SourceCodeRow) (tableRows []iacOrSastTableRow) {
+	for i := range rows {
+		tableRows = append(tableRows, iacOrSastTableRow{
+			severity:   rows[i].Severity,
+			file:       rows[i].File,
+			lineColumn: strconv.Itoa(rows[i].StartLine) + ":" + strconv.Itoa(rows[i].StartColumn),
+			finding:    rows[i].Finding,
 		})
 	}
 	return

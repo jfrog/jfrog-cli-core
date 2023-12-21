@@ -31,10 +31,12 @@ type TransferProgressMng struct {
 	speedBar *progressbar.TasksProgressBar
 	// A bar showing the estimated remaining time for the transfer
 	timeEstBar *progressbar.TasksProgressBar
+	// A bar showing the number of visited folders
+	visitedFoldersBar *progressbar.TasksProgressBar
+	// A bar showing the number of delayed artifacts in the process
+	delayedBar *progressbar.TasksProgressBar
 	// A bar showing the number of transfer failures in the process
 	errorBar *progressbar.TasksProgressBar
-	// shows a note to the user if errors exists
-	errorNote *progressbar.TasksProgressBar
 	// Current repo progress bars
 	currentRepoHeadline *mpb.Bar
 	emptyLine           *mpb.Bar
@@ -73,7 +75,6 @@ func initTransferProgressMng(allSourceLocalRepos []string, tdc *TransferFilesCom
 	transfer.timeEstBar = transfer.transferMng.NewTimeEstBar()
 	// Init global error count for the process
 	transfer.errorBar = transfer.transferMng.NewErrorBar()
-	transfer.errorNote = transfer.transferMng.NewErrorNote()
 	tdc.progressbar = &transfer
 	return nil
 }
@@ -87,6 +88,8 @@ func (t *TransferProgressMng) NewRepository(name string) {
 	}
 	t.emptyLine = t.barsMng.NewHeadlineBar("")
 	t.currentRepoHeadline = t.barsMng.NewHeadlineBarWithSpinner("Current repository: " + color.Green.Render(name))
+	t.visitedFoldersBar = t.transferMng.NewVisitedFoldersBar()
+	t.delayedBar = t.transferMng.NewDelayedBar()
 	t.transferMng.StopCurrentRepoProgressBars(false)
 }
 
@@ -206,6 +209,8 @@ func (t *TransferProgressMng) RemoveRepository() {
 	// Abort all current repository's bars
 	t.currentRepoHeadline.Abort(true)
 	t.currentRepoHeadline = nil
+	t.visitedFoldersBar.GetBar().Abort(true)
+	t.delayedBar.GetBar().Abort(true)
 	t.emptyLine.Abort(true)
 	t.emptyLine = nil
 	// Abort all phases bars
@@ -218,6 +223,19 @@ func (t *TransferProgressMng) RemoveRepository() {
 
 	// Wait a refresh rate to make sure all aborts have finished
 	time.Sleep(progressbar.ProgressRefreshRate)
+}
+
+func (t *TransferProgressMng) incNumberOfVisitedFolders() {
+	if t.ShouldDisplay() {
+		t.visitedFoldersBar.SetGeneralProgressTotal(t.visitedFoldersBar.GetTotal() + 1)
+	}
+}
+
+func (t *TransferProgressMng) changeNumberOfDelayedFiles(n int) {
+	if t.ShouldDisplay() {
+		diff := int64(n)
+		t.delayedBar.SetGeneralProgressTotal(t.delayedBar.GetTotal() + diff)
+	}
 }
 
 func (t *TransferProgressMng) changeNumberOfFailuresBy(n int) {
@@ -244,7 +262,7 @@ func (t *TransferProgressMng) StopGracefully() {
 }
 
 func (t *TransferProgressMng) abortMetricsBars() {
-	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.errorBar, t.errorNote, t.speedBar, t.timeEstBar, t.totalSize} {
+	for _, barPtr := range []*progressbar.TasksProgressBar{t.runningTime, t.workingThreads, t.visitedFoldersBar, t.delayedBar, t.errorBar, t.speedBar, t.timeEstBar, t.totalSize} {
 		if barPtr != nil {
 			barPtr.GetBar().Abort(true)
 		}

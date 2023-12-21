@@ -3,7 +3,7 @@ package yarn
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,9 +22,11 @@ import (
 )
 
 const (
-	YarnrcFileName           = ".yarnrc.yml"
-	YarnrcBackupFileName     = "jfrog.yarnrc.backup"
-	NpmScopesConfigName      = "npmScopes"
+	YarnrcFileName       = ".yarnrc.yml"
+	YarnrcBackupFileName = "jfrog.yarnrc.backup"
+	NpmScopesConfigName  = "npmScopes"
+	YarnLockFileName     = "yarn.lock"
+	//#nosec G101
 	yarnNpmRegistryServerEnv = "YARN_NPM_REGISTRY_SERVER"
 	yarnNpmAuthIndent        = "YARN_NPM_AUTH_IDENT"
 	yarnNpmAlwaysAuth        = "YARN_NPM_ALWAYS_AUTH"
@@ -59,25 +61,24 @@ func (yc *YarnCommand) SetArgs(args []string) *YarnCommand {
 	return yc
 }
 
-func (yc *YarnCommand) Run() error {
+func (yc *YarnCommand) Run() (err error) {
 	log.Info("Running Yarn...")
-	var err error
 	if err = yc.validateSupportedCommand(); err != nil {
-		return err
+		return
 	}
 
 	if err = yc.readConfigFile(); err != nil {
-		return err
+		return
 	}
 
 	var filteredYarnArgs []string
 	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractYarnOptionsFromArgs(yc.yarnArgs)
 	if err != nil {
-		return err
+		return
 	}
 
 	if err = yc.preparePrerequisites(); err != nil {
-		return err
+		return
 	}
 
 	var missingDepsChan chan string
@@ -85,7 +86,7 @@ func (yc *YarnCommand) Run() error {
 	if yc.collectBuildInfo {
 		missingDepsChan, err = yc.prepareBuildInfo()
 		if err != nil {
-			return err
+			return
 		}
 		go func() {
 			for depId := range missingDepsChan {
@@ -94,19 +95,18 @@ func (yc *YarnCommand) Run() error {
 		}()
 	}
 
-	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), filepath.Join(yc.workingDirectory, YarnrcBackupFileName))
+	restoreYarnrcFunc, err := commandUtils.BackupFile(filepath.Join(yc.workingDirectory, YarnrcFileName), YarnrcBackupFileName)
 	if err != nil {
-		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
+		return errors.Join(err, restoreYarnrcFunc())
 	}
-
 	backupEnvMap, err := ModifyYarnConfigurations(yc.executablePath, yc.registry, yc.npmAuthIdent)
 	if err != nil {
-		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
+		return errors.Join(err, restoreYarnrcFunc())
 	}
 
 	yc.buildInfoModule.SetArgs(filteredYarnArgs)
 	if err = yc.buildInfoModule.Build(); err != nil {
-		return RestoreConfigurationsAndError(nil, restoreYarnrcFunc, err)
+		return errors.Join(err, restoreYarnrcFunc())
 	}
 
 	if yc.collectBuildInfo {
@@ -115,11 +115,11 @@ func (yc *YarnCommand) Run() error {
 	}
 
 	if err = RestoreConfigurationsFromBackup(backupEnvMap, restoreYarnrcFunc); err != nil {
-		return err
+		return
 	}
 
 	log.Info("Yarn finished successfully.")
-	return nil
+	return
 }
 
 func (yc *YarnCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -161,13 +161,6 @@ func (yc *YarnCommand) readConfigFile() error {
 	}
 	yc.repo = resolverParams.TargetRepo()
 	yc.serverDetails, err = resolverParams.ServerDetails()
-	return err
-}
-
-func RestoreConfigurationsAndError(envVarsBackup map[string]*string, restoreNpmrcFunc func() error, err error) error {
-	if restoreErr := RestoreConfigurationsFromBackup(envVarsBackup, restoreNpmrcFunc); restoreErr != nil {
-		return fmt.Errorf("two errors occurred:\n%s\n%s", restoreErr.Error(), err.Error())
-	}
 	return err
 }
 

@@ -1,23 +1,24 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
-	"path/filepath"
-	"reflect"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
+	"path/filepath"
+	"reflect"
 )
 
 const (
 	ProjectConfigResolverPrefix = "resolver"
 	ProjectConfigDeployerPrefix = "deployer"
 	ProjectConfigRepo           = "repo"
+	ProjectConfigReleaseRepo    = "releaseRepo"
 	ProjectConfigServerId       = "serverId"
 )
 
@@ -38,6 +39,11 @@ const (
 	Terraform
 )
 
+// Associates a technology with another of a different type in the structure.
+// Docker is not present, as there is no docker-config command and, consequently, no docker.yaml file we need to operate on.
+var techType = map[coreutils.Technology]ProjectType{coreutils.Maven: Maven, coreutils.Gradle: Gradle, coreutils.Npm: Npm, coreutils.Yarn: Yarn, coreutils.Go: Go, coreutils.Pip: Pip,
+	coreutils.Pipenv: Pipenv, coreutils.Poetry: Poetry, coreutils.Nuget: Nuget, coreutils.Dotnet: Dotnet}
+
 var ProjectTypes = []string{
 	"go",
 	"pip",
@@ -51,6 +57,14 @@ var ProjectTypes = []string{
 	"dotnet",
 	"build",
 	"terraform",
+}
+
+type MissingResolverErr struct {
+	message string
+}
+
+func (mre *MissingResolverErr) Error() string {
+	return mre.message
 }
 
 func (projectType ProjectType) String() string {
@@ -112,22 +126,21 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (repoConfig *RepositoryConfig, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%s\nPlease run 'jf %s-config' with your %s repository information",
-				err.Error(),
-				vConfig.GetString("type"),
-				prefix,
-			)
+			err = errors.Join(err, fmt.Errorf("please run 'jf %s-config' with your %s repository information", vConfig.GetString("type"), prefix))
 		}
 	}()
 	if !vConfig.IsSet(prefix) {
-		err = errorutils.CheckErrorf("the %s repository is missing from the config file (%s)", prefix, configFilePath)
+		err = &MissingResolverErr{fmt.Sprintf("the %s repository is missing from the config file (%s)", prefix, configFilePath)}
 		return
 	}
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))
 	repo := vConfig.GetString(prefix + "." + ProjectConfigRepo)
 	if repo == "" {
-		err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
-		return
+		// In the maven.yaml config, there's a resolver repository field named "releaseRepo"
+		if repo = vConfig.GetString(prefix + "." + ProjectConfigReleaseRepo); repo == "" {
+			err = errorutils.CheckErrorf("missing repository for %s within %s", prefix, configFilePath)
+			return
+		}
 	}
 	serverId := vConfig.GetString(prefix + "." + ProjectConfigServerId)
 	if serverId == "" {
@@ -186,4 +199,55 @@ func ReadResolutionOnlyConfiguration(confFilePath string) (*RepositoryConfig, er
 		return nil, err
 	}
 	return GetRepoConfigByPrefix(confFilePath, ProjectConfigResolverPrefix, vConfig)
+}
+
+// Verifies the existence of depsRepo. If it doesn't exist, it searches for a configuration file based on the technology type. If found, it assigns depsRepo in the AuditParams.
+func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Technology) (err error) {
+	if params.DepsRepo() != "" || params.IgnoreConfigFile() {
+		return
+	}
+
+	configFilePath, exists, err := GetProjectConfFilePath(techType[tech])
+	if err != nil {
+		err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+		return
+	}
+	if !exists {
+		// Nuget and Dotnet are identified similarly in the detection process. To prevent redundancy, Dotnet is filtered out earlier in the process, focusing solely on detecting Nuget.
+		// Consequently, it becomes necessary to verify the presence of dotnet.yaml when Nuget detection occurs.
+		if tech == coreutils.Nuget {
+			configFilePath, exists, err = GetProjectConfFilePath(techType[coreutils.Dotnet])
+			if err != nil {
+				err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+				return
+			}
+			if !exists {
+				log.Debug(fmt.Sprintf("No %s.yaml nor %s.yaml configuration file was found. Resolving dependencies from %s default registry", coreutils.Nuget.String(), coreutils.Dotnet.String(), tech.String()))
+				return
+			}
+		} else {
+			log.Debug(fmt.Sprintf("No %s.yaml configuration file was found. Resolving dependencies from %s default registry", tech.String(), tech.String()))
+			return
+		}
+	}
+
+	repoConfig, err := ReadResolutionOnlyConfiguration(configFilePath)
+	if err != nil {
+		var missingResolverErr *MissingResolverErr
+		if !errors.As(err, &missingResolverErr) {
+			err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
+			return
+		}
+		// When the resolver repository is absent from the configuration file, ReadResolutionOnlyConfiguration throws an error.
+		// However, this situation isn't considered an error here as the resolver repository isn't mandatory for constructing the dependencies tree.
+		err = nil
+	}
+
+	// If the resolver repository doesn't exist and triggers a MissingResolverErr in ReadResolutionOnlyConfiguration, the repoConfig becomes nil. In this scenario, there is no depsRepo to set, nor is there a necessity to do so.
+	if repoConfig != nil {
+		log.Debug("Using resolver config from", configFilePath)
+		params.SetServerDetails(repoConfig.serverDetails)
+		params.SetDepsRepo(repoConfig.targetRepo)
+	}
+	return
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // The interval in which to save the state and run transfer files to the file system.
@@ -60,6 +61,14 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 	return ts.unlockStateManager()
 }
 
+func (ts *TransferStateManager) SetStartTimestamp(startTimestamp time.Time) {
+	ts.startTimestamp = startTimestamp
+}
+
+func (ts *TransferStateManager) GetStartTimestamp() time.Time {
+	return ts.startTimestamp
+}
+
 // Set the repository state.
 // repoKey        - Repository key
 // totalSizeBytes - Repository size in bytes
@@ -67,13 +76,26 @@ func (ts *TransferStateManager) UnlockTransferStateManager() error {
 // buildInfoRepo  - True if build info repository
 // reset          - Delete the repository's previous transfer info
 func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, totalFiles int64, buildInfoRepo, reset bool) error {
-	err := ts.TransferState.Action(func(state *TransferState) error {
+	var transferredFiles uint32 = 0
+	var transferredSizeBytes uint64 = 0
+	err := ts.Action(func(*TransferState) error {
 		transferState, repoTransferSnapshot, err := getTransferStateAndSnapshot(repoKey, reset)
 		if err != nil {
 			return err
 		}
 		transferState.CurrentRepo.Phase1Info.TotalSizeBytes = totalSizeBytes
 		transferState.CurrentRepo.Phase1Info.TotalUnits = totalFiles
+
+		if repoTransferSnapshot != nil && repoTransferSnapshot.loadedFromSnapshot {
+			transferredFiles, transferredSizeBytes, err = repoTransferSnapshot.snapshotManager.CalculateTransferredFilesAndSize()
+			if err != nil {
+				return err
+			}
+			log.Info("Calculated transferred files from previous run:", transferredFiles)
+			log.Info("Calculated transferred bytes from previous run:", transferredSizeBytes)
+			transferState.CurrentRepo.Phase1Info.TransferredUnits = int64(transferredFiles)
+			transferState.CurrentRepo.Phase1Info.TransferredSizeBytes = int64(transferredSizeBytes)
+		}
 
 		ts.TransferState = transferState
 		ts.repoTransferSnapshot = repoTransferSnapshot
@@ -82,12 +104,13 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 	if err != nil {
 		return err
 	}
-	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+	return ts.action(func(transferRunStatus *TransferRunStatus) error {
 		transferRunStatus.CurrentRepoKey = repoKey
 		transferRunStatus.BuildInfoRepo = buildInfoRepo
+		transferRunStatus.VisitedFolders = 0
 
-		transferRunStatus.OverallTransfer.TransferredUnits += ts.CurrentRepo.Phase1Info.TransferredUnits
-		transferRunStatus.OverallTransfer.TransferredSizeBytes += ts.CurrentRepo.Phase1Info.TransferredSizeBytes
+		transferRunStatus.OverallTransfer.TransferredUnits += int64(transferredFiles)
+		transferRunStatus.OverallTransfer.TransferredSizeBytes += int64(transferredSizeBytes)
 		return nil
 	})
 }
@@ -113,18 +136,19 @@ func (ts *TransferStateManager) SetRepoFullTransferCompleted() error {
 // Increasing Transferred Diff files (modified files) and SizeByBytes value in suitable repository progress state
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	err := ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase1Info.TransferredSizeBytes += chunkTotalSizeInBytes
-		state.CurrentRepo.Phase1Info.TransferredUnits += chunkTotalFiles
+		atomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&state.CurrentRepo.Phase1Info.TransferredUnits, chunkTotalFiles)
 		return nil
 	})
 	if err != nil {
 		return err
 	}
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		transferRunStatus.OverallTransfer.TransferredSizeBytes += chunkTotalSizeInBytes
-		transferRunStatus.OverallTransfer.TransferredUnits += chunkTotalFiles
+		atomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&transferRunStatus.OverallTransfer.TransferredUnits, chunkTotalFiles)
+
 		if transferRunStatus.BuildInfoRepo {
-			transferRunStatus.OverallBiFiles.TransferredUnits += chunkTotalFiles
+			atomicallyAddInt64(&transferRunStatus.OverallBiFiles.TransferredUnits, chunkTotalFiles)
 		}
 		return nil
 	})
@@ -132,16 +156,16 @@ func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase1(chunkTotalFiles
 
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase2(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase2Info.TransferredSizeBytes += chunkTotalSizeInBytes
-		state.CurrentRepo.Phase2Info.TransferredUnits += chunkTotalFiles
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TransferredUnits, chunkTotalFiles)
 		return nil
 	})
 }
 
 func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSize int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase2Info.TotalSizeBytes += totalSize
-		state.CurrentRepo.Phase2Info.TotalUnits += filesNumber
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalSizeBytes, totalSize)
+		atomicallyAddInt64(&state.CurrentRepo.Phase2Info.TotalUnits, filesNumber)
 		return nil
 	})
 }
@@ -149,8 +173,10 @@ func (ts *TransferStateManager) IncTotalSizeAndFilesPhase2(filesNumber, totalSiz
 // Set relevant information of files and storage we need to transfer in phase3
 func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSize int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase3Info.TotalSizeBytes = totalSize
-		state.CurrentRepo.Phase3Info.TotalUnits = filesNumber
+		state.CurrentRepo.Phase3Info.TransferredUnits = 0
+		state.CurrentRepo.Phase3Info.TransferredSizeBytes = 0
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalSizeBytes, totalSize)
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TotalUnits, filesNumber)
 		return nil
 	})
 }
@@ -158,8 +184,8 @@ func (ts *TransferStateManager) SetTotalSizeAndFilesPhase3(filesNumber, totalSiz
 // Increase transferred storage and files in phase 3
 func (ts *TransferStateManager) IncTransferredSizeAndFilesPhase3(chunkTotalFiles, chunkTotalSizeInBytes int64) error {
 	return ts.TransferState.Action(func(state *TransferState) error {
-		state.CurrentRepo.Phase3Info.TransferredSizeBytes += chunkTotalSizeInBytes
-		state.CurrentRepo.Phase3Info.TransferredUnits += chunkTotalFiles
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredSizeBytes, chunkTotalSizeInBytes)
+		atomicallyAddInt64(&state.CurrentRepo.Phase3Info.TransferredUnits, chunkTotalFiles)
 		return nil
 	})
 }
@@ -263,13 +289,23 @@ func (ts *TransferStateManager) GetDiffHandlingRange() (start, end time.Time, er
 	})
 }
 
-func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint, increase bool) error {
+func (ts *TransferStateManager) IncVisitedFolders() error {
+	return ts.action(func(transferRunStatus *TransferRunStatus) error {
+		atomicallyAddUint64(&transferRunStatus.VisitedFolders, 1, true)
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) ChangeDelayedFilesCountBy(count uint64, increase bool) error {
 	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
-		if increase {
-			transferRunStatus.TransferFailures += count
-		} else {
-			transferRunStatus.TransferFailures -= count
-		}
+		atomicallyAddUint64(&transferRunStatus.DelayedFiles, count, increase)
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) ChangeTransferFailureCountBy(count uint64, increase bool) error {
+	return ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
+		atomicallyAddUint64(&transferRunStatus.TransferFailures, count, increase)
 		return nil
 	})
 }
@@ -298,6 +334,20 @@ func (ts *TransferStateManager) SetWorkingThreads(workingThreads int) error {
 func (ts *TransferStateManager) GetWorkingThreads() (workingThreads int, err error) {
 	return workingThreads, ts.TransferRunStatus.action(func(transferRunStatus *TransferRunStatus) error {
 		workingThreads = transferRunStatus.WorkingThreads
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) SetStaleChunks(staleChunks []StaleChunks) error {
+	return ts.action(func(transferRunStatus *TransferRunStatus) error {
+		transferRunStatus.StaleChunks = staleChunks
+		return nil
+	})
+}
+
+func (ts *TransferStateManager) GetStaleChunks() (staleChunks []StaleChunks, err error) {
+	return staleChunks, ts.action(func(transferRunStatus *TransferRunStatus) error {
+		staleChunks = transferRunStatus.StaleChunks
 		return nil
 	})
 }
@@ -347,21 +397,39 @@ func (ts *TransferStateManager) tryLockStateManager() error {
 	return nil
 }
 
-func getStartTimestamp() (int64, error) {
+func (ts *TransferStateManager) Running() (running bool, err error) {
 	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
 	if err != nil {
-		return 0, err
+		return false, err
 	}
-	return lock.GetLastLockTimestamp(lockDirPath)
+	var startTimestamp int64
+	startTimestamp, err = lock.GetLastLockTimestamp(lockDirPath)
+	return err == nil && startTimestamp != 0, err
 }
 
-func GetRunningTime() (runningTime string, isRunning bool, err error) {
-	startTimestamp, err := getStartTimestamp()
-	if err != nil || startTimestamp == 0 {
-		return
+func (ts *TransferStateManager) InitStartTimestamp() (running bool, err error) {
+	if !ts.startTimestamp.IsZero() {
+		return true, nil
 	}
-	runningSecs := int64(time.Since(time.Unix(0, startTimestamp)).Seconds())
-	return secondsToLiteralTime(runningSecs, ""), true, nil
+	lockDirPath, err := coreutils.GetJfrogTransferLockDir()
+	if err != nil {
+		return false, err
+	}
+	var startTimestamp int64
+	startTimestamp, err = lock.GetLastLockTimestamp(lockDirPath)
+	if err != nil || startTimestamp == 0 {
+		return false, err
+	}
+	ts.startTimestamp = time.Unix(0, startTimestamp)
+	return true, nil
+}
+
+func (ts *TransferStateManager) GetRunningTimeString() (runningTime string) {
+	if ts.startTimestamp.IsZero() {
+		return ""
+	}
+	runningSecs := int64(time.Since(ts.startTimestamp).Seconds())
+	return SecondsToLiteralTime(runningSecs, "")
 }
 
 func UpdateChunkInState(stateManager *TransferStateManager, chunk *api.ChunkStatus) (err error) {

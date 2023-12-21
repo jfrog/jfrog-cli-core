@@ -6,7 +6,7 @@
                     "name": "JFrog Applicability Scanner",
                     "rules": [
                         {
-                            "id": "applic_CVE-2021-3807",
+                            "id": "applic_testCve2",
                             "fullDescription": {
                                 "text": "The scanner checks whether the vulnerable function `ansi-regex` is called.",
                                 "markdown": "The scanner checks whether the vulnerable function `ansi-regex` is called."
@@ -17,7 +17,7 @@
                             }
                         },
                         {
-                            "id": "applic_CVE-2021-3918",
+                            "id": "applic_testCve3",
                             "fullDescription": {
                                 "text": "The scanner checks whether any of the following vulnerable functions are called:\n\n* `json-schema.validate` with external input to its 1st (`instance`) argument.\n* `json-schema.checkPropertyChange` with external input to its 2nd (`schema`) argument.",
                                 "markdown": "The scanner checks whether any of the following vulnerable functions are called:\n\n* `json-schema.validate` with external input to its 1st (`instance`) argument.\n* `json-schema.checkPropertyChange` with external input to its 2nd (`schema`) argument."
@@ -25,6 +25,39 @@
                             "name": "CVE-2021-3918",
                             "shortDescription": {
                                 "text": "Scanner for CVE-2021-3918"
+                            }
+                        },
+                        {
+                            "id": "applic_testCve4",
+                            "fullDescription": {
+                                "text": "The scanner checks whether the vulnerable function `ansi-regex` is called.",
+                                "markdown": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                            },
+                            "name": "CVE-2021-3807",
+                            "shortDescription": {
+                                "text": "Scanner for CVE-2021-3807"
+                            }
+                        },
+                        {
+                            "id": "applic_testCve5",
+                            "fullDescription": {
+                                "text": "The scanner checks whether any of the following vulnerable functions are called:\n\n* `json-schema.validate` with external input to its 1st (`instance`) argument.\n* `json-schema.checkPropertyChange` with external input to its 2nd (`schema`) argument.",
+                                "markdown": "The scanner checks whether any of the following vulnerable functions are called:\n\n* `json-schema.validate` with external input to its 1st (`instance`) argument.\n* `json-schema.checkPropertyChange` with external input to its 2nd (`schema`) argument."
+                            },
+                            "name": "CVE-2021-3918",
+                            "shortDescription": {
+                                "text": "Scanner for CVE-2021-3918"
+                            }
+                        },
+                        {
+                            "id": "applic_testCve1",
+                            "fullDescription": {
+                                "text": "The scanner checks whether the vulnerable function `ansi-regex` is called.",
+                                "markdown": "The scanner checks whether the vulnerable function `ansi-regex` is called."
+                            },
+                            "name": "CVE-2021-3807",
+                            "shortDescription": {
+                                "text": "Scanner for CVE-2021-3807"
                             }
                         }
                     ],

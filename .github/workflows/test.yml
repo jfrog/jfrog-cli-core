@@ -8,11 +8,11 @@ on:
   pull_request:
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        os: [ ubuntu, windows, macos ]
     env:
       GOPROXY: direct
       GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -50,9 +50,6 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-
-      - name: Lint
-        run: go vet ./...
 
       - name: Tests
         run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0 -race

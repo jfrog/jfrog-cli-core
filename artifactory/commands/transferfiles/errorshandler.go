@@ -11,7 +11,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
-	"path/filepath"
+	"path"
 	"time"
 )
 
@@ -42,9 +42,7 @@ type TransferErrorsMng struct {
 type errorWriter struct {
 	writer     *content.ContentWriter
 	errorCount int
-	// In case we have multiple errors files - we index them
-	fileIndex int
-	filePath  string
+	filePath   string
 }
 
 type errorWriterMng struct {
@@ -116,7 +114,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 	if err != nil {
 		return err
 	}
-	writerRetry, retryFilePath, err := mng.newContentWriter(retryablePath, 0)
+	writerRetry, retryFilePath, err := mng.newUniqueContentWriter(retryablePath)
 	if err != nil {
 		return err
 	}
@@ -126,14 +124,14 @@ func (mng *TransferErrorsMng) start() (err error) {
 			err = e
 		}
 	}()
-	writerMng.retryable = errorWriter{writer: writerRetry, fileIndex: 0, filePath: retryFilePath}
+	writerMng.retryable = errorWriter{writer: writerRetry, filePath: retryFilePath}
 	// Init the content writer which is responsible for writing 'skipped errors' into files.
 	// In the next run we won't retry and upload those files.
 	skippedPath, err := getJfrogTransferRepoSkippedDir(mng.repoKey)
 	if err != nil {
 		return err
 	}
-	writerSkip, skipFilePath, err := mng.newContentWriter(skippedPath, 0)
+	writerSkip, skipFilePath, err := mng.newUniqueContentWriter(skippedPath)
 	if err != nil {
 		return err
 	}
@@ -143,7 +141,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 			err = e
 		}
 	}()
-	writerMng.skipped = errorWriter{writer: writerSkip, fileIndex: 0, filePath: skipFilePath}
+	writerMng.skipped = errorWriter{writer: writerSkip, filePath: skipFilePath}
 	mng.errorWriterMng = writerMng
 
 	// Read errors from channel and write them to files.
@@ -156,17 +154,22 @@ func (mng *TransferErrorsMng) start() (err error) {
 	return
 }
 
-func (mng *TransferErrorsMng) newContentWriter(dirPath string, index int) (*content.ContentWriter, string, error) {
+func (mng *TransferErrorsMng) newUniqueContentWriter(dirPath string) (*content.ContentWriter, string, error) {
 	writer, err := content.NewContentWriter("errors", true, false)
 	if err != nil {
 		return nil, "", err
 	}
-	errorsFilePath := filepath.Join(dirPath, getErrorsFileName(mng.repoKey, mng.phaseId, mng.phaseStartTime, index))
+	errorsFilePath, err := getUniqueErrorOrDelayFilePath(dirPath, func() string {
+		return getErrorsFileNamePrefix(mng.repoKey, mng.phaseId, mng.phaseStartTime)
+	})
+	if err != nil {
+		return nil, "", err
+	}
 	return writer, errorsFilePath, nil
 }
 
-func getErrorsFileName(repoKey string, phaseId int, phaseStartTime string, index int) string {
-	return fmt.Sprintf("%s-%d-%s-%d.json", repoKey, phaseId, phaseStartTime, index)
+func getErrorsFileNamePrefix(repoKey string, phaseId int, phaseStartTime string) string {
+	return fmt.Sprintf("%s-%d-%s", repoKey, phaseId, phaseStartTime)
 }
 
 func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusResponse) error {
@@ -187,7 +190,7 @@ func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusRespon
 }
 
 func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatusResponse) error {
-	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
+	logWritingArtifact(e, mng.errorWriterMng.skipped.filePath)
 	mng.errorWriterMng.skipped.writer.Write(e)
 	mng.errorWriterMng.skipped.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file
@@ -197,12 +200,11 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatu
 			return err
 		}
 		// Initialize variables for new errors file
-		mng.errorWriterMng.skipped.fileIndex++
 		dirPath, err := getJfrogTransferRepoSkippedDir(mng.repoKey)
 		if err != nil {
 			return err
 		}
-		mng.errorWriterMng.skipped.writer, mng.errorWriterMng.skipped.filePath, err = mng.newContentWriter(dirPath, mng.errorWriterMng.skipped.fileIndex)
+		mng.errorWriterMng.skipped.writer, mng.errorWriterMng.skipped.filePath, err = mng.newUniqueContentWriter(dirPath)
 		if err != nil {
 			return err
 		}
@@ -212,7 +214,7 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatu
 }
 
 func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadStatusResponse) error {
-	log.Debug(fmt.Sprintf("write %s to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
+	logWritingArtifact(e, mng.errorWriterMng.retryable.filePath)
 	mng.errorWriterMng.retryable.writer.Write(e)
 	mng.errorWriterMng.retryable.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file
@@ -222,18 +224,28 @@ func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadSta
 			return err
 		}
 		// Initialize variables for new errors file
-		mng.errorWriterMng.retryable.fileIndex++
 		dirPath, err := getJfrogTransferRepoRetryableDir(mng.repoKey)
 		if err != nil {
 			return err
 		}
-		mng.errorWriterMng.retryable.writer, mng.errorWriterMng.retryable.filePath, err = mng.newContentWriter(dirPath, mng.errorWriterMng.retryable.fileIndex)
+		mng.errorWriterMng.retryable.writer, mng.errorWriterMng.retryable.filePath, err = mng.newUniqueContentWriter(dirPath)
 		if err != nil {
 			return err
 		}
 		mng.errorWriterMng.retryable.errorCount = 0
 	}
 	return nil
+}
+
+func logWritingArtifact(e ExtendedFileUploadStatusResponse, errorsFilePath string) {
+	if log.GetLogger().GetLogLevel() != log.DEBUG {
+		return
+	}
+	msg := fmt.Sprintf("Writing artifact '%s' to errors file '%s'.", path.Join(e.Repo, e.Path, e.Name), errorsFilePath)
+	if e.Reason != "" {
+		msg += fmt.Sprintf(" Reason: '%s'.", e.Reason)
+	}
+	log.Debug(msg)
 }
 
 func (writerMng *errorWriter) closeWriter() error {

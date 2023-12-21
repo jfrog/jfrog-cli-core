@@ -23,7 +23,8 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
-	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -117,7 +118,7 @@ func testValidateDataTransferPluginMinimumVersion(t *testing.T, curVersion strin
 	pluginVersion = curVersion
 	err := getAndValidateDataTransferPlugin(srcPluginManager)
 	if errorExpected {
-		assert.EqualError(t, err, coreutils.ValidateMinimumVersion(coreutils.DataTransfer, curVersion, dataTransferPluginMinVersion).Error())
+		assert.EqualError(t, err, clientutils.ValidateMinimumVersion(clientutils.DataTransfer, curVersion, dataTransferPluginMinVersion).Error())
 		return
 	}
 	assert.NoError(t, err)
@@ -202,7 +203,8 @@ func TestUploadChunkAndPollUploads(t *testing.T) {
 
 // Sends chunk to upload, polls on chunk three times - once when it is still in progress, once after done received and once to notify back to the source.
 func uploadChunkAndPollTwice(t *testing.T, phaseBase *phaseBase, fileSample api.FileRepresentation) {
-	curThreads = 8
+	curChunkUploaderThreads = coreUtils.DefaultThreads
+	curChunkBuilderThreads = coreUtils.DefaultThreads
 	uploadChunksChan := make(chan UploadedChunk, 3)
 	doneChan := make(chan bool, 1)
 	var runWaitGroup sync.WaitGroup
@@ -319,7 +321,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 		case "/api/storageinfo":
 			// Response for GetStorageInfo
 			w.WriteHeader(http.StatusOK)
-			response := &clientUtils.StorageInfo{RepositoriesSummaryList: []clientUtils.RepositorySummary{
+			response := &artifactoryUtils.StorageInfo{RepositoriesSummaryList: []artifactoryUtils.RepositorySummary{
 				{RepoKey: "repo-1"}, {RepoKey: "repo-2"},
 				{RepoKey: "federated-repo-1"}, {RepoKey: "federated-repo-2"},
 				{RepoKey: "artifactory-build-info", PackageType: "BuildInfo"}, {RepoKey: "proj-build-info", PackageType: "BuildInfo"}},
@@ -339,7 +341,8 @@ func TestGetAllLocalRepositories(t *testing.T) {
 		case "/api/repositories?type=federated&packageType=":
 			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
-			response := &[]services.RepositoryDetails{{Key: "federated-repo-1"}, {Key: "federated-repo-2"}}
+			// We add a build info repository to the response to cover cases whereby a federated build-info repository is returned
+			response := &[]services.RepositoryDetails{{Key: "federated-repo-1"}, {Key: "federated-repo-2"}, {Key: "proj-build-info"}}
 			bytes, err := json.Marshal(response)
 			assert.NoError(t, err)
 			_, err = w.Write(bytes)
@@ -425,8 +428,7 @@ func getSampleChunkStatus() api.UploadChunksStatusResponse {
 func TestCheckChunkStatusSync(t *testing.T) {
 	chunkStatus := getSampleChunkStatus()
 	manager := ChunksLifeCycleManager{
-		nodeToChunksMap: map[nodeId]map[api.ChunkId]UploadedChunkData{},
-		totalChunks:     2,
+		nodeToChunksMap: map[api.NodeId]map[api.ChunkId]UploadedChunkData{},
 	}
 	manager.nodeToChunksMap[nodeIdForTest] = map[api.ChunkId]UploadedChunkData{}
 	manager.nodeToChunksMap[nodeIdForTest][firstUuidTokenForTest] = UploadedChunkData{}

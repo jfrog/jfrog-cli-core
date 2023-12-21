@@ -16,10 +16,10 @@ const (
 	GavPackageTypeIdentifier = "gav://"
 )
 
-func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]string, error) {
+func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	depTreeParams := &DepTreeParams{
 		UseWrapper: params.UseWrapper(),
@@ -58,39 +58,39 @@ type depTreeNode struct {
 	Children []string `json:"children"`
 }
 
-// Reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
+// Reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a flat list of dependencies
+// Additionally, a slice of GraphNode structs that contains each dependency with it direct children is returned (this is required for constructing the impact paths of the vulnerable dependencies in a later stage).
 // It takes the output of the plugin's run (which is a byte representation of a list of paths of the output files, separated by newlines) as input.
-func getFlatGraphFromDepTree(outputFilePaths string) (uniqueDeps []string, err error) {
+func getFlatGraphFromDepTree(outputFilePaths string) (dependenciesWithChildren []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	modules, err := parseDepTreeFiles(outputFilePaths)
 	if err != nil {
 		return
 	}
-	//var depsGraph []*xrayUtils.GraphNode
 	uniqueDepsSet := datastructures.MakeSet[string]()
 	for _, moduleTree := range modules {
-		directDepId := GavPackageTypeIdentifier + moduleTree.Root // TODO after checks put it straight to the set
-		/*
-			directDependency := &xrayUtils.GraphNode{
-				Id:    directDepId,
+		/* TODO put back if its relevant to split dependencies by modules. if so add whatever created below to 'moduleDependency' and then add 'moduleDependency' to  dependenciesWithChildren
+		moduleDepId := GavPackageTypeIdentifier + moduleTree.Root
+		moduleDependency := &xrayUtils.GraphNode{
+			Id:    moduleDepId,
+			Nodes: []*xrayUtils.GraphNode{},
+		}
+		uniqueDepsSet.Add(moduleDepId)
+		*/
+
+		for depName, depNodes := range moduleTree.Nodes {
+			depId := GavPackageTypeIdentifier + depName
+			uniqueDepsSet.Add(depId)
+			curDependency := &xrayUtils.GraphNode{
+				Id:    depId,
 				Nodes: []*xrayUtils.GraphNode{},
 			}
-
-		*/
-
-		uniqueDepsSet.Add(directDepId)
-
-		// TODO VERIFY we cover here deps with deeper dependencies and for multi-module
-		for childName := range moduleTree.Nodes {
-			childDepId := GavPackageTypeIdentifier + childName // TODO after checks put it straight to the set
-			uniqueDepsSet.Add(childDepId)
+			for _, childName := range depNodes.Children {
+				childId := GavPackageTypeIdentifier + childName
+				curDependency.Nodes = append(curDependency.Nodes, &xrayUtils.GraphNode{Id: childId})
+			}
+			dependenciesWithChildren = append(dependenciesWithChildren, curDependency)
 		}
-
-		/*
-			populateDependencyTree(directDependency, moduleTree.Root, moduleTree, uniqueDepsSet)
-			depsGraph = append(depsGraph, directDependency)
-
-		*/
-
+		//dependenciesWithChildren = append(dependenciesWithChildren, directDependency)
 	}
 	uniqueDeps = uniqueDepsSet.ToSlice()
 	return

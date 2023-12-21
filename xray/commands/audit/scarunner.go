@@ -171,9 +171,10 @@ func runScaWithTech(tech coreutils.Technology, params *AuditParams, serverDetail
 	// Impacted paths will be constructed for the vulnerable dependencies only
 	if tech == coreutils.Gradle || tech == coreutils.Maven {
 		//TODO for Gradle and Maven build the "full tree" (== impact paths to vulnerable deps) here since fullDependencyTrees == nil!!!
-
+		techResults = java.BuildJavaImpactedPathsForScanResponse(techResults)
+	} else {
+		techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
 	}
-	techResults = sca.BuildImpactPathsForScanResponse(techResults, fullDependencyTrees)
 	return
 }
 
@@ -224,9 +225,11 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 	startTime := time.Now()
 	switch tech {
 	case coreutils.Maven, coreutils.Gradle:
-		// For Gradle and Maven we create only a flat tree at this point. The Impacted paths will be created only upon the vulnerable dependencies after the scan
-		uniqueDeps, err = java.BuildDependencyTree(params, tech)
-		panic("stop")
+		// For Gradle and Maven we create only a flat tree at this point. The Impacted paths will be created only for vulnerable dependencies after the scan
+		var dependenciesWithChildren []*xrayCmdUtils.GraphNode
+		dependenciesWithChildren, uniqueDeps, err = java.BuildDependencyTree(params, tech)
+		// fullDependencyTrees will contain dependencies names and their children's names ONLY, without the actual full dependencies graph
+		fullDependencyTrees = dependenciesWithChildren
 	case coreutils.Npm:
 		fullDependencyTrees, uniqueDeps, err = npm.BuildDependencyTree(params)
 	case coreutils.Yarn:

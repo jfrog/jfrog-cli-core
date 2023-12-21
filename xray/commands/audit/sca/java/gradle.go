@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -55,14 +56,14 @@ type gradleDepTreeManager struct {
 	DepTreeManager
 }
 
-func buildFlatGradleDependencyTree(params *DepTreeParams) (uniqueDeps []string, err error) {
+func buildFlatGradleDependencyTree(params *DepTreeParams) (dependenciesWithChildren []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	manager := &gradleDepTreeManager{DepTreeManager: NewDepTreeManager(params)}
 	outputFileContent, err := manager.runGradleDepTree()
 	if err != nil {
 		return
 	}
 	// TODO NOTICE change in functionality: create ONLY flat tree here
-	uniqueDeps, err = getFlatGraphFromDepTree(outputFileContent)
+	dependenciesWithChildren, uniqueDeps, err = getFlatGraphFromDepTree(outputFileContent)
 	return
 }
 

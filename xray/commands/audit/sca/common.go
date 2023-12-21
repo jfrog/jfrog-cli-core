@@ -126,7 +126,7 @@ func LogExecutableVersion(executable string) {
 	log.Debug(fmt.Sprintf("Used %q version: %s", executable, version))
 }
 
-// BuildImpactPathsForScanResponse builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.
+// Builds the full impact paths for each vulnerability found in the scanResult argument, using the dependencyTrees argument.
 // Returns the updated services.ScanResponse slice.
 func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, dependencyTree []*xrayUtils.GraphNode) []services.ScanResponse {
 	for _, result := range scanResult {
@@ -144,7 +144,7 @@ func BuildImpactPathsForScanResponse(scanResult []services.ScanResponse, depende
 }
 
 // Initialize a map of issues empty impact paths
-func fillIssuesMapWithEmptyImpactPaths(issuesImpactPathsMap map[string][][]services.ImpactPathNode, components map[string]services.Component) {
+func FillIssuesMapWithEmptyImpactPaths(issuesImpactPathsMap map[string][][]services.ImpactPathNode, components map[string]services.Component) {
 	for dependencyName := range components {
 		issuesImpactPathsMap[dependencyName] = [][]services.ImpactPathNode{}
 	}
@@ -160,37 +160,37 @@ func buildImpactPaths(issuesImpactPathsMap map[string][][]services.ImpactPathNod
 func buildVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, dependencyTrees []*xrayUtils.GraphNode) {
 	issuesMap := make(map[string][][]services.ImpactPathNode)
 	for _, vulnerability := range vulnerabilities {
-		fillIssuesMapWithEmptyImpactPaths(issuesMap, vulnerability.Components)
+		FillIssuesMapWithEmptyImpactPaths(issuesMap, vulnerability.Components)
 	}
 	buildImpactPaths(issuesMap, dependencyTrees)
 	for i := range vulnerabilities {
-		updateComponentsWithImpactPaths(vulnerabilities[i].Components, issuesMap)
+		UpdateComponentsWithImpactPaths(vulnerabilities[i].Components, issuesMap)
 	}
 }
 
 func buildViolationsImpactPaths(violations []services.Violation, dependencyTrees []*xrayUtils.GraphNode) {
 	issuesMap := make(map[string][][]services.ImpactPathNode)
 	for _, violation := range violations {
-		fillIssuesMapWithEmptyImpactPaths(issuesMap, violation.Components)
+		FillIssuesMapWithEmptyImpactPaths(issuesMap, violation.Components)
 	}
 	buildImpactPaths(issuesMap, dependencyTrees)
 	for i := range violations {
-		updateComponentsWithImpactPaths(violations[i].Components, issuesMap)
+		UpdateComponentsWithImpactPaths(violations[i].Components, issuesMap)
 	}
 }
 
 func buildLicensesImpactPaths(licenses []services.License, dependencyTrees []*xrayUtils.GraphNode) {
 	issuesMap := make(map[string][][]services.ImpactPathNode)
 	for _, license := range licenses {
-		fillIssuesMapWithEmptyImpactPaths(issuesMap, license.Components)
+		FillIssuesMapWithEmptyImpactPaths(issuesMap, license.Components)
 	}
 	buildImpactPaths(issuesMap, dependencyTrees)
 	for i := range licenses {
-		updateComponentsWithImpactPaths(licenses[i].Components, issuesMap)
+		UpdateComponentsWithImpactPaths(licenses[i].Components, issuesMap)
 	}
 }
 
-func updateComponentsWithImpactPaths(components map[string]services.Component, issuesMap map[string][][]services.ImpactPathNode) {
+func UpdateComponentsWithImpactPaths(components map[string]services.Component, issuesMap map[string][][]services.ImpactPathNode) {
 	for dependencyName := range components {
 		updatedComponent := services.Component{
 			FixedVersions: components[dependencyName].FixedVersions,

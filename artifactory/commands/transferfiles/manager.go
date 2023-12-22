@@ -238,6 +238,10 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	// Run() is a blocking method, so once all chunk builders are idle, the tasks queue closes and Run() stops running.
 	pcWrapper.chunkBuilderProducerConsumer.Run()
 	if pcWrapper.chunkUploaderProducerConsumer.IsStarted() {
+		// There might be a moment when the chunk uploader has no upload tasks.
+		// This circumstance might lead to setting the finish notification before completing all file uploads.
+		// To address this, we reset the finish notification to ensure no remaining upload tasks after the next finish notification.
+		pcWrapper.chunkUploaderProducerConsumer.ResetFinishNotification()
 		// Wait till notified that the uploader finished its tasks, and it will not receive new tasks from the builder.
 		<-pcWrapper.chunkUploaderProducerConsumer.GetFinishedNotification()
 	}

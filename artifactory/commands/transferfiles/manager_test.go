@@ -14,7 +14,7 @@ func TestRunProducerConsumers(t *testing.T) {
 	// Add 10 tasks for the chunkBuilderProducerConsumer. Each task provides a task to the chunkUploaderProducerConsumer.
 	for i := 0; i < 10; i++ {
 		_, err := producerConsumerWrapper.chunkBuilderProducerConsumer.AddTask(func(int) error {
-			time.Sleep(time.Millisecond)
+			time.Sleep(time.Millisecond * 100)
 			_, err := producerConsumerWrapper.chunkUploaderProducerConsumer.AddTask(
 				func(int) error {
 					time.Sleep(time.Millisecond)

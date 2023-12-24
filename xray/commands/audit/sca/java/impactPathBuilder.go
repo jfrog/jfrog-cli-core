@@ -1,68 +1,152 @@
 package java
 
 import (
+	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"golang.org/x/exp/slices"
 )
+
+const impactPathLimit = 20
 
 // TODO add a test file + tests for the logics in this file
 
 func BuildJavaImpactedPathsForScanResponse(scanResult []services.ScanResponse, dependenciesWithChildren []*xrayUtils.GraphNode) []services.ScanResponse {
 	for _, result := range scanResult {
-		/* TODO consider building impacted paths only once if possible
-
-		if len(result.Vulnerabilities) > 0 || len(result.Violations) > 0 || len(result.Licenses) > 0 {
-			buildVulnerabilitiesImpactedPaths()
-		}
-		*/
 		childrenToParentsMap := getParentsMap(dependenciesWithChildren)
+		projectRoots := getRootsWithParentsStatus(dependenciesWithChildren, childrenToParentsMap)
 
 		if len(result.Vulnerabilities) > 0 {
-			buildJavaVulnerabilitiesImpactPaths(result.Vulnerabilities)
+			buildJavaVulnerabilitiesImpactPaths(result.Vulnerabilities, childrenToParentsMap, projectRoots)
 		}
-		/* TODO dont forget to complete these two
 		if len(result.Violations) > 0 {
-			buildViolationsImpactPaths(result.Violations, dependencyTree)
+			buildJavaViolationsImpactPaths(result.Violations, childrenToParentsMap)
 		}
 		if len(result.Licenses) > 0 {
-			buildLicensesImpactPaths(result.Licenses, dependencyTree)
+			buildJavaLicensesImpactPaths(result.Licenses, childrenToParentsMap)
 		}
-
-		*/
 	}
 	return scanResult
 }
 
+// Returns a map from a dependency to a slice with all its parents in the project (modules or other packages)
 func getParentsMap(dependenciesWithChildren []*xrayUtils.GraphNode) map[string][]string {
-	childrenToParentsMap := make(map[string][]string)
+	childrenToParentsMapSets := make(map[string]*datastructures.Set[string])
 	for _, module := range dependenciesWithChildren {
-		moduleName := module.Id
-		childrenToParentsMap[moduleName] = nil
+		// Every entry (module) in dependenciesWithChildren has itself with its direct dependencies as one of its Nodes, therefore direct dependencies to the module itself will be added as well
 		moduleDependencies := module.Nodes
 		for _, parentDependency := range moduleDependencies {
 			parentName := parentDependency.Id
 			for _, child := range parentDependency.Nodes {
 				childName := child.Id
-				childrenToParentsMap[childName] = append(childrenToParentsMap[parentName], parentName)
+				if _, exists := childrenToParentsMapSets[childName]; !exists {
+					childrenToParentsMapSets[childName] = datastructures.MakeSet[string]()
+				}
+				childrenToParentsMapSets[childName].Add(parentName)
 			}
-			//TODO modules can have parents. should we add a special val to their parents list to notify they are modules? should we put in in a struct with indicator field if it is a module?
 		}
+	}
+
+	childrenToParentsMap := make(map[string][]string)
+	for childName, parentsSet := range childrenToParentsMapSets {
+		childrenToParentsMap[childName] = parentsSet.ToSlice()
 	}
 	return childrenToParentsMap
 }
 
-func buildJavaVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability) {
+// TODO delete if not used
+// Returns a map of the project's modules with a status weather the module has parents or not
+func getRootsWithParentsStatus(dependenciesWithChildren []*xrayUtils.GraphNode, childrenToParentsMap map[string][]string) map[string]bool {
+	rootsWithParentsExistenceStatus := make(map[string]bool)
+	for _, module := range dependenciesWithChildren {
+		moduleName := module.Id
+		if _, exists := childrenToParentsMap[moduleName]; exists {
+			rootsWithParentsExistenceStatus[moduleName] = true
+		} else {
+			rootsWithParentsExistenceStatus[moduleName] = false
+		}
+	}
+	return rootsWithParentsExistenceStatus
+}
+
+func buildJavaVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, childrenToParentsMap map[string][]string, projectRoots map[string]bool) {
 	issuesMap := make(map[string][][]services.ImpactPathNode)
 	for _, vulnerability := range vulnerabilities {
 		sca.FillIssuesMapWithEmptyImpactPaths(issuesMap, vulnerability.Components)
 	}
-	//buildImpactPaths(issuesMap, dependencyTrees)
+	buildJavaImpactedPaths(issuesMap, childrenToParentsMap, projectRoots)
 	for i := range vulnerabilities {
 		sca.UpdateComponentsWithImpactPaths(vulnerabilities[i].Components, issuesMap)
 	}
 }
 
-func buildVulnerabilitiesImpactedPaths(issuesMap map[string][][]services.ImpactPathNode) {
-	panic("stop")
+func buildJavaViolationsImpactPaths(violations []services.Violation, childrenToParentsMap map[string][]string) {
+	issuesMap := make(map[string][][]services.ImpactPathNode)
+	for _, violation := range violations {
+		sca.FillIssuesMapWithEmptyImpactPaths(issuesMap, violation.Components)
+	}
+	//buildJavaImpactedPaths(issuesMap, childrenToParentsMap)
+	for i := range violations {
+		sca.UpdateComponentsWithImpactPaths(violations[i].Components, issuesMap)
+	}
+}
+
+func buildJavaLicensesImpactPaths(licenses []services.License, childrenToParentsMap map[string][]string) {
+	issuesMap := make(map[string][][]services.ImpactPathNode)
+	for _, license := range licenses {
+		sca.FillIssuesMapWithEmptyImpactPaths(issuesMap, license.Components)
+	}
+	//buildJavaImpactedPaths(issuesMap, childrenToParentsMap)
+	for i := range licenses {
+		sca.UpdateComponentsWithImpactPaths(licenses[i].Components, issuesMap)
+	}
+}
+
+// Builds impacted paths to all dependencies in issuesMap. Each entry holds maximum of 20 impacted paths.
+func buildJavaImpactedPaths(issuesMap map[string][][]services.ImpactPathNode, childrenToParentsMap map[string][]string, projectRoots map[string]bool) {
+	for packageId := range issuesMap {
+		pathStart := services.ImpactPathNode{ComponentId: packageId}
+		var curPath []services.ImpactPathNode
+		curPath = append(curPath, pathStart)
+		setPathsForIssue(packageId, packageId, issuesMap, &childrenToParentsMap, &projectRoots, curPath) //[]services.ImpactPathNode{})
+	}
+}
+
+func setPathsForIssue(leafPackageId string, curPackageId string, issuesMap map[string][][]services.ImpactPathNode, childrenToParentsMap *map[string][]string, projectRoots *map[string]bool, pathFromDependency []services.ImpactPathNode) {
+	if len(issuesMap[leafPackageId]) >= impactPathLimit {
+		return
+	}
+
+	if _, exists := (*projectRoots)[curPackageId]; exists {
+		// When we arrive at a root, we add the path to the path's list of leafPackageId
+		pathCopy := make([]services.ImpactPathNode, len(pathFromDependency))
+		copy(pathCopy, pathFromDependency)
+		slices.Reverse(pathCopy)
+		issuesMap[leafPackageId] = append(issuesMap[leafPackageId], pathCopy)
+
+		// TODO do we need to continue building the path if we got to a root but there is a module above it? if so- use the value about the parents from projectRoots map. if not- return only a set of modules and not a map
+		// If current root has parents we continue building the path up to the top root as well
+	} else {
+		curPackageParents := (*childrenToParentsMap)[curPackageId]
+		for _, parent := range curPackageParents {
+			// Check for a cycle in the path
+			if pathAlreadyContainsPackage(pathFromDependency, parent) {
+				continue
+			}
+			pathWithCurParent := make([]services.ImpactPathNode, len(pathFromDependency))
+			copy(pathWithCurParent, pathFromDependency)
+			pathWithCurParent = append(pathWithCurParent, services.ImpactPathNode{ComponentId: parent})
+			setPathsForIssue(leafPackageId, parent, issuesMap, childrenToParentsMap, projectRoots, pathWithCurParent)
+		}
+	}
+}
+
+func pathAlreadyContainsPackage(pathFromDependency []services.ImpactPathNode, parentName string) bool {
+	for _, pathNode := range pathFromDependency {
+		if pathNode.ComponentId == parentName {
+			return true
+		}
+	}
+	return false
 }

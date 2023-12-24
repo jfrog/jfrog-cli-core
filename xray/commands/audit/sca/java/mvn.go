@@ -64,7 +64,6 @@ func buildFlatMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool
 	if err != nil {
 		return
 	}
-	// TODO NOTICE change in functionality: create ONLY flat tree here
 	dependenciesWithChildren, uniqueDeps, err = getFlatGraphFromDepTree(outputFilePaths)
 	return
 }

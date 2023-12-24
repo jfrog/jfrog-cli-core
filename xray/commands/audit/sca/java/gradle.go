@@ -62,7 +62,6 @@ func buildFlatGradleDependencyTree(params *DepTreeParams) (dependenciesWithChild
 	if err != nil {
 		return
 	}
-	// TODO NOTICE change in functionality: create ONLY flat tree here
 	dependenciesWithChildren, uniqueDeps, err = getFlatGraphFromDepTree(outputFileContent)
 	return
 }

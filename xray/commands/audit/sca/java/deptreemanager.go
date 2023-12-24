@@ -73,7 +73,6 @@ func getFlatGraphFromDepTree(outputFilePaths string) (dependenciesWithChildren [
 			Id:    moduleDepId,
 			Nodes: []*xrayUtils.GraphNode{},
 		}
-		// uniqueDepsSet.Add(moduleDepId) TODO check if needed. the module suppost to be a child of itself and to be adder in the next loop
 
 		for depName, depNodes := range moduleTree.Nodes {
 			depId := GavPackageTypeIdentifier + depName
@@ -92,23 +91,6 @@ func getFlatGraphFromDepTree(outputFilePaths string) (dependenciesWithChildren [
 	}
 	uniqueDeps = uniqueDepsSet.ToSlice()
 	return
-}
-
-func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, moduleTree *moduleDepTree, uniqueDepsSet *datastructures.Set[string]) {
-	if currNode.NodeHasLoop() {
-		return
-	}
-	for _, childId := range moduleTree.Nodes[currNodeId].Children {
-		childGav := GavPackageTypeIdentifier + childId
-		childNode := &xrayUtils.GraphNode{
-			Id:     childGav,
-			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: currNode,
-		}
-		uniqueDepsSet.Add(childGav)
-		populateDependencyTree(childNode, childId, moduleTree, uniqueDepsSet)
-		currNode.Nodes = append(currNode.Nodes, childNode)
-	}
 }
 
 func parseDepTreeFiles(jsonFilePaths string) ([]*moduleDepTree, error) {

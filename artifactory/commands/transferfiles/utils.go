@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	buildInfoUtils "github.com/jfrog/build-info-go/utils"
@@ -192,31 +191,6 @@ func createTargetAuth(targetRtDetails *config.ServerDetails, proxyKey string) ap
 	return targetAuth
 }
 
-// This variable holds the total number of upload chunk that were sent to the source Artifactory instance to process.
-// Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
-var curProcessedUploadChunks = 0
-var processedUploadChunksMutex sync.Mutex
-
-// Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
-// Returns true if the total number was indeed incremented.
-func incrCurProcessedChunksWhenPossible() bool {
-	processedUploadChunksMutex.Lock()
-	defer processedUploadChunksMutex.Unlock()
-	if curProcessedUploadChunks < GetChunkUploaderThreads() {
-		curProcessedUploadChunks++
-		return true
-	}
-	return false
-}
-
-// Reduces the current total number of upload chunks processed. Called when an upload chunks doesn't require polling for status -
-// if it's done processing, or an error occurred when sending it.
-func reduceCurProcessedChunks() {
-	processedUploadChunksMutex.Lock()
-	defer processedUploadChunksMutex.Unlock()
-	curProcessedUploadChunks--
-}
-
 func handleFilesOfCompletedChunk(chunkFiles []api.FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for _, file := range chunkFiles {
 		if file.Status == api.Fail || file.Status == api.SkippedLargeProps {
@@ -231,13 +205,13 @@ func handleFilesOfCompletedChunk(chunkFiles []api.FileUploadStatusResponse, erro
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(phaseBase *phaseBase, chunk api.UploadChunk, uploadTokensChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk api.UploadChunk, uploadTokensChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return true
 		}
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
-		isIncr := incrCurProcessedChunksWhenPossible()
+		isIncr := pcWrapper.incrCurProcessedChunksWhenPossible()
 		if !isIncr {
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
@@ -245,7 +219,7 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk api.UploadChunk, upload
 		err := uploadChunkAndAddToken(phaseBase.srcUpService, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
-			reduceCurProcessedChunks()
+			pcWrapper.reduceCurProcessedChunks()
 			// If the transfer is interrupted by the user, we shouldn't write it in the CSV file
 			if errors.Is(err, context.Canceled) {
 				return true
@@ -408,12 +382,12 @@ func updateProducerConsumerMaxParallel(producerConsumer parallel.Runner, calcula
 	}
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk api.UploadChunk,
+func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk api.UploadChunk,
 	uploadTokensChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
-		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
+		shouldStop := uploadChunkWhenPossible(pcWrapper, phaseBase, chunk, uploadTokensChan, errorsChannelMng)
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
 			return errorutils.CheckErrorf(logMsgPrefix + "stopped")
@@ -443,7 +417,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 		}
 		curUploadChunk.AppendUploadCandidateIfNeeded(file, base.buildInfoRepo)
 		if curUploadChunk.IsChunkFull() {
-			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return
 			}
@@ -453,7 +427,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}

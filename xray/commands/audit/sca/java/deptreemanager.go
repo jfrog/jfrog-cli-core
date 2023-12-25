@@ -90,23 +90,6 @@ func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNo
 	return
 }
 
-func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, moduleTree *moduleDepTree, uniqueDepsSet *datastructures.Set[string]) {
-	if currNode.NodeHasLoop() {
-		return
-	}
-	for _, childId := range moduleTree.Nodes[currNodeId].Children {
-		childGav := GavPackageTypeIdentifier + childId
-		childNode := &xrayUtils.GraphNode{
-			Id:     childGav,
-			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: currNode,
-		}
-		uniqueDepsSet.Add(childGav)
-		populateDependencyTree(childNode, childId, moduleTree, uniqueDepsSet)
-		currNode.Nodes = append(currNode.Nodes, childNode)
-	}
-}
-
 func parseDepTreeFiles(jsonFilePaths string) ([]*moduleDepTree, error) {
 	outputFilePaths := strings.Split(strings.TrimSpace(jsonFilePaths), "\n")
 	var modules []*moduleDepTree

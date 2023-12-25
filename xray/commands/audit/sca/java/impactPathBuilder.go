@@ -1,6 +1,7 @@
 package java
 
 import (
+	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	"github.com/jfrog/jfrog-client-go/xray/services"
@@ -8,7 +9,10 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-const impactPathLimit = 20
+const (
+	impactPathLimit         = 20
+	directDependencyPathLen = 2
+)
 
 // TODO add a test file + tests for the logics in this file
 
@@ -18,7 +22,7 @@ func BuildJavaImpactedPathsForScanResponse(scanResult []services.ScanResponse, d
 		projectRoots := getRootsWithParentsStatus(dependenciesWithChildren, childrenToParentsMap)
 
 		if len(result.Vulnerabilities) > 0 {
-			buildJavaVulnerabilitiesImpactPaths(result.Vulnerabilities, childrenToParentsMap, projectRoots)
+			buildJavaVulnerabilitiesImpactPaths(result.Vulnerabilities, childrenToParentsMap, projectRoots, &dependenciesWithChildren)
 		}
 		if len(result.Violations) > 0 {
 			buildJavaViolationsImpactPaths(result.Violations, childrenToParentsMap)
@@ -70,12 +74,13 @@ func getRootsWithParentsStatus(dependenciesWithChildren []*xrayUtils.GraphNode, 
 	return rootsWithParentsExistenceStatus
 }
 
-func buildJavaVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, childrenToParentsMap map[string][]string, projectRoots map[string]bool) {
+func buildJavaVulnerabilitiesImpactPaths(vulnerabilities []services.Vulnerability, childrenToParentsMap map[string][]string, projectRoots map[string]bool, dependenciesWithChildren *[]*xrayUtils.GraphNode) {
 	issuesMap := make(map[string][][]services.ImpactPathNode)
 	for _, vulnerability := range vulnerabilities {
 		sca.FillIssuesMapWithEmptyImpactPaths(issuesMap, vulnerability.Components)
 	}
 	buildJavaImpactedPaths(issuesMap, childrenToParentsMap, projectRoots)
+	detectDirectImpactPathsIfExists(issuesMap, childrenToParentsMap, projectRoots, dependenciesWithChildren)
 	for i := range vulnerabilities {
 		sca.UpdateComponentsWithImpactPaths(vulnerabilities[i].Components, issuesMap)
 	}
@@ -123,7 +128,14 @@ func setPathsForIssue(leafPackageId string, curPackageId string, issuesMap map[s
 		pathCopy := make([]services.ImpactPathNode, len(pathFromDependency))
 		copy(pathCopy, pathFromDependency)
 		slices.Reverse(pathCopy)
-		issuesMap[leafPackageId] = append(issuesMap[leafPackageId], pathCopy)
+		if len(pathCopy) == directDependencyPathLen {
+			// We want to add direct dependencies at the beginning for the detection of direct impact paths later
+			slices.Reverse(issuesMap[leafPackageId])
+			issuesMap[leafPackageId] = append(issuesMap[leafPackageId], pathCopy)
+			slices.Reverse(issuesMap[leafPackageId])
+		} else {
+			issuesMap[leafPackageId] = append(issuesMap[leafPackageId], pathCopy)
+		}
 
 		// TODO do we need to continue building the path if we got to a root but there is a module above it? if so- use the value about the parents from projectRoots map. if not- return only a set of modules and not a map
 		// If current root has parents we continue building the path up to the top root as well
@@ -149,4 +161,27 @@ func pathAlreadyContainsPackage(pathFromDependency []services.ImpactPathNode, pa
 		}
 	}
 	return false
+}
+
+func detectDirectImpactPathsIfExists(issuesMap map[string][][]services.ImpactPathNode, childrenToParentsMap map[string][]string, projectRoots map[string]bool, dependenciesWithChildren *[]*xrayUtils.GraphNode) {
+	for _, module := range *dependenciesWithChildren {
+		fmt.Println(module.Id) //TODO del
+		moduleDependencies := module.Nodes
+
+		// Get self dependency
+		var selfDependency *xrayUtils.GraphNode
+		for _, dependency := range moduleDependencies {
+			// Every module at top level in dependenciesWithChildren has itself with its direct dependencies as one of its Nodes
+			if dependency.Id == module.Id {
+				selfDependency = dependency
+				break
+			}
+		}
+
+		// TODO cehck Michael solution before continuing!!!! limit the tree build to 10 times (of visiting the same dep)
+		for _, directDependency := range selfDependency.Nodes {
+			fmt.Println(directDependency)
+
+		}
+	}
 }

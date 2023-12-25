@@ -67,28 +67,15 @@ func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNo
 		return
 	}
 
-	uniqueDepsSet := datastructures.MakeSet[string]()
+	allModulesUniqueDeps := datastructures.MakeSet[string]()
 	for _, module := range modules {
-		moduleTreeMap := make(map[string][]string)
-		moduleDeps := module.Nodes
-		for depName, dependency := range moduleDeps {
-			dependencyId := GavPackageTypeIdentifier + depName
-			var childrenList []string
-			for _, childName := range dependency.Children {
-				childId := GavPackageTypeIdentifier + childName
-				childrenList = append(childrenList, childId)
-			}
-			if len(childrenList) > 0 {
-				moduleTreeMap[dependencyId] = childrenList
-			}
-		}
-		moduleTree, moduleUniqueDeps := sca.BuildXrayDependencyTree(moduleTreeMap, GavPackageTypeIdentifier+module.Root)
+		moduleTree, moduleUniqueDeps := getModuleTreeAndDependencies(module)
 		depsGraph = append(depsGraph, moduleTree)
 		for _, depToAdd := range moduleUniqueDeps {
-			uniqueDepsSet.Add(depToAdd)
+			allModulesUniqueDeps.Add(depToAdd)
 		}
 	}
-	uniqueDeps = uniqueDepsSet.ToSlice()
+	uniqueDeps = allModulesUniqueDeps.ToSlice()
 	return
 }
 
@@ -124,4 +111,22 @@ func getArtifactoryAuthFromServer(server *config.ServerDetails) (string, string,
 		return "", "", errorutils.CheckErrorf("a username is required for authenticating with Artifactory")
 	}
 	return username, password, nil
+}
+
+// Returns a dependency tree and a flat list of the module's dependencies for the given module
+func getModuleTreeAndDependencies(module *moduleDepTree) (*xrayUtils.GraphNode, []string) {
+	moduleTreeMap := make(map[string][]string)
+	moduleDeps := module.Nodes
+	for depName, dependency := range moduleDeps {
+		dependencyId := GavPackageTypeIdentifier + depName
+		var childrenList []string
+		for _, childName := range dependency.Children {
+			childId := GavPackageTypeIdentifier + childName
+			childrenList = append(childrenList, childId)
+		}
+		if len(childrenList) > 0 {
+			moduleTreeMap[dependencyId] = childrenList
+		}
+	}
+	return sca.BuildXrayDependencyTree(moduleTreeMap, GavPackageTypeIdentifier+module.Root)
 }

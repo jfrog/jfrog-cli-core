@@ -53,7 +53,7 @@ func TestUpdateVulnerableComponent(t *testing.T) {
 		"dependency1": {},
 	}
 
-	updateComponentsWithImpactPaths(components, issuesMap)
+	UpdateComponentsWithImpactPaths(components, issuesMap)
 
 	// Check the result
 	expected := services.Component{

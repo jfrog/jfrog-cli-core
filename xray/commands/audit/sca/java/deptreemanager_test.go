@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// TODO change test to check only flat tree + add test for the new func that creates the impacted paths for the bulnerable deps
 func TestGetGradleGraphFromDepTree(t *testing.T) {
 	// Create and change directory to test workspace
 	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, "gradle-example-ci-server")
@@ -52,7 +53,7 @@ func TestGetGradleGraphFromDepTree(t *testing.T) {
 	manager := &gradleDepTreeManager{DepTreeManager{}}
 	outputFileContent, err := manager.runGradleDepTree()
 	assert.NoError(t, err)
-	depTree, uniqueDeps, err := getGraphFromDepTree(outputFileContent)
+	depTree, uniqueDeps, err := getFlatGraphFromDepTree(outputFileContent)
 	assert.NoError(t, err)
 	reflect.DeepEqual(uniqueDeps, expectedUniqueDeps)
 

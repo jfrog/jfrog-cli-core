@@ -75,6 +75,7 @@ const (
 </settings>`
 )
 
+// TODO fix test after buildFlatMavenDependencyTree changes
 func TestMavenTreesMultiModule(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := sca.CreateTestWorkspace(t, "maven-example")
@@ -95,7 +96,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 		GavPackageTypeIdentifier + "hsqldb:hsqldb:1.8.0.10",
 	}
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildFlatMavenDependencyTree(&DepTreeParams{}, false)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
@@ -117,6 +118,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	}
 }
 
+// TODO fix test after buildFlatMavenDependencyTree changes
 func TestMavenWrapperTrees(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := sca.CreateTestWorkspace(t, "maven-example-with-wrapper")
@@ -145,7 +147,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 		GavPackageTypeIdentifier + "javax.servlet:servlet-api:2.5",
 	}
 
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildFlatMavenDependencyTree(&DepTreeParams{}, false)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module

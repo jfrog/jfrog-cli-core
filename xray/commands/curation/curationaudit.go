@@ -203,6 +203,8 @@ func (ca *CurationAuditCommand) getAuditParamsByTech(tech coreutils.Technology) 
 }
 
 func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map[string][]*PackageStatus) error {
+	// TODO see how changes in GetTechDependencyTree of Gradle and Maven affects here
+	// TODO update Asaf Ambar about the changes. Curation is supported only for NPM right now so it shouldnt change anything currently
 	flattenGraph, fullDependenciesTree, err := audit.GetTechDependencyTree(ca.getAuditParamsByTech(tech), tech)
 	if err != nil {
 		return err

@@ -42,6 +42,7 @@ allprojects {
 	apply plugin: com.jfrog.GradleDepTree
 }`
 
+// TODO fix test after buildFlatGradleDependencyTree changes
 func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Create and change directory to test workspace
 	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, "gradle-example-ci-server")
@@ -49,7 +50,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DepTreeParams{})
+	modulesDependencyTrees, uniqueDeps, err := buildFlatGradleDependencyTree(&DepTreeParams{})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, uniqueDeps, 12)
 		assert.Len(t, modulesDependencyTrees, 5)
@@ -66,6 +67,7 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 	}
 }
 
+// TODO fix test after buildFlatGradleDependencyTree changes
 func TestGradleTreesWithConfig(t *testing.T) {
 	// Create and change directory to test workspace
 	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, "gradle-example-publish")
@@ -73,7 +75,7 @@ func TestGradleTreesWithConfig(t *testing.T) {
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildGradleDependencyTree(&DepTreeParams{UseWrapper: true})
+	modulesDependencyTrees, uniqueDeps, err := buildFlatGradleDependencyTree(&DepTreeParams{UseWrapper: true})
 	if assert.NoError(t, err) && assert.NotNil(t, modulesDependencyTrees) {
 		assert.Len(t, modulesDependencyTrees, 5)
 		assert.Len(t, uniqueDeps, 11)

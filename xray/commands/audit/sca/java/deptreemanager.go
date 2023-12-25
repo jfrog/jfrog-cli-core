@@ -78,7 +78,9 @@ func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNo
 				childId := GavPackageTypeIdentifier + childName
 				childrenList = append(childrenList, childId)
 			}
-			moduleTreeMap[dependencyId] = childrenList
+			if len(childrenList) > 0 {
+				moduleTreeMap[dependencyId] = childrenList
+			}
 		}
 		moduleTree, moduleUniqueDeps := sca.BuildXrayDependencyTree(moduleTreeMap, GavPackageTypeIdentifier+module.Root)
 		depsGraph = append(depsGraph, moduleTree)

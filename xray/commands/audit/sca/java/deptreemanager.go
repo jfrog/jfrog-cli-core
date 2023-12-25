@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
@@ -58,23 +59,32 @@ type depTreeNode struct {
 	Children []string `json:"children"`
 }
 
-// getGraphFromDepTree reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
+// Reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
 // It takes the output of the plugin's run (which is a byte representation of a list of paths of the output files, separated by newlines) as input.
 func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	modules, err := parseDepTreeFiles(outputFilePaths)
 	if err != nil {
 		return
 	}
+
 	uniqueDepsSet := datastructures.MakeSet[string]()
-	for _, moduleTree := range modules {
-		directDepId := GavPackageTypeIdentifier + moduleTree.Root
-		directDependency := &xrayUtils.GraphNode{
-			Id:    directDepId,
-			Nodes: []*xrayUtils.GraphNode{},
+	for _, module := range modules {
+		moduleTreeMap := make(map[string][]string)
+		moduleDeps := module.Nodes
+		for depName, dependency := range moduleDeps {
+			dependencyId := GavPackageTypeIdentifier + depName
+			var childrenList []string
+			for _, childName := range dependency.Children {
+				childId := GavPackageTypeIdentifier + childName
+				childrenList = append(childrenList, childId)
+			}
+			moduleTreeMap[dependencyId] = childrenList
 		}
-		uniqueDepsSet.Add(directDepId)
-		populateDependencyTree(directDependency, moduleTree.Root, moduleTree, uniqueDepsSet)
-		depsGraph = append(depsGraph, directDependency)
+		moduleTree, moduleUniqueDeps := sca.BuildXrayDependencyTree(moduleTreeMap, GavPackageTypeIdentifier+module.Root)
+		depsGraph = append(depsGraph, moduleTree)
+		for _, depToAdd := range moduleUniqueDeps {
+			uniqueDepsSet.Add(depToAdd)
+		}
 	}
 	uniqueDeps = uniqueDepsSet.ToSlice()
 	return

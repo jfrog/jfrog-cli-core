@@ -22,6 +22,7 @@ var filterLocallyGeneratedCases = []struct {
 	{paths: []utils.ResultItem{{Path: "a", Name: "b"}}, returnedPath: []string{"a/b"}},
 	{paths: []utils.ResultItem{{Path: "a", Name: "b"}, {Path: "a/b", Name: "e"}}, returnedPath: []string{"a/b/e"}},
 	{paths: []utils.ResultItem{{Path: "a", Name: "b"}, {Path: "a/b", Name: "e"}}, returnedPath: []string{"a/b", "a/b/e"}},
+	{paths: []utils.ResultItem{{Path: ".", Name: "a"}, {Path: "b", Name: "c"}}, returnedPath: []string{"b/c"}},
 }
 
 func TestFilterLocallyGenerated(t *testing.T) {
@@ -98,4 +99,21 @@ func TestFilterLocallyGeneratedEnabled(t *testing.T) {
 	assert.True(t, NewLocallyGenerated(context.Background(), servicesManager, "8.0.0").IsEnabled())
 	assert.False(t, NewLocallyGenerated(context.Background(), servicesManager, "7.54.5").IsEnabled())
 	assert.False(t, NewLocallyGenerated(context.Background(), servicesManager, "6.0.0").IsEnabled())
+}
+
+var getPathInRepoCases = []struct {
+	aqlResultItem      utils.ResultItem
+	expectedPathInRepo string
+}{
+	{aqlResultItem: utils.ResultItem{Path: ".", Name: "a"}, expectedPathInRepo: "a"},
+	{aqlResultItem: utils.ResultItem{Path: "a", Name: "b"}, expectedPathInRepo: "a/b"},
+}
+
+func TestGetPathInRepo(t *testing.T) {
+	for _, testCase := range getPathInRepoCases {
+		t.Run("", func(t *testing.T) {
+			aqlResultsItem := testCase.aqlResultItem
+			assert.Equal(t, testCase.expectedPathInRepo, getPathInRepo(&aqlResultsItem))
+		})
+	}
 }

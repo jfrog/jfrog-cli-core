@@ -160,5 +160,8 @@ func (lg *locallyGeneratedFilter) getNonLocallyGeneratedResults(aqlResultItems [
 }
 
 func getPathInRepo(aqlResultItem *utils.ResultItem) string {
+	if aqlResultItem.Path == "." {
+		return aqlResultItem.Name
+	}
 	return aqlResultItem.Path + "/" + aqlResultItem.Name
 }

@@ -14,7 +14,7 @@ import (
 )
 
 type GradleCommand struct {
-	tasks              string
+	tasks              []string
 	configPath         string
 	configuration      *utils.BuildConfiguration
 	serverDetails      *config.ServerDetails
@@ -179,7 +179,7 @@ func (gc *GradleCommand) SetConfigPath(configPath string) *GradleCommand {
 	return gc
 }
 
-func (gc *GradleCommand) SetTasks(tasks string) *GradleCommand {
+func (gc *GradleCommand) SetTasks(tasks []string) *GradleCommand {
 	gc.tasks = tasks
 	return gc
 }

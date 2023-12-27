@@ -141,7 +141,8 @@ func (mc *MvnCommand) Run() error {
 		SetBuildConf(mc.configuration).
 		SetGoals(mc.goals).
 		SetInsecureTls(mc.insecureTls).
-		SetDisableDeploy(mc.deploymentDisabled)
+		SetDisableDeploy(mc.deploymentDisabled).
+		SetThreads(mc.threads)
 	if err = mvnutils.RunMvn(mvnParams); err != nil {
 		return err
 	}

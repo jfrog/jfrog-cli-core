@@ -1,6 +1,7 @@
 package sca
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
@@ -159,4 +160,66 @@ func TestBuildImpactPaths(t *testing.T) {
 	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Violations[0].Components["dep2"].ImpactPaths)
 	expectedImpactPaths = [][]services.ImpactPathNode{{{ComponentId: "dep1"}, {ComponentId: "dep2"}, {ComponentId: "dep3"}}}
 	reflect.DeepEqual(expectedImpactPaths, scanResult[0].Licenses[0].Components["dep3"].ImpactPaths)
+}
+
+func TestBuildXrayDependencyTree(t *testing.T) {
+	treeHelper := make(map[string][]string)
+	rootDep := []string{"topDep1", "topDep2", "topDep3"}
+	topDep1 := []string{"midDep1", "midDep2"}
+	topDep2 := []string{"midDep2", "midDep3"}
+	midDep1 := []string{"bottomDep1"}
+	midDep2 := []string{"bottomDep2", "bottomDep3"}
+	bottomDep3 := []string{"leafDep"}
+	treeHelper["rootDep"] = rootDep
+	treeHelper["topDep1"] = topDep1
+	treeHelper["topDep2"] = topDep2
+	treeHelper["midDep1"] = midDep1
+	treeHelper["midDep2"] = midDep2
+	treeHelper["bottomDep3"] = bottomDep3
+
+	expectedUniqueDeps := []string{"rootDep", "topDep1", "topDep2", "topDep3", "midDep1", "midDep2", "midDep3", "bottomDep1", "bottomDep2", "bottomDep3", "leafDep"}
+
+	// Constructing the expected tree Nodes
+	leafDepNode := &xrayUtils.GraphNode{Id: "leafDep", Nodes: []*xrayUtils.GraphNode{}}
+	bottomDep3Node := &xrayUtils.GraphNode{Id: "bottomDep3", Nodes: []*xrayUtils.GraphNode{}}
+	bottomDep2Node := &xrayUtils.GraphNode{Id: "bottomDep2", Nodes: []*xrayUtils.GraphNode{}}
+	bottomDep1Node := &xrayUtils.GraphNode{Id: "bottomDep1", Nodes: []*xrayUtils.GraphNode{}}
+	midDep3Node := &xrayUtils.GraphNode{Id: "midDep3", Nodes: []*xrayUtils.GraphNode{}}
+	midDep2Node := &xrayUtils.GraphNode{Id: "midDep2", Nodes: []*xrayUtils.GraphNode{}}
+	midDep1Node := &xrayUtils.GraphNode{Id: "midDep1", Nodes: []*xrayUtils.GraphNode{}}
+	topDep3Node := &xrayUtils.GraphNode{Id: "topDep3", Nodes: []*xrayUtils.GraphNode{}}
+	topDep2Node := &xrayUtils.GraphNode{Id: "topDep2", Nodes: []*xrayUtils.GraphNode{}}
+	topDep1Node := &xrayUtils.GraphNode{Id: "topDep1", Nodes: []*xrayUtils.GraphNode{}}
+	rootNode := &xrayUtils.GraphNode{Id: "rootDep", Nodes: []*xrayUtils.GraphNode{}}
+
+	// Setting children to parents
+	bottomDep3Node.Nodes = append(bottomDep3Node.Nodes, leafDepNode)
+	midDep2Node.Nodes = append(midDep2Node.Nodes, bottomDep3Node)
+	midDep2Node.Nodes = append(midDep2Node.Nodes, bottomDep2Node)
+	midDep1Node.Nodes = append(midDep1Node.Nodes, bottomDep1Node)
+	topDep2Node.Nodes = append(topDep2Node.Nodes, midDep3Node)
+	topDep2Node.Nodes = append(topDep2Node.Nodes, midDep2Node)
+	topDep1Node.Nodes = append(topDep1Node.Nodes, midDep2Node)
+	topDep1Node.Nodes = append(topDep1Node.Nodes, midDep1Node)
+	rootNode.Nodes = append(rootNode.Nodes, topDep1Node)
+	rootNode.Nodes = append(rootNode.Nodes, topDep2Node)
+	rootNode.Nodes = append(rootNode.Nodes, topDep3Node)
+
+	// Setting children to parents
+	leafDepNode.Parent = bottomDep3Node
+	bottomDep3Node.Parent = midDep2Node
+	bottomDep3Node.Parent = midDep2Node
+	bottomDep1Node.Parent = midDep1Node
+	midDep3Node.Parent = topDep2Node
+	midDep2Node.Parent = topDep2Node
+	midDep2Node.Parent = topDep1Node
+	midDep1Node.Parent = topDep1Node
+	topDep1Node.Parent = rootNode
+	topDep2Node.Parent = rootNode
+	topDep3Node.Parent = rootNode
+
+	tree, uniqueDeps := BuildXrayDependencyTree(treeHelper, "rootDep")
+
+	assert.ElementsMatch(t, expectedUniqueDeps, uniqueDeps)
+	assert.True(t, tests.CompareTree(tree, rootNode))
 }

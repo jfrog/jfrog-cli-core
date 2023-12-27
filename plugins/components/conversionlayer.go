@@ -22,6 +22,13 @@ func ConvertApp(jfrogApp App) (*cli.App, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(jfrogApp.Namespaces) > 0 {
+		namespaces, err := ConvertNamespaces(jfrogApp.Namespaces)
+		if err != nil {
+			return nil, err
+		}
+		app.Commands = append(app.Commands, namespaces...)
+	}
 	// Defaults:
 	app.EnableBashCompletion = true
 	return app, nil
@@ -39,6 +46,23 @@ func ConvertCommands(nameSpace string, commands []Command) ([]cli.Command, error
 	return converted, nil
 }
 
+func ConvertNamespaces(namespaces []Namespace) ([]cli.Command, error) {
+	var converted []cli.Command
+	for _, ns := range namespaces {
+		nameSpaceCommand := cli.Command{
+			Name:  ns.Name,
+			Usage: ns.Description,
+		}
+		nsCommands, err := ConvertCommands(ns.Name, ns.Commands)
+		if err != nil {
+			return converted, err
+		}
+		nameSpaceCommand.Subcommands = nsCommands
+		converted = append(converted, nameSpaceCommand)
+	}
+	return converted, nil
+}
+
 func convertCommand(cmd Command, appName string) (cli.Command, error) {
 	convertedFlags, convertedStringFlags, err := convertFlags(cmd)
 	if err != nil {
@@ -52,6 +76,7 @@ func convertCommand(cmd Command, appName string) (cli.Command, error) {
 		Name:            cmd.Name,
 		Flags:           convertedFlags,
 		Aliases:         cmd.Aliases,
+		Category:        cmd.Category,
 		Description:     cmd.Description,
 		HelpName:        common.CreateUsage(appName+" "+cmd.Name, cmd.Description, cmdUsages),
 		UsageText:       createArgumentsSummary(cmd),

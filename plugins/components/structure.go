@@ -1,15 +1,32 @@
 package components
 
 type App struct {
+	Version string
+	Namespace
+	Namespaces []Namespace
+}
+
+func CreateApp(name, version, description string, commands []Command) App {
+	return App{
+		Version: version,
+		Namespace: Namespace{
+			Name:        name,
+			Description: description,
+			Commands:    commands,
+		},
+	}
+}
+
+type Namespace struct {
 	Name        string
 	Description string
-	Version     string
 	Commands    []Command
 }
 
 type Command struct {
 	Name            string
 	Description     string
+	Category        string
 	Aliases         []string
 	UsageOptions    *UsageOptions
 	Arguments       []Argument

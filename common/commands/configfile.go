@@ -137,7 +137,9 @@ func createBuildConfig(global bool, confType project.ProjectType, configFile *Co
 	if err := configFile.VerifyConfigFile(configFilePath); err != nil {
 		return err
 	}
-	handleInteractiveConfigCreation(configFile, confType)
+	if err := handleInteractiveConfigCreation(configFile, confType); err != nil {
+		return err
+	}
 	if err = configFile.validateConfig(); err != nil {
 		return err
 	}

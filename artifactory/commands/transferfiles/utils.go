@@ -128,6 +128,34 @@ func (clcm *ChunksLifeCycleManager) StoreStaleChunks(stateManager *state.Transfe
 	return stateManager.SetStaleChunks(staleChunks)
 }
 
+// Set the JFrog CLI temp dir to be ~/.jfrog/transfer/tmp/
+func initTempDir() (unsetTempDir func(), err error) {
+	// If JFROG_CLI_TEMP_DIR environment variable provided, use it
+	if os.Getenv(coreutils.TempDir) != "" {
+		return
+	}
+
+	oldTempDir := fileutils.GetTempDirBase()
+	var transferTempDir string
+	if transferTempDir, err = coreutils.GetJfrogTransferTempDir(); err != nil {
+		return
+	}
+
+	err = fileutils.CreateDirIfNotExist(transferTempDir)
+	if err != nil {
+		return
+	}
+
+	if err = fileutils.RemoveDirContents(transferTempDir); err != nil {
+		return
+	}
+	fileutils.SetTempDirBase(transferTempDir)
+	unsetTempDir = func() {
+		fileutils.SetTempDirBase(oldTempDir)
+	}
+	return
+}
+
 type InterruptionErr struct{}
 
 func (m *InterruptionErr) Error() string {

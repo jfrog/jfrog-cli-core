@@ -211,7 +211,7 @@ func uploadChunkWhenPossible(pcWrapper *producerConsumerWrapper, phaseBase *phas
 			return true
 		}
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
-		isIncr := pcWrapper.incrCurProcessedChunksWhenPossible()
+		isIncr := pcWrapper.incProcessedChunksWhenPossible()
 		if !isIncr {
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
@@ -219,7 +219,7 @@ func uploadChunkWhenPossible(pcWrapper *producerConsumerWrapper, phaseBase *phas
 		err := uploadChunkAndAddToken(phaseBase.srcUpService, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
-			pcWrapper.reduceCurProcessedChunks()
+			pcWrapper.decProcessedChunks()
 			// If the transfer is interrupted by the user, we shouldn't write it in the CSV file
 			if errors.Is(err, context.Canceled) {
 				return true

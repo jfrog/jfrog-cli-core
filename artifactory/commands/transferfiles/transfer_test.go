@@ -216,7 +216,7 @@ func uploadChunkAndPollTwice(t *testing.T, phaseBase *phaseBase, fileSample api.
 	assert.False(t, stopped)
 	stopped = uploadChunkWhenPossible(&pcWrapper, phaseBase, chunk, uploadChunksChan, nil)
 	assert.False(t, stopped)
-	assert.Equal(t, 2, pcWrapper.curProcessedUploadChunks)
+	assert.Equal(t, 2, pcWrapper.totalProcessedUploadChunks)
 
 	runWaitGroup.Add(1)
 	go func() {

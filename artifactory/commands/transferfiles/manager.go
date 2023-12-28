@@ -267,7 +267,7 @@ func pollUploads(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, srcUp
 		// Run once per 5 minutes
 		if i%60 == 0 {
 			// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-			if err := phaseBase.stateManager.SetWorkingThreads(pcWrapper.curProcessedUploadChunks); err != nil {
+			if err := phaseBase.stateManager.SetWorkingThreads(pcWrapper.totalProcessedUploadChunks); err != nil {
 				log.Error("Couldn't set the current number of working threads:", err.Error())
 			}
 			log.Debug("There are", len(phaseBase.stateManager.StaleChunks), "chunks in transit for more than 30 minutes")
@@ -376,7 +376,7 @@ func handleChunksStatuses(pcWrapper *producerConsumerWrapper, phase *phaseBase, 
 		case api.InProgress:
 			continue
 		case api.Done:
-			pcWrapper.reduceCurProcessedChunks()
+			pcWrapper.decProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 
 			chunkSentTime := chunksLifeCycleManager.nodeToChunksMap[api.NodeId(chunksStatus.NodeId)][api.ChunkId(chunk.UuidToken)].TimeSent
@@ -452,7 +452,7 @@ func checkChunkStatusSync(pcWrapper *producerConsumerWrapper, chunkStatus *api.U
 					addErrorToChannel(errorsChannelMng, failedFile)
 				}
 				delete(chunksLifeCycleManager.nodeToChunksMap[api.NodeId(chunkStatus.NodeId)], chunkUuid)
-				pcWrapper.reduceCurProcessedChunks()
+				pcWrapper.decProcessedChunks()
 			}
 		}
 	}

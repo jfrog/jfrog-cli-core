@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/cliutils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -23,15 +24,7 @@ func CreateBuildConfiguration(c *components.Context) *utils.BuildConfiguration {
 }
 
 func FixWinPathsForFileSystemSourcedCmds(uploadSpec *spec.SpecFiles, c *components.Context) {
-	if coreutils.IsWindows() {
-		for i, file := range uploadSpec.Files {
-			uploadSpec.Files[i].Pattern = FixWinPathBySource(file.Pattern, c.IsFlagSet("spec"))
-			for j, exclusion := range uploadSpec.Files[i].Exclusions {
-				// If exclusions are set, they override the spec value
-				uploadSpec.Files[i].Exclusions[j] = FixWinPathBySource(exclusion, c.IsFlagSet("spec") && !c.IsFlagSet("exclusions"))
-			}
-		}
-	}
+	cliutils.FixWinPathsForFileSystemSourcedCmds(uploadSpec, c.IsFlagSet("spec"), c.IsFlagSet("exclusions"))
 }
 
 func GetFileSystemSpec(c *components.Context) (fsSpec *spec.SpecFiles, err error) {

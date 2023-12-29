@@ -141,8 +141,7 @@ func initTempDir() (unsetTempDir func(), err error) {
 		return
 	}
 
-	err = fileutils.CreateDirIfNotExist(transferTempDir)
-	if err != nil {
+	if err = fileutils.CreateDirIfNotExist(transferTempDir); err != nil {
 		return
 	}
 

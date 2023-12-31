@@ -133,9 +133,11 @@ func GreetCmd(c *components.Context) (err error) {
 
 Before implementing generic logic, ensure it hasn't been implemented yet.
 
-* Find plugin and `Context` common utilities at [plugins/common/](../plugins/common/)
+* Find plugin and `Context` common utilities at [plugins/](../plugins/)
 
-* Discover CLI common commands, utilities and global constants at [common/cliutils/](../common/cliutils)
+* Discover CLI common commands, utilities and global constants at [common/](../common/)
+
+* Find general utilities at [utils](../utils/)
 
 ## Examples
 

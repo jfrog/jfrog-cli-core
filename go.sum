@@ -91,8 +91,6 @@ github.com/jfrog/gofrog v1.4.0 h1:s7eysVnmIBfVheMs4LPU43MAlxwPa4K8u2N5h7kwzXA=
 github.com/jfrog/gofrog v1.4.0/go.mod h1:AQo5Fq0G9nDEF6icH7MYQK0iohR4HuEAXl8jaxRuT6Q=
 github.com/jfrog/jfrog-apps-config v1.0.1 h1:mtv6k7g8A8BVhlHGlSveapqf4mJfonwvXYLipdsOFMY=
 github.com/jfrog/jfrog-apps-config v1.0.1/go.mod h1:8AIIr1oY9JuH5dylz2S6f8Ym2MaadPLR6noCBO4C22w=
-github.com/jfrog/jfrog-client-go v1.35.5 h1:1QlrXdMhGi099Cs3mVKIpeVre2w1DiYhU7WGSEH2gQU=
-github.com/jfrog/jfrog-client-go v1.35.5/go.mod h1:Leua+MdhCV+M4gl746PcTsHF8dDP7+LLJ/NgHCTl/Fo=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
 github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=
@@ -138,6 +136,8 @@ github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RR
 github.com/nwaples/rardecode v1.1.0 h1:vSxaY8vQhOcVr4mm5e8XllHWTiM4JF507A0Katqw7MQ=
 github.com/nwaples/rardecode v1.1.0/go.mod h1:5DzqNKiOdpKKBH87u8VlvAnPZMXcGRhxWkRpHbbfGS0=
 github.com/onsi/gomega v1.27.10 h1:naR28SdDFlqrG6kScpT8VWpu1xWY5nJRCF3XaYyBjhI=
+github.com/orz25/jfrog-client-go v0.0.0-20231231083311-ca7e0cc28374 h1:k08DoImakx+o/LQTm7CXFx5yb2Sjl5zplAm50gUC2c8=
+github.com/orz25/jfrog-client-go v0.0.0-20231231083311-ca7e0cc28374/go.mod h1:Leua+MdhCV+M4gl746PcTsHF8dDP7+LLJ/NgHCTl/Fo=
 github.com/owenrumney/go-sarif v1.1.1/go.mod h1:dNDiPlF04ESR/6fHlPyq7gHKmrM0sHUvAGjsoh8ZH0U=
 github.com/owenrumney/go-sarif/v2 v2.3.0 h1:wP5yEpI53zr0v5cBmagXzLbHZp9Oylyo3AJDpfLBITs=
 github.com/owenrumney/go-sarif/v2 v2.3.0/go.mod h1:MSqMMx9WqlBSY7pXoOZWgEsVB4FDNfhcaXDA1j6Sr+w=

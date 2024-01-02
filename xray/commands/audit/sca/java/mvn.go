@@ -113,33 +113,27 @@ func GetMavenPluginInstallationGoals(pluginPath string) []string {
 }
 
 func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) (string, error) {
-	if mdt.cmdName == Tree {
-		return mdt.runTreeCmd(depTreeExecDir)
+	depTreeOutputPath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
+	var goals []string
+	switch mdt.cmdName {
+	case Tree:
+		goals = []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + depTreeOutputPath, "-B"}
+	case Projects:
+		goals = []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q", "-DdepsTreeOutputFile=" + depTreeOutputPath}
 	}
-	return mdt.runProjectsCmd()
+
+	return mdt.run(goals, depTreeOutputPath)
 }
 
-func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) (string, error) {
-	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
-	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath, "-B"}
+func (mdt *MavenDepTreeManager) run(goals []string, depTreeOutputPath string) (string, error) {
 	if _, err := mdt.RunMvnCmd(goals); err != nil {
 		return "", err
 	}
-
-	mavenDepTreeOutput, err := os.ReadFile(mavenDepTreePath)
+	mavenDepTreeOutput, err := os.ReadFile(depTreeOutputPath)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}
 	return string(mavenDepTreeOutput), nil
-}
-
-func (mdt *MavenDepTreeManager) runProjectsCmd() (string, error) {
-	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q"}
-	output, err := mdt.RunMvnCmd(goals)
-	if err != nil {
-		return "", err
-	}
-	return string(output), nil
 }
 
 func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) (cmdOutput []byte, err error) {

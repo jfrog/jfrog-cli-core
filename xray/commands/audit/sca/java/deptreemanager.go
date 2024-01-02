@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
@@ -58,43 +59,24 @@ type depTreeNode struct {
 	Children []string `json:"children"`
 }
 
-// getGraphFromDepTree reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
+// Reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
 // It takes the output of the plugin's run (which is a byte representation of a list of paths of the output files, separated by newlines) as input.
 func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNode, uniqueDepsMap map[string][]string, err error) {
 	modules, err := parseDepTreeFiles(outputFilePaths)
 	if err != nil {
 		return
 	}
-	uniqueDepsMap = map[string][]string{}
-	for _, moduleTree := range modules {
-		directDepId := GavPackageTypeIdentifier + moduleTree.Root
-		directDependency := &xrayUtils.GraphNode{
-			Id:    directDepId,
-			Nodes: []*xrayUtils.GraphNode{},
-		}
-		uniqueDepsMap[directDepId] = nil
-		populateDependencyTree(directDependency, moduleTree.Root, moduleTree, uniqueDepsMap)
-		depsGraph = append(depsGraph, directDependency)
-	}
-	return
-}
 
-func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, moduleTree *moduleDepTree, uniqueDepsMap map[string][]string) {
-	if currNode.NodeHasLoop() {
-		return
-	}
-	for _, childId := range moduleTree.Nodes[currNodeId].Children {
-		childGav := GavPackageTypeIdentifier + childId
-		childNode := &xrayUtils.GraphNode{
-			Id:     childGav,
-			Nodes:  []*xrayUtils.GraphNode{},
-			Parent: currNode,
-			Types:  moduleTree.Nodes[childId].Types,
+	allModulesUniqueDeps := datastructures.MakeSet[string]()
+	for _, module := range modules {
+		moduleTree, moduleUniqueDeps := getModuleTreeAndDependencies(module)
+		depsGraph = append(depsGraph, moduleTree)
+		for _, depToAdd := range moduleUniqueDeps {
+			allModulesUniqueDeps.Add(depToAdd)
 		}
-		uniqueDepsMap[childGav] = moduleTree.Nodes[childId].Types
-		populateDependencyTree(childNode, childId, moduleTree, uniqueDepsMap)
-		currNode.Nodes = append(currNode.Nodes, childNode)
 	}
+	uniqueDeps = allModulesUniqueDeps.ToSlice()
+	return
 }
 
 func parseDepTreeFiles(jsonFilePaths string) ([]*moduleDepTree, error) {
@@ -129,4 +111,22 @@ func getArtifactoryAuthFromServer(server *config.ServerDetails) (string, string,
 		return "", "", errorutils.CheckErrorf("a username is required for authenticating with Artifactory")
 	}
 	return username, password, nil
+}
+
+// Returns a dependency tree and a flat list of the module's dependencies for the given module
+func getModuleTreeAndDependencies(module *moduleDepTree) (*xrayUtils.GraphNode, []string) {
+	moduleTreeMap := make(map[string][]string)
+	moduleDeps := module.Nodes
+	for depName, dependency := range moduleDeps {
+		dependencyId := GavPackageTypeIdentifier + depName
+		var childrenList []string
+		for _, childName := range dependency.Children {
+			childId := GavPackageTypeIdentifier + childName
+			childrenList = append(childrenList, childId)
+		}
+		if len(childrenList) > 0 {
+			moduleTreeMap[dependencyId] = childrenList
+		}
+	}
+	return sca.BuildXrayDependencyTree(moduleTreeMap, GavPackageTypeIdentifier+module.Root)
 }

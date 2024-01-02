@@ -175,7 +175,7 @@ func (ptm *PollingTasksManager) start(phaseBase *phaseBase, runWaitGroup *sync.W
 	}
 	go func() {
 		defer runWaitGroup.Done()
-		pollUploads(phaseBase, phaseBase.srcUpService, uploadChunkChan, ptm.doneChannel, errorsChannelMng)
+		pollUploads(pcWrapper, phaseBase, phaseBase.srcUpService, uploadChunkChan, ptm.doneChannel, errorsChannelMng)
 	}()
 	return nil
 }
@@ -193,16 +193,6 @@ func (ptm *PollingTasksManager) stop() {
 	for i := 0; i < ptm.totalRunningGoRoutines; i++ {
 		ptm.doneChannel <- true
 	}
-}
-
-type producerConsumerWrapper struct {
-	// This Producer-Consumer is used to upload chunks, initialized in newProducerConsumerWrapper; each uploading thread waits to be given tasks from the queue.
-	chunkUploaderProducerConsumer parallel.Runner
-	// This Producer-Consumer is used to execute AQLs and build chunks from the AQLs' results. The chunks data is sent to the go routines that will upload them.
-	// Initialized in newProducerConsumerWrapper; each builder thread waits to be given tasks from the queue.
-	chunkBuilderProducerConsumer parallel.Runner
-	// Errors related to chunkUploaderProducerConsumer and chunkBuilderProducerConsumer are logged in this queue.
-	errorsQueue *clientUtils.ErrorsQueue
 }
 
 func newProducerConsumerWrapper() producerConsumerWrapper {
@@ -238,8 +228,13 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 	// Run() is a blocking method, so once all chunk builders are idle, the tasks queue closes and Run() stops running.
 	pcWrapper.chunkBuilderProducerConsumer.Run()
 	if pcWrapper.chunkUploaderProducerConsumer.IsStarted() {
+		// There might be a moment when the chunk uploader has no upload tasks.
+		// This circumstance might lead to setting the finish notification before completing all file uploads.
+		// To address this, we reset the finish notification to ensure no remaining upload tasks after the next finish notification.
+		pcWrapper.chunkUploaderProducerConsumer.ResetFinishNotificationIfActive()
 		// Wait till notified that the uploader finished its tasks, and it will not receive new tasks from the builder.
 		<-pcWrapper.chunkUploaderProducerConsumer.GetFinishedNotification()
+		log.Debug("Chunk uploaded producer consumer has completed all tasks. All files relevant to this phase have all been uploaded.")
 	}
 	// Close the tasks queue with Done().
 	pcWrapper.chunkUploaderProducerConsumer.Done()
@@ -252,13 +247,12 @@ func runProducerConsumers(pcWrapper *producerConsumerWrapper) (executionErr erro
 // Number of chunks is limited by the number of threads.
 // Whenever the status of a chunk was received and is DONE, its token is removed from the tokens batch, making room for a new chunk to be uploaded
 // and a new token to be polled on.
-func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadChunkChan chan UploadedChunk, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
+func pollUploads(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, srcUpService *srcUserPluginService, uploadChunkChan chan UploadedChunk, doneChan chan bool, errorsChannelMng *ErrorsChannelMng) {
 	curTokensBatch := api.UploadChunksStatusBody{}
 	chunksLifeCycleManager := ChunksLifeCycleManager{
 		deletedChunksSet: datastructures.MakeSet[api.ChunkId](),
 		nodeToChunksMap:  make(map[api.NodeId]map[api.ChunkId]UploadedChunkData),
 	}
-	curProcessedUploadChunks = 0
 	var timeEstMng *state.TimeEstimationManager
 	if phaseBase != nil {
 		timeEstMng = &phaseBase.stateManager.TimeEstimationManager
@@ -271,9 +265,9 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 
 		// Run once per 5 minutes
-		if i%100 == 0 {
+		if i%60 == 0 {
 			// 'Working threads' are determined by how many upload chunks are currently being processed by the source Artifactory instance.
-			if err := phaseBase.stateManager.SetWorkingThreads(curProcessedUploadChunks); err != nil {
+			if err := phaseBase.stateManager.SetWorkingThreads(pcWrapper.totalProcessedUploadChunks); err != nil {
 				log.Error("Couldn't set the current number of working threads:", err.Error())
 			}
 			log.Debug("There are", len(phaseBase.stateManager.StaleChunks), "chunks in transit for more than 30 minutes")
@@ -305,7 +299,7 @@ func pollUploads(phaseBase *phaseBase, srcUpService *srcUserPluginService, uploa
 		// Clear body for the next request
 		curTokensBatch = api.UploadChunksStatusBody{}
 		removeDeletedChunksFromSet(chunksStatus.DeletedChunks, chunksLifeCycleManager.deletedChunksSet)
-		toStop := handleChunksStatuses(phaseBase, &chunksStatus, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
+		toStop := handleChunksStatuses(pcWrapper, phaseBase, &chunksStatus, &chunksLifeCycleManager, timeEstMng, errorsChannelMng)
 		if toStop {
 			return
 		}
@@ -370,9 +364,9 @@ func removeDeletedChunksFromSet(deletedChunks []string, deletedChunksSet *datast
 // handleChunksStatuses handles the chunk statuses from the response received from the source Artifactory Instance.
 // It syncs the chunk status between the CLI and the source Artifactory instance,
 // When a chunk is DONE, the progress bar is updated, and the number of working threads is decreased.
-func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatusResponse,
+func handleChunksStatuses(pcWrapper *producerConsumerWrapper, phase *phaseBase, chunksStatus *api.UploadChunksStatusResponse,
 	chunksLifeCycleManager *ChunksLifeCycleManager, timeEstMng *state.TimeEstimationManager, errorsChannelMng *ErrorsChannelMng) bool {
-	checkChunkStatusSync(chunksStatus, chunksLifeCycleManager, errorsChannelMng)
+	checkChunkStatusSync(pcWrapper, chunksStatus, chunksLifeCycleManager, errorsChannelMng)
 	for _, chunk := range chunksStatus.ChunksStatus {
 		if chunk.UuidToken == "" {
 			log.Error("Unexpected empty uuid token in status")
@@ -382,7 +376,7 @@ func handleChunksStatuses(phase *phaseBase, chunksStatus *api.UploadChunksStatus
 		case api.InProgress:
 			continue
 		case api.Done:
-			reduceCurProcessedChunks()
+			pcWrapper.decProcessedChunks()
 			log.Debug("Received status DONE for chunk '" + chunk.UuidToken + "'")
 
 			chunkSentTime := chunksLifeCycleManager.nodeToChunksMap[api.NodeId(chunksStatus.NodeId)][api.ChunkId(chunk.UuidToken)].TimeSent
@@ -428,7 +422,7 @@ func updateProgress(phase *phaseBase, timeEstMng *state.TimeEstimationManager,
 }
 
 // Verify and handle in progress chunks synchronization between the CLI and the Source Artifactory instance
-func checkChunkStatusSync(chunkStatus *api.UploadChunksStatusResponse, chunksLifeCycleManager *ChunksLifeCycleManager, errorsChannelMng *ErrorsChannelMng) {
+func checkChunkStatusSync(pcWrapper *producerConsumerWrapper, chunkStatus *api.UploadChunksStatusResponse, chunksLifeCycleManager *ChunksLifeCycleManager, errorsChannelMng *ErrorsChannelMng) {
 	// Compare between the number of chunks received from the latest syncChunks request to the chunks data we handle locally in nodeToChunksMap.
 	// If the number of the in progress chunks of a node within nodeToChunksMap differs from the chunkStatus received, there is missing data on the source side.
 	expectedChunksInNode := len(chunksLifeCycleManager.nodeToChunksMap[api.NodeId(chunkStatus.NodeId)])
@@ -458,7 +452,7 @@ func checkChunkStatusSync(chunkStatus *api.UploadChunksStatusResponse, chunksLif
 					addErrorToChannel(errorsChannelMng, failedFile)
 				}
 				delete(chunksLifeCycleManager.nodeToChunksMap[api.NodeId(chunkStatus.NodeId)], chunkUuid)
-				reduceCurProcessedChunks()
+				pcWrapper.decProcessedChunks()
 			}
 		}
 	}

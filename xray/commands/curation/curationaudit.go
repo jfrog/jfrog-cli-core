@@ -49,9 +49,11 @@ const (
 	TotalConcurrentRequests = 10
 )
 
-var supportedTech = map[coreutils.Technology]struct{}{
-	coreutils.Npm:   {},
-	coreutils.Maven: {},
+var supportedTech = map[coreutils.Technology]func() (bool, error){
+	coreutils.Npm: nil,
+	coreutils.Maven: func() (bool, error) {
+		return clientutils.GetBoolEnvValue(coreutils.CurationMavenSupport, false)
+	},
 }
 
 type ErrorsResp struct {
@@ -183,10 +185,22 @@ func (ca *CurationAuditCommand) Run() (err error) {
 func (ca *CurationAuditCommand) doCurateAudit(results map[string][]*PackageStatus) error {
 	techs := coreutils.DetectedTechnologiesList()
 	for _, tech := range techs {
-		if _, ok := supportedTech[coreutils.Technology(tech)]; !ok {
+		supportedFunc, ok := supportedTech[coreutils.Technology(tech)]
+		if !ok {
 			log.Info(fmt.Sprintf(errorTemplateUnsupportedTech, tech))
 			continue
 		}
+		if supportedFunc != nil {
+			supported, err := supportedFunc()
+			if err != nil {
+				return err
+			}
+			if !supported {
+				log.Info(fmt.Sprintf(errorTemplateUnsupportedTech, tech))
+				continue
+			}
+		}
+
 		if err := ca.auditTree(coreutils.Technology(tech), results); err != nil {
 			return err
 		}
@@ -232,7 +246,7 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 		return err
 	}
 	rootNode := fullDependenciesTrees[0]
-	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, rootNode.Id, "", "")
+	_, projectName, projectScope, projectVersion := getUrlNameAndVersionByTech(tech, rootNode, "", "")
 	if ca.Progress() != nil {
 		ca.Progress().SetHeadlineMsg(fmt.Sprintf("Fetch curation status for %s graph with %v nodes project name: %s:%s", tech.ToFormal(), len(flattenGraph.Nodes)-1, projectName, projectVersion))
 	}
@@ -371,7 +385,7 @@ func (nc *treeAnalyzer) GraphsRelations(fullDependenciesTrees []*xrayUtils.Graph
 func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcessMap *sync.Map,
 	packagesStatus *[]*PackageStatus, parent, parentVersion string, visited *datastructures.Set[string], isRoot bool) {
 	for _, child := range node.Nodes {
-		packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, child.Id, nc.url, nc.repo)
+		packageUrls, name, scope, version := getUrlNameAndVersionByTech(nc.tech, child, nc.url, nc.repo)
 		if isRoot {
 			parent = name
 			parentVersion = version
@@ -384,18 +398,20 @@ func (nc *treeAnalyzer) fillGraphRelations(node *xrayUtils.GraphNode, preProcess
 		}
 
 		visited.Add(scope + name + version + "-" + parent + parentVersion)
-		if pkgStatus, exist := preProcessMap.Load(packageUrl); exist {
-			relation := indirectRelation
-			if isRoot {
-				relation = directRelation
-			}
-			pkgStatusCast, isPkgStatus := pkgStatus.(*PackageStatus)
-			if isPkgStatus {
-				pkgStatusClone := *pkgStatusCast
-				pkgStatusClone.DepRelation = relation
-				pkgStatusClone.ParentName = parent
-				pkgStatusClone.ParentVersion = parentVersion
-				*packagesStatus = append(*packagesStatus, &pkgStatusClone)
+		for _, packageUrl := range packageUrls {
+			if pkgStatus, exist := preProcessMap.Load(packageUrl); exist {
+				relation := indirectRelation
+				if isRoot {
+					relation = directRelation
+				}
+				pkgStatusCast, isPkgStatus := pkgStatus.(*PackageStatus)
+				if isPkgStatus {
+					pkgStatusClone := *pkgStatusCast
+					pkgStatusClone.DepRelation = relation
+					pkgStatusClone.ParentName = parent
+					pkgStatusClone.ParentVersion = parentVersion
+					*packagesStatus = append(*packagesStatus, &pkgStatusClone)
+				}
 			}
 		}
 		nc.fillGraphRelations(child, preProcessMap, packagesStatus, parent, parentVersion, visited, false)
@@ -430,32 +446,34 @@ func (nc *treeAnalyzer) fetchNodesStatus(graph *xrayUtils.GraphNode, p *sync.Map
 }
 
 func (nc *treeAnalyzer) fetchNodeStatus(node xrayUtils.GraphNode, p *sync.Map) error {
-	packageUrl, name, scope, version := getUrlNameAndVersionByTech(nc.tech, node.Id, nc.url, nc.repo)
-	if packageUrl == "" {
+	packageUrls, name, scope, version := getUrlNameAndVersionByTech(nc.tech, &node, nc.url, nc.repo)
+	if len(packageUrls) == 0 {
 		return nil
 	}
 	if scope != "" {
 		name = scope + "/" + name
 	}
-	resp, _, err := nc.rtManager.Client().SendHead(packageUrl, &nc.httpClientDetails)
-	if err != nil {
-		if resp != nil && resp.StatusCode >= 400 {
+	for _, packageUrl := range packageUrls {
+		resp, _, err := nc.rtManager.Client().SendHead(packageUrl, &nc.httpClientDetails)
+		if err != nil {
+			if resp != nil && resp.StatusCode >= 400 {
+				return errorutils.CheckErrorf(errorTemplateHeadRequest, packageUrl, name, version, resp.StatusCode, err)
+			}
+			if resp == nil || resp.StatusCode != http.StatusForbidden {
+				return err
+			}
+		}
+		if resp != nil && resp.StatusCode >= 400 && resp.StatusCode != http.StatusForbidden {
 			return errorutils.CheckErrorf(errorTemplateHeadRequest, packageUrl, name, version, resp.StatusCode, err)
 		}
-		if resp == nil || resp.StatusCode != http.StatusForbidden {
-			return err
-		}
-	}
-	if resp != nil && resp.StatusCode >= 400 && resp.StatusCode != http.StatusForbidden {
-		return errorutils.CheckErrorf(errorTemplateHeadRequest, packageUrl, name, version, resp.StatusCode, err)
-	}
-	if resp.StatusCode == http.StatusForbidden {
-		pkStatus, err := nc.getBlockedPackageDetails(packageUrl, name, version)
-		if err != nil {
-			return err
-		}
-		if pkStatus != nil {
-			p.Store(pkStatus.BlockedPackageUrl, pkStatus)
+		if resp.StatusCode == http.StatusForbidden {
+			pkStatus, err := nc.getBlockedPackageDetails(packageUrl, name, version)
+			if err != nil {
+				return err
+			}
+			if pkStatus != nil {
+				p.Store(pkStatus.BlockedPackageUrl, pkStatus)
+			}
 		}
 	}
 	return nil
@@ -534,12 +552,13 @@ func makeLegiblePolicyDetails(explanation, recommendation string) (string, strin
 	return explanation, recommendation
 }
 
-func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo string) (downloadUrl string, name string, scope string, version string) {
+func getUrlNameAndVersionByTech(tech coreutils.Technology, node *xrayUtils.GraphNode, artiUrl, repo string) (downloadUrls []string, name string, scope string, version string) {
 	if tech == coreutils.Npm {
-		return getNpmNameScopeAndVersion(nodeId, artiUrl, repo, coreutils.Npm.String())
+		downloadUrl, name, scope, version := getNpmNameScopeAndVersion(node.Id, artiUrl, repo, coreutils.Npm.String())
+		return []string{downloadUrl}, name, scope, version
 	}
 	if tech == coreutils.Maven {
-		return getMavenNameScopeAndVersion(nodeId, artiUrl, repo)
+		return getMavenNameScopeAndVersion(node.Id, artiUrl, repo, node.Types)
 	}
 	return
 }
@@ -547,7 +566,7 @@ func getUrlNameAndVersionByTech(tech coreutils.Technology, nodeId, artiUrl, repo
 // input- id: gav://org.apache.tomcat.embed:tomcat-embed-jasper:8.0.33
 // input - repo: libs-release
 // output - downloadUrl: <arti-url>/libs-release/org/apache/tomcat/embed/tomcat-embed-jasper/8.0.33/tomcat-embed-jasper-8.0.33.jar
-func getMavenNameScopeAndVersion(id, artiUrl, repo string) (downloadUrl, name, scope, version string) {
+func getMavenNameScopeAndVersion(id, artiUrl, repo string, types []string) (downloadUrls []string, name, scope, version string) {
 	id = strings.TrimPrefix(id, "gav://")
 	allParts := strings.Split(id, ":")
 	if len(allParts) < 2 {
@@ -556,13 +575,14 @@ func getMavenNameScopeAndVersion(id, artiUrl, repo string) (downloadUrl, name, s
 	nameVersion := allParts[1] + "-" + allParts[2]
 	packagePath := strings.Join(strings.Split(allParts[0], "."), "/") + "/" +
 		allParts[1] + "/" + allParts[2] + "/" + nameVersion
-	if strings.HasSuffix(allParts[1], "war") {
-		packagePath += ".war"
-	} else {
-		packagePath += ".jar"
+	for _, fileType := range types {
+		// curation service supports maven only for jar and war file types.
+		if fileType == "jar" || fileType == "war" {
+			downloadUrls = append(downloadUrls, strings.TrimSuffix(artiUrl, "/")+"/"+repo+"/"+packagePath+"."+fileType)
+		}
+
 	}
-	downloadUrl = strings.TrimSuffix(artiUrl, "/") + "/" + repo + "/" + packagePath
-	return downloadUrl, strings.Join(allParts[:2], ":"), "", allParts[2]
+	return downloadUrls, strings.Join(allParts[:2], ":"), "", allParts[2]
 }
 
 // The graph holds, for each node, the component ID (xray representation)

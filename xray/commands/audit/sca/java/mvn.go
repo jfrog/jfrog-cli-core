@@ -23,7 +23,7 @@ const (
 	mavenDepTreeJarFile    = "maven-dep-tree.jar"
 	mavenDepTreeOutputFile = "mavendeptree.out"
 	// Changing this version also requires a change in MAVEN_DEP_TREE_VERSION within buildscripts/download_jars.sh
-	mavenDepTreeVersion = "1.0.2"
+	mavenDepTreeVersion = "1.0.3"
 	settingsXmlFile     = "settings.xml"
 )
 
@@ -63,7 +63,7 @@ func NewMavenDepTreeManager(params xrayutils.AuditParams, serverDetails *config.
 	}
 }
 
-func buildMavenDependencyTree(params xrayutils.AuditParams, serverDetails *config.ServerDetails) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func buildMavenDependencyTree(params xrayutils.AuditParams, serverDetails *config.ServerDetails) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps map[string][]string, err error) {
 	manager := NewMavenDepTreeManager(params, serverDetails, Tree)
 	outputFileContent, err := manager.RunMavenDepTree()
 	if err != nil {

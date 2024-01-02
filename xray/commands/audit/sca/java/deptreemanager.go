@@ -2,7 +2,6 @@ package java
 
 import (
 	"encoding/json"
-	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -16,7 +15,7 @@ const (
 	GavPackageTypeIdentifier = "gav://"
 )
 
-func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
+func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, map[string][]string, error) {
 	serverDetails, err := params.ServerDetails()
 	if err != nil {
 		return nil, nil, err
@@ -55,32 +54,32 @@ type moduleDepTree struct {
 }
 
 type depTreeNode struct {
+	Types    []string `json:"types"`
 	Children []string `json:"children"`
 }
 
 // getGraphFromDepTree reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
 // It takes the output of the plugin's run (which is a byte representation of a list of paths of the output files, separated by newlines) as input.
-func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNode, uniqueDepsMap map[string][]string, err error) {
 	modules, err := parseDepTreeFiles(outputFilePaths)
 	if err != nil {
 		return
 	}
-	uniqueDepsSet := datastructures.MakeSet[string]()
+	uniqueDepsMap = map[string][]string{}
 	for _, moduleTree := range modules {
 		directDepId := GavPackageTypeIdentifier + moduleTree.Root
 		directDependency := &xrayUtils.GraphNode{
 			Id:    directDepId,
 			Nodes: []*xrayUtils.GraphNode{},
 		}
-		uniqueDepsSet.Add(directDepId)
-		populateDependencyTree(directDependency, moduleTree.Root, moduleTree, uniqueDepsSet)
+		uniqueDepsMap[directDepId] = nil
+		populateDependencyTree(directDependency, moduleTree.Root, moduleTree, uniqueDepsMap)
 		depsGraph = append(depsGraph, directDependency)
 	}
-	uniqueDeps = uniqueDepsSet.ToSlice()
 	return
 }
 
-func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, moduleTree *moduleDepTree, uniqueDepsSet *datastructures.Set[string]) {
+func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, moduleTree *moduleDepTree, uniqueDepsMap map[string][]string) {
 	if currNode.NodeHasLoop() {
 		return
 	}
@@ -90,9 +89,10 @@ func populateDependencyTree(currNode *xrayUtils.GraphNode, currNodeId string, mo
 			Id:     childGav,
 			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
+			Types:  moduleTree.Nodes[childId].Types,
 		}
-		uniqueDepsSet.Add(childGav)
-		populateDependencyTree(childNode, childId, moduleTree, uniqueDepsSet)
+		uniqueDepsMap[childGav] = moduleTree.Nodes[childId].Types
+		populateDependencyTree(childNode, childId, moduleTree, uniqueDepsMap)
 		currNode.Nodes = append(currNode.Nodes, childNode)
 	}
 }

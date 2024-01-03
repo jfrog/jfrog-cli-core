@@ -1,20 +1,20 @@
 package buildinfo
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type BuildCleanCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 }
 
 func NewBuildCleanCommand() *BuildCleanCommand {
 	return &BuildCleanCommand{}
 }
 
-func (bcc *BuildCleanCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildCleanCommand {
+func (bcc *BuildCleanCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildCleanCommand {
 	bcc.buildConfiguration = buildConfiguration
 	return bcc
 }
@@ -38,7 +38,7 @@ func (bcc *BuildCleanCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	err = utils.RemoveBuildDir(buildName, buildNumber, bcc.buildConfiguration.GetProject())
+	err = build.RemoveBuildDir(buildName, buildNumber, bcc.buildConfiguration.GetProject())
 	if err != nil {
 		return err
 	}

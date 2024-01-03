@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -13,7 +14,7 @@ import (
 
 // Deprecated BuildScan Command. The new build scan command is "xray/commands/scan/buildscan"
 type BuildScanLegacyCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	failBuild          bool
 	serverDetails      *config.ServerDetails
 }
@@ -32,7 +33,7 @@ func (bsc *BuildScanLegacyCommand) SetFailBuild(failBuild bool) *BuildScanLegacy
 	return bsc
 }
 
-func (bsc *BuildScanLegacyCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildScanLegacyCommand {
+func (bsc *BuildScanLegacyCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildScanLegacyCommand {
 	bsc.buildConfiguration = buildConfiguration
 	return bsc
 }
@@ -93,7 +94,7 @@ type scanSummary struct {
 	Url         string `json:"more_details_url,omitempty"`
 }
 
-func getXrayScanParams(buildConfiguration utils.BuildConfiguration) (services.XrayScanParams, error) {
+func getXrayScanParams(buildConfiguration build.BuildConfiguration) (services.XrayScanParams, error) {
 	xrayScanParams := services.NewXrayScanParams()
 	buildName, err := buildConfiguration.GetBuildName()
 	if err != nil {

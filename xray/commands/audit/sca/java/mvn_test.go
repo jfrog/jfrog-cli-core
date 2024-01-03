@@ -3,10 +3,11 @@ package java
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/tests"
-	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -98,7 +99,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	// Run getModulesDependencyTrees
 	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&xrayutils.AuditBasicParams{}, nil)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
-		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
+		assert.ElementsMatch(t, maps.Keys(uniqueDeps), expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
 		multi := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {
@@ -148,7 +149,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 
 	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&xrayutils.AuditBasicParams{}, nil)
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
-		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
+		assert.ElementsMatch(t, maps.Keys(uniqueDeps), expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
 		multi := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {

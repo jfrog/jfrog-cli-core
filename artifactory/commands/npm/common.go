@@ -1,7 +1,7 @@
 package npm
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
@@ -13,7 +13,7 @@ const (
 
 type CommonArgs struct {
 	repo               string
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	npmArgs            []string
 	serverDetails      *config.ServerDetails
 }
@@ -28,7 +28,7 @@ func (ca *CommonArgs) SetNpmArgs(npmArgs []string) *CommonArgs {
 	return ca
 }
 
-func (ca *CommonArgs) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *CommonArgs {
+func (ca *CommonArgs) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *CommonArgs {
 	ca.buildConfiguration = buildConfiguration
 	return ca
 }

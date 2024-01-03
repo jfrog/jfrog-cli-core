@@ -10,9 +10,9 @@ import (
 	"unicode"
 
 	jfrogappsconfig "github.com/jfrog/jfrog-apps-config/go"
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -230,7 +230,7 @@ var FakeBasicXrayResults = []services.ScanResponse{
 }
 
 func InitJasTest(t *testing.T, workingDirs ...string) (*JasScanner, func()) {
-	assert.NoError(t, rtutils.DownloadAnalyzerManagerIfNeeded())
+	assert.NoError(t, dependencies.DownloadAnalyzerManagerIfNeeded())
 	scanner, err := NewJasScanner(workingDirs, &FakeServerDetails, "")
 	assert.NoError(t, err)
 	return scanner, func() {

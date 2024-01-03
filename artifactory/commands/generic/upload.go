@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -23,7 +24,7 @@ import (
 type UploadCommand struct {
 	GenericCommand
 	uploadConfiguration *utils.UploadConfiguration
-	buildConfiguration  *utils.BuildConfiguration
+	buildConfiguration  *build.BuildConfiguration
 	progress            ioUtils.ProgressMgr
 }
 
@@ -31,7 +32,7 @@ func NewUploadCommand() *UploadCommand {
 	return &UploadCommand{GenericCommand: *NewGenericCommand()}
 }
 
-func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *UploadCommand {
+func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *UploadCommand {
 	uc.buildConfiguration = buildConfiguration
 	return uc
 }
@@ -102,7 +103,7 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 	if toCollect && !uc.DryRun() {
 		addVcsProps = true
-		buildProps, err = utils.CreateBuildPropsFromConfiguration(uc.buildConfiguration)
+		buildProps, err = build.CreateBuildPropsFromConfiguration(uc.buildConfiguration)
 		if err != nil {
 			return err
 		}
@@ -191,7 +192,7 @@ func (uc *UploadCommand) upload() (err error) {
 		if err != nil {
 			return
 		}
-		return utils.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
+		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
 	return
 }

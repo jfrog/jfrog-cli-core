@@ -1,4 +1,4 @@
-package utils
+package commands
 
 import (
 	"os"
@@ -7,8 +7,10 @@ import (
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -47,6 +49,10 @@ const (
 	// Nuget flags
 	nugetV2 = "nuget-v2"
 
+	// Default values
+	defaultIvyDescPattern      = "[organization]/[module]/ivy-[revision].xml"
+	defaultIvyArtifactsPattern = "[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]"
+
 	// Errors
 	resolutionErrorPrefix      = "[Resolution]: "
 	deploymentErrorPrefix      = "[Deployment]: "
@@ -56,34 +62,69 @@ const (
 )
 
 type ConfigFile struct {
-	Interactive bool             `yaml:"-"`
-	Version     int              `yaml:"version,omitempty"`
-	ConfigType  string           `yaml:"type,omitempty"`
-	Resolver    utils.Repository `yaml:"resolver,omitempty"`
-	Deployer    utils.Repository `yaml:"deployer,omitempty"`
-	UsePlugin   bool             `yaml:"usePlugin,omitempty"`
-	UseWrapper  bool             `yaml:"useWrapper,omitempty"`
+	Interactive bool               `yaml:"-"`
+	Version     int                `yaml:"version,omitempty"`
+	ConfigType  string             `yaml:"type,omitempty"`
+	Resolver    project.Repository `yaml:"resolver,omitempty"`
+	Deployer    project.Repository `yaml:"deployer,omitempty"`
+	UsePlugin   bool               `yaml:"usePlugin,omitempty"`
+	UseWrapper  bool               `yaml:"useWrapper,omitempty"`
 }
 
-func NewConfigFile(confType utils.ProjectType, c *cli.Context) *ConfigFile {
-	configFile := &ConfigFile{
+type ConfigOption func(c *ConfigFile)
+
+func newConfigFile(confType project.ProjectType) *ConfigFile {
+	return &ConfigFile{
 		Version:    BuildConfVersion,
 		ConfigType: confType.String(),
 	}
+}
+
+func NewConfigFileWithOptions(confType project.ProjectType, options ...ConfigOption) *ConfigFile {
+	configFile := newConfigFile(confType)
+	configFile.setDefaultValues(confType)
+
+	for _, option := range options {
+		option(configFile)
+	}
+	return configFile
+}
+
+func (configFile *ConfigFile) setDefaultValues(confType project.ProjectType) {
+	configFile.Interactive = !isCI()
+
+	if confType == project.Gradle {
+		configFile.Deployer.DeployMavenDesc = true
+		configFile.Deployer.DeployIvyDesc = true
+		configFile.Deployer.IvyPattern = defaultIvyDescPattern
+		configFile.Deployer.ArtifactsPattern = defaultIvyArtifactsPattern
+	}
+}
+
+func NewConfigFile(confType project.ProjectType, c *cli.Context) *ConfigFile {
+	configFile := newConfigFile(confType)
 	configFile.populateConfigFromFlags(c)
 	switch confType {
-	case utils.Maven:
+	case project.Maven:
 		configFile.populateMavenConfigFromFlags(c)
-	case utils.Gradle:
+	case project.Gradle:
 		configFile.populateGradleConfigFromFlags(c)
-	case utils.Nuget, utils.Dotnet:
+	case project.Nuget, project.Dotnet:
 		configFile.populateNugetConfigFromFlags(c)
 	}
 	return configFile
 }
 
-func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
-	global := c.Bool(global)
+func CreateBuildConfig(c *cli.Context, confType project.ProjectType) (err error) {
+	return createBuildConfig(c.Bool(global), confType, NewConfigFile(confType, c))
+}
+
+func CreateBuildConfigWithOptions(global bool, confType project.ProjectType, options ...ConfigOption) (err error) {
+	return createBuildConfig(global, confType, NewConfigFileWithOptions(confType, options...))
+}
+
+func createBuildConfig(global bool, confType project.ProjectType, configFile *ConfigFile) (err error) {
+	// Create/verify project directory
 	projectDir, err := utils.GetProjectDir(global)
 	if err != nil {
 		return err
@@ -91,54 +132,67 @@ func CreateBuildConfig(c *cli.Context, confType utils.ProjectType) (err error) {
 	if err = fileutils.CreateDirIfNotExist(projectDir); err != nil {
 		return err
 	}
+	// Populate, validate and write the config file
 	configFilePath := filepath.Join(projectDir, confType.String()+".yaml")
-	configFile := NewConfigFile(confType, c)
 	if err := configFile.VerifyConfigFile(configFilePath); err != nil {
 		return err
 	}
-	if configFile.Interactive {
-		switch confType {
-		case utils.Go:
-			err = configFile.configGo()
-		case utils.Pip:
-			err = configFile.configPip()
-		case utils.Pipenv:
-			err = configFile.configPipenv()
-		case utils.Poetry:
-			err = configFile.configPoetry()
-		case utils.Yarn:
-			err = configFile.configYarn()
-		case utils.Npm:
-			err = configFile.configNpm()
-		case utils.Nuget, utils.Dotnet:
-			err = configFile.configDotnet()
-		case utils.Maven:
-			err = configFile.configMaven()
-		case utils.Gradle:
-			err = configFile.configGradle()
-		case utils.Terraform:
-			err = configFile.configTerraform()
-		}
-		if err != nil {
-			return errorutils.CheckError(err)
-		}
+	if err := handleInteractiveConfigCreation(configFile, confType); err != nil {
+		return err
 	}
 	if err = configFile.validateConfig(); err != nil {
 		return err
 	}
+	return writeConfigFile(configFile, configFilePath)
+}
+
+func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.ProjectType) (err error) {
+	if !configFile.Interactive {
+		return
+	}
+	switch confType {
+	case project.Go:
+		err = configFile.configGo()
+	case project.Pip:
+		err = configFile.configPip()
+	case project.Pipenv:
+		err = configFile.configPipenv()
+	case project.Poetry:
+		err = configFile.configPoetry()
+	case project.Yarn:
+		err = configFile.configYarn()
+	case project.Npm:
+		err = configFile.configNpm()
+	case project.Nuget, project.Dotnet:
+		err = configFile.configDotnet()
+	case project.Maven:
+		err = configFile.configMaven()
+	case project.Gradle:
+		err = configFile.configGradle()
+	case project.Terraform:
+		err = configFile.configTerraform()
+	}
+	return errorutils.CheckError(err)
+}
+
+func writeConfigFile(configFile *ConfigFile, destination string) (err error) {
 	resBytes, err := yaml.Marshal(&configFile)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if err = os.WriteFile(configFilePath, resBytes, 0644); err != nil {
+	if err = os.WriteFile(destination, resBytes, 0644); err != nil {
 		return errorutils.CheckError(err)
 	}
-	log.Info(confType.String() + " build config successfully created.")
-	return nil
+	log.Info(configFile.ConfigType + " build config successfully created.")
+	return
+}
+
+func isCI() bool {
+	return strings.ToLower(os.Getenv(coreutils.CI)) == "true"
 }
 
 func isInteractive(c *cli.Context) bool {
-	if strings.ToLower(os.Getenv(coreutils.CI)) == "true" {
+	if isCI() {
 		return false
 	}
 	return !isAnyFlagSet(c, resolutionServerId, resolutionRepo, deploymentServerId, deploymentRepo)
@@ -162,6 +216,34 @@ func (configFile *ConfigFile) populateConfigFromFlags(c *cli.Context) {
 	configFile.Interactive = isInteractive(c)
 }
 
+func WithResolverServerId(serverId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Resolver.ServerId = serverId
+		c.Interactive = false
+	}
+}
+
+func WithDeployerServerId(serverId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.ServerId = serverId
+		c.Interactive = false
+	}
+}
+
+func WithResolverRepo(repoId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Resolver.Repo = repoId
+		c.Interactive = false
+	}
+}
+
+func WithDeployerRepo(repoId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.Repo = repoId
+		c.Interactive = false
+	}
+}
+
 // Populate Maven related configuration from cli flags
 func (configFile *ConfigFile) populateMavenConfigFromFlags(c *cli.Context) {
 	configFile.Resolver.SnapshotRepo = c.String(resolutionSnapshotsRepo)
@@ -175,21 +257,111 @@ func (configFile *ConfigFile) populateMavenConfigFromFlags(c *cli.Context) {
 		deploymentSnapshotsRepo, deploymentReleasesRepo, includePatterns, excludePatterns)
 }
 
+func WithResolverSnapshotRepo(repoId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Resolver.SnapshotRepo = repoId
+		c.Interactive = false
+	}
+}
+
+func WithResolverReleaseRepo(repoId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Resolver.ReleaseRepo = repoId
+		c.Interactive = false
+	}
+}
+
+func WithDeployerSnapshotRepo(repoId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.SnapshotRepo = repoId
+		c.Interactive = false
+	}
+}
+
+func WithDeployerReleaseRepo(repoId string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.ReleaseRepo = repoId
+		c.Interactive = false
+	}
+}
+
+func WithDeployerIncludePatterns(includePatterns string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.IncludePatterns = includePatterns
+		c.Interactive = false
+	}
+}
+
+func WithDeployerExcludePatterns(excludePatterns string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.ExcludePatterns = excludePatterns
+		c.Interactive = false
+	}
+}
+
+func UseWrapper(useWrapper bool) ConfigOption {
+	return func(c *ConfigFile) {
+		c.UseWrapper = useWrapper
+	}
+}
+
 // Populate Gradle related configuration from cli flags
 func (configFile *ConfigFile) populateGradleConfigFromFlags(c *cli.Context) {
 	configFile.Deployer.DeployMavenDesc = c.BoolT(deployMavenDesc)
 	configFile.Deployer.DeployIvyDesc = c.BoolT(deployIvyDesc)
-	configFile.Deployer.IvyPattern = defaultIfNotSet(c, ivyDescPattern, "[organization]/[module]/ivy-[revision].xml")
-	configFile.Deployer.ArtifactsPattern = defaultIfNotSet(c, ivyArtifactsPattern, "[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]")
+	configFile.Deployer.IvyPattern = defaultIfNotSet(c, ivyDescPattern, defaultIvyDescPattern)
+	configFile.Deployer.ArtifactsPattern = defaultIfNotSet(c, ivyArtifactsPattern, defaultIvyArtifactsPattern)
 	configFile.UsePlugin = c.Bool(usesPlugin)
 	configFile.UseWrapper = c.Bool(useWrapper)
 	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, deployMavenDesc, deployIvyDesc, ivyDescPattern, ivyArtifactsPattern, usesPlugin, useWrapper)
+}
+
+func WithMavenDescDeployment(mavenDesc bool) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.DeployMavenDesc = mavenDesc
+		c.Interactive = false
+	}
+}
+
+func WithIvyDescDeployment(ivyDesc bool) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.DeployIvyDesc = ivyDesc
+		c.Interactive = false
+	}
+}
+
+func WithIvyDeploymentPattern(ivyPattern string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.IvyPattern = ivyPattern
+		c.Interactive = false
+	}
+}
+
+func WithArtifactsDeploymentPattern(artifactsPattern string) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Deployer.IvyPattern = artifactsPattern
+		c.Interactive = false
+	}
+}
+
+func UsePlugin(usePlugin bool) ConfigOption {
+	return func(c *ConfigFile) {
+		c.UsePlugin = usePlugin
+		c.Interactive = false
+	}
 }
 
 // Populate NuGet related configuration from cli flags
 func (configFile *ConfigFile) populateNugetConfigFromFlags(c *cli.Context) {
 	configFile.Resolver.NugetV2 = c.Bool(nugetV2)
 	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, nugetV2)
+}
+
+func WithResolverNugetV2(nugetV2 bool) ConfigOption {
+	return func(c *ConfigFile) {
+		c.Resolver.NugetV2 = nugetV2
+		c.Interactive = false
+	}
 }
 
 // Verify config file doesn't exist or prompt to override it
@@ -297,7 +469,7 @@ func getIncludeExcludePatterns(patternType string) string {
 	var patterns []string
 	patternNum := 1
 	for {
-		newPattern := AskString("", cases.Title(language.Und, cases.NoLower).String(patternType)+" pattern "+strconv.Itoa(patternNum)+" (leave empty to continue):", true, false)
+		newPattern := ioutils.AskString("", cases.Title(language.Und, cases.NoLower).String(patternType)+" pattern "+strconv.Itoa(patternNum)+" (leave empty to continue):", true, false)
 		if newPattern == "" {
 			return strings.Join(patterns, ", ")
 		}
@@ -374,7 +546,7 @@ func (configFile *ConfigFile) setServerId(serverId *string, useArtifactoryQuesti
 
 func (configFile *ConfigFile) setRepo(repo *string, message string, serverId string, repoType utils.RepoType) {
 	if *repo == "" {
-		*repo = readRepo(message+PressTabMsg, serverId, repoType, utils.Virtual)
+		*repo = readRepo(message+ioutils.PressTabMsg, serverId, repoType, utils.Virtual)
 	}
 }
 
@@ -383,8 +555,8 @@ func (configFile *ConfigFile) setMavenIvyDescriptors() {
 	configFile.Deployer.DeployIvyDesc = coreutils.AskYesNo("Deploy Ivy descriptors?", false)
 
 	if configFile.Deployer.DeployIvyDesc {
-		configFile.Deployer.IvyPattern = AskStringWithDefault("", "Set Ivy descriptor pattern", "[organization]/[module]/ivy-[revision].xml")
-		configFile.Deployer.ArtifactsPattern = AskStringWithDefault("", "Set Ivy artifact pattern", "[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]")
+		configFile.Deployer.IvyPattern = ioutils.AskStringWithDefault("", "Set Ivy descriptor pattern", defaultIvyDescPattern)
+		configFile.Deployer.ArtifactsPattern = ioutils.AskStringWithDefault("", "Set Ivy artifact pattern", defaultIvyArtifactsPattern)
 	}
 }
 
@@ -392,7 +564,7 @@ func (configFile *ConfigFile) setUseNugetV2() {
 	configFile.Resolver.NugetV2 = coreutils.AskYesNo("Use NuGet V2 Protocol?", false)
 }
 
-func validateRepositoryConfig(repository *utils.Repository, errorPrefix string) error {
+func validateRepositoryConfig(repository *project.Repository, errorPrefix string) error {
 	releaseRepo := repository.ReleaseRepo
 	snapshotRepo := repository.SnapshotRepo
 
@@ -460,7 +632,7 @@ func readArtifactoryServer(useArtifactoryQuestion string) (string, error) {
 		}
 	}
 
-	return AskFromList("", "Set Artifactory server ID", false, ConvertToSuggests(serversIds), defaultServer), nil
+	return ioutils.AskFromList("", "Set Artifactory server ID", false, ioutils.ConvertToSuggests(serversIds), defaultServer), nil
 }
 
 func readRepo(promptPrefix string, serverId string, repoTypes ...utils.RepoType) string {
@@ -471,9 +643,9 @@ func readRepo(promptPrefix string, serverId string, repoTypes ...utils.RepoType)
 		availableRepos = []string{}
 	}
 	if len(availableRepos) > 0 {
-		return AskFromListWithMismatchConfirmation(promptPrefix, "Repository not found.", ConvertToSuggests(availableRepos))
+		return ioutils.AskFromListWithMismatchConfirmation(promptPrefix, "Repository not found.", ioutils.ConvertToSuggests(availableRepos))
 	}
-	return AskString("", promptPrefix, false, false)
+	return ioutils.AskString("", promptPrefix, false, false)
 }
 
 func getServersIdAndDefault() ([]string, string, error) {

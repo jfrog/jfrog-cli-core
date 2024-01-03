@@ -6,15 +6,15 @@ import (
 	"os"
 
 	"github.com/c-bata/go-prompt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
 	// Strings for prompt questions
-	SelectConfigKeyMsg = "Select the next configuration key" + utils.PressTabMsg
+	SelectConfigKeyMsg = "Select the next configuration key" + ioutils.PressTabMsg
 
 	// Template types
 	TemplateType = "templateType"
@@ -73,7 +73,7 @@ func getArtifactoryServerIds() []prompt.Suggest {
 }
 
 func (rtc *ReplicationTemplateCommand) Run() (err error) {
-	replicationTemplateQuestionnaire := &utils.InteractiveQuestionnaire{
+	replicationTemplateQuestionnaire := &ioutils.InteractiveQuestionnaire{
 		MandatoryQuestionsKeys: []string{JobType, RepoKey},
 		QuestionsMap:           questionMap,
 	}
@@ -92,14 +92,14 @@ func (rtc *ReplicationTemplateCommand) Run() (err error) {
 	return nil
 }
 
-var questionMap = map[string]utils.QuestionInfo{
-	utils.OptionalKey: {
+var questionMap = map[string]ioutils.QuestionInfo{
+	ioutils.OptionalKey: {
 		Msg:          "",
 		PromptPrefix: "Select the next property >",
 		AllowVars:    false,
 		Writer:       nil,
 		MapKey:       "",
-		Callback:     utils.OptionalKeyCallback,
+		Callback:     ioutils.OptionalKeyCallback,
 	},
 	TemplateType: {
 		Options: []prompt.Suggest{
@@ -118,7 +118,7 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: Push, Description: "Push replication"},
 		},
 		Msg:          "",
-		PromptPrefix: "Select replication job type" + utils.PressTabMsg,
+		PromptPrefix: "Select replication job type" + ioutils.PressTabMsg,
 		AllowVars:    false,
 		Writer:       nil,
 		MapKey:       "",
@@ -128,7 +128,7 @@ var questionMap = map[string]utils.QuestionInfo{
 		Msg:          "",
 		PromptPrefix: "Enter source repo key >",
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       RepoKey,
 		Callback:     nil,
 	},
@@ -136,16 +136,16 @@ var questionMap = map[string]utils.QuestionInfo{
 		Msg:          "",
 		PromptPrefix: "Enter target repo key >",
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       TargetRepoKey,
 		Callback:     nil,
 	},
 	ServerId: {
 		Options:      getArtifactoryServerIds(),
 		Msg:          "",
-		PromptPrefix: "Enter target server id" + utils.PressTabMsg,
+		PromptPrefix: "Enter target server id" + ioutils.PressTabMsg,
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       ServerId,
 		Callback:     nil,
 	},
@@ -153,7 +153,7 @@ var questionMap = map[string]utils.QuestionInfo{
 		Msg:          "",
 		PromptPrefix: "Enter cron expression for frequency (for example, 0 0 12 * * ? will replicate daily) >",
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       CronExp,
 		Callback:     nil,
 	},
@@ -166,7 +166,7 @@ var questionMap = map[string]utils.QuestionInfo{
 		Msg:          "",
 		PromptPrefix: "Enter include path prefix pattern >",
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       IncludePathPrefixPattern,
 		Callback:     nil,
 	},
@@ -174,13 +174,13 @@ var questionMap = map[string]utils.QuestionInfo{
 		Msg:          "",
 		PromptPrefix: "Enter socket timeout millis >",
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       SocketTimeoutMillis,
 		Callback:     nil,
 	},
 }
 
-func jobTypeCallback(iq *utils.InteractiveQuestionnaire, jobType string) (string, error) {
+func jobTypeCallback(iq *ioutils.InteractiveQuestionnaire, jobType string) (string, error) {
 	if jobType == Pull {
 		iq.MandatoryQuestionsKeys = append(iq.MandatoryQuestionsKeys, CronExp)
 	} else {
@@ -191,22 +191,22 @@ func jobTypeCallback(iq *utils.InteractiveQuestionnaire, jobType string) (string
 }
 
 func getAllPossibleOptionalRepoConfKeys(values ...string) []prompt.Suggest {
-	optionalKeys := []string{utils.SaveAndExit, Enabled, SyncDeletes, SyncProperties, SyncStatistics, PathPrefix, IncludePathPrefixPattern, EnableEventReplication, SocketTimeoutMillis}
+	optionalKeys := []string{ioutils.SaveAndExit, Enabled, SyncDeletes, SyncProperties, SyncStatistics, PathPrefix, IncludePathPrefixPattern, EnableEventReplication, SocketTimeoutMillis}
 	if len(values) > 0 {
 		optionalKeys = append(optionalKeys, values...)
 	}
-	return utils.GetSuggestsFromKeys(optionalKeys, suggestionMap)
+	return ioutils.GetSuggestsFromKeys(optionalKeys, suggestionMap)
 }
 
 // Specific writers for repo templates, since all the values in the templates should be written as string.
-var BoolToStringQuestionInfo = utils.QuestionInfo{
-	Options:   utils.GetBoolSuggests(),
+var BoolToStringQuestionInfo = ioutils.QuestionInfo{
+	Options:   ioutils.GetBoolSuggests(),
 	AllowVars: true,
-	Writer:    utils.WriteStringAnswer,
+	Writer:    ioutils.WriteStringAnswer,
 }
 
 var suggestionMap = map[string]prompt.Suggest{
-	utils.SaveAndExit:        {Text: utils.SaveAndExit},
+	ioutils.SaveAndExit:      {Text: ioutils.SaveAndExit},
 	ServerId:                 {Text: ServerId},
 	RepoKey:                  {Text: RepoKey},
 	TargetRepoKey:            {Text: TargetRepoKey},

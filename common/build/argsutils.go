@@ -1,4 +1,4 @@
-package utils
+package build
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"

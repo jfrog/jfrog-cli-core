@@ -3,6 +3,7 @@ package container
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -16,7 +17,7 @@ const (
 type ContainerCommandBase struct {
 	image              *container.Image
 	repo               string
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	serverDetails      *config.ServerDetails
 }
 
@@ -63,11 +64,11 @@ func (ccb *ContainerCommandBase) IsGetRepoSupported() (bool, error) {
 	return err == nil, nil
 }
 
-func (ccb *ContainerCommandBase) BuildConfiguration() *utils.BuildConfiguration {
+func (ccb *ContainerCommandBase) BuildConfiguration() *build.BuildConfiguration {
 	return ccb.buildConfiguration
 }
 
-func (ccb *ContainerCommandBase) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *ContainerCommandBase {
+func (ccb *ContainerCommandBase) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *ContainerCommandBase {
 	ccb.buildConfiguration = buildConfiguration
 	return ccb
 }

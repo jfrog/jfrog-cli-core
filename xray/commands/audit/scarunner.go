@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"os"
 	"time"
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
@@ -209,7 +209,7 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 	if err != nil {
 		return
 	}
-	err = utils.SetResolutionRepoIfExists(params, tech)
+	err = SetResolutionRepoIfExists(params, tech)
 	if err != nil {
 		return
 	}
@@ -245,6 +245,59 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 		return
 	}
 	flatTree, err = createFlatTree(uniqueDeps)
+	return
+}
+
+// Associates a technology with another of a different type in the structure.
+// Docker is not present, as there is no docker-config command and, consequently, no docker.yaml file we need to operate on.
+var techType = map[coreutils.Technology]project.ProjectType{
+	coreutils.Maven: project.Maven, coreutils.Gradle: project.Gradle, coreutils.Npm: project.Npm, coreutils.Yarn: project.Yarn, coreutils.Go: project.Go, coreutils.Pip: project.Pip,
+	coreutils.Pipenv: project.Pipenv, coreutils.Poetry: project.Poetry, coreutils.Nuget: project.Nuget, coreutils.Dotnet: project.Dotnet,
+}
+
+// Verifies the existence of depsRepo. If it doesn't exist, it searches for a configuration file based on the technology type. If found, it assigns depsRepo in the AuditParams.
+func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Technology) (err error) {
+	if params.DepsRepo() != "" || params.IgnoreConfigFile() {
+		return
+	}
+
+	configFilePath, exists, err := project.GetProjectConfFilePath(techType[tech])
+	if err != nil {
+		err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+		return
+	}
+	if !exists {
+		// Nuget and Dotnet are identified similarly in the detection process. To prevent redundancy, Dotnet is filtered out earlier in the process, focusing solely on detecting Nuget.
+		// Consequently, it becomes necessary to verify the presence of dotnet.yaml when Nuget detection occurs.
+		if tech == coreutils.Nuget {
+			configFilePath, exists, err = project.GetProjectConfFilePath(techType[coreutils.Dotnet])
+			if err != nil {
+				err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
+				return
+			}
+			if !exists {
+				log.Debug(fmt.Sprintf("No %s.yaml nor %s.yaml configuration file was found. Resolving dependencies from %s default registry", coreutils.Nuget.String(), coreutils.Dotnet.String(), tech.String()))
+				return
+			}
+		} else {
+			log.Debug(fmt.Sprintf("No %s.yaml configuration file was found. Resolving dependencies from %s default registry", tech.String(), tech.String()))
+			return
+		}
+	}
+
+	log.Debug("Using resolver config from", configFilePath)
+	repoConfig, err := project.ReadResolutionOnlyConfiguration(configFilePath)
+	if err != nil {
+		err = fmt.Errorf("failed while reading %s.yaml config file: %s", tech.String(), err.Error())
+		return
+	}
+	details, err := repoConfig.ServerDetails()
+	if err != nil {
+		err = fmt.Errorf("failed getting server details: %s", err.Error())
+		return
+	}
+	params.SetServerDetails(details)
+	params.SetDepsRepo(repoConfig.TargetRepo())
 	return
 }
 

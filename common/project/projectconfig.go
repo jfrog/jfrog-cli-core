@@ -65,6 +65,14 @@ func (projectType ProjectType) String() string {
 	return ProjectTypes[projectType]
 }
 
+type MissingResolverErr struct {
+	message string
+}
+
+func (mre *MissingResolverErr) Error() string {
+	return mre.message
+}
+
 type Repository struct {
 	Repo             string `yaml:"repo,omitempty"`
 	ServerId         string `yaml:"serverId,omitempty"`
@@ -128,7 +136,7 @@ func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) 
 		}
 	}()
 	if !vConfig.IsSet(prefix) {
-		err = errorutils.CheckErrorf("the %s repository is missing from the config file (%s)", prefix, configFilePath)
+		err = &MissingResolverErr{fmt.Sprintf("the %s repository is missing from the config file (%s)", prefix, configFilePath)}
 		return
 	}
 	log.Debug(fmt.Sprintf("Found %s in the config file %s", prefix, configFilePath))

@@ -50,13 +50,8 @@ func NewDepTreeManager(params *DepTreeParams) DepTreeManager {
 
 // The structure of a dependency tree of a module in a Gradle/Maven project, as created by the gradle-dep-tree and maven-dep-tree plugins.
 type moduleDepTree struct {
-	Root  string                 `json:"root"`
-	Nodes map[string]depTreeNode `json:"nodes"`
-}
-
-type depTreeNode struct {
-	Types    []string `json:"types"`
-	Children []string `json:"children"`
+	Root  string                     `json:"root"`
+	Nodes map[string]sca.DepTreeNode `json:"nodes"`
 }
 
 // Reads the output files of the gradle-dep-tree and maven-dep-tree plugins and returns them as a slice of GraphNodes.
@@ -66,16 +61,14 @@ func getGraphFromDepTree(outputFilePaths string) (depsGraph []*xrayUtils.GraphNo
 	if err != nil {
 		return
 	}
-
-	allModulesUniqueDeps := datastructures.MakeSet[string]()
+	uniqueDepsMap = map[string][]string{}
 	for _, module := range modules {
 		moduleTree, moduleUniqueDeps := getModuleTreeAndDependencies(module)
 		depsGraph = append(depsGraph, moduleTree)
-		for _, depToAdd := range moduleUniqueDeps {
-			allModulesUniqueDeps.Add(depToAdd)
+		for depToAdd, depTypes := range moduleUniqueDeps {
+			uniqueDepsMap[depToAdd] = depTypes
 		}
 	}
-	uniqueDeps = allModulesUniqueDeps.ToSlice()
 	return
 }
 
@@ -114,8 +107,8 @@ func getArtifactoryAuthFromServer(server *config.ServerDetails) (string, string,
 }
 
 // Returns a dependency tree and a flat list of the module's dependencies for the given module
-func getModuleTreeAndDependencies(module *moduleDepTree) (*xrayUtils.GraphNode, []string) {
-	moduleTreeMap := make(map[string][]string)
+func getModuleTreeAndDependencies(module *moduleDepTree) (*xrayUtils.GraphNode, map[string][]string) {
+	moduleTreeMap := make(map[string]sca.DepTreeNode)
 	moduleDeps := module.Nodes
 	for depName, dependency := range moduleDeps {
 		dependencyId := GavPackageTypeIdentifier + depName
@@ -124,8 +117,9 @@ func getModuleTreeAndDependencies(module *moduleDepTree) (*xrayUtils.GraphNode, 
 			childId := GavPackageTypeIdentifier + childName
 			childrenList = append(childrenList, childId)
 		}
-		if len(childrenList) > 0 {
-			moduleTreeMap[dependencyId] = childrenList
+		moduleTreeMap[dependencyId] = sca.DepTreeNode{
+			Types:    dependency.Types,
+			Children: childrenList,
 		}
 	}
 	return sca.BuildXrayDependencyTree(moduleTreeMap, GavPackageTypeIdentifier+module.Root)

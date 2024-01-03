@@ -16,6 +16,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"golang.org/x/exp/maps"
 	"path/filepath"
 )
 
@@ -198,7 +199,7 @@ func runYarnInstallAccordingToVersion(curWd, yarnExecPath string, installCommand
 
 // Parse the dependencies into a Xray dependency tree format
 func parseYarnDependenciesMap(dependencies map[string]*biutils.YarnDependency, rootXrayId string) (*xrayUtils.GraphNode, []string) {
-	treeMap := make(map[string][]string)
+	treeMap := make(map[string]sca.DepTreeNode)
 	for _, dependency := range dependencies {
 		xrayDepId := getXrayDependencyId(dependency)
 		var subDeps []string
@@ -206,10 +207,11 @@ func parseYarnDependenciesMap(dependencies map[string]*biutils.YarnDependency, r
 			subDeps = append(subDeps, getXrayDependencyId(dependencies[biutils.GetYarnDependencyKeyFromLocator(subDepPtr.Locator)]))
 		}
 		if len(subDeps) > 0 {
-			treeMap[xrayDepId] = subDeps
+			treeMap[xrayDepId] = sca.DepTreeNode{Children: subDeps}
 		}
 	}
-	return sca.BuildXrayDependencyTree(treeMap, rootXrayId)
+	graph, uniqDeps := sca.BuildXrayDependencyTree(treeMap, rootXrayId)
+	return graph, maps.Keys(uniqDeps)
 }
 
 func getXrayDependencyId(yarnDependency *biutils.YarnDependency) string {

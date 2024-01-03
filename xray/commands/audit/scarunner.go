@@ -265,7 +265,8 @@ func createFlatTreeWithTypes(uniqueDeps map[string][]string) (*xrayCmdUtils.Grap
 	}
 	var uniqueNodes []*xrayCmdUtils.GraphNode
 	for uniqueDep, types := range uniqueDeps {
-		uniqueNodes = append(uniqueNodes, &xrayCmdUtils.GraphNode{Id: uniqueDep, Types: types})
+		p := types
+		uniqueNodes = append(uniqueNodes, &xrayCmdUtils.GraphNode{Id: uniqueDep, Types: &p})
 	}
 	return &xrayCmdUtils.GraphNode{Id: "root", Nodes: uniqueNodes}, nil
 }

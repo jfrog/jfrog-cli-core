@@ -13,7 +13,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/xray/services"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,26 +22,46 @@ import (
 
 const maxUniqueAppearances = 10
 
-func BuildXrayDependencyTree(treeHelper map[string][]string, nodeId string) (*xrayUtils.GraphNode, []string) {
+type DepTreeNode struct {
+	Types    *[]string `json:"types"`
+	Children []string  `json:"children"`
+}
+
+func toNodeTypesMap(depMap map[string]DepTreeNode) map[string][]string {
+	mapOfTypes := map[string][]string{}
+	for nodId, value := range depMap {
+		mapOfTypes[nodId] = nil
+		if value.Types != nil {
+			mapOfTypes[nodId] = *value.Types
+		}
+	}
+	return mapOfTypes
+}
+
+func BuildXrayDependencyTree(treeHelper map[string]DepTreeNode, nodeId string) (*xrayUtils.GraphNode, map[string][]string) {
 	rootNode := &xrayUtils.GraphNode{
 		Id:    nodeId,
 		Nodes: []*xrayUtils.GraphNode{},
 	}
 	dependencyAppearances := map[string]int8{}
-	populateXrayDependencyTree(rootNode, treeHelper, &dependencyAppearances)
-	return rootNode, maps.Keys(dependencyAppearances)
+	populateXrayDependencyTree(rootNode, treeHelper, dependencyAppearances)
+	return rootNode, toNodeTypesMap(treeHelper)
 }
 
-func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[string][]string, dependencyAppearances *map[string]int8) {
-	(*dependencyAppearances)[currNode.Id]++
+func populateXrayDependencyTree(currNode *xrayUtils.GraphNode, treeHelper map[string]DepTreeNode, dependencyAppearances map[string]int8) {
+	dependencyAppearances[currNode.Id]++
+	if _, ok := treeHelper[currNode.Id]; !ok {
+		treeHelper[currNode.Id] = DepTreeNode{}
+	}
 	// Recursively create & append all node's dependencies.
-	for _, childDepId := range treeHelper[currNode.Id] {
+	for _, childDepId := range treeHelper[currNode.Id].Children {
 		childNode := &xrayUtils.GraphNode{
 			Id:     childDepId,
 			Nodes:  []*xrayUtils.GraphNode{},
 			Parent: currNode,
+			Types:  treeHelper[childDepId].Types,
 		}
-		if (*dependencyAppearances)[childDepId] >= maxUniqueAppearances || childNode.NodeHasLoop() {
+		if dependencyAppearances[childDepId] >= maxUniqueAppearances || childNode.NodeHasLoop() {
 			continue
 		}
 		currNode.Nodes = append(currNode.Nodes, childNode)

@@ -16,6 +16,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"golang.org/x/exp/maps"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -215,19 +216,21 @@ func runDotnetRestore(wd string, params utils.AuditParams, toolType bidotnet.Too
 func parseNugetDependencyTree(buildInfo *entities.BuildInfo) (nodes []*xrayUtils.GraphNode, allUniqueDeps []string) {
 	uniqueDepsSet := datastructures.MakeSet[string]()
 	for _, module := range buildInfo.Modules {
-		treeMap := make(map[string][]string)
+		treeMap := make(map[string]sca.DepTreeNode)
 		for _, dependency := range module.Dependencies {
 			dependencyId := nugetPackageTypeIdentifier + dependency.Id
 			parent := nugetPackageTypeIdentifier + dependency.RequestedBy[0][0]
-			if children, ok := treeMap[parent]; ok {
-				treeMap[parent] = append(children, dependencyId)
+			depTreeNode, ok := treeMap[parent]
+			if ok {
+				depTreeNode.Children = append(depTreeNode.Children, dependencyId)
 			} else {
-				treeMap[parent] = []string{dependencyId}
+				depTreeNode.Children = []string{dependencyId}
 			}
+			treeMap[parent] = depTreeNode
 		}
 		dependencyTree, uniqueDeps := sca.BuildXrayDependencyTree(treeMap, nugetPackageTypeIdentifier+module.Id)
 		nodes = append(nodes, dependencyTree)
-		for _, uniqueDep := range uniqueDeps {
+		for _, uniqueDep := range maps.Keys(uniqueDeps) {
 			uniqueDepsSet.Add(uniqueDep)
 		}
 	}

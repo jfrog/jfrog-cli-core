@@ -566,7 +566,7 @@ func getUrlNameAndVersionByTech(tech coreutils.Technology, node *xrayUtils.Graph
 // input- id: gav://org.apache.tomcat.embed:tomcat-embed-jasper:8.0.33
 // input - repo: libs-release
 // output - downloadUrl: <arti-url>/libs-release/org/apache/tomcat/embed/tomcat-embed-jasper/8.0.33/tomcat-embed-jasper-8.0.33.jar
-func getMavenNameScopeAndVersion(id, artiUrl, repo string, types []string) (downloadUrls []string, name, scope, version string) {
+func getMavenNameScopeAndVersion(id, artiUrl, repo string, types *[]string) (downloadUrls []string, name, scope, version string) {
 	id = strings.TrimPrefix(id, "gav://")
 	allParts := strings.Split(id, ":")
 	if len(allParts) < 2 {
@@ -575,12 +575,14 @@ func getMavenNameScopeAndVersion(id, artiUrl, repo string, types []string) (down
 	nameVersion := allParts[1] + "-" + allParts[2]
 	packagePath := strings.Join(strings.Split(allParts[0], "."), "/") + "/" +
 		allParts[1] + "/" + allParts[2] + "/" + nameVersion
-	for _, fileType := range types {
-		// curation service supports maven only for jar and war file types.
-		if fileType == "jar" || fileType == "war" {
-			downloadUrls = append(downloadUrls, strings.TrimSuffix(artiUrl, "/")+"/"+repo+"/"+packagePath+"."+fileType)
-		}
+	if types != nil {
+		for _, fileType := range *types {
+			// curation service supports maven only for jar and war file types.
+			if fileType == "jar" || fileType == "war" {
+				downloadUrls = append(downloadUrls, strings.TrimSuffix(artiUrl, "/")+"/"+repo+"/"+packagePath+"."+fileType)
+			}
 
+		}
 	}
 	return downloadUrls, strings.Join(allParts[:2], ":"), "", allParts[2]
 }

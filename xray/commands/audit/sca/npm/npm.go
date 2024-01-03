@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
 
@@ -115,19 +116,22 @@ func addIgnoreScriptsFlag(npmArgs []string) []string {
 
 // Parse the dependencies into an Xray dependency tree format
 func parseNpmDependenciesList(dependencies []buildinfo.Dependency, packageInfo *biutils.PackageInfo) (*xrayUtils.GraphNode, []string) {
-	treeMap := make(map[string][]string)
+	treeMap := make(map[string]sca.DepTreeNode)
 	for _, dependency := range dependencies {
 		dependencyId := utils.NpmPackageTypeIdentifier + dependency.Id
 		for _, requestedByNode := range dependency.RequestedBy {
 			parent := utils.NpmPackageTypeIdentifier + requestedByNode[0]
-			if children, ok := treeMap[parent]; ok {
-				treeMap[parent] = appendUniqueChild(children, dependencyId)
+			depTreeNode, ok := treeMap[parent]
+			if ok {
+				depTreeNode.Children = appendUniqueChild(depTreeNode.Children, dependencyId)
 			} else {
-				treeMap[parent] = []string{dependencyId}
+				depTreeNode.Children = []string{dependencyId}
 			}
+			treeMap[parent] = depTreeNode
 		}
 	}
-	return sca.BuildXrayDependencyTree(treeMap, utils.NpmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
+	graph, nodeMapTypes := sca.BuildXrayDependencyTree(treeMap, utils.NpmPackageTypeIdentifier+packageInfo.BuildInfoModuleId())
+	return graph, maps.Keys(nodeMapTypes)
 }
 
 func appendUniqueChild(children []string, candidateDependency string) []string {

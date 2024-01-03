@@ -15,6 +15,8 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/gofrog/parallel"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -48,6 +50,8 @@ const (
 
 	TotalConcurrentRequests = 10
 )
+
+var CurationOutputFormats = []string{string(outFormat.Table), string(outFormat.Json)}
 
 var supportedTech = map[coreutils.Technology]struct{}{
 	coreutils.Npm: {},
@@ -107,7 +111,7 @@ type treeAnalyzer struct {
 }
 
 type CurationAuditCommand struct {
-	PackageManagerConfig *rtUtils.RepositoryConfig
+	PackageManagerConfig *project.RepositoryConfig
 	extractPoliciesRegex *regexp.Regexp
 	workingDirs          []string
 	OriginPath           string
@@ -122,7 +126,7 @@ func NewCurationAuditCommand() *CurationAuditCommand {
 	}
 }
 
-func (ca *CurationAuditCommand) setPackageManagerConfig(pkgMangerConfig *rtUtils.RepositoryConfig) *CurationAuditCommand {
+func (ca *CurationAuditCommand) setPackageManagerConfig(pkgMangerConfig *project.RepositoryConfig) *CurationAuditCommand {
 	ca.PackageManagerConfig = pkgMangerConfig
 	return ca
 }
@@ -261,20 +265,20 @@ func (ca *CurationAuditCommand) auditTree(tech coreutils.Technology, results map
 	return err
 }
 
-func printResult(format utils.OutputFormat, projectPath string, packagesStatus []*PackageStatus) error {
+func printResult(format outFormat.OutputFormat, projectPath string, packagesStatus []*PackageStatus) error {
 	if format == "" {
-		format = utils.Table
+		format = outFormat.Table
 	}
 	log.Output(fmt.Sprintf("Found %v blocked packages for project %s", len(packagesStatus), projectPath))
 	switch format {
-	case utils.Json:
+	case outFormat.Json:
 		if len(packagesStatus) > 0 {
 			err := utils.PrintJson(packagesStatus)
 			if err != nil {
 				return err
 			}
 		}
-	case utils.Table:
+	case outFormat.Table:
 		pkgStatusTable := convertToPackageStatusTable(packagesStatus)
 		err := coreutils.PrintTable(pkgStatusTable, "Curation", "Found 0 blocked packages", true)
 		if err != nil {
@@ -325,7 +329,7 @@ func (ca *CurationAuditCommand) CommandName() string {
 func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 	switch tech {
 	case coreutils.Npm:
-		configFilePath, exists, err := rtUtils.GetProjectConfFilePath(rtUtils.Npm)
+		configFilePath, exists, err := project.GetProjectConfFilePath(project.Npm)
 		if err != nil {
 			return err
 		}
@@ -333,11 +337,11 @@ func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
 			return errorutils.CheckErrorf("no config file was found! Before running the npm command on a " +
 				"project for the first time, the project should be configured using the 'jf npmc' command")
 		}
-		vConfig, err := rtUtils.ReadConfigFile(configFilePath, rtUtils.YAML)
+		vConfig, err := project.ReadConfigFile(configFilePath, project.YAML)
 		if err != nil {
 			return err
 		}
-		resolverParams, err := rtUtils.GetRepoConfigByPrefix(configFilePath, rtUtils.ProjectConfigResolverPrefix, vConfig)
+		resolverParams, err := project.GetRepoConfigByPrefix(configFilePath, project.ProjectConfigResolverPrefix, vConfig)
 		if err != nil {
 			return err
 		}
@@ -550,4 +554,20 @@ func DetectNumOfThreads(threadsCount int) (int, error) {
 		return 0, errorutils.CheckErrorf("number of threads crossed the maximum, the maximum threads allowed is %v", TotalConcurrentRequests)
 	}
 	return threadsCount, nil
+}
+
+func GetCurationOutputFormat(formatFlagVal string) (format outFormat.OutputFormat, err error) {
+	// Default print format is table.
+	format = outFormat.Table
+	if formatFlagVal != "" {
+		switch strings.ToLower(formatFlagVal) {
+		case string(outFormat.Table):
+			format = outFormat.Table
+		case string(outFormat.Json):
+			format = outFormat.Json
+		default:
+			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(CurationOutputFormats))
+		}
+	}
+	return
 }

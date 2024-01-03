@@ -1,4 +1,4 @@
-package utils
+package build
 
 import (
 	biutils "github.com/jfrog/build-info-go/utils"

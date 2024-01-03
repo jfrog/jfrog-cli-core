@@ -1,28 +1,28 @@
 package buildinfo
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type BuildCollectEnvCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 }
 
 func NewBuildCollectEnvCommand() *BuildCollectEnvCommand {
 	return &BuildCollectEnvCommand{}
 }
 
-func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildCollectEnvCommand {
+func (bcec *BuildCollectEnvCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildCollectEnvCommand {
 	bcec.buildConfiguration = buildConfiguration
 	return bcec
 }
 
 func (bcec *BuildCollectEnvCommand) Run() error {
 	log.Info("Collecting environment variables...")
-	buildInfoService := utils.CreateBuildInfoService()
+	buildInfoService := build.CreateBuildInfoService()
 	buildName, err := bcec.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err

@@ -9,6 +9,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	artutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -84,7 +85,7 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 
 // Set build properties on image layers in Artifactory.
 func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (err error) {
-	props, err := artutils.CreateBuildProperties(buildName, buildNumber, project)
+	props, err := build.CreateBuildProperties(buildName, buildNumber, project)
 	if err != nil {
 		return
 	}

@@ -5,14 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
-	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/xray/scangraph"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+
 	"github.com/jfrog/gofrog/parallel"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -43,7 +45,7 @@ type ScanCommand struct {
 	// The location of the downloaded Xray indexer binary on the local file system.
 	indexerPath            string
 	indexerTempDir         string
-	outputFormat           xrutils.OutputFormat
+	outputFormat           format.OutputFormat
 	projectKey             string
 	minSeverityFilter      string
 	watches                []string
@@ -75,7 +77,7 @@ func (scanCmd *ScanCommand) SetThreads(threads int) *ScanCommand {
 	return scanCmd
 }
 
-func (scanCmd *ScanCommand) SetOutputFormat(format xrutils.OutputFormat) *ScanCommand {
+func (scanCmd *ScanCommand) SetOutputFormat(format format.OutputFormat) *ScanCommand {
 	scanCmd.outputFormat = format
 	return scanCmd
 }

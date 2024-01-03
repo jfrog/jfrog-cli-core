@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/formats"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -18,24 +19,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-type OutputFormat string
-
 const (
-	// OutputFormat values
-	Table      OutputFormat = "table"
-	Json       OutputFormat = "json"
-	SimpleJson OutputFormat = "simple-json"
-	Sarif      OutputFormat = "sarif"
-
 	BaseDocumentationURL = "https://docs.jfrog-applications.jfrog.io/jfrog-security-features/"
 )
 
 const MissingCveScore = "0"
 const maxPossibleCve = 10.0
-
-var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
-
-var CurationOutputFormats = []string{string(Table), string(Json)}
 
 type ResultsWriter struct {
 	// The scan results.
@@ -43,7 +32,7 @@ type ResultsWriter struct {
 	// SimpleJsonError  Errors to be added to output of the SimpleJson format.
 	simpleJsonError []formats.SimpleJsonError
 	// Format  The output format.
-	format OutputFormat
+	format format.OutputFormat
 	// IncludeVulnerabilities  If true, include all vulnerabilities as part of the output. Else, include violations only.
 	includeVulnerabilities bool
 	// IncludeLicenses  If true, also include license violations as part of the output.
@@ -62,8 +51,8 @@ func NewResultsWriter(scanResults *Results) *ResultsWriter {
 	return &ResultsWriter{results: scanResults}
 }
 
-func (rw *ResultsWriter) SetOutputFormat(format OutputFormat) *ResultsWriter {
-	rw.format = format
+func (rw *ResultsWriter) SetOutputFormat(f format.OutputFormat) *ResultsWriter {
+	rw.format = f
 	return rw
 }
 
@@ -100,24 +89,23 @@ func (rw *ResultsWriter) SetPrintExtendedTable(extendedTable bool) *ResultsWrite
 func (rw *ResultsWriter) SetExtraMessages(messages []string) *ResultsWriter {
 	rw.messages = messages
 	return rw
-
 }
 
 // PrintScanResults prints the scan results in the specified format.
 // Note that errors are printed only with SimpleJson format.
 func (rw *ResultsWriter) PrintScanResults() error {
 	switch rw.format {
-	case Table:
+	case format.Table:
 		return rw.printScanResultsTables()
-	case SimpleJson:
+	case format.SimpleJson:
 		jsonTable, err := rw.convertScanToSimpleJson()
 		if err != nil {
 			return err
 		}
 		return PrintJson(jsonTable)
-	case Json:
+	case format.Json:
 		return PrintJson(rw.results.GetScaScansXrayResults())
-	case Sarif:
+	case format.Sarif:
 		return PrintSarif(rw.results, rw.isMultipleRoots, rw.includeLicenses)
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -22,7 +23,7 @@ import (
 )
 
 type BuildAddDependenciesCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	dependenciesSpec   *spec.SpecFiles
 	dryRun             bool
 	result             *commandsutils.Result
@@ -62,7 +63,7 @@ func (badc *BuildAddDependenciesCommand) Run() error {
 		if err != nil {
 			return err
 		}
-		if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, badc.buildConfiguration.GetProject()); err != nil {
+		if err = build.SaveBuildGeneralDetails(buildName, buildNumber, badc.buildConfiguration.GetProject()); err != nil {
 			return err
 		}
 	}
@@ -93,7 +94,7 @@ func (badc *BuildAddDependenciesCommand) SetServerDetails(serverDetails *config.
 	return badc
 }
 
-func (badc *BuildAddDependenciesCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildAddDependenciesCommand {
+func (badc *BuildAddDependenciesCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildAddDependenciesCommand {
 	badc.buildConfiguration = buildConfiguration
 	return badc
 }
@@ -296,7 +297,7 @@ func (badc *BuildAddDependenciesCommand) savePartialBuildInfo(dependencies []bui
 	if err != nil {
 		return err
 	}
-	return utils.SavePartialBuildInfo(buildName, buildNumber, badc.buildConfiguration.GetProject(), populateFunc)
+	return build.SavePartialBuildInfo(buildName, buildNumber, badc.buildConfiguration.GetProject(), populateFunc)
 }
 
 func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []buildinfo.Dependency {

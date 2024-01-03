@@ -250,7 +250,7 @@ func GetTechDependencyTree(params xrayutils.AuditParams, tech coreutils.Technolo
 
 // Associates a technology with another of a different type in the structure.
 // Docker is not present, as there is no docker-config command and, consequently, no docker.yaml file we need to operate on.
-var techType = map[coreutils.Technology]project.ProjectType{
+var TechType = map[coreutils.Technology]project.ProjectType{
 	coreutils.Maven: project.Maven, coreutils.Gradle: project.Gradle, coreutils.Npm: project.Npm, coreutils.Yarn: project.Yarn, coreutils.Go: project.Go, coreutils.Pip: project.Pip,
 	coreutils.Pipenv: project.Pipenv, coreutils.Poetry: project.Poetry, coreutils.Nuget: project.Nuget, coreutils.Dotnet: project.Dotnet,
 }
@@ -261,7 +261,7 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		return
 	}
 
-	configFilePath, exists, err := project.GetProjectConfFilePath(techType[tech])
+	configFilePath, exists, err := project.GetProjectConfFilePath(TechType[tech])
 	if err != nil {
 		err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
 		return
@@ -270,7 +270,7 @@ func SetResolutionRepoIfExists(params xrayutils.AuditParams, tech coreutils.Tech
 		// Nuget and Dotnet are identified similarly in the detection process. To prevent redundancy, Dotnet is filtered out earlier in the process, focusing solely on detecting Nuget.
 		// Consequently, it becomes necessary to verify the presence of dotnet.yaml when Nuget detection occurs.
 		if tech == coreutils.Nuget {
-			configFilePath, exists, err = project.GetProjectConfFilePath(techType[coreutils.Dotnet])
+			configFilePath, exists, err = project.GetProjectConfFilePath(TechType[coreutils.Dotnet])
 			if err != nil {
 				err = fmt.Errorf("failed while searching for %s.yaml config file: %s", tech.String(), err.Error())
 				return

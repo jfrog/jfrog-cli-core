@@ -54,7 +54,7 @@ const (
 var CurationOutputFormats = []string{string(outFormat.Table), string(outFormat.Json)}
 
 var supportedTech = map[coreutils.Technology]func() (bool, error){
-	coreutils.Npm: {},
+	coreutils.Npm: nil,
 	coreutils.Maven: func() (bool, error) {
 		return clientutils.GetBoolEnvValue(coreutils.CurationMavenSupport, false)
 	},
@@ -350,7 +350,7 @@ func (ca *CurationAuditCommand) CommandName() string {
 }
 
 func (ca *CurationAuditCommand) SetRepo(tech coreutils.Technology) error {
-	resolverParams, err := ca.getRepoParams(project.TechType[tech])
+	resolverParams, err := ca.getRepoParams(audit.TechType[tech])
 	if err != nil {
 		return err
 	}

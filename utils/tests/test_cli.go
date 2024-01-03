@@ -49,25 +49,36 @@ func (cli *JfrogCli) Exec(args ...string) error {
 
 // Run `jfrog` command, redirect the stdout and return the output
 func (cli *JfrogCli) RunCliCmdWithOutput(t *testing.T, args ...string) string {
-	newStdout, stdWriter, previousStdout := RedirectStdOutToPipe()
-	previousLog := log.Logger
-	log.SetLogger(log.NewLogger(corelog.GetCliLogLevel(), nil))
-	// Restore previous stdout when the function returns
-	defer func() {
-		os.Stdout = previousStdout
-		log.SetLogger(previousLog)
-		assert.NoError(t, newStdout.Close())
-	}()
+	return RunCmdWithOutput(t, func() error { return cli.Exec(args...) })
+}
+
+// Run a command, redirect the stdout and return the output
+func RunCmdWithOutput(t *testing.T, executeCmd func() error) string {
+	newStdout, stdWriter, cleanUp := redirectOutToPipe(t)
+	defer cleanUp()
+
 	go func() {
-		err := cli.Exec(args...)
-		assert.NoError(t, err)
+		assert.NoError(t, executeCmd())
 		// Closing the temp stdout in order to be able to read it's content.
 		assert.NoError(t, stdWriter.Close())
 	}()
+
 	content, err := io.ReadAll(newStdout)
 	assert.NoError(t, err)
 	log.Debug(string(content))
 	return string(content)
+}
+
+func redirectOutToPipe(t *testing.T) (*os.File, *os.File, func()) {
+	newStdout, stdWriter, previousStdout := RedirectStdOutToPipe()
+	previousLog := log.Logger
+	log.SetLogger(log.NewLogger(corelog.GetCliLogLevel(), nil))
+	// Restore previous stdout when the function returns
+	return newStdout, stdWriter, func() {
+		os.Stdout = previousStdout
+		log.SetLogger(previousLog)
+		assert.NoError(t, newStdout.Close())
+	}
 }
 
 func (cli *JfrogCli) LegacyBuildToolExec(args ...string) error {

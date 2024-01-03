@@ -3,7 +3,7 @@ package common
 import (
 	"strings"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/cliutils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
@@ -12,8 +12,8 @@ import (
 
 // Returns build configuration struct using the args (build name/number) and options (project) provided by the user.
 // Any empty configuration could be later overridden by environment variables if set.
-func CreateBuildConfiguration(c *components.Context) *utils.BuildConfiguration {
-	buildConfiguration := new(utils.BuildConfiguration)
+func CreateBuildConfiguration(c *components.Context) *build.BuildConfiguration {
+	buildConfiguration := new(build.BuildConfiguration)
 	buildNameArg, buildNumberArg := c.Arguments[0], c.Arguments[1]
 	if buildNameArg == "" || buildNumberArg == "" {
 		buildNameArg = ""

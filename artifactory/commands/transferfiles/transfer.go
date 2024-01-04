@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -122,10 +123,7 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 		return err
 	}
 	defer func() {
-		unlockErr := tdc.stateManager.UnlockTransferStateManager()
-		if err == nil {
-			err = unlockErr
-		}
+		err = errors.Join(err, tdc.stateManager.UnlockTransferStateManager())
 	}()
 	if _, err = tdc.stateManager.InitStartTimestamp(); err != nil {
 		return err
@@ -199,6 +197,12 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
+
+	unsetTempDir, err := initTempDir()
+	if err != nil {
+		return err
+	}
+	defer unsetTempDir()
 
 	go tdc.reportTransferFilesUsage()
 

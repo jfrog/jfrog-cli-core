@@ -10,6 +10,7 @@ import (
 	"github.com/c-bata/go-prompt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -20,7 +21,7 @@ type PermissionTargetTemplateCommand struct {
 
 const (
 	// Strings for prompt questions
-	SelectPermissionTargetSectionMsg = "Select the permission target section to configure" + utils.PressTabMsg
+	SelectPermissionTargetSectionMsg = "Select the permission target section to configure" + ioutils.PressTabMsg
 	LeaveEmptyForDefault             = "(press enter for default)"
 
 	// Yes,No answers
@@ -45,7 +46,7 @@ const (
 	managedXrayMeta = "managedXrayMeta"
 	distribute      = "distribute"
 
-	permissionSelectEnd = utils.DummyDefaultAnswer
+	permissionSelectEnd = ioutils.DummyDefaultAnswer
 )
 
 func NewPermissionTargetTemplateCommand() *PermissionTargetTemplateCommand {
@@ -67,7 +68,7 @@ func (pttc *PermissionTargetTemplateCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-	permissionTargetTemplateQuestionnaire := &utils.InteractiveQuestionnaire{
+	permissionTargetTemplateQuestionnaire := &ioutils.InteractiveQuestionnaire{
 		MandatoryQuestionsKeys: []string{Name},
 		QuestionsMap:           questionMap,
 		OptionalKeysSuggests:   optionalSuggestsMap,
@@ -93,7 +94,7 @@ func (pttc *PermissionTargetTemplateCommand) CommandName() string {
 }
 
 var optionalSuggestsMap = []prompt.Suggest{
-	{Text: utils.SaveAndExit},
+	{Text: ioutils.SaveAndExit},
 	{Text: Repo},
 	{Text: Build},
 	{Text: ReleaseBundle},
@@ -103,22 +104,22 @@ var optionalSuggestsMap = []prompt.Suggest{
 //   - repos - Mandatory for repo and releaseBundle. Has a const default value for build.
 //   - include/exclude-patterns - Optional, has a default value.
 //   - actions - Optional,includes two maps (users and groups): user/group name -> permissions array.
-func permissionSectionCallBack(iq *utils.InteractiveQuestionnaire, section string) (value string, err error) {
-	if section == utils.SaveAndExit {
+func permissionSectionCallBack(iq *ioutils.InteractiveQuestionnaire, section string) (value string, err error) {
+	if section == ioutils.SaveAndExit {
 		return
 	}
 	var sectionAnswer PermissionSectionAnswer
 	if section != Build {
-		sectionAnswer.Repositories = utils.AskString(reposQuestionInfo.Msg, reposQuestionInfo.PromptPrefix, false, reposQuestionInfo.AllowVars)
+		sectionAnswer.Repositories = ioutils.AskString(reposQuestionInfo.Msg, reposQuestionInfo.PromptPrefix, false, reposQuestionInfo.AllowVars)
 	}
-	sectionAnswer.IncludePatterns = utils.AskStringWithDefault(includePatternsQuestionInfo.Msg, includePatternsQuestionInfo.PromptPrefix, IncludePatternsDefault)
-	sectionAnswer.ExcludePatterns = utils.AskString(excludePatternsQuestionInfo.Msg, excludePatternsQuestionInfo.PromptPrefix, true, excludePatternsQuestionInfo.AllowVars)
-	configureActions := utils.AskFromList("", configureActionsQuestionInfo.PromptPrefix+"users?"+utils.PressTabMsg, false, configureActionsQuestionInfo.Options, Yes)
+	sectionAnswer.IncludePatterns = ioutils.AskStringWithDefault(includePatternsQuestionInfo.Msg, includePatternsQuestionInfo.PromptPrefix, IncludePatternsDefault)
+	sectionAnswer.ExcludePatterns = ioutils.AskString(excludePatternsQuestionInfo.Msg, excludePatternsQuestionInfo.PromptPrefix, true, excludePatternsQuestionInfo.AllowVars)
+	configureActions := ioutils.AskFromList("", configureActionsQuestionInfo.PromptPrefix+"users?"+ioutils.PressTabMsg, false, configureActionsQuestionInfo.Options, Yes)
 	if configureActions == Yes {
 		sectionAnswer.ActionsUsers = make(map[string]string)
 		readActionsMap("user", sectionAnswer.ActionsUsers)
 	}
-	configureActions = utils.AskFromList("", configureActionsQuestionInfo.PromptPrefix+"groups?", false, configureActionsQuestionInfo.Options, Yes)
+	configureActions = ioutils.AskFromList("", configureActionsQuestionInfo.PromptPrefix+"groups?", false, configureActionsQuestionInfo.Options, Yes)
 	if configureActions == Yes {
 		sectionAnswer.ActionsGroups = make(map[string]string)
 		readActionsMap("group", sectionAnswer.ActionsGroups)
@@ -131,7 +132,7 @@ func permissionSectionCallBack(iq *utils.InteractiveQuestionnaire, section strin
 func readActionsMap(actionsType string, actionsMap map[string]string) {
 	customKeyPrompt := "Insert " + actionsType + " name (press enter to finish) >"
 	for {
-		key := utils.AskString("", customKeyPrompt, true, false)
+		key := ioutils.AskString("", customKeyPrompt, true, false)
 		if key == "" {
 			return
 		}
@@ -151,7 +152,7 @@ func readPermissionList(permissionsOwner string) (permissions []string) {
 		distribute:      false,
 	}
 	for {
-		answer := utils.AskFromList("", "Select permission value for "+permissionsOwner+" (press tab for options or enter to finish) >", true, buildPermissionSuggestArray(permissionsMap), permissionSelectEnd)
+		answer := ioutils.AskFromList("", "Select permission value for "+permissionsOwner+" (press tab for options or enter to finish) >", true, buildPermissionSuggestArray(permissionsMap), permissionSelectEnd)
 		if answer == permissionSelectEnd {
 			break
 		}
@@ -183,16 +184,16 @@ func buildPermissionSuggestArray(permissionMap map[string]bool) (permissions []p
 	return
 }
 
-var questionMap = map[string]utils.QuestionInfo{
+var questionMap = map[string]ioutils.QuestionInfo{
 	Name: {
 		Msg:          "",
 		PromptPrefix: "Insert the permission target name >",
 		AllowVars:    false,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       Name,
 		Callback:     nil,
 	},
-	utils.OptionalKey: {
+	ioutils.OptionalKey: {
 		Msg:          "",
 		PromptPrefix: SelectPermissionTargetSectionMsg,
 		AllowVars:    false,
@@ -200,27 +201,27 @@ var questionMap = map[string]utils.QuestionInfo{
 		MapKey:       "",
 		Callback:     permissionSectionCallBack,
 	},
-	Repo:          utils.FreeStringQuestionInfo,
-	Build:         utils.FreeStringQuestionInfo,
-	ReleaseBundle: utils.FreeStringQuestionInfo,
+	Repo:          ioutils.FreeStringQuestionInfo,
+	Build:         ioutils.FreeStringQuestionInfo,
+	ReleaseBundle: ioutils.FreeStringQuestionInfo,
 }
 
-var reposQuestionInfo = utils.QuestionInfo{
+var reposQuestionInfo = ioutils.QuestionInfo{
 	Msg:          "Insert the section's repositories value.\nYou can specify the name \"ANY\" to apply to all repositories, \"ANY REMOTE\" for all remote repositories or \"ANY LOCAL\" for all local repositories",
-	PromptPrefix: utils.CommaSeparatedListMsg + " >",
+	PromptPrefix: ioutils.CommaSeparatedListMsg + " >",
 }
 
-var includePatternsQuestionInfo = utils.QuestionInfo{
+var includePatternsQuestionInfo = ioutils.QuestionInfo{
 	Msg:          "Insert a value for include-patterns",
-	PromptPrefix: utils.CommaSeparatedListMsg + " " + LeaveEmptyForDefault,
+	PromptPrefix: ioutils.CommaSeparatedListMsg + " " + LeaveEmptyForDefault,
 }
 
-var excludePatternsQuestionInfo = utils.QuestionInfo{
+var excludePatternsQuestionInfo = ioutils.QuestionInfo{
 	Msg:          "Insert value for exclude-patterns",
-	PromptPrefix: utils.CommaSeparatedListMsg + " " + LeaveEmptyForDefault + " []:",
+	PromptPrefix: ioutils.CommaSeparatedListMsg + " " + LeaveEmptyForDefault + " []:",
 }
 
-var configureActionsQuestionInfo = utils.QuestionInfo{
+var configureActionsQuestionInfo = ioutils.QuestionInfo{
 	PromptPrefix: "Configure actions for ",
 	Options: []prompt.Suggest{
 		{Text: Yes},

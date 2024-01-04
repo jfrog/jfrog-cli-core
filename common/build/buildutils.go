@@ -1,4 +1,4 @@
-package utils
+package build
 
 import (
 	"bytes"
@@ -15,6 +15,7 @@ import (
 
 	"github.com/jfrog/build-info-go/build"
 	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	artClientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -27,6 +28,13 @@ const (
 	BuildTempPath             = "jfrog/builds/"
 	ProjectConfigBuildNameKey = "name"
 )
+
+func CreateBuildInfoService() *build.BuildInfoService {
+	buildInfoService := build.NewBuildInfoService()
+	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
+	buildInfoService.SetLogger(log.Logger)
+	return buildInfoService
+}
 
 func PrepareBuildPrerequisites(buildConfiguration *BuildConfiguration) (build *build.Build, err error) {
 	// Prepare build-info.
@@ -355,7 +363,7 @@ func (bc *BuildConfiguration) GetBuildName() (string, error) {
 }
 
 func (bc *BuildConfiguration) getBuildNameFromConfigFile() (string, error) {
-	confFilePath, exist, err := GetProjectConfFilePath(Build)
+	confFilePath, exist, err := project.GetProjectConfFilePath(project.Build)
 	if os.IsPermission(err) {
 		log.Debug("The 'build-name' cannot be read from JFrog config due to permission denied.")
 		return "", nil
@@ -363,7 +371,7 @@ func (bc *BuildConfiguration) getBuildNameFromConfigFile() (string, error) {
 	if err != nil || !exist {
 		return "", err
 	}
-	vConfig, err := ReadConfigFile(confFilePath, YAML)
+	vConfig, err := project.ReadConfigFile(confFilePath, project.YAML)
 	if err != nil || vConfig == nil {
 		return "", err
 	}

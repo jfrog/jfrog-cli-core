@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 )
@@ -26,7 +27,7 @@ type AuditParams interface {
 	InstallCommandName() string
 	InstallCommandArgs() []string
 	SetNpmScope(depType string) *AuditBasicParams
-	OutputFormat() OutputFormat
+	OutputFormat() format.OutputFormat
 	DepsRepo() string
 	SetDepsRepo(depsRepo string) *AuditBasicParams
 	IgnoreConfigFile() bool
@@ -37,7 +38,7 @@ type AuditParams interface {
 
 type AuditBasicParams struct {
 	serverDetails                    *config.ServerDetails
-	outputFormat                     OutputFormat
+	outputFormat                     format.OutputFormat
 	progress                         ioUtils.ProgressMgr
 	excludeTestDependencies          bool
 	useWrapper                       bool
@@ -156,11 +157,11 @@ func (abp *AuditBasicParams) SetNpmScope(depType string) *AuditBasicParams {
 	return abp
 }
 
-func (abp *AuditBasicParams) OutputFormat() OutputFormat {
+func (abp *AuditBasicParams) OutputFormat() format.OutputFormat {
 	return abp.outputFormat
 }
 
-func (abp *AuditBasicParams) SetOutputFormat(format OutputFormat) *AuditBasicParams {
+func (abp *AuditBasicParams) SetOutputFormat(format format.OutputFormat) *AuditBasicParams {
 	abp.outputFormat = format
 	return abp
 }

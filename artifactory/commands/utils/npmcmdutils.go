@@ -1,19 +1,13 @@
 package utils
 
 import (
-	"errors"
-	"fmt"
-	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
-
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
@@ -89,7 +83,7 @@ func getNpmRepositoryUrl(repo, url string) string {
 }
 
 // Remove all the none npm CLI flags from args.
-func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat xrutils.OutputFormat, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, scanOutputFormat outFormat.OutputFormat, cleanArgs []string, buildConfig *build.BuildConfiguration, err error) {
 	cleanArgs = append([]string(nil), args...)
 	cleanArgs, detailedSummary, err = coreutils.ExtractDetailedSummaryFromArgs(cleanArgs)
 	if err != nil {
@@ -105,92 +99,10 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 	if err != nil {
 		return
 	}
-	scanOutputFormat, err = GetXrayOutputFormat(format)
+	scanOutputFormat, err = outFormat.GetOutputFormat(format)
 	if err != nil {
 		return
 	}
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
+	cleanArgs, buildConfig, err = build.ExtractBuildDetailsFromArgs(cleanArgs)
 	return
-}
-
-// BackupFile creates a backup of the file in filePath. The backup will be found at backupPath.
-// The returned restore function can be called to restore the file's state - the file in filePath will be replaced by the backup in backupPath.
-// If there is no file at filePath, a backup file won't be created, and the restore function will delete the file at filePath.
-func BackupFile(filePath, backupFileName string) (restore func() error, err error) {
-	fileInfo, err := os.Stat(filePath)
-	if errorutils.CheckError(err) != nil {
-		if os.IsNotExist(err) {
-			restore = createRestoreFileFunc(filePath, backupFileName)
-			err = nil
-		}
-		return
-	}
-
-	if err = cloneFile(filePath, backupFileName, fileInfo.Mode()); err != nil {
-		return
-	}
-	log.Debug("The file", filePath, "was backed up successfully to", backupFileName)
-	restore = createRestoreFileFunc(filePath, backupFileName)
-	return
-}
-
-func cloneFile(origFile, newName string, fileMode os.FileMode) (err error) {
-	from, err := os.Open(origFile)
-	if errorutils.CheckError(err) != nil {
-		return
-	}
-	defer func() {
-		err = errors.Join(err, from.Close())
-	}()
-
-	to, err := os.OpenFile(filepath.Join(filepath.Dir(origFile), newName), os.O_RDWR|os.O_CREATE, fileMode)
-	if errorutils.CheckError(err) != nil {
-		return
-	}
-	defer func() {
-		err = errors.Join(err, to.Close())
-	}()
-
-	if _, err = io.Copy(to, from); err != nil {
-		err = errorutils.CheckError(err)
-	}
-	return
-}
-
-// createRestoreFileFunc creates a function for restoring a file from its backup.
-// The returned function replaces the file in filePath with the backup in backupPath.
-// If there is no file at backupPath (which means there was no file at filePath when BackupFile() was called), then the function deletes the file at filePath.
-func createRestoreFileFunc(filePath, backupFileName string) func() error {
-	return func() error {
-		backupPath := filepath.Join(filepath.Dir(filePath), backupFileName)
-		if _, err := os.Stat(backupPath); err != nil {
-			if os.IsNotExist(err) {
-				// We verify the existence of the file in the specified filePath before initiating its deletion in order to prevent errors that might occur when attempting to remove a non-existent file
-				var fileExists bool
-				fileExists, err = fileutils.IsFileExists(filePath, false)
-				if err != nil {
-					err = fmt.Errorf("failed to check for the existence of '%s' before deleting the file: %s", filePath, err.Error())
-					return errorutils.CheckError(err)
-				}
-				if fileExists {
-					err = os.Remove(filePath)
-				}
-				return errorutils.CheckError(err)
-			}
-			return errorutils.CheckErrorf(createRestoreErrorPrefix(filePath, backupPath) + err.Error())
-		}
-
-		if err := fileutils.MoveFile(backupPath, filePath); err != nil {
-			return errorutils.CheckError(err)
-		}
-		log.Debug("Restored the file", filePath, "successfully")
-		return nil
-	}
-}
-
-func createRestoreErrorPrefix(filePath, backupPath string) string {
-	return fmt.Sprintf("An error occurred while restoring the file: %s\n"+
-		"To restore the file manually: delete %s and rename the backup file at %s (if exists) to '%s'.\n"+
-		"Failure cause: ",
-		filePath, filePath, backupPath, filePath)
 }

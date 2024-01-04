@@ -21,13 +21,13 @@ import (
 )
 
 func main() {
-	// Run this plugin CLI as a stand alone.
+	// Run this plugin CLI as a stand-alone.
 	plugins.PluginMain(GetApp())
 }
 
 func GetApp() components.App {
 	app := components.CreateApp(
-        // Plugin namespace prefix (command usage: jf app <cmd-name>)
+        // Plugin namespace prefix (command usage: app <cmd-name>)
 		"app",
         // Plugin version vX.X.X
 		"v1.0.0",

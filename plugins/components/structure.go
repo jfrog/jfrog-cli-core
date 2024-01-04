@@ -3,7 +3,7 @@ package components
 type App struct {
 	Version string
 	Namespace
-	Namespaces []Namespace
+	Subcommands []Namespace
 }
 
 func CreateApp(name, version, description string, commands []Command) App {

@@ -22,12 +22,12 @@ func ConvertApp(jfrogApp App) (*cli.App, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(jfrogApp.Namespaces) > 0 {
-		namespaces, err := ConvertNamespaces(jfrogApp.Namespaces)
+	if len(jfrogApp.Subcommands) > 0 {
+		subcommands, err := ConvertSubcommands(jfrogApp.Subcommands)
 		if err != nil {
 			return nil, err
 		}
-		app.Commands = append(app.Commands, namespaces...)
+		app.Commands = append(app.Commands, subcommands...)
 	}
 	// Defaults:
 	app.EnableBashCompletion = true
@@ -46,9 +46,9 @@ func ConvertCommands(nameSpace string, commands []Command) ([]cli.Command, error
 	return converted, nil
 }
 
-func ConvertNamespaces(namespaces []Namespace) ([]cli.Command, error) {
+func ConvertSubcommands(subcommands []Namespace) ([]cli.Command, error) {
 	var converted []cli.Command
-	for _, ns := range namespaces {
+	for _, ns := range subcommands {
 		nameSpaceCommand := cli.Command{
 			Name:  ns.Name,
 			Usage: ns.Description,

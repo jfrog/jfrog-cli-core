@@ -1,14 +1,41 @@
 package components
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Argument struct {
-	Name     string
+	Name string
+	// Is this argument optional? If so, the 'Optional' field should be set to true.
+	// This field is used for creating help usages, for instance if argument is:
+	// Argument {
+	// 		Name: "optional-arg",
+	// 		Optional: true,
+	// }
+	// The help usage that will be created will be:
+	//
+	// Usage:
+	// 	1) cmd-name [cmd options] [optional-arg]
+	//
+	// Else, if the argument is mandatory ( Argument { Name: "mandatory-arg" } ), the help usage will be:
+	//
+	// Usage:
+	// 	1) cmd-name [cmd options] <mandatory-arg>
 	Optional bool
-	// Optional. When provided, this field is used for creating help usages.
-	// Generating a usage with the argument and another usage where the argument is replaced with the specified flag name. For instance:
-	// 1) Without FlagReplacement: .... <Name> <Name2>
-	// 2) With FlagReplacement: .... --<FlagReplacement>=<Value> <Name2>
+	// Is this argument optional and can be replaced with a flag?
+	// If so, the 'Optional' field should be set to true and the 'ReplaceWithFlag' field should be set to the flag name.
+	// This field is used for creating help usages, for instance if argument is:
+	// Argument {
+	// 		Name: "optional-arg",
+	// 		Optional: true,
+	// 		ReplaceWithFlag: "flag-replacement",
+	// }
+	// The help usage that will be created will be:
+	//
+	// Usage:
+	// 	1) cmd-name [cmd options] [optional-arg]
+	// 	2) cmd-name [cmd options] --flag-replacement=value
 	ReplaceWithFlag string
 	Description     string
 }
@@ -36,6 +63,7 @@ func (c *Context) GetStringFlagValue(flagName string) string {
 func (c *Context) GetIntFlagValue(flagName string) (value int, err error) {
 	parsed, err := strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
 	if err != nil {
+		err = fmt.Errorf("can't parse int flag '%s': %w", flagName, err)
 		return
 	}
 	value = int(parsed)

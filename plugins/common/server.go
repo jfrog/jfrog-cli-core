@@ -89,7 +89,3 @@ func createServerDetailsFromFlags(c *components.Context, domain cliUtils.Command
 func CreateServerDetailsWithConfigOffer(c *components.Context, excludeRefreshableTokens bool, domain cliUtils.CommandDomain) (*config.ServerDetails, error) {
 	return cliutils.CreateServerDetailsWithConfigOffer(func() (*config.ServerDetails, error) { return createServerDetailsFromFlags(c, domain) }, excludeRefreshableTokens)
 }
-
-func offerConfig(c *components.Context, domain cliUtils.CommandDomain) (*config.ServerDetails, error) {
-	return cliutils.OfferConfig(func() (*config.ServerDetails, error) { return createServerDetailsFromFlags(c, domain) })
-}

@@ -17,6 +17,4 @@ const (
 
 	// Environment variables
 	JfrogCliAvoidDeprecationWarnings = "JFROG_CLI_AVOID_DEPRECATION_WARNINGS"
-
-	// TODO: Common flags? (from CreateServerDetailsFromFlags)
 )

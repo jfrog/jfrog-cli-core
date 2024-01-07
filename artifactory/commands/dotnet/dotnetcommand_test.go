@@ -11,7 +11,7 @@ import (
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
 	"github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
@@ -167,7 +167,7 @@ func testPrepareDotnetBuildInfoModule(t *testing.T, subCommand string, flags []s
 		toolchainType:      dotnet.DotnetCore,
 		subCommand:         subCommand,
 		argAndFlags:        flags,
-		buildConfiguration: utils.NewBuildConfiguration("", "", "mod", ""),
+		buildConfiguration: buildUtils.NewBuildConfiguration("", "", "mod", ""),
 		serverDetails:      &config.ServerDetails{ArtifactoryUrl: "https://my-instance.jfrog.io"},
 	}
 	callbackFunc, err := cmd.prepareDotnetBuildInfoModule(module)

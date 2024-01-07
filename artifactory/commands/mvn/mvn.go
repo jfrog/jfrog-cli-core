@@ -4,10 +4,12 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
@@ -17,12 +19,12 @@ type MvnCommand struct {
 	goals              []string
 	configPath         string
 	insecureTls        bool
-	configuration      *utils.BuildConfiguration
+	configuration      *build.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	threads            int
 	detailedSummary    bool
 	xrayScan           bool
-	scanOutputFormat   xrutils.OutputFormat
+	scanOutputFormat   format.OutputFormat
 	result             *commandsutils.Result
 	deploymentDisabled bool
 	// File path for Maven extractor in which all build's artifacts details will be listed at the end of the build.
@@ -38,7 +40,7 @@ func (mc *MvnCommand) SetServerDetails(serverDetails *config.ServerDetails) *Mvn
 	return mc
 }
 
-func (mc *MvnCommand) SetConfiguration(configuration *utils.BuildConfiguration) *MvnCommand {
+func (mc *MvnCommand) SetConfiguration(configuration *build.BuildConfiguration) *MvnCommand {
 	mc.configuration = configuration
 	return mc
 }
@@ -81,7 +83,7 @@ func (mc *MvnCommand) IsXrayScan() bool {
 	return mc.xrayScan
 }
 
-func (mc *MvnCommand) SetScanOutputFormat(format xrutils.OutputFormat) *MvnCommand {
+func (mc *MvnCommand) SetScanOutputFormat(format format.OutputFormat) *MvnCommand {
 	mc.scanOutputFormat = format
 	return mc
 }
@@ -97,7 +99,7 @@ func (mc *MvnCommand) setResult(result *commandsutils.Result) *MvnCommand {
 
 func (mc *MvnCommand) init() (vConfig *viper.Viper, err error) {
 	// Read config
-	vConfig, err = utils.ReadMavenConfig(mc.configPath, nil)
+	vConfig, err = build.ReadMavenConfig(mc.configPath, nil)
 	if err != nil {
 		return
 	}
@@ -164,11 +166,11 @@ func (mc *MvnCommand) Run() error {
 func (mc *MvnCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Get the serverDetails from the config file.
 	if mc.serverDetails == nil {
-		vConfig, err := utils.ReadConfigFile(mc.configPath, utils.YAML)
+		vConfig, err := project.ReadConfigFile(mc.configPath, project.YAML)
 		if err != nil {
 			return nil, err
 		}
-		mc.serverDetails, err = utils.GetServerDetails(vConfig)
+		mc.serverDetails, err = build.GetServerDetails(vConfig)
 		if err != nil {
 			return nil, err
 		}

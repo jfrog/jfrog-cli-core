@@ -11,6 +11,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/formats"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -23,7 +24,7 @@ import (
 )
 
 type BuildPublishCommand struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	config             *biconf.Configuration
 	detailedSummary    bool
@@ -44,7 +45,7 @@ func (bpc *BuildPublishCommand) SetServerDetails(serverDetails *config.ServerDet
 	return bpc
 }
 
-func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildPublishCommand {
+func (bpc *BuildPublishCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildPublishCommand {
 	bpc.buildConfiguration = buildConfiguration
 	return bpc
 }
@@ -81,7 +82,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	buildInfoService := utils.CreateBuildInfoService()
+	buildInfoService := build.CreateBuildInfoService()
 	buildName, err := bpc.buildConfiguration.GetBuildName()
 	if err != nil {
 		return err

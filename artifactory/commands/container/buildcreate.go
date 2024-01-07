@@ -3,6 +3,7 @@ package container
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
@@ -49,7 +50,7 @@ func (bdc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
+	if err := build.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
 	builder, err := container.NewRemoteAgentBuildInfoBuilder(bdc.image, repo, buildName, buildNumber, project, serviceManager, bdc.manifestSha256)
@@ -60,7 +61,7 @@ func (bdc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
+	return build.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 
 func (bdc *BuildDockerCreateCommand) CommandName() string {

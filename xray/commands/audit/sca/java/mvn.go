@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -164,7 +164,7 @@ func removeMavenConfig() (func() error, error) {
 	if !mavenConfigExists {
 		return nil, nil
 	}
-	restoreMavenConfig, err := utils.BackupFile(mavenConfigPath, "maven.config.bkp")
+	restoreMavenConfig, err := ioutils.BackupFile(mavenConfigPath, "maven.config.bkp")
 	if err != nil {
 		return nil, err
 	}

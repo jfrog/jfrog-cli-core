@@ -2,13 +2,14 @@ package buildinfo
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 )
 
 type BuildPromotionCommand struct {
 	services.PromotionParams
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	dryRun             bool
 }
@@ -32,7 +33,7 @@ func (bpc *BuildPromotionCommand) SetPromotionParams(params services.PromotionPa
 	return bpc
 }
 
-func (bpc *BuildPromotionCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildPromotionCommand {
+func (bpc *BuildPromotionCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildPromotionCommand {
 	bpc.buildConfiguration = buildConfiguration
 	return bpc
 }

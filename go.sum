@@ -91,9 +91,8 @@ github.com/jfrog/build-info-go v1.9.20 h1:tQF6EMjt/EEX8syTrgpL/c7FjhlBSjtv848jNv
 github.com/jfrog/build-info-go v1.9.20/go.mod h1:Vxv6zmx4e1NWsx40OHaDWCCYDeYAq2yXzpJ4nsDChbE=
 github.com/jfrog/gofrog v1.4.1 h1:jz4kXBdsvVCNRDVkGLRiZIQ+uTO6/DSxQ9LjfvmLfoY=
 github.com/jfrog/gofrog v1.4.1/go.mod h1:wQqagqq2VpuCWRPlq/65GbH9gsRz+7Bgc1Q+PKD4Y+k=
+github.com/jfrog/jfrog-apps-config v1.0.1 h1:mtv6k7g8A8BVhlHGlSveapqf4mJfonwvXYLipdsOFMY=
 github.com/jfrog/jfrog-apps-config v1.0.1/go.mod h1:8AIIr1oY9JuH5dylz2S6f8Ym2MaadPLR6noCBO4C22w=
-github.com/jfrog/jfrog-apps-config/go v0.0.0-20230906095207-1df7b671a040 h1:93yM7IHRrJBBeGNPD2xLj+w2eaDaifD8pUDvYWO24ks=
-github.com/jfrog/jfrog-apps-config/go v0.0.0-20230906095207-1df7b671a040/go.mod h1:T6F18QqHsCaCbXVKfVyCrakZNBWVtoKn4WOmFB2/L/Q=
 github.com/jfrog/jfrog-client-go v1.35.6 h1:nVS94x6cwSRkhtj8OM3elbUcGgQhqsK8YMPvC/gf5sk=
 github.com/jfrog/jfrog-client-go v1.35.6/go.mod h1:V+XKC27k6GA5OcWIAItpnxZAZnCigg8xCkpXKP905Fk=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
@@ -209,7 +208,7 @@ github.com/vmihailenco/msgpack/v4 v4.3.12/go.mod h1:gborTTJjAo/GWTqqRjrLCn9pgNN+
 github.com/vmihailenco/tagparser v0.1.1/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
 github.com/xanzy/ssh-agent v0.3.3 h1:+/15pJfg/RsTxqYcX6fHqOXZwwMP+2VyYWJeWM2qQFM=
 github.com/xanzy/ssh-agent v0.3.3/go.mod h1:6dzNDKs0J9rVPHPhaGCukekBHKqfl+L3KghI1Bc68Uw=
-github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f h1:J9EGpcZtP0E/raorCMxlFGSTBrsSlaDGf3jU/qvAE2c=
+github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb h1:zGWFAtiMcyryUHoUjUJX0/lt1H2+i2Ka2n+D3DImSNo=
 github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 h1:EzJWgHovont7NscjpAxXsDA8S8BMYve8Y5+7cuRE7R0=
 github.com/xeipuuv/gojsonschema v1.2.0 h1:LhYJRs+L4fBtjZUfuSZIKGeVu0QRy8e5Xi7D17UxZ74=
 github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 h1:nIPpBwaJSVYIxUFsDv3M8ofmx9yWTog9BfvIu0q41lo=

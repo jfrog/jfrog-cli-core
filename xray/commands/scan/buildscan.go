@@ -2,7 +2,9 @@ package scan
 
 import (
 	"errors"
-	rtutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
@@ -19,8 +21,8 @@ const (
 
 type BuildScanCommand struct {
 	serverDetails          *config.ServerDetails
-	outputFormat           xrutils.OutputFormat
-	buildConfiguration     *rtutils.BuildConfiguration
+	outputFormat           format.OutputFormat
+	buildConfiguration     *build.BuildConfiguration
 	includeVulnerabilities bool
 	failBuild              bool
 	printExtendedTable     bool
@@ -36,7 +38,7 @@ func (bsc *BuildScanCommand) SetServerDetails(server *config.ServerDetails) *Bui
 	return bsc
 }
 
-func (bsc *BuildScanCommand) SetOutputFormat(format xrutils.OutputFormat) *BuildScanCommand {
+func (bsc *BuildScanCommand) SetOutputFormat(format format.OutputFormat) *BuildScanCommand {
 	bsc.outputFormat = format
 	return bsc
 }
@@ -45,7 +47,7 @@ func (bsc *BuildScanCommand) ServerDetails() (*config.ServerDetails, error) {
 	return bsc.serverDetails, nil
 }
 
-func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *rtutils.BuildConfiguration) *BuildScanCommand {
+func (bsc *BuildScanCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildScanCommand {
 	bsc.buildConfiguration = buildConfiguration
 	return bsc
 }
@@ -139,7 +141,7 @@ func (bsc *BuildScanCommand) runBuildScanAndPrintResults(xrayManager *xray.XrayS
 		SetScanType(services.Binary).
 		SetExtraMessages(nil)
 
-	if bsc.outputFormat != xrutils.Table {
+	if bsc.outputFormat != format.Table {
 		// Print the violations and/or vulnerabilities as part of one JSON.
 		err = resultsPrinter.PrintScanResults()
 	} else {

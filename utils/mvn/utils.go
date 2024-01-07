@@ -9,15 +9,17 @@ import (
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/dependencies"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/spf13/viper"
 )
 
 type MvnUtils struct {
 	vConfig                   *viper.Viper
-	buildConf                 *utils.BuildConfiguration
+	buildConf                 *buildUtils.BuildConfiguration
 	buildArtifactsDetailsFile string
 	goals                     []string
 	threads                   int
@@ -27,10 +29,10 @@ type MvnUtils struct {
 }
 
 func NewMvnUtils() *MvnUtils {
-	return &MvnUtils{buildConf: &utils.BuildConfiguration{}}
+	return &MvnUtils{buildConf: &buildUtils.BuildConfiguration{}}
 }
 
-func (mu *MvnUtils) SetBuildConf(buildConf *utils.BuildConfiguration) *MvnUtils {
+func (mu *MvnUtils) SetBuildConf(buildConf *buildUtils.BuildConfiguration) *MvnUtils {
 	mu.buildConf = buildConf
 	return mu
 }
@@ -71,7 +73,7 @@ func (mu *MvnUtils) SetOutputWriter(writer io.Writer) *MvnUtils {
 }
 
 func RunMvn(mu *MvnUtils) error {
-	buildInfoService := utils.CreateBuildInfoService()
+	buildInfoService := buildUtils.CreateBuildInfoService()
 	buildName, err := mu.buildConf.GetBuildName()
 	if err != nil {
 		return err
@@ -104,9 +106,9 @@ func RunMvn(mu *MvnUtils) error {
 		return err
 	}
 	mavenModule.SetExtractorDetails(dependencyLocalPath,
-		filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath),
+		filepath.Join(coreutils.GetCliPersistentTempDirPath(), buildUtils.PropertiesTempPath),
 		mu.goals,
-		utils.DownloadExtractor,
+		dependencies.DownloadExtractor,
 		props,
 		useWrapper).
 		SetOutputWriter(mu.outputWriter)
@@ -124,9 +126,9 @@ func getMavenDependencyLocalPath() (string, error) {
 
 func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, threads int, insecureTls, disableDeploy bool) (props map[string]string, useWrapper bool, err error) {
 	useWrapper = vConfig.GetBool("useWrapper")
-	vConfig.Set(utils.InsecureTls, insecureTls)
+	vConfig.Set(buildUtils.InsecureTls, insecureTls)
 	if threads > 0 {
-		vConfig.Set(utils.ForkCount, threads)
+		vConfig.Set(buildUtils.ForkCount, threads)
 	}
 
 	if disableDeploy {
@@ -136,20 +138,20 @@ func createMvnRunProps(vConfig *viper.Viper, buildArtifactsDetailsFile string, t
 	if vConfig.IsSet("resolver") {
 		vConfig.Set("buildInfoConfig.artifactoryResolutionEnabled", "true")
 	}
-	buildInfoProps, err := utils.CreateBuildInfoProps(buildArtifactsDetailsFile, vConfig, utils.Maven)
+	buildInfoProps, err := buildUtils.CreateBuildInfoProps(buildArtifactsDetailsFile, vConfig, project.Maven)
 
 	return buildInfoProps, useWrapper, err
 }
 
 func setDeployFalse(vConfig *viper.Viper) {
-	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
-	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	vConfig.Set(buildUtils.DeployerPrefix+buildUtils.DeployArtifacts, "false")
+	if vConfig.GetString(buildUtils.DeployerPrefix+buildUtils.Url) == "" {
+		vConfig.Set(buildUtils.DeployerPrefix+buildUtils.Url, "http://empty_url")
 	}
-	if vConfig.GetString(utils.DeployerPrefix+utils.ReleaseRepo) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.ReleaseRepo, "empty_repo")
+	if vConfig.GetString(buildUtils.DeployerPrefix+buildUtils.ReleaseRepo) == "" {
+		vConfig.Set(buildUtils.DeployerPrefix+buildUtils.ReleaseRepo, "empty_repo")
 	}
-	if vConfig.GetString(utils.DeployerPrefix+utils.SnapshotRepo) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.SnapshotRepo, "empty_repo")
+	if vConfig.GetString(buildUtils.DeployerPrefix+buildUtils.SnapshotRepo) == "" {
+		vConfig.Set(buildUtils.DeployerPrefix+buildUtils.SnapshotRepo, "empty_repo")
 	}
 }

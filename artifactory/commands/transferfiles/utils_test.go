@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	clientutilstests "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
@@ -54,6 +56,24 @@ const (
 	staleChunksPath      = "path-in-repo"
 	staleChunksName      = "file-name"
 )
+
+func TestInitTempDir(t *testing.T) {
+	// Create JFrog home
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	// Set the temp dir to be <jfrog-home>/transfer/tmp/
+	unsetTempDir, err := initTempDir()
+	assert.NoError(t, err)
+
+	// Assert temp dir base path contain transfer/tmp
+	assert.Contains(t, fileutils.GetTempDirBase(), filepath.Join("transfer", "tmp"))
+
+	// Unset temp dir and assert that it is not contain transfer/tmp
+	unsetTempDir()
+	assert.NotContains(t, fileutils.GetTempDirBase(), filepath.Join("transfer", "tmp"))
+}
 
 func TestGetRunningNodes(t *testing.T) {
 	testServer, serverDetails, _ := createMockServer(t, func(w http.ResponseWriter, _ *http.Request) {

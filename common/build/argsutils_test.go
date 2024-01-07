@@ -1,4 +1,4 @@
-package utils
+package build
 
 import (
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"

@@ -114,14 +114,7 @@ func GetMavenPluginInstallationGoals(pluginPath string) []string {
 
 func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) (string, error) {
 	depTreeOutputPath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
-	var goals []string
-	switch mdt.cmdName {
-	case Tree:
-		goals = []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + depTreeOutputPath, "-B"}
-	case Projects:
-		goals = []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Projects), "-q", "-DdepsTreeOutputFile=" + depTreeOutputPath}
-	}
-
+	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(mdt.cmdName), "-DdepsTreeOutputFile=" + depTreeOutputPath, "-B"}
 	return mdt.run(goals, depTreeOutputPath)
 }
 

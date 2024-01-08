@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
@@ -25,7 +24,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 func GetProjectDir(global bool) (string, error) {
@@ -239,13 +237,6 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 		return errorutils.CheckError(err)
 	}
 	return errorutils.CheckError(json.Unmarshal(content, loadTarget))
-}
-
-func CreateBuildInfoService() *build.BuildInfoService {
-	buildInfoService := build.NewBuildInfoService()
-	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
-	buildInfoService.SetLogger(log.Logger)
-	return buildInfoService
 }
 
 // Returns an error if the given repo doesn't exist.

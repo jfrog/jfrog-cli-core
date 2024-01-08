@@ -459,6 +459,14 @@ func GetJfrogTransferRepositoriesDir() (string, error) {
 	return filepath.Join(transferDir, JfrogTransferRepositoriesDirName), nil
 }
 
+func GetJfrogTransferTempDir() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferTempDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"

@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -98,7 +98,7 @@ func UnmarshalDeployableArtifacts(deployableArtifactsFilePath, projectConfigPath
 // configPath -  path to the project's local configuration file.
 func getDeployerUrlAndRepo(modulesMap *map[string][]clientutils.DeployableArtifactDetails, configPath string) (string, string, error) {
 	repo := getTargetRepoFromMap(modulesMap)
-	vConfig, err := utils.ReadConfigFile(configPath, utils.YAML)
+	vConfig, err := project.ReadConfigFile(configPath, project.YAML)
 	if err != nil {
 		return "", "", err
 	}

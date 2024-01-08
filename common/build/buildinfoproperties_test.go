@@ -1,4 +1,4 @@
-package utils
+package build
 
 import (
 	"fmt"
@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/spf13/viper"
@@ -26,17 +28,25 @@ const (
 	httpsProxyForTest = "http://" + httpsUsername + ":" + httpsPassword + "@" + httpsHost + ":" + httpsPort
 )
 
+func GetTestDataPath() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return filepath.Join(dir, "testdata"), nil
+}
+
 func TestCreateDefaultPropertiesFile(t *testing.T) {
 	proxyOrg := getOriginalProxyValue()
 	setAndAssertProxy("", t)
 	testdataPath, err := GetTestDataPath()
 	assert.NoError(t, err)
 	data := []struct {
-		projectType   ProjectType
+		projectType   project.ProjectType
 		expectedProps string
 	}{
-		{Maven, filepath.Join(testdataPath, "expected_maven_test_create_default_properties_file.json")},
-		{Gradle, filepath.Join(testdataPath, "expected_gradle_test_create_default_properties_file.json")},
+		{project.Maven, filepath.Join(testdataPath, "expected_maven_test_create_default_properties_file.json")},
+		{project.Gradle, filepath.Join(testdataPath, "expected_gradle_test_create_default_properties_file.json")},
 	}
 	for _, d := range data {
 		testCreateDefaultPropertiesFile(d.projectType, d.expectedProps, t)
@@ -44,7 +54,7 @@ func TestCreateDefaultPropertiesFile(t *testing.T) {
 	setAndAssertProxy(proxyOrg, t)
 }
 
-func testCreateDefaultPropertiesFile(projectType ProjectType, expectedPropsFilePath string, t *testing.T) {
+func testCreateDefaultPropertiesFile(projectType project.ProjectType, expectedPropsFilePath string, t *testing.T) {
 	providedConfig := viper.New()
 	providedConfig.Set("type", projectType.String())
 	expectedProps := map[string]string{}
@@ -140,18 +150,18 @@ func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string) {
 	var expectedProps map[string]interface{}
 	assert.NoError(t, utils.Unmarshal(expectedPropsFilePath, &expectedProps))
 	vConfig := viper.New()
-	vConfig.Set("type", Maven.String())
+	vConfig.Set("type", project.Maven.String())
 	for k, v := range yamlConfig {
 		vConfig.Set(k, v)
 	}
-	props, err := CreateBuildInfoProps("", vConfig, Maven)
+	props, err := CreateBuildInfoProps("", vConfig, project.Maven)
 	if err != nil {
 		t.Error(err)
 	}
 	assert.True(t, fmt.Sprint(props) == fmt.Sprint(expectedProps))
 }
 
-func compareViperConfigs(t *testing.T, actual, expected *viper.Viper, projectType ProjectType) {
+func compareViperConfigs(t *testing.T, actual, expected *viper.Viper, projectType project.ProjectType) {
 	for _, key := range expected.AllKeys() {
 		value := expected.GetString(key)
 		if !actual.IsSet(key) {
@@ -189,7 +199,7 @@ func TestSetHttpProxy(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Assert
-	compareViperConfigs(t, vConfig, expectedConfig, Maven)
+	compareViperConfigs(t, vConfig, expectedConfig, project.Maven)
 	assert.Equal(t, password, os.Getenv(httpProxy+Password))
 
 	// Cleanup
@@ -214,7 +224,7 @@ func TestSetHttpsProxy(t *testing.T) {
 	assert.NoError(t, setProxyIfDefined(vConfig))
 
 	// Assert
-	compareViperConfigs(t, vConfig, expectedConfig, Maven)
+	compareViperConfigs(t, vConfig, expectedConfig, project.Maven)
 	assert.Equal(t, httpsPassword, os.Getenv(httpsProxy+Password))
 
 	// Cleanup

@@ -1,13 +1,13 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 )
 
 // Remove all the none docker CLI flags from args.
-func ExtractDockerOptionsFromArgs(args []string) (threads int, serverDetails *config.ServerDetails, detailedSummary, skipLogin bool, cleanArgs []string, buildConfig *utils.BuildConfiguration, err error) {
+func ExtractDockerOptionsFromArgs(args []string) (threads int, serverDetails *config.ServerDetails, detailedSummary, skipLogin bool, cleanArgs []string, buildConfig *build.BuildConfiguration, err error) {
 	cleanArgs = append([]string(nil), args...)
 	var serverId string
 	cleanArgs, serverId, err = coreutils.ExtractServerIdFromCommand(cleanArgs)
@@ -30,6 +30,6 @@ func ExtractDockerOptionsFromArgs(args []string) (threads int, serverDetails *co
 	if err != nil {
 		return
 	}
-	cleanArgs, buildConfig, err = utils.ExtractBuildDetailsFromArgs(cleanArgs)
+	cleanArgs, buildConfig, err = build.ExtractBuildDetailsFromArgs(cleanArgs)
 	return
 }

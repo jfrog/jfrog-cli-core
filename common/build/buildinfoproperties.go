@@ -1,4 +1,4 @@
-package utils
+package build
 
 import (
 	"net"
@@ -8,6 +8,8 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -20,19 +22,12 @@ const (
 	NoProxyEnvKey    = "NO_PROXY"
 )
 
-type BuildConfigMapping map[ProjectType][]*map[string]string
+type BuildConfigMapping map[project.ProjectType][]*map[string]string
 
 var buildTypeConfigMapping = BuildConfigMapping{
-	Maven:  {&commonConfigMapping, &mavenConfigMapping},
-	Gradle: {&commonConfigMapping, &gradleConfigMapping},
+	project.Maven:  {&commonConfigMapping, &mavenConfigMapping},
+	project.Gradle: {&commonConfigMapping, &gradleConfigMapping},
 }
-
-type ConfigType string
-
-const (
-	YAML       ConfigType = "yaml"
-	PROPERTIES ConfigType = "properties"
-)
 
 // For key/value binding
 const BuildName = "build.name"
@@ -148,31 +143,16 @@ var gradleConfigMapping = map[string]string{
 	"publish.ivy.artPattern":                            DeployerPrefix + ArtifactPattern,
 }
 
-func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Viper, err error) {
-	config = viper.New()
-	config.SetConfigType(string(configType))
-
-	f, err := os.Open(configPath)
-	if err != nil {
-		return config, errorutils.CheckError(err)
-	}
-	defer func() {
-		err = errorutils.CheckError(f.Close())
-	}()
-	err = config.ReadConfig(f)
-	return config, errorutils.CheckError(err)
-}
-
 func ReadMavenConfig(path string, mvnProps map[string]any) (config *viper.Viper, err error) {
 	if path == "" {
-		config = createDefaultConfigWithParams(YAML, Maven.String(), mvnProps)
+		config = createDefaultConfigWithParams(project.YAML, project.Maven.String(), mvnProps)
 	} else {
-		config, err = ReadConfigFile(path, YAML)
+		config, err = project.ReadConfigFile(path, project.YAML)
 	}
 	return
 }
 
-func createDefaultConfigWithParams(configType ConfigType, technology string, params map[string]any) *viper.Viper {
+func createDefaultConfigWithParams(configType project.ConfigType, technology string, params map[string]any) *viper.Viper {
 	vConfig := viper.New()
 	vConfig.SetConfigType(string(configType))
 	vConfig.Set("type", technology)
@@ -197,7 +177,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 	return nil, nil
 }
 
-func CreateBuildInfoProps(buildArtifactsDetailsFile string, config *viper.Viper, projectType ProjectType) (map[string]string, error) {
+func CreateBuildInfoProps(buildArtifactsDetailsFile string, config *viper.Viper, projectType project.ProjectType) (map[string]string, error) {
 	if config.GetString("type") != projectType.String() {
 		return nil, errorutils.CheckErrorf("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type"))
 	}
@@ -216,7 +196,7 @@ func CreateBuildInfoProps(buildArtifactsDetailsFile string, config *viper.Viper,
 	return createProps(config, projectType), nil
 }
 
-func createProps(config *viper.Viper, projectType ProjectType) map[string]string {
+func createProps(config *viper.Viper, projectType project.ProjectType) map[string]string {
 	props := make(map[string]string)
 	// Iterate over all the required properties keys according to the buildType and create properties file.
 	// If a value is provided by the build config file write it,

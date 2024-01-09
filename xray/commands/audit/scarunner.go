@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -124,10 +125,22 @@ func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams
 	for _, wd := range params.workingDirs {
 		workingDirs.Add(wd)
 	}
-	if len(params.workingDirs) == 0 {
+
+	if len(params.workingDirs) == 0 || paramsWorkingDirsContainOnlyCurrentWorkingDir(currentWorkingDir, params) {
 		return []string{currentWorkingDir}, true
 	}
 	return workingDirs.ToSlice(), false
+}
+
+// Checks if the only working directory in the given AuditParams is the current working directory
+func paramsWorkingDirsContainOnlyCurrentWorkingDir(currentWorkingDir string, params *AuditParams) bool {
+	if len(params.workingDirs) != 1 {
+		return false
+	}
+	if strings.HasSuffix(currentWorkingDir, params.workingDirs[0]) {
+		return true
+	}
+	return false
 }
 
 // Preform the SCA scan for the given scan information.

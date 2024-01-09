@@ -192,6 +192,17 @@ func TestGetRequestedDirectoriesToScan(t *testing.T) {
 			expectedRecursive: true,
 			expectedDirs:      []string{"tmp"},
 		},
+		{
+			name: "Test recursive with single WD that is the current WD",
+			cwd:  "curWD",
+			params: func() *AuditParams {
+				param := NewAuditParams()
+				param.SetWorkingDirs([]string{"curWD"})
+				return param
+			},
+			expectedRecursive: true,
+			expectedDirs:      []string{"curWD"},
+		},
 	}
 
 	for _, test := range tests {

@@ -70,6 +70,22 @@ func PrintHelpAndReturnError(msg string, printHelp func() error) error {
 }
 
 // This function checks whether the command received --help as a single option.
+// This function should be used iff the SkipFlagParsing option is used.
+// Generic commands such as docker, don't have dedicated subcommands. As a workaround, printing the help of their subcommands,
+// we use a dummy command with no logic but the help message. to trigger the print of those dummy commands,
+// each generic command must decide what cmdName it needs to pass to this function.
+// For example, 'jf docker scan --help' passes cmdName='dockerscanhelp' to print our help and not the origin from docker client/cli.
+func ShowGenericCmdHelpIfNeeded(args []string, printHelp func() error) (bool, error) {
+	for _, arg := range args {
+		if arg == "--help" || arg == "-h" {
+			err := printHelp()
+			return true, err
+		}
+	}
+	return false, nil
+}
+
+// This function checks whether the command received --help as a single option.
 // If it did, the command's help is shown and true is returned.
 // This function should be used iff the SkipFlagParsing option is used.
 func ShowCmdHelpIfNeeded(args []string, printHelp func() error) (bool, error) {

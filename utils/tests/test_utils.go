@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/stretchr/testify/assert"
 )
 
 // Prepare the .git environment for the test. Takes an existing folder and making it .git dir.
@@ -88,5 +89,17 @@ func CleanUpOldItems(baseItemNames []string, getActualItems func() ([]string, er
 				deleteItem(item)
 			}
 		}
+	}
+}
+
+func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
+	tempDirPath, createTempDirCallback := CreateTempDirWithCallbackAndAssert(t)
+	assert.NoError(t, biutils.CopyDir(sourceDir, tempDirPath, true, nil))
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallback := tests.ChangeDirWithCallback(t, wd, tempDirPath)
+	return tempDirPath, func() {
+		chdirCallback()
+		createTempDirCallback()
 	}
 }

@@ -190,18 +190,3 @@ func CreateHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttp
 		Build()
 	return
 }
-
-func getAnalyzerManagerRemoteDetails(downloadPath string) (server *config.ServerDetails, fullRemotePath string, err error) {
-	var remoteRepo string
-	server, remoteRepo, err = GetRemoteDetails(coreutils.ReleasesRemoteEnv)
-	if err != nil {
-		return
-	}
-	if remoteRepo != "" {
-		fullRemotePath = path.Join(remoteRepo, "artifactory", downloadPath)
-		return
-	}
-	log.Debug("'" + coreutils.ReleasesRemoteEnv + "' environment variable is not configured. The Analyzer Manager app will be downloaded directly from releases.jfrog.io if needed.")
-	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
-	return &config.ServerDetails{ArtifactoryUrl: coreutils.JfrogReleasesUrl}, downloadPath, nil
-}

@@ -345,7 +345,7 @@ func convertBoolFlag(f BoolFlag) cli.Flag {
 // Wrap the base's ActionFunc with our own, while retrieving needed information from the Context.
 func getActionFunc(cmd Command) cli.ActionFunc {
 	return func(baseContext *cli.Context) error {
-		pluginContext, err := ConvertContext(baseContext)
+		pluginContext, err := ConvertContext(cmd, baseContext)
 		if err != nil {
 			return err
 		}
@@ -353,13 +353,13 @@ func getActionFunc(cmd Command) cli.ActionFunc {
 	}
 }
 
-func ConvertContext(baseContext *cli.Context) (*Context, error) {
+func ConvertContext(cmd Command, baseContext *cli.Context) (*Context, error) {
 	pluginContext := &Context{
 		CommandName:      baseContext.Command.Name,
 		Arguments:        baseContext.Args(),
 		PrintCommandHelp: getPrintCommandHelpFunc(baseContext),
 	}
-	return pluginContext, fillFlagMaps(pluginContext, baseContext, nil)
+	return pluginContext, fillFlagMaps(pluginContext, baseContext, cmd.Flags)
 }
 
 func getPrintCommandHelpFunc(c *cli.Context) func(commandName string) error {

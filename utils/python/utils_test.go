@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +28,6 @@ func initPoetryTest(t *testing.T) (string, func()) {
 	// Create and change directory to test workspace
 	testAbs, err := filepath.Abs(filepath.Join("..", "..", "tests", "testdata", "poetry-project"))
 	assert.NoError(t, err)
-	poetryProjectPath, cleanUp := tests.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "gradle", "poetry-project"))
-	assert.NoError(t, biutils.CopyDir(testAbs, poetryProjectPath, true, nil))
+	poetryProjectPath, cleanUp := tests.CreateTestWorkspace(t, testAbs)
 	return poetryProjectPath, cleanUp
 }

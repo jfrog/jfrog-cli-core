@@ -16,6 +16,7 @@ type AuditParams struct {
 	xrayVersion string
 	// Include third party dependencies source code in the applicability scan.
 	thirdPartyApplicabilityScan bool
+	applyRecursiveScan          bool
 }
 
 func NewAuditParams() *AuditParams {
@@ -47,6 +48,11 @@ func (params *AuditParams) Exclusions() []string {
 
 func (params *AuditParams) SetExclusions(exclusions []string) *AuditParams {
 	params.exclusions = exclusions
+	return params
+}
+
+func (params *AuditParams) SetApplyRecursiveScan(applyRecursiveScan bool) *AuditParams {
+	params.applyRecursiveScan = applyRecursiveScan
 	return params
 }
 

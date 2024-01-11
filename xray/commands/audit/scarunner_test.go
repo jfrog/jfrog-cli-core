@@ -168,11 +168,10 @@ func TestGetExcludePattern(t *testing.T) {
 
 func TestGetRequestedDirectoriesToScan(t *testing.T) {
 	tests := []struct {
-		name              string
-		cwd               string
-		params            func() *AuditParams
-		expectedRecursive bool
-		expectedDirs      []string
+		name         string
+		cwd          string
+		params       func() *AuditParams
+		expectedDirs []string
 	}{
 		{
 			name: "Test specific directories",
@@ -182,23 +181,20 @@ func TestGetRequestedDirectoriesToScan(t *testing.T) {
 				param.SetWorkingDirs([]string{filepath.Join("tmp", "dir1"), filepath.Join("tmp", "dir2")})
 				return param
 			},
-			expectedRecursive: false,
-			expectedDirs:      []string{filepath.Join("tmp", "dir1"), filepath.Join("tmp", "dir2")},
+			expectedDirs: []string{filepath.Join("tmp", "dir1"), filepath.Join("tmp", "dir2")},
 		},
 		{
-			name:              "Test recursive",
-			cwd:               "tmp",
-			params:            NewAuditParams,
-			expectedRecursive: true,
-			expectedDirs:      []string{"tmp"},
+			name:         "Test recursive",
+			cwd:          "tmp",
+			params:       NewAuditParams,
+			expectedDirs: []string{"tmp"},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			dirs, recursive := getRequestedDirectoriesToScan(test.cwd, test.params())
+			dirs := getRequestedDirectoriesToScan(test.cwd, test.params()) //TODO ERAN fix test
 			assert.ElementsMatch(t, test.expectedDirs, dirs)
-			assert.Equal(t, test.expectedRecursive, recursive)
 		})
 	}
 }

@@ -72,10 +72,10 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 
 // Calculate the scans to preform
 func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
-	requestedDirectories, isRecursive := getRequestedDirectoriesToScan(currentWorkingDir, params)
+	requestedDirectories := getRequestedDirectoriesToScan(currentWorkingDir, params) // TODO ERAN change here so it wont return isRecursive
 	for _, requestedDirectory := range requestedDirectories {
 		// Detect descriptors and technologies in the requested directory.
-		techToWorkingDirs, err := coreutils.DetectTechnologiesDescriptors(requestedDirectory, isRecursive, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, isRecursive))
+		techToWorkingDirs, err := coreutils.DetectTechnologiesDescriptors(requestedDirectory, params.applyRecursiveScan, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, params.applyRecursiveScan))
 		if err != nil {
 			log.Warn("Couldn't detect technologies in", requestedDirectory, "directory.", err.Error())
 			continue
@@ -119,15 +119,15 @@ func getExcludePattern(params *AuditParams, recursive bool) string {
 // Get the directories to scan base on the given parameters.
 // If no working directories were specified, the current working directory will be returned with recursive mode.
 // If working directories were specified, the recursive mode will be false.
-func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams) ([]string, bool) {
+func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams) []string {
 	workingDirs := datastructures.MakeSet[string]()
 	for _, wd := range params.workingDirs {
 		workingDirs.Add(wd)
 	}
 	if len(params.workingDirs) == 0 {
-		return []string{currentWorkingDir}, true
+		return []string{currentWorkingDir}
 	}
-	return workingDirs.ToSlice(), false
+	return workingDirs.ToSlice()
 }
 
 // Preform the SCA scan for the given scan information.

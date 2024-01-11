@@ -170,13 +170,11 @@ func ShouldOfferConfig() (bool, error) {
 	if err != nil || exists {
 		return false, err
 	}
-	clearConfigCmd := commands.NewConfigCommand(commands.Clear, "")
 	var ci bool
 	if ci, err = clientUtils.GetBoolEnvValue(coreutils.CI, false); err != nil {
 		return false, err
 	}
 	if ci {
-		_ = clearConfigCmd.Run()
 		return false, nil
 	}
 
@@ -187,7 +185,6 @@ func ShouldOfferConfig() (bool, error) {
 		"Configure now?", coreutils.CI)
 	confirmed := coreutils.AskYesNo(msg, false)
 	if !confirmed {
-		_ = clearConfigCmd.Run()
 		return false, nil
 	}
 	return true, nil

@@ -5,7 +5,6 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	xrayutils "github.com/jfrog/jfrog-cli-security/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"os"
@@ -16,18 +15,14 @@ const (
 	GavPackageTypeIdentifier = "gav://"
 )
 
-func BuildDependencyTree(params xrayutils.AuditParams, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
-	serverDetails, err := params.ServerDetails()
-	if err != nil {
-		return nil, nil, err
-	}
+func BuildDependencyTree(serverDetails *config.ServerDetails, depsRepo string, useWrapper, isMavenDepTreeInstalled bool, tech coreutils.Technology) ([]*xrayUtils.GraphNode, []string, error) {
 	depTreeParams := &DepTreeParams{
-		UseWrapper: params.UseWrapper(),
+		UseWrapper: useWrapper,
 		Server:     serverDetails,
-		DepsRepo:   params.DepsRepo(),
+		DepsRepo:   depsRepo,
 	}
 	if tech == coreutils.Maven {
-		return buildMavenDependencyTree(depTreeParams, params.IsMavenDepTreeInstalled())
+		return buildMavenDependencyTree(depTreeParams, isMavenDepTreeInstalled)
 	}
 	return buildGradleDependencyTree(depTreeParams)
 }

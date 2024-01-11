@@ -3,7 +3,6 @@ package java
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-security/commands/audit/sca"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,6 +11,7 @@ import (
 	testsutils "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -44,7 +44,7 @@ allprojects {
 
 func TestGradleTreesWithoutConfig(t *testing.T) {
 	// Create and change directory to test workspace
-	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "gradle", "gradle"))
+	tempDirPath, cleanUp := tests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "gradle"))
 	defer cleanUp()
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
@@ -54,21 +54,21 @@ func TestGradleTreesWithoutConfig(t *testing.T) {
 		assert.Len(t, uniqueDeps, 12)
 		assert.Len(t, modulesDependencyTrees, 5)
 		// Check module
-		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
+		module := tests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.example.gradle:webservice:1.0")
 		assert.Len(t, module.Nodes, 7)
 
 		// Check direct dependency
-		directDependency := sca.GetAndAssertNode(t, module.Nodes, "junit:junit:4.11")
+		directDependency := tests.GetAndAssertNode(t, module.Nodes, "junit:junit:4.11")
 		assert.Len(t, directDependency.Nodes, 1)
 
 		// Check transitive dependency
-		sca.GetAndAssertNode(t, directDependency.Nodes, "org.hamcrest:hamcrest-core:1.3")
+		tests.GetAndAssertNode(t, directDependency.Nodes, "org.hamcrest:hamcrest-core:1.3")
 	}
 }
 
 func TestGradleTreesWithConfig(t *testing.T) {
 	// Create and change directory to test workspace
-	tempDirPath, cleanUp := sca.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "gradle", "gradle-example-config"))
+	tempDirPath, cleanUp := tests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "gradle-example-config"))
 	defer cleanUp()
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 
@@ -78,15 +78,15 @@ func TestGradleTreesWithConfig(t *testing.T) {
 		assert.Len(t, modulesDependencyTrees, 5)
 		assert.Len(t, uniqueDeps, 11)
 		// Check module
-		module := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test.gradle.publish:api:1.0-SNAPSHOT")
+		module := tests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test.gradle.publish:api:1.0-SNAPSHOT")
 		assert.Len(t, module.Nodes, 4)
 
 		// Check direct dependency
-		directDependency := sca.GetAndAssertNode(t, module.Nodes, "commons-lang:commons-lang:2.4")
+		directDependency := tests.GetAndAssertNode(t, module.Nodes, "commons-lang:commons-lang:2.4")
 		assert.Len(t, directDependency.Nodes, 1)
 
 		// Check transitive dependency
-		sca.GetAndAssertNode(t, directDependency.Nodes, "commons-io:commons-io:1.2")
+		tests.GetAndAssertNode(t, directDependency.Nodes, "commons-io:commons-io:1.2")
 	}
 }
 
@@ -97,7 +97,7 @@ func TestIsGradleWrapperExist(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check Gradle wrapper exist
-	_, cleanUp := sca.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "gradle", "gradle"))
+	_, cleanUp := tests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "gradle"))
 	defer cleanUp()
 	isWrapperExist, err = isGradleWrapperExist()
 	assert.NoError(t, err)

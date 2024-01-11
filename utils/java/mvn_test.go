@@ -2,7 +2,7 @@ package java
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-security/commands/audit/sca"
+	coreTests "github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
@@ -77,7 +77,7 @@ const (
 
 func TestMavenTreesMultiModule(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := sca.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "maven", "maven-example"))
+	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example"))
 	defer cleanUp()
 
 	expectedUniqueDeps := []string{
@@ -99,19 +99,19 @@ func TestMavenTreesMultiModule(t *testing.T) {
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
-		multi := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
+		multi := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {
 			assert.Len(t, multi.Nodes, 1)
 			// Check multi1 with a transitive dependency
-			multi1 := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi1:3.7-SNAPSHOT")
+			multi1 := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi1:3.7-SNAPSHOT")
 			assert.Len(t, multi1.Nodes, 4)
-			commonsEmail := sca.GetAndAssertNode(t, multi1.Nodes, "org.apache.commons:commons-email:1.1")
+			commonsEmail := coreTests.GetAndAssertNode(t, multi1.Nodes, "org.apache.commons:commons-email:1.1")
 			assert.Len(t, commonsEmail.Nodes, 2)
 
 			// Check multi2 and multi3
-			multi2 := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi2:3.7-SNAPSHOT")
+			multi2 := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi2:3.7-SNAPSHOT")
 			assert.Len(t, multi2.Nodes, 1)
-			multi3 := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi3:3.7-SNAPSHOT")
+			multi3 := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi3:3.7-SNAPSHOT")
 			assert.Len(t, multi3.Nodes, 4)
 		}
 	}
@@ -119,7 +119,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 
 func TestMavenWrapperTrees(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := sca.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "maven", "maven-example-with-wrapper"))
+	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example-with-wrapper"))
 	err := os.Chmod("mvnw", 0700)
 	defer cleanUp()
 	assert.NoError(t, err)
@@ -149,18 +149,18 @@ func TestMavenWrapperTrees(t *testing.T) {
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
-		multi := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
+		multi := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {
 			assert.Len(t, multi.Nodes, 1)
 			// Check multi1 with a transitive dependency
-			multi1 := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi1:3.7-SNAPSHOT")
+			multi1 := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi1:3.7-SNAPSHOT")
 			assert.Len(t, multi1.Nodes, 7)
-			commonsEmail := sca.GetAndAssertNode(t, multi1.Nodes, "org.apache.commons:commons-email:1.1")
+			commonsEmail := coreTests.GetAndAssertNode(t, multi1.Nodes, "org.apache.commons:commons-email:1.1")
 			assert.Len(t, commonsEmail.Nodes, 2)
 			// Check multi2 and multi3
-			multi2 := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi2:3.7-SNAPSHOT")
+			multi2 := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi2:3.7-SNAPSHOT")
 			assert.Len(t, multi2.Nodes, 1)
-			multi3 := sca.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi3:3.7-SNAPSHOT")
+			multi3 := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi3:3.7-SNAPSHOT")
 			assert.Len(t, multi3.Nodes, 4)
 		}
 	}
@@ -221,7 +221,7 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 
 func TestRunProjectsCmd(t *testing.T) {
 	// Create and change directory to test workspace
-	_, cleanUp := sca.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "maven", "maven-example"))
+	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example"))
 	defer cleanUp()
 	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
 	output, err := mvnDepTreeManager.RunMavenDepTree()

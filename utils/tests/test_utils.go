@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils/tests"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -102,4 +104,25 @@ func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
 		chdirCallback()
 		createTempDirCallback()
 	}
+}
+
+func GetAndAssertNode(t *testing.T, modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
+	module := GetModule(modules, moduleId)
+	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
+	return module
+}
+
+// GetModule gets a specific module from the provided modules list
+func GetModule(modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
+	for _, module := range modules {
+		splitIdentifier := strings.Split(module.Id, "//")
+		id := splitIdentifier[0]
+		if len(splitIdentifier) > 1 {
+			id = splitIdentifier[1]
+		}
+		if id == moduleId {
+			return module
+		}
+	}
+	return nil
 }

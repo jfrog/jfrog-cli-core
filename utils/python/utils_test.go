@@ -27,9 +27,9 @@ func TestAddRepoToPyprojectFile(t *testing.T) {
 
 func initPoetryTest(t *testing.T) (string, func()) {
 	// Create and change directory to test workspace
-	testAbs, err := filepath.Abs(filepath.Join("..", "tests", "testdata", "poetry-project"))
+	testAbs, err := filepath.Abs(filepath.Join("..", "..", "tests", "testdata", "poetry-project"))
 	assert.NoError(t, err)
-	poetryProjectPath, cleanUp := tests.CreateTestWorkspace(t, "poetry-project")
+	poetryProjectPath, cleanUp := tests.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "gradle", "poetry-project"))
 	assert.NoError(t, biutils.CopyDir(testAbs, poetryProjectPath, true, nil))
 	return poetryProjectPath, cleanUp
 }

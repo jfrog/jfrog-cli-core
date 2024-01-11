@@ -193,7 +193,7 @@ func TestGetRequestedDirectoriesToScan(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			dirs := getRequestedDirectoriesToScan(test.cwd, test.params()) //TODO ERAN fix test
+			dirs := getRequestedDirectoriesToScan(test.cwd, test.params())
 			assert.ElementsMatch(t, test.expectedDirs, dirs)
 		})
 	}
@@ -213,7 +213,7 @@ func TestGetScaScansToPreform(t *testing.T) {
 			name: "Test specific technologies",
 			wd:   dir,
 			params: func() *AuditParams {
-				param := NewAuditParams()
+				param := NewAuditParams().SetApplyRecursiveScan(true)
 				param.SetTechnologies([]string{"maven", "npm", "go"})
 				return param
 			},
@@ -240,9 +240,12 @@ func TestGetScaScansToPreform(t *testing.T) {
 			},
 		},
 		{
-			name:   "Test all",
-			wd:     dir,
-			params: NewAuditParams,
+			name: "Test all",
+			wd:   dir,
+			params: func() *AuditParams {
+				param := NewAuditParams().SetApplyRecursiveScan(true)
+				return param
+			},
 			expected: []*xrayutils.ScaScanResult{
 				{
 					Technology:       coreutils.Maven,

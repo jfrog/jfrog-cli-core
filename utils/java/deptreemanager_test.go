@@ -13,7 +13,7 @@ import (
 
 func TestGetGradleGraphFromDepTree(t *testing.T) {
 	// Create and change directory to test workspace
-	tempDirPath, cleanUp := tests.CreateTestWorkspace(t, filepath.Join("projects", "package-managers", "gradle", "gradle"))
+	tempDirPath, cleanUp := tests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "gradle"))
 	defer cleanUp()
 	assert.NoError(t, os.Chmod(filepath.Join(tempDirPath, "gradlew"), 0700))
 	expectedTree := map[string]map[string]string{

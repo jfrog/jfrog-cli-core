@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	applicabilityScanType      = "analyze-applicability"
-	applicabilityScanCommand   = "ca"
-	applicabilityDocsUrlSuffix = "contextual-analysis"
+	applicabilityScanType           = "analyze-applicability"
+	applicabilityScanCommand        = "ca"
+	applicabilityDocsUrlSuffix      = "contextual-analysis"
+	applicabilityDockerScanScanType = "analyze-applicability-docker-scan"
 )
 
 type ApplicabilityScanManager struct {
@@ -29,6 +30,7 @@ type ApplicabilityScanManager struct {
 	xrayResults              []services.ScanResponse
 	scanner                  *jas.JasScanner
 	thirdPartyScan           bool
+	commandType              string
 }
 
 // The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
@@ -55,6 +57,37 @@ func RunApplicabilityScan(xrayResults []services.ScanResponse, directDependencie
 	return
 }
 
+// The getApplicabilityScanResults function runs the applicability scan flow, which includes the following steps:
+// Creating an ApplicabilityScanManager object.
+// Checking if the scanned project is eligible for applicability scan.
+// Running the analyzer manager executable.
+// Parsing the analyzer manager results.
+// Return values:
+// map[string]string: A map containing the applicability result of each XRAY CVE.
+// bool: true if the user is entitled to the applicability scan, false otherwise.
+// error: An error object (if any).
+func RunApplicabilityWithScanCves(xrayResults []services.ScanResponse, cveList []string,
+	scannedTechnologies []coreutils.Technology, scanner *jas.JasScanner) (results []*sarif.Run, err error) {
+	applicabilityScanManager := newApplicabilityScanManagerCves(xrayResults, cveList, scanner)
+	if err = applicabilityScanManager.scanner.Run(applicabilityScanManager); err != nil {
+		err = utils.ParseAnalyzerManagerError(utils.Applicability, err)
+		return
+	}
+	results = applicabilityScanManager.applicabilityScanResults
+	return
+}
+
+func newApplicabilityScanManagerCves(xrayScanResults []services.ScanResponse, cveList []string, scanner *jas.JasScanner) (manager *ApplicabilityScanManager) {
+	return &ApplicabilityScanManager{
+		applicabilityScanResults: []*sarif.Run{},
+		directDependenciesCves:   cveList,
+		xrayResults:              xrayScanResults,
+		scanner:                  scanner,
+		thirdPartyScan:           false,
+		commandType:              applicabilityDockerScanScanType,
+	}
+}
+
 func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, directDependencies []string, scanner *jas.JasScanner, thirdPartyScan bool) (manager *ApplicabilityScanManager) {
 	directDependenciesCves, indirectDependenciesCves := extractDependenciesCvesFromScan(xrayScanResults, directDependencies)
 	return &ApplicabilityScanManager{
@@ -64,6 +97,7 @@ func newApplicabilityScanManager(xrayScanResults []services.ScanResponse, direct
 		xrayResults:              xrayScanResults,
 		scanner:                  scanner,
 		thirdPartyScan:           thirdPartyScan,
+		commandType:              applicabilityScanType,
 	}
 }
 
@@ -152,6 +186,7 @@ type scanConfiguration struct {
 	CveWhitelist         []string `yaml:"cve-whitelist"`
 	IndirectCveWhitelist []string `yaml:"indirect-cve-whitelist"`
 	SkippedDirs          []string `yaml:"skipped-folders"`
+	ScanType             string   `yaml:"scantype"`
 }
 
 func (asm *ApplicabilityScanManager) createConfigFile(module jfrogappsconfig.Module) error {
@@ -169,7 +204,7 @@ func (asm *ApplicabilityScanManager) createConfigFile(module jfrogappsconfig.Mod
 			{
 				Roots:                roots,
 				Output:               asm.scanner.ResultsFileName,
-				Type:                 applicabilityScanType,
+				Type:                 asm.commandType,
 				GrepDisable:          false,
 				CveWhitelist:         asm.directDependenciesCves,
 				IndirectCveWhitelist: asm.indirectDependenciesCves,

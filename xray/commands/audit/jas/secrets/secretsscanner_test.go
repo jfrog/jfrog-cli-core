@@ -15,7 +15,7 @@ import (
 func TestNewSecretsScanManager(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
-	secretScanManager := newSecretsScanManager(scanner)
+	secretScanManager := newSecretsScanManager(scanner, SecretsScannerType)
 
 	assert.NotEmpty(t, secretScanManager)
 	assert.NotEmpty(t, secretScanManager.scanner.ConfigFileName)
@@ -26,7 +26,7 @@ func TestNewSecretsScanManager(t *testing.T) {
 func TestSecretsScan_CreateConfigFile_VerifyFileWasCreated(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
-	secretScanManager := newSecretsScanManager(scanner)
+	secretScanManager := newSecretsScanManager(scanner, SecretsScannerType)
 
 	currWd, err := coreutils.GetWorkingDirectory()
 	assert.NoError(t, err)
@@ -53,7 +53,7 @@ func TestRunAnalyzerManager_ReturnsGeneralError(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 
-	secretScanManager := newSecretsScanManager(scanner)
+	secretScanManager := newSecretsScanManager(scanner, SecretsScannerType)
 	assert.Error(t, secretScanManager.runAnalyzerManager())
 }
 
@@ -61,7 +61,7 @@ func TestParseResults_EmptyResults(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 	// Arrange
-	secretScanManager := newSecretsScanManager(scanner)
+	secretScanManager := newSecretsScanManager(scanner, SecretsScannerType)
 	secretScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "secrets-scan", "no-secrets.sarif")
 
 	// Act
@@ -84,7 +84,7 @@ func TestParseResults_ResultsContainSecrets(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 
-	secretScanManager := newSecretsScanManager(scanner)
+	secretScanManager := newSecretsScanManager(scanner, SecretsScannerType)
 	secretScanManager.scanner.ResultsFileName = filepath.Join(jas.GetTestDataPath(), "secrets-scan", "contain-secrets.sarif")
 
 	// Act
@@ -107,7 +107,7 @@ func TestGetSecretsScanResults_AnalyzerManagerReturnsError(t *testing.T) {
 	scanner, cleanUp := jas.InitJasTest(t)
 	defer cleanUp()
 
-	secretsResults, err := RunSecretsScan(scanner)
+	secretsResults, err := RunSecretsScan(scanner, SecretsScannerType)
 
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "failed to run Secrets scan")

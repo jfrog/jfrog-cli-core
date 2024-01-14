@@ -1054,6 +1054,7 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Puppet:    federatedPuppetHandler,
 	Alpine:    federatedAlpineHandler,
 	Generic:   federatedGenericHandler,
+	Yum:       federatedYumHandler,
 }
 
 func federatedMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1368,6 +1369,18 @@ func federatedGenericHandler(servicesManager artifactory.ArtifactoryServicesMana
 		return servicesManager.UpdateFederatedRepository().Generic(params)
 	}
 	return servicesManager.CreateFederatedRepository().Generic(params)
+}
+
+func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewYumFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Yum(params)
+	}
+	return servicesManager.CreateFederatedRepository().Yum(params)
 }
 
 var virtualRepoHandlers = map[string]repoHandler{

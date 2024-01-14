@@ -1049,6 +1049,7 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Gitlfs:    federatedGitLfsHandler,
 	Go:        federatedGoHandler,
 	Conan:     federatedConanHandler,
+	Conda:     federatedCondaHandler,
 	Chef:      federatedChefHandler,
 	Puppet:    federatedPuppetHandler,
 	Alpine:    federatedAlpineHandler,
@@ -1306,6 +1307,18 @@ func federatedConanHandler(servicesManager artifactory.ArtifactoryServicesManage
 		return servicesManager.UpdateFederatedRepository().Conan(params)
 	}
 	return servicesManager.CreateFederatedRepository().Conan(params)
+}
+
+func federatedCondaHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCondaFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Conda(params)
+	}
+	return servicesManager.CreateFederatedRepository().Conda(params)
 }
 
 func federatedChefHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {

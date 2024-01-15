@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"os"
+
 	jfrogclicore "github.com/jfrog/jfrog-cli-core/v2"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -9,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/urfave/cli"
-	"os"
 )
 
 const commandHelpTemplate = `{{.HelpName}}{{if .UsageText}}

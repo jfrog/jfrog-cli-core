@@ -17,9 +17,21 @@ func CreateApp(name, version, description string, commands []Command) App {
 	}
 }
 
+func CreateEmbeddedApp(name string, commands []Command, namespaces ...Namespace) App {
+	app := App{
+		Namespace: Namespace{
+			Name:     name,
+			Commands: commands,
+		},
+	}
+	app.Subcommands = append(app.Subcommands, namespaces...)
+	return app
+}
+
 type Namespace struct {
 	Name        string
 	Description string
+	Category    string
 	Commands    []Command
 }
 

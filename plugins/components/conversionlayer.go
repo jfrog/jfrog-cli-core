@@ -130,6 +130,7 @@ func getCmdUsageString(cmd Command, namespaces ...string) string {
 	return coreutils.GetCliExecutableName() + " " + strings.Join(append(removeEmptyValues(namespaces), cmd.Name), " ")
 }
 
+
 // Generated usages are based on the command's flags and arguments:
 // <cli-name> <command-name> [command options] --mandatory-opt1=<opt1-value-alias> --mandatory-opt2=<value>... <arg1> [optional-arg2] <arg3>...
 func generateCommandUsages(usagePrefix string, cmd Command, convertedStringFlags map[string]StringFlag) (usages []string, err error) {

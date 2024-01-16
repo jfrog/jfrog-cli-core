@@ -166,43 +166,6 @@ func TestGetExcludePattern(t *testing.T) {
 	}
 }
 
-func TestGetRequestedDirectoriesToScan(t *testing.T) {
-	tests := []struct {
-		name              string
-		cwd               string
-		params            func() *AuditParams
-		expectedRecursive bool
-		expectedDirs      []string
-	}{
-		{
-			name: "Test specific directories",
-			cwd:  "tmp",
-			params: func() *AuditParams {
-				param := NewAuditParams()
-				param.SetWorkingDirs([]string{filepath.Join("tmp", "dir1"), filepath.Join("tmp", "dir2")})
-				return param
-			},
-			expectedRecursive: false,
-			expectedDirs:      []string{filepath.Join("tmp", "dir1"), filepath.Join("tmp", "dir2")},
-		},
-		{
-			name:              "Test recursive",
-			cwd:               "tmp",
-			params:            NewAuditParams,
-			expectedRecursive: true,
-			expectedDirs:      []string{"tmp"},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			dirs, recursive := getRequestedDirectoriesToScan(test.cwd, test.params())
-			assert.ElementsMatch(t, test.expectedDirs, dirs)
-			assert.Equal(t, test.expectedRecursive, recursive)
-		})
-	}
-}
-
 func TestGetScaScansToPreform(t *testing.T) {
 
 	dir, cleanUp := createTestDir(t)
@@ -217,7 +180,7 @@ func TestGetScaScansToPreform(t *testing.T) {
 			name: "Test specific technologies",
 			wd:   dir,
 			params: func() *AuditParams {
-				param := NewAuditParams()
+				param := NewAuditParams().SetIsRecursiveScan(true).SetWorkingDirs([]string{dir})
 				param.SetTechnologies([]string{"maven", "npm", "go"})
 				return param
 			},
@@ -244,9 +207,12 @@ func TestGetScaScansToPreform(t *testing.T) {
 			},
 		},
 		{
-			name:   "Test all",
-			wd:     dir,
-			params: NewAuditParams,
+			name: "Test all",
+			wd:   dir,
+			params: func() *AuditParams {
+				param := NewAuditParams().SetIsRecursiveScan(true).SetWorkingDirs([]string{dir})
+				return param
+			},
 			expected: []*xrayutils.ScaScanResult{
 				{
 					Technology:       coreutils.Maven,
@@ -293,7 +259,7 @@ func TestGetScaScansToPreform(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			result := getScaScansToPreform(test.wd, test.params())
+			result := getScaScansToPreform(test.params())
 			for i := range result {
 				sort.Strings(result[i].Descriptors)
 				sort.Strings(test.expected[i].Descriptors)

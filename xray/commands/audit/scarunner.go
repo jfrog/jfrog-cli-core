@@ -42,7 +42,7 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 		return
 	}
 
-	scans := getScaScansToPreform(currentWorkingDir, params)
+	scans := getScaScansToPreform(params)
 	if len(scans) == 0 {
 		log.Info("Couldn't determine a package manager or build tool used by this project. Skipping the SCA scan...")
 		return
@@ -71,11 +71,10 @@ func runScaScan(params *AuditParams, results *xrayutils.Results) (err error) {
 }
 
 // Calculate the scans to preform
-func getScaScansToPreform(currentWorkingDir string, params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
-	requestedDirectories, isRecursive := getRequestedDirectoriesToScan(currentWorkingDir, params)
-	for _, requestedDirectory := range requestedDirectories {
+func getScaScansToPreform(params *AuditParams) (scansToPreform []*xrayutils.ScaScanResult) {
+	for _, requestedDirectory := range params.workingDirs {
 		// Detect descriptors and technologies in the requested directory.
-		techToWorkingDirs, err := coreutils.DetectTechnologiesDescriptors(requestedDirectory, isRecursive, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, isRecursive))
+		techToWorkingDirs, err := coreutils.DetectTechnologiesDescriptors(requestedDirectory, params.isRecursiveScan, params.Technologies(), getRequestedDescriptors(params), getExcludePattern(params, params.isRecursiveScan))
 		if err != nil {
 			log.Warn("Couldn't detect technologies in", requestedDirectory, "directory.", err.Error())
 			continue
@@ -114,20 +113,6 @@ func getExcludePattern(params *AuditParams, recursive bool) string {
 		exclusions = append(exclusions, DefaultExcludePatterns...)
 	}
 	return fspatterns.PrepareExcludePathPattern(exclusions, clientutils.WildCardPattern, recursive)
-}
-
-// Get the directories to scan base on the given parameters.
-// If no working directories were specified, the current working directory will be returned with recursive mode.
-// If working directories were specified, the recursive mode will be false.
-func getRequestedDirectoriesToScan(currentWorkingDir string, params *AuditParams) ([]string, bool) {
-	workingDirs := datastructures.MakeSet[string]()
-	for _, wd := range params.workingDirs {
-		workingDirs.Add(wd)
-	}
-	if len(params.workingDirs) == 0 {
-		return []string{currentWorkingDir}, true
-	}
-	return workingDirs.ToSlice(), false
 }
 
 // Preform the SCA scan for the given scan information.

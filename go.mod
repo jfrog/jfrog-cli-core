@@ -14,7 +14,6 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/jfrog/build-info-go v1.9.20
 	github.com/jfrog/gofrog v1.5.0
-	github.com/jfrog/jfrog-apps-config/go v0.0.0-20230906095207-1df7b671a040
 	github.com/jfrog/jfrog-client-go v1.35.6
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0

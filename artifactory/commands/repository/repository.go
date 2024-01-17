@@ -233,10 +233,12 @@ var localRepoHandlers = map[string]repoHandler{
 	Go:        localGoHandler,
 	Yum:       localYumHandler,
 	Conan:     localConanHandler,
+	Conda:     localCondaHandler,
 	Chef:      localChefHandler,
 	Puppet:    localPuppetHandler,
 	Alpine:    localAlpineHandler,
 	Generic:   localGenericHandler,
+	Swift:     localSwiftHandler,
 }
 
 func localMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -589,6 +591,35 @@ func localAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 	return err
 }
 
+func localCondaHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCondaLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Conda(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Conda(params)
+	}
+	return err
+}
+
+func localSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Swift(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Swift(params)
+	}
+	return err
+}
+
 func localGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericLocalRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -626,13 +657,14 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Go:        remoteGoHandler,
 	Yum:       remoteYumHandler,
 	Conan:     remoteConanHandler,
+	Conda:     remoteCondaHandler,
 	Chef:      remoteChefHandler,
 	Puppet:    remotePuppetHandler,
-	Conda:     remoteCondaHandler,
 	P2:        remoteP2Handler,
 	Vcs:       remoteVcsHandler,
 	Alpine:    remoteAlpineHandler,
 	Generic:   remoteGenericHandler,
+	Swift:     remoteSwiftHandler,
 }
 
 func remoteMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1013,6 +1045,20 @@ func remoteYumHandler(servicesManager artifactory.ArtifactoryServicesManager, js
 	return err
 }
 
+func remoteSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Swift(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Swift(params)
+	}
+	return err
+}
+
 func remoteGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericRemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -1055,6 +1101,7 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Alpine:    federatedAlpineHandler,
 	Generic:   federatedGenericHandler,
 	Yum:       federatedYumHandler,
+	Swift:     federatedSwiftHandler,
 }
 
 func federatedMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1371,6 +1418,18 @@ func federatedGenericHandler(servicesManager artifactory.ArtifactoryServicesMana
 	return servicesManager.CreateFederatedRepository().Generic(params)
 }
 
+func federatedSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Swift(params)
+	}
+	return servicesManager.CreateFederatedRepository().Swift(params)
+}
+
 func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewYumFederatedRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -1408,6 +1467,7 @@ var virtualRepoHandlers = map[string]repoHandler{
 	P2:      virtualP2Handler,
 	Alpine:  virtualAlpineHandler,
 	Generic: virtualGenericHandler,
+	Swift:   virtualSwiftHandler,
 }
 
 func virtualMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1728,6 +1788,20 @@ func virtualCondaHandler(servicesManager artifactory.ArtifactoryServicesManager,
 		err = servicesManager.UpdateVirtualRepository().Conda(params)
 	} else {
 		err = servicesManager.CreateVirtualRepository().Conda(params)
+	}
+	return err
+}
+
+func virtualSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftVirtualRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateVirtualRepository().Swift(params)
+	} else {
+		err = servicesManager.CreateVirtualRepository().Swift(params)
 	}
 	return err
 }

@@ -5,13 +5,16 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
-
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/jfrog/jfrog-client-go/utils/tests"
+	xrayUtils "github.com/jfrog/jfrog-client-go/xray/services/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 // Prepare the .git environment for the test. Takes an existing folder and making it .git dir.
@@ -89,4 +92,37 @@ func CleanUpOldItems(baseItemNames []string, getActualItems func() ([]string, er
 			}
 		}
 	}
+}
+
+func CreateTestWorkspace(t *testing.T, sourceDir string) (string, func()) {
+	tempDirPath, createTempDirCallback := CreateTempDirWithCallbackAndAssert(t)
+	assert.NoError(t, biutils.CopyDir(sourceDir, tempDirPath, true, nil))
+	wd, err := os.Getwd()
+	assert.NoError(t, err, "Failed to get current dir")
+	chdirCallback := tests.ChangeDirWithCallback(t, wd, tempDirPath)
+	return tempDirPath, func() {
+		chdirCallback()
+		createTempDirCallback()
+	}
+}
+
+func GetAndAssertNode(t *testing.T, modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
+	module := GetModule(modules, moduleId)
+	assert.NotNil(t, module, "Module '"+moduleId+"' doesn't exist")
+	return module
+}
+
+// GetModule gets a specific module from the provided modules list
+func GetModule(modules []*xrayUtils.GraphNode, moduleId string) *xrayUtils.GraphNode {
+	for _, module := range modules {
+		splitIdentifier := strings.Split(module.Id, "//")
+		id := splitIdentifier[0]
+		if len(splitIdentifier) > 1 {
+			id = splitIdentifier[1]
+		}
+		if id == moduleId {
+			return module
+		}
+	}
+	return nil
 }

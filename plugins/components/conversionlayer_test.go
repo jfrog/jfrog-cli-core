@@ -19,9 +19,9 @@ func TestCreateCommandUsages(t *testing.T) {
 
 	override := []string{"usage override", "usage override 2", "usage override 3"}
 	expectedOverride := []string{
-		fmt.Sprintf("%s %s", expectedPrefix, "usage override"),
-		fmt.Sprintf("%s %s", expectedPrefix, "usage override 2"),
-		fmt.Sprintf("%s %s", expectedPrefix, "usage override 3"),
+		fmt.Sprintf("%s %s", coreutils.GetCliExecutableName(), "usage override"),
+		fmt.Sprintf("%s %s", coreutils.GetCliExecutableName(), "usage override 2"),
+		fmt.Sprintf("%s %s", coreutils.GetCliExecutableName(), "usage override 3"),
 	}
 
 	tests := []struct {

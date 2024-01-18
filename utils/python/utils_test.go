@@ -1,12 +1,12 @@
 package utils
 
 import (
-	biutils "github.com/jfrog/build-info-go/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/xray/commands/audit/sca"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/stretchr/testify/assert"
 	"path/filepath"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAddRepoToPyprojectFile(t *testing.T) {
@@ -26,9 +26,8 @@ func TestAddRepoToPyprojectFile(t *testing.T) {
 
 func initPoetryTest(t *testing.T) (string, func()) {
 	// Create and change directory to test workspace
-	testAbs, err := filepath.Abs(filepath.Join("..", "..", "xray", "commands", "testdata", "poetry-project"))
+	testAbs, err := filepath.Abs(filepath.Join("..", "..", "tests", "testdata", "poetry-project"))
 	assert.NoError(t, err)
-	poetryProjectPath, cleanUp := sca.CreateTestWorkspace(t, "poetry-project")
-	assert.NoError(t, biutils.CopyDir(testAbs, poetryProjectPath, true, nil))
+	poetryProjectPath, cleanUp := tests.CreateTestWorkspace(t, testAbs)
 	return poetryProjectPath, cleanUp
 }

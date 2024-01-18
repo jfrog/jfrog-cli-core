@@ -14,11 +14,9 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/jfrog/build-info-go v1.9.20
 	github.com/jfrog/gofrog v1.5.0
-	github.com/jfrog/jfrog-apps-config/go v0.0.0-20230906095207-1df7b671a040
 	github.com/jfrog/jfrog-client-go v1.35.6
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
-	github.com/owenrumney/go-sarif/v2 v2.3.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
@@ -86,6 +84,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/ulikunitz/xz v0.5.9 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
+	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	go.uber.org/atomic v1.9.0 // indirect

@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/slices"
 	"path"
 	"strings"
 
@@ -162,7 +164,7 @@ func GetFilteredBuildInfoRepositories(storageInfo *clientUtils.StorageInfo, incl
 // includePatterns - Repositories inclusion wildcard pattern
 // excludePatterns - Repositories exclusion wildcard pattern
 func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns []string) ([]string, error) {
-	var included []string
+	filteredRepos := datastructures.MakeSet[string]()
 	includeExcludeFilter := &IncludeExcludeFilter{
 		IncludePatterns: includePatterns,
 		ExcludePatterns: excludePatterns,
@@ -170,13 +172,13 @@ func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns 
 	for _, repoKey := range *repoKeys {
 		repoIncluded, err := includeExcludeFilter.ShouldIncludeRepository(repoKey)
 		if err != nil {
-			return included, err
+			return nil, err
 		}
 		if repoIncluded {
-			included = append(included, repoKey)
+			filteredRepos.Add(repoKey)
 		}
 	}
-	return included, nil
+	return filteredRepos.ToSlice(), nil
 }
 
 type IncludeExcludeFilter struct {
@@ -185,7 +187,10 @@ type IncludeExcludeFilter struct {
 }
 
 func (rf *IncludeExcludeFilter) ShouldIncludeRepository(repoKey string) (bool, error) {
-	rf.ExcludePatterns = append(rf.ExcludePatterns, blacklistedRepositories...)
+	if slices.Contains(blacklistedRepositories, repoKey) {
+		// This repository is blacklisted.
+		return false, nil
+	}
 	return rf.ShouldIncludeItem(repoKey)
 }
 

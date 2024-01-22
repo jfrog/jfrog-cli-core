@@ -13,7 +13,7 @@ require (
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.3
 	github.com/jfrog/build-info-go v1.9.20
-	github.com/jfrog/gofrog v1.5.0
+	github.com/jfrog/gofrog v1.5.1
 	github.com/jfrog/jfrog-client-go v1.35.6
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.14
 	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3
+	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 	golang.org/x/mod v0.14.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/term v0.16.0
@@ -38,7 +38,7 @@ require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230923063757-afb1ddc0824c // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
-	github.com/andybalholm/brotli v1.0.1 // indirect
+	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
@@ -51,23 +51,23 @@ require (
 	github.com/go-git/go-git/v5 v5.11.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/snappy v0.0.2 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/jfrog/archiver/v3 v3.5.3 // indirect
+	github.com/jfrog/archiver/v3 v3.6.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
-	github.com/klauspost/compress v1.17.0 // indirect
+	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
-	github.com/klauspost/pgzip v1.2.5 // indirect
+	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
-	github.com/nwaples/rardecode v1.1.0 // indirect
+	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.2 // indirect
+	github.com/pierrec/lz4/v4 v4.1.21 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -82,9 +82,8 @@ require (
 	github.com/spf13/cast v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	github.com/ulikunitz/xz v0.5.9 // indirect
+	github.com/ulikunitz/xz v0.5.11 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
-	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	go.uber.org/atomic v1.9.0 // indirect

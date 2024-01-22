@@ -151,7 +151,8 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 	if !configFile.Interactive {
 		return
 	}
-
+	// Please Notice that confType is the actual project type, and the passed value is the package type, and they not always the same.
+	// For example, the package type for pip, pipenv and poetry is 'pypi'.
 	switch confType {
 	case project.Go:
 		return configFile.setDeployerResolver(repository.Go)

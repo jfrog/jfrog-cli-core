@@ -6,7 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	xrayutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	xrayutils "github.com/jfrog/jfrog-cli-core/v2/utils/xray"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"

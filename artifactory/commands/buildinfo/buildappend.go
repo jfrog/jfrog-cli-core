@@ -13,6 +13,7 @@ import (
 	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -20,7 +21,7 @@ import (
 )
 
 type BuildAppendCommand struct {
-	buildConfiguration  *utils.BuildConfiguration
+	buildConfiguration  *build.BuildConfiguration
 	serverDetails       *config.ServerDetails
 	buildNameToAppend   string
 	buildNumberToAppend string
@@ -48,7 +49,7 @@ func (bac *BuildAppendCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	if err = utils.SaveBuildGeneralDetails(buildName, buildNumber, bac.buildConfiguration.GetProject()); err != nil {
+	if err = build.SaveBuildGeneralDetails(buildName, buildNumber, bac.buildConfiguration.GetProject()); err != nil {
 		return err
 	}
 
@@ -79,7 +80,7 @@ func (bac *BuildAppendCommand) Run() error {
 			Md5:  checksumDetails.Md5,
 		}
 	}
-	err = utils.SavePartialBuildInfo(buildName, buildNumber, bac.buildConfiguration.GetProject(), populateFunc)
+	err = build.SavePartialBuildInfo(buildName, buildNumber, bac.buildConfiguration.GetProject(), populateFunc)
 	if err == nil {
 		log.Info("Build", bac.buildNameToAppend+"/"+bac.buildNumberToAppend, "successfully appended to", buildName+"/"+buildNumber)
 	}
@@ -91,7 +92,7 @@ func (bac *BuildAppendCommand) SetServerDetails(serverDetails *config.ServerDeta
 	return bac
 }
 
-func (bac *BuildAppendCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *BuildAppendCommand {
+func (bac *BuildAppendCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *BuildAppendCommand {
 	bac.buildConfiguration = buildConfiguration
 	return bac
 }

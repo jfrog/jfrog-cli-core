@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
@@ -134,7 +134,7 @@ func cleanUp(t *testing.T, buildDir, dotGitPath, originalDir string) {
 }
 
 func getBuildInfoPartials(t *testing.T, buildName, buildNumber, projectKey string) buildinfo.Partials {
-	partials, err := utils.ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey)
+	partials, err := build.ReadPartialBuildInfoFiles(buildName, buildNumber, projectKey)
 	if err != nil {
 		assert.NoError(t, err)
 		return nil
@@ -144,7 +144,7 @@ func getBuildInfoPartials(t *testing.T, buildName, buildNumber, projectKey strin
 
 // Run BAG command. If setDotGit==true, provide baseDir to the command. Else, change wd to baseDir and make the command find .git manually.
 func runBuildAddGit(t *testing.T, buildName, buildNumber string, baseDir string, setDotGit bool) error {
-	buildAddGitConfiguration := new(BuildAddGitCommand).SetBuildConfiguration(utils.NewBuildConfiguration(buildName, buildNumber, "", ""))
+	buildAddGitConfiguration := new(BuildAddGitCommand).SetBuildConfiguration(build.NewBuildConfiguration(buildName, buildNumber, "", ""))
 	if setDotGit {
 		buildAddGitConfiguration.SetDotGitPath(baseDir)
 	} else {
@@ -167,7 +167,7 @@ func runBuildAddGit(t *testing.T, buildName, buildNumber string, baseDir string,
 }
 
 func getBuildDir(t *testing.T) string {
-	buildDir, err := utils.GetBuildDir(buildName, "1", "")
+	buildDir, err := build.GetBuildDir(buildName, "1", "")
 	if err != nil {
 		t.Error("Cannot create temp dir due to: " + err.Error())
 		return ""
@@ -250,7 +250,7 @@ func TestAddGitDoCollect(t *testing.T) {
 			Regexp:            `(.+-[0-9]+)\s-\s(.+)`,
 			TrackerName:       "test",
 		},
-		buildConfiguration: utils.NewBuildConfiguration("cli-tests-rt-build1", "1", "", ""),
+		buildConfiguration: build.NewBuildConfiguration("cli-tests-rt-build1", "1", "", ""),
 		configFilePath:     "",
 		dotGitPath:         dotGitPath,
 	}

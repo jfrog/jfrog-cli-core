@@ -10,6 +10,7 @@ import (
 	"github.com/c-bata/go-prompt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -20,7 +21,7 @@ type RepoTemplateCommand struct {
 
 const (
 	// Strings for prompt questions
-	SelectConfigKeyMsg = "Select the next configuration key" + utils.PressTabMsg
+	SelectConfigKeyMsg = "Select the next configuration key" + ioutils.PressTabMsg
 
 	TemplateType = "templateType"
 	Create       = "create"
@@ -156,6 +157,7 @@ const (
 	Alpine    = "alpine"
 	Conda     = "conda"
 	P2        = "p2"
+	Swift     = "swift"
 
 	// Repo layout Refs
 	BowerDefaultRepoLayout    = "bower-default"
@@ -216,7 +218,7 @@ const (
 )
 
 var optionalSuggestsMap = map[string]prompt.Suggest{
-	utils.SaveAndExit:                 {Text: utils.SaveAndExit},
+	ioutils.SaveAndExit:               {Text: ioutils.SaveAndExit},
 	Description:                       {Text: Description},
 	Notes:                             {Text: Notes},
 	IncludePatterns:                   {Text: IncludePatterns},
@@ -485,7 +487,7 @@ func (rtc *RepoTemplateCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-	repoTemplateQuestionnaire := &utils.InteractiveQuestionnaire{
+	repoTemplateQuestionnaire := &ioutils.InteractiveQuestionnaire{
 		MandatoryQuestionsKeys: []string{TemplateType, Key, Rclass},
 		QuestionsMap:           questionMap,
 	}
@@ -509,7 +511,7 @@ func (rtc *RepoTemplateCommand) CommandName() string {
 	return "rt_repo_template"
 }
 
-func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, error) {
+func rclassCallback(iq *ioutils.InteractiveQuestionnaire, rclass string) (string, error) {
 	var pkgTypes = commonPkgTypes
 	switch rclass {
 	case Remote:
@@ -534,19 +536,19 @@ func rclassCallback(iq *utils.InteractiveQuestionnaire, rclass string) (string, 
 		return "", errors.New("unsupported rclass")
 	}
 	// PackageType is also mandatory. Since the possible types depend on which rcalss was chosen, we ask the question here.
-	var pkgTypeQuestion = utils.QuestionInfo{
-		Options:      utils.GetSuggestsFromKeys(pkgTypes, pkgTypeSuggestsMap),
+	var pkgTypeQuestion = ioutils.QuestionInfo{
+		Options:      ioutils.GetSuggestsFromKeys(pkgTypes, pkgTypeSuggestsMap),
 		Msg:          "",
-		PromptPrefix: "Select the repository's package type" + utils.PressTabMsg,
+		PromptPrefix: "Select the repository's package type" + ioutils.PressTabMsg,
 		AllowVars:    false,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       PackageType,
 		Callback:     pkgTypeCallback,
 	}
 	return iq.AskQuestion(pkgTypeQuestion)
 }
 
-func pkgTypeCallback(iq *utils.InteractiveQuestionnaire, pkgType string) (string, error) {
+func pkgTypeCallback(iq *ioutils.InteractiveQuestionnaire, pkgType string) (string, error) {
 	// Each combination of (rclass,packageType) has its own optional configuration keys.
 	// We set the questionnaire's optionalKeys suggests according to the selected combination.
 	if _, ok := iq.AnswersMap[Rclass]; !ok {
@@ -574,7 +576,7 @@ func pkgTypeCallback(iq *utils.InteractiveQuestionnaire, pkgType string) (string
 }
 
 // Repo key must have a prefix of "<projectKey>-". This callback adds the prefix to the repo key if it is missing.
-func projectKeyCallback(iq *utils.InteractiveQuestionnaire, projectKey string) (string, error) {
+func projectKeyCallback(iq *ioutils.InteractiveQuestionnaire, projectKey string) (string, error) {
 	if _, ok := iq.AnswersMap[Key]; !ok {
 		return "", errorutils.CheckErrorf("repository key is missing in configuration map")
 	}
@@ -593,7 +595,7 @@ func projectKeyCallback(iq *utils.InteractiveQuestionnaire, projectKey string) (
 }
 
 func getLocalRepoConfKeys(pkgType string) []prompt.Suggest {
-	optionalKeys := []string{utils.SaveAndExit}
+	optionalKeys := []string{ioutils.SaveAndExit}
 	optionalKeys = append(optionalKeys, baseLocalRepoConfKeys...)
 	switch pkgType {
 	case Maven, Gradle:
@@ -607,11 +609,11 @@ func getLocalRepoConfKeys(pkgType string) []prompt.Suggest {
 	case Docker:
 		optionalKeys = append(optionalKeys, dockerLocalRepoConfKeys...)
 	}
-	return utils.GetSuggestsFromKeys(optionalKeys, optionalSuggestsMap)
+	return ioutils.GetSuggestsFromKeys(optionalKeys, optionalSuggestsMap)
 }
 
 func getRemoteRepoConfKeys(pkgType, templateType string) []prompt.Suggest {
-	optionalKeys := []string{utils.SaveAndExit}
+	optionalKeys := []string{ioutils.SaveAndExit}
 	if templateType == Update {
 		optionalKeys = append(optionalKeys, Url)
 	}
@@ -646,11 +648,11 @@ func getRemoteRepoConfKeys(pkgType, templateType string) []prompt.Suggest {
 	case Vcs:
 		optionalKeys = append(optionalKeys, vcsRemoteRepoConfKeys...)
 	}
-	return utils.GetSuggestsFromKeys(optionalKeys, optionalSuggestsMap)
+	return ioutils.GetSuggestsFromKeys(optionalKeys, optionalSuggestsMap)
 }
 
 func getVirtualRepoConfKeys(pkgType string) []prompt.Suggest {
-	optionalKeys := []string{utils.SaveAndExit}
+	optionalKeys := []string{ioutils.SaveAndExit}
 	optionalKeys = append(optionalKeys, baseVirtualRepoConfKeys...)
 	switch pkgType {
 	case Maven, Gradle:
@@ -666,26 +668,26 @@ func getVirtualRepoConfKeys(pkgType string) []prompt.Suggest {
 	case Go:
 		optionalKeys = append(optionalKeys, goVirtualRepoConfKeys...)
 	}
-	return utils.GetSuggestsFromKeys(optionalKeys, optionalSuggestsMap)
+	return ioutils.GetSuggestsFromKeys(optionalKeys, optionalSuggestsMap)
 }
 
-func contentSynchronisationCallBack(iq *utils.InteractiveQuestionnaire, answer string) (value string, err error) {
+func contentSynchronisationCallBack(iq *ioutils.InteractiveQuestionnaire, answer string) (value string, err error) {
 	// contentSynchronisation has an object value with 4 bool fields.
 	// We ask for the rest of the values and writes the values in comma separated list.
 	if err != nil {
 		return "", nil
 	}
-	answer += "," + utils.AskFromList("", "Insert the value for statistic.enable >", false, utils.GetBoolSuggests(), "")
+	answer += "," + ioutils.AskFromList("", "Insert the value for statistic.enable >", false, ioutils.GetBoolSuggests(), "")
 	// cs.Statistics.Enabled, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}
-	answer += "," + utils.AskFromList("", "Insert the value for properties.enable >", false, utils.GetBoolSuggests(), "")
+	answer += "," + ioutils.AskFromList("", "Insert the value for properties.enable >", false, ioutils.GetBoolSuggests(), "")
 	// cs.Properties.Enabled, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
 	}
-	answer += "," + utils.AskFromList("", "Insert the value for source.originAbsenceDetection >", false, utils.GetBoolSuggests(), "")
+	answer += "," + ioutils.AskFromList("", "Insert the value for source.originAbsenceDetection >", false, ioutils.GetBoolSuggests(), "")
 	// cs.Source.OriginAbsenceDetection, err = strconv.ParseBool(enabled)
 	if err != nil {
 		return "", nil
@@ -695,51 +697,51 @@ func contentSynchronisationCallBack(iq *utils.InteractiveQuestionnaire, answer s
 }
 
 // Specific writers for repo templates, since all the values in the templates should be written as string
-var BoolToStringQuestionInfo = utils.QuestionInfo{
-	Options:   utils.GetBoolSuggests(),
+var BoolToStringQuestionInfo = ioutils.QuestionInfo{
+	Options:   ioutils.GetBoolSuggests(),
 	AllowVars: true,
-	Writer:    utils.WriteStringAnswer,
+	Writer:    ioutils.WriteStringAnswer,
 }
 
-var IntToStringQuestionInfo = utils.QuestionInfo{
+var IntToStringQuestionInfo = ioutils.QuestionInfo{
 	Options:   nil,
 	AllowVars: true,
-	Writer:    utils.WriteStringAnswer,
+	Writer:    ioutils.WriteStringAnswer,
 }
 
-var StringListToStringQuestionInfo = utils.QuestionInfo{
-	Msg:       utils.CommaSeparatedListMsg,
+var StringListToStringQuestionInfo = ioutils.QuestionInfo{
+	Msg:       ioutils.CommaSeparatedListMsg,
 	Options:   nil,
 	AllowVars: true,
-	Writer:    utils.WriteStringAnswer,
+	Writer:    ioutils.WriteStringAnswer,
 }
 
-var questionMap = map[string]utils.QuestionInfo{
+var questionMap = map[string]ioutils.QuestionInfo{
 	TemplateType: {
 		Options: []prompt.Suggest{
 			{Text: Create, Description: "Template for creating a new repository"},
 			{Text: Update, Description: "Template for updating an existing repository"},
 		},
 		Msg:          "",
-		PromptPrefix: "Select the template type" + utils.PressTabMsg,
+		PromptPrefix: "Select the template type" + ioutils.PressTabMsg,
 		AllowVars:    false,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       TemplateType,
 		Callback:     nil,
 	},
-	utils.OptionalKey: {
+	ioutils.OptionalKey: {
 		Msg:          "",
 		PromptPrefix: SelectConfigKeyMsg,
 		AllowVars:    false,
 		Writer:       nil,
 		MapKey:       "",
-		Callback:     utils.OptionalKeyCallback,
+		Callback:     ioutils.OptionalKeyCallback,
 	},
 	Key: {
 		Msg:          "",
 		PromptPrefix: "Insert the repository key >",
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       Key,
 		Callback:     nil,
 	},
@@ -751,9 +753,9 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: Federated, Description: "A Federation is a collection of repositories of Federated type in different JPDs that are automatically configured for full bi-directional mirroring."},
 		},
 		Msg:          "",
-		PromptPrefix: "Select the repository class" + utils.PressTabMsg,
+		PromptPrefix: "Select the repository class" + ioutils.PressTabMsg,
 		AllowVars:    false,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       Rclass,
 		Callback:     rclassCallback,
 	},
@@ -761,13 +763,13 @@ var questionMap = map[string]utils.QuestionInfo{
 		Msg:          "",
 		PromptPrefix: "Insert the remote repository URL >",
 		AllowVars:    true,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 		MapKey:       Url,
 		Callback:     nil,
 	},
-	Url:             utils.FreeStringQuestionInfo,
-	Description:     utils.FreeStringQuestionInfo,
-	Notes:           utils.FreeStringQuestionInfo,
+	Url:             ioutils.FreeStringQuestionInfo,
+	Description:     ioutils.FreeStringQuestionInfo,
+	Notes:           ioutils.FreeStringQuestionInfo,
 	IncludePatterns: StringListToStringQuestionInfo,
 	ExcludePatterns: StringListToStringQuestionInfo,
 	RepoLayoutRef: {
@@ -789,19 +791,19 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: VcsDefaultRepoLayout},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
 	ProjectKey: {
 		Options:   nil,
 		AllowVars: false,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 		Callback:  projectKeyCallback,
 	},
 	Environment: {
 		PromptPrefix: "Insert the name of the environment to assign to >",
 		AllowVars:    true,
 		MapKey:       environmentsKey,
-		Writer:       utils.WriteStringAnswer,
+		Writer:       ioutils.WriteStringAnswer,
 	},
 	HandleReleases:               BoolToStringQuestionInfo,
 	HandleSnapshots:              BoolToStringQuestionInfo,
@@ -819,7 +821,7 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: ServerGeneratedChecksumsPolicy},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
 	MaxUniqueTags: IntToStringQuestionInfo,
 	SnapshotVersionBehavior: {
@@ -829,7 +831,7 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: DeployerBehavior},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
 	XrayIndex:              BoolToStringQuestionInfo,
 	PropertySets:           StringListToStringQuestionInfo,
@@ -842,18 +844,18 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: DockerApiV2},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
 	EnableFileListsIndexing: BoolToStringQuestionInfo,
 	OptionalIndexCompressionFormats: {
 		Msg:       "Enter a comma separated list of values from " + strings.Join([]string{Bz2Compression, LzmaCompression, XzCompression}, ","),
 		Options:   nil,
 		AllowVars: true,
-		Writer:    utils.WriteStringArrayAnswer,
+		Writer:    ioutils.WriteStringArrayAnswer,
 	},
-	Username: utils.FreeStringQuestionInfo,
-	Password: utils.FreeStringQuestionInfo,
-	Proxy:    utils.FreeStringQuestionInfo,
+	Username: ioutils.FreeStringQuestionInfo,
+	Password: ioutils.FreeStringQuestionInfo,
+	Proxy:    ioutils.FreeStringQuestionInfo,
 	RemoteRepoChecksumPolicyType: {
 		Options: []prompt.Suggest{
 			{Text: GenerateIfAbsentPolicy},
@@ -862,13 +864,13 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: PassThruPolicy},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
 	HardFail:                          BoolToStringQuestionInfo,
 	Offline:                           BoolToStringQuestionInfo,
 	StoreArtifactsLocally:             BoolToStringQuestionInfo,
 	SocketTimeoutMillis:               IntToStringQuestionInfo,
-	LocalAddress:                      utils.FreeStringQuestionInfo,
+	LocalAddress:                      ioutils.FreeStringQuestionInfo,
 	RetrievalCachePeriodSecs:          IntToStringQuestionInfo,
 	FailedRetrievalCachePeriodSecs:    IntToStringQuestionInfo,
 	MissedRetrievalCachePeriodSecs:    IntToStringQuestionInfo,
@@ -883,15 +885,15 @@ var questionMap = map[string]utils.QuestionInfo{
 	BlockMismatchingMimeTypes:         BoolToStringQuestionInfo,
 	AllowAnyHostAuth:                  BoolToStringQuestionInfo,
 	EnableCookieManagement:            BoolToStringQuestionInfo,
-	BowerRegistryUrl:                  utils.FreeStringQuestionInfo,
-	ComposerRegistryUrl:               utils.FreeStringQuestionInfo,
-	PyPIRegistryUrl:                   utils.FreeStringQuestionInfo,
+	BowerRegistryUrl:                  ioutils.FreeStringQuestionInfo,
+	ComposerRegistryUrl:               ioutils.FreeStringQuestionInfo,
+	PyPIRegistryUrl:                   ioutils.FreeStringQuestionInfo,
 	VcsType: {
 		Options: []prompt.Suggest{
 			{Text: Git},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
 	VcsGitProvider: {
 		Options: []prompt.Suggest{
@@ -903,26 +905,26 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: CustomVcsProvider},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
-	VcsGitDownloadUrl:         utils.FreeStringQuestionInfo,
+	VcsGitDownloadUrl:         ioutils.FreeStringQuestionInfo,
 	BypassHeadRequests:        BoolToStringQuestionInfo,
-	ClientTlsCertificate:      utils.FreeStringQuestionInfo,
-	FeedContextPath:           utils.FreeStringQuestionInfo,
-	DownloadContextPath:       utils.FreeStringQuestionInfo,
-	V3FeedUrl:                 utils.FreeStringQuestionInfo,
+	ClientTlsCertificate:      ioutils.FreeStringQuestionInfo,
+	FeedContextPath:           ioutils.FreeStringQuestionInfo,
+	DownloadContextPath:       ioutils.FreeStringQuestionInfo,
+	V3FeedUrl:                 ioutils.FreeStringQuestionInfo,
 	ListRemoteFolderItems:     BoolToStringQuestionInfo,
 	EnableTokenAuthentication: BoolToStringQuestionInfo,
-	PodsSpecsRepoUrl:          utils.FreeStringQuestionInfo,
+	PodsSpecsRepoUrl:          ioutils.FreeStringQuestionInfo,
 	ContentSynchronisation: {
-		Options:   utils.GetBoolSuggests(),
+		Options:   ioutils.GetBoolSuggests(),
 		AllowVars: true,
 		Writer:    nil,
 		Callback:  contentSynchronisationCallBack,
 	},
 	Repositories: StringListToStringQuestionInfo,
 	ArtifactoryRequestsCanRetrieveRemoteArtifacts: BoolToStringQuestionInfo,
-	KeyPair: utils.FreeStringQuestionInfo,
+	KeyPair: ioutils.FreeStringQuestionInfo,
 	PomRepositoryReferencesCleanupPolicy: {
 		Options: []prompt.Suggest{
 			{Text: DiscardActiveRefrencePolicy},
@@ -930,10 +932,10 @@ var questionMap = map[string]utils.QuestionInfo{
 			{Text: NothingPolicy},
 		},
 		AllowVars: true,
-		Writer:    utils.WriteStringAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
-	DefaultDeploymentRepo:          utils.FreeStringQuestionInfo,
+	DefaultDeploymentRepo:          ioutils.FreeStringQuestionInfo,
 	ForceMavenAuthentication:       BoolToStringQuestionInfo,
 	ForceNugetAuthentication:       BoolToStringQuestionInfo,
-	ExternalDependenciesRemoteRepo: utils.FreeStringQuestionInfo,
+	ExternalDependenciesRemoteRepo: ioutils.FreeStringQuestionInfo,
 }

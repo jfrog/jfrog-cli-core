@@ -6,7 +6,7 @@ import (
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
 	"github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	commonBuild "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -36,7 +36,7 @@ type DotnetCommand struct {
 	repoName           string
 	solutionPath       string
 	useNugetV2         bool
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *commonBuild.BuildConfiguration
 	serverDetails      *config.ServerDetails
 }
 
@@ -45,7 +45,7 @@ func (dc *DotnetCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 	return dc
 }
 
-func (dc *DotnetCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *DotnetCommand {
+func (dc *DotnetCommand) SetBuildConfiguration(buildConfiguration *commonBuild.BuildConfiguration) *DotnetCommand {
 	dc.buildConfiguration = buildConfiguration
 	return dc
 }
@@ -104,7 +104,7 @@ func (dc *DotnetCommand) Exec() (err error) {
 		return err
 	}
 
-	buildInfoService := utils.CreateBuildInfoService()
+	buildInfoService := commonBuild.CreateBuildInfoService()
 	dotnetBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, dc.buildConfiguration.GetProject())
 	if err != nil {
 		return errorutils.CheckError(err)

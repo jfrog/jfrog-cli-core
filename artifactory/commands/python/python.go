@@ -12,6 +12,7 @@ import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -31,12 +32,12 @@ func NewPythonCommand(pythonTool pythonutils.PythonTool) *PythonCommand {
 
 func (pc *PythonCommand) Run() (err error) {
 	log.Info("Running", string(pc.pythonTool), pc.commandName)
-	var buildConfiguration *utils.BuildConfiguration
-	pc.args, buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pc.args)
+	var buildConfiguration *buildUtils.BuildConfiguration
+	pc.args, buildConfiguration, err = buildUtils.ExtractBuildDetailsFromArgs(pc.args)
 	if err != nil {
 		return
 	}
-	pythonBuildInfo, err := utils.PrepareBuildPrerequisites(buildConfiguration)
+	pythonBuildInfo, err := buildUtils.PrepareBuildPrerequisites(buildConfiguration)
 	if err != nil {
 		return
 	}

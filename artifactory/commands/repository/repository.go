@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -82,86 +83,86 @@ func (rc *RepoCommand) PerformRepoCmd(isUpdate bool) (err error) {
 	return handlerFunc(servicesManager, content, isUpdate)
 }
 
-var writersMap = map[string]utils.AnswerWriter{
-	Key:                               utils.WriteStringAnswer,
-	Rclass:                            utils.WriteStringAnswer,
-	PackageType:                       utils.WriteStringAnswer,
-	MandatoryUrl:                      utils.WriteStringAnswer,
-	Url:                               utils.WriteStringAnswer,
-	Description:                       utils.WriteStringAnswer,
-	Notes:                             utils.WriteStringAnswer,
-	IncludePatterns:                   utils.WriteStringAnswer,
-	ExcludePatterns:                   utils.WriteStringAnswer,
-	RepoLayoutRef:                     utils.WriteStringAnswer,
-	ProjectKey:                        utils.WriteStringAnswer,
-	environmentsKey:                   utils.WriteStringArrayAnswer,
-	HandleReleases:                    utils.WriteBoolAnswer,
-	HandleSnapshots:                   utils.WriteBoolAnswer,
-	MaxUniqueSnapshots:                utils.WriteIntAnswer,
-	SuppressPomConsistencyChecks:      utils.WriteBoolAnswer,
-	BlackedOut:                        utils.WriteBoolAnswer,
-	DownloadRedirect:                  utils.WriteBoolAnswer,
-	BlockPushingSchema1:               utils.WriteBoolAnswer,
-	DebianTrivialLayout:               utils.WriteBoolAnswer,
-	ExternalDependenciesEnabled:       utils.WriteBoolAnswer,
-	ExternalDependenciesPatterns:      utils.WriteStringArrayAnswer,
-	ChecksumPolicyType:                utils.WriteStringAnswer,
-	MaxUniqueTags:                     utils.WriteIntAnswer,
-	SnapshotVersionBehavior:           utils.WriteStringAnswer,
-	XrayIndex:                         utils.WriteBoolAnswer,
-	PropertySets:                      utils.WriteStringArrayAnswer,
-	ArchiveBrowsingEnabled:            utils.WriteBoolAnswer,
-	CalculateYumMetadata:              utils.WriteBoolAnswer,
-	YumRootDepth:                      utils.WriteIntAnswer,
-	DockerApiVersion:                  utils.WriteStringAnswer,
-	EnableFileListsIndexing:           utils.WriteBoolAnswer,
-	OptionalIndexCompressionFormats:   utils.WriteStringAnswer,
-	Username:                          utils.WriteStringAnswer,
-	Password:                          utils.WriteStringAnswer,
-	Proxy:                             utils.WriteStringAnswer,
-	RemoteRepoChecksumPolicyType:      utils.WriteStringAnswer,
-	HardFail:                          utils.WriteBoolAnswer,
-	Offline:                           utils.WriteBoolAnswer,
-	StoreArtifactsLocally:             utils.WriteBoolAnswer,
-	SocketTimeoutMillis:               utils.WriteIntAnswer,
-	LocalAddress:                      utils.WriteStringAnswer,
-	RetrievalCachePeriodSecs:          utils.WriteIntAnswer,
-	FailedRetrievalCachePeriodSecs:    utils.WriteIntAnswer,
-	MissedRetrievalCachePeriodSecs:    utils.WriteIntAnswer,
-	UnusedArtifactsCleanupEnabled:     utils.WriteBoolAnswer,
-	UnusedArtifactsCleanupPeriodHours: utils.WriteIntAnswer,
-	AssumedOfflinePeriodSecs:          utils.WriteIntAnswer,
-	FetchJarsEagerly:                  utils.WriteBoolAnswer,
-	FetchSourcesEagerly:               utils.WriteBoolAnswer,
-	ShareConfiguration:                utils.WriteBoolAnswer,
-	SynchronizeProperties:             utils.WriteBoolAnswer,
-	BlockMismatchingMimeTypes:         utils.WriteBoolAnswer,
-	AllowAnyHostAuth:                  utils.WriteBoolAnswer,
-	EnableCookieManagement:            utils.WriteBoolAnswer,
-	BowerRegistryUrl:                  utils.WriteStringAnswer,
-	ComposerRegistryUrl:               utils.WriteStringAnswer,
-	PyPIRegistryUrl:                   utils.WriteStringAnswer,
-	VcsType:                           utils.WriteStringAnswer,
-	VcsGitProvider:                    utils.WriteStringAnswer,
-	VcsGitDownloadUrl:                 utils.WriteStringAnswer,
-	BypassHeadRequests:                utils.WriteBoolAnswer,
-	ClientTlsCertificate:              utils.WriteStringAnswer,
-	FeedContextPath:                   utils.WriteStringAnswer,
-	DownloadContextPath:               utils.WriteStringAnswer,
-	V3FeedUrl:                         utils.WriteStringAnswer,
+var writersMap = map[string]ioutils.AnswerWriter{
+	Key:                               ioutils.WriteStringAnswer,
+	Rclass:                            ioutils.WriteStringAnswer,
+	PackageType:                       ioutils.WriteStringAnswer,
+	MandatoryUrl:                      ioutils.WriteStringAnswer,
+	Url:                               ioutils.WriteStringAnswer,
+	Description:                       ioutils.WriteStringAnswer,
+	Notes:                             ioutils.WriteStringAnswer,
+	IncludePatterns:                   ioutils.WriteStringAnswer,
+	ExcludePatterns:                   ioutils.WriteStringAnswer,
+	RepoLayoutRef:                     ioutils.WriteStringAnswer,
+	ProjectKey:                        ioutils.WriteStringAnswer,
+	environmentsKey:                   ioutils.WriteStringArrayAnswer,
+	HandleReleases:                    ioutils.WriteBoolAnswer,
+	HandleSnapshots:                   ioutils.WriteBoolAnswer,
+	MaxUniqueSnapshots:                ioutils.WriteIntAnswer,
+	SuppressPomConsistencyChecks:      ioutils.WriteBoolAnswer,
+	BlackedOut:                        ioutils.WriteBoolAnswer,
+	DownloadRedirect:                  ioutils.WriteBoolAnswer,
+	BlockPushingSchema1:               ioutils.WriteBoolAnswer,
+	DebianTrivialLayout:               ioutils.WriteBoolAnswer,
+	ExternalDependenciesEnabled:       ioutils.WriteBoolAnswer,
+	ExternalDependenciesPatterns:      ioutils.WriteStringArrayAnswer,
+	ChecksumPolicyType:                ioutils.WriteStringAnswer,
+	MaxUniqueTags:                     ioutils.WriteIntAnswer,
+	SnapshotVersionBehavior:           ioutils.WriteStringAnswer,
+	XrayIndex:                         ioutils.WriteBoolAnswer,
+	PropertySets:                      ioutils.WriteStringArrayAnswer,
+	ArchiveBrowsingEnabled:            ioutils.WriteBoolAnswer,
+	CalculateYumMetadata:              ioutils.WriteBoolAnswer,
+	YumRootDepth:                      ioutils.WriteIntAnswer,
+	DockerApiVersion:                  ioutils.WriteStringAnswer,
+	EnableFileListsIndexing:           ioutils.WriteBoolAnswer,
+	OptionalIndexCompressionFormats:   ioutils.WriteStringAnswer,
+	Username:                          ioutils.WriteStringAnswer,
+	Password:                          ioutils.WriteStringAnswer,
+	Proxy:                             ioutils.WriteStringAnswer,
+	RemoteRepoChecksumPolicyType:      ioutils.WriteStringAnswer,
+	HardFail:                          ioutils.WriteBoolAnswer,
+	Offline:                           ioutils.WriteBoolAnswer,
+	StoreArtifactsLocally:             ioutils.WriteBoolAnswer,
+	SocketTimeoutMillis:               ioutils.WriteIntAnswer,
+	LocalAddress:                      ioutils.WriteStringAnswer,
+	RetrievalCachePeriodSecs:          ioutils.WriteIntAnswer,
+	FailedRetrievalCachePeriodSecs:    ioutils.WriteIntAnswer,
+	MissedRetrievalCachePeriodSecs:    ioutils.WriteIntAnswer,
+	UnusedArtifactsCleanupEnabled:     ioutils.WriteBoolAnswer,
+	UnusedArtifactsCleanupPeriodHours: ioutils.WriteIntAnswer,
+	AssumedOfflinePeriodSecs:          ioutils.WriteIntAnswer,
+	FetchJarsEagerly:                  ioutils.WriteBoolAnswer,
+	FetchSourcesEagerly:               ioutils.WriteBoolAnswer,
+	ShareConfiguration:                ioutils.WriteBoolAnswer,
+	SynchronizeProperties:             ioutils.WriteBoolAnswer,
+	BlockMismatchingMimeTypes:         ioutils.WriteBoolAnswer,
+	AllowAnyHostAuth:                  ioutils.WriteBoolAnswer,
+	EnableCookieManagement:            ioutils.WriteBoolAnswer,
+	BowerRegistryUrl:                  ioutils.WriteStringAnswer,
+	ComposerRegistryUrl:               ioutils.WriteStringAnswer,
+	PyPIRegistryUrl:                   ioutils.WriteStringAnswer,
+	VcsType:                           ioutils.WriteStringAnswer,
+	VcsGitProvider:                    ioutils.WriteStringAnswer,
+	VcsGitDownloadUrl:                 ioutils.WriteStringAnswer,
+	BypassHeadRequests:                ioutils.WriteBoolAnswer,
+	ClientTlsCertificate:              ioutils.WriteStringAnswer,
+	FeedContextPath:                   ioutils.WriteStringAnswer,
+	DownloadContextPath:               ioutils.WriteStringAnswer,
+	V3FeedUrl:                         ioutils.WriteStringAnswer,
 	ContentSynchronisation:            writeContentSynchronisation,
-	ListRemoteFolderItems:             utils.WriteBoolAnswer,
-	RejectInvalidJars:                 utils.WriteBoolAnswer,
-	PodsSpecsRepoUrl:                  utils.WriteStringAnswer,
-	EnableTokenAuthentication:         utils.WriteBoolAnswer,
-	Repositories:                      utils.WriteStringArrayAnswer,
-	ArtifactoryRequestsCanRetrieveRemoteArtifacts: utils.WriteBoolAnswer,
-	KeyPair:                              utils.WriteStringAnswer,
-	PomRepositoryReferencesCleanupPolicy: utils.WriteStringAnswer,
-	DefaultDeploymentRepo:                utils.WriteStringAnswer,
-	ForceMavenAuthentication:             utils.WriteBoolAnswer,
-	ForceNugetAuthentication:             utils.WriteBoolAnswer,
-	ExternalDependenciesRemoteRepo:       utils.WriteStringAnswer,
+	ListRemoteFolderItems:             ioutils.WriteBoolAnswer,
+	RejectInvalidJars:                 ioutils.WriteBoolAnswer,
+	PodsSpecsRepoUrl:                  ioutils.WriteStringAnswer,
+	EnableTokenAuthentication:         ioutils.WriteBoolAnswer,
+	Repositories:                      ioutils.WriteStringArrayAnswer,
+	ArtifactoryRequestsCanRetrieveRemoteArtifacts: ioutils.WriteBoolAnswer,
+	KeyPair:                              ioutils.WriteStringAnswer,
+	PomRepositoryReferencesCleanupPolicy: ioutils.WriteStringAnswer,
+	DefaultDeploymentRepo:                ioutils.WriteStringAnswer,
+	ForceMavenAuthentication:             ioutils.WriteBoolAnswer,
+	ForceNugetAuthentication:             ioutils.WriteBoolAnswer,
+	ExternalDependenciesRemoteRepo:       ioutils.WriteStringAnswer,
 }
 
 func writeContentSynchronisation(resultMap *map[string]interface{}, key, value string) error {
@@ -232,10 +233,12 @@ var localRepoHandlers = map[string]repoHandler{
 	Go:        localGoHandler,
 	Yum:       localYumHandler,
 	Conan:     localConanHandler,
+	Conda:     localCondaHandler,
 	Chef:      localChefHandler,
 	Puppet:    localPuppetHandler,
 	Alpine:    localAlpineHandler,
 	Generic:   localGenericHandler,
+	Swift:     localSwiftHandler,
 }
 
 func localMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -588,6 +591,35 @@ func localAlpineHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 	return err
 }
 
+func localCondaHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCondaLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Conda(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Conda(params)
+	}
+	return err
+}
+
+func localSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Swift(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Swift(params)
+	}
+	return err
+}
+
 func localGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericLocalRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -625,13 +657,14 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Go:        remoteGoHandler,
 	Yum:       remoteYumHandler,
 	Conan:     remoteConanHandler,
+	Conda:     remoteCondaHandler,
 	Chef:      remoteChefHandler,
 	Puppet:    remotePuppetHandler,
-	Conda:     remoteCondaHandler,
 	P2:        remoteP2Handler,
 	Vcs:       remoteVcsHandler,
 	Alpine:    remoteAlpineHandler,
 	Generic:   remoteGenericHandler,
+	Swift:     remoteSwiftHandler,
 }
 
 func remoteMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1012,6 +1045,20 @@ func remoteYumHandler(servicesManager artifactory.ArtifactoryServicesManager, js
 	return err
 }
 
+func remoteSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Swift(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Swift(params)
+	}
+	return err
+}
+
 func remoteGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericRemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -1048,10 +1095,13 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Gitlfs:    federatedGitLfsHandler,
 	Go:        federatedGoHandler,
 	Conan:     federatedConanHandler,
+	Conda:     federatedCondaHandler,
 	Chef:      federatedChefHandler,
 	Puppet:    federatedPuppetHandler,
 	Alpine:    federatedAlpineHandler,
 	Generic:   federatedGenericHandler,
+	Yum:       federatedYumHandler,
+	Swift:     federatedSwiftHandler,
 }
 
 func federatedMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1307,6 +1357,18 @@ func federatedConanHandler(servicesManager artifactory.ArtifactoryServicesManage
 	return servicesManager.CreateFederatedRepository().Conan(params)
 }
 
+func federatedCondaHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCondaFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Conda(params)
+	}
+	return servicesManager.CreateFederatedRepository().Conda(params)
+}
+
 func federatedChefHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewChefFederatedRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -1356,6 +1418,30 @@ func federatedGenericHandler(servicesManager artifactory.ArtifactoryServicesMana
 	return servicesManager.CreateFederatedRepository().Generic(params)
 }
 
+func federatedSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Swift(params)
+	}
+	return servicesManager.CreateFederatedRepository().Swift(params)
+}
+
+func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewYumFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Yum(params)
+	}
+	return servicesManager.CreateFederatedRepository().Yum(params)
+}
+
 var virtualRepoHandlers = map[string]repoHandler{
 	Maven:   virtualMavenHandler,
 	Gradle:  virtualGradleHandler,
@@ -1381,6 +1467,7 @@ var virtualRepoHandlers = map[string]repoHandler{
 	P2:      virtualP2Handler,
 	Alpine:  virtualAlpineHandler,
 	Generic: virtualGenericHandler,
+	Swift:   virtualSwiftHandler,
 }
 
 func virtualMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1701,6 +1788,20 @@ func virtualCondaHandler(servicesManager artifactory.ArtifactoryServicesManager,
 		err = servicesManager.UpdateVirtualRepository().Conda(params)
 	} else {
 		err = servicesManager.CreateVirtualRepository().Conda(params)
+	}
+	return err
+}
+
+func virtualSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewSwiftVirtualRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateVirtualRepository().Swift(params)
+	} else {
+		err = servicesManager.CreateVirtualRepository().Swift(params)
 	}
 	return err
 }

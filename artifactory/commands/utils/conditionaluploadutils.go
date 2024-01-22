@@ -1,27 +1,24 @@
 package utils
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-type ConditionalUploadScanFuncType func(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat xrutils.OutputFormat) error
+type ConditionalUploadScanFuncType func(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat format.OutputFormat) error
 
 // Function to run as a condition to upload. If not overridden, the default scan function is used.
-var ConditionalUploadScanFunc ConditionalUploadScanFuncType = conditionalUploadDefaultScanFunc
+var ConditionalUploadScanFunc ConditionalUploadScanFuncType = nil
 
 // ScanDeployableArtifacts scans all files founds in the given parsed deployableArtifacts results.
 // If the scan passes, the function returns two file-specs ready for upload. The first one contains all the binaries
 // and the second all the "pom.xml"s.
 // If one of the file's scan failed both of the return values will be nil.
-func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format xrutils.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
+func ScanDeployableArtifacts(deployableArtifacts *Result, serverDetails *config.ServerDetails, threads int, format format.OutputFormat) (*spec.SpecFiles, *spec.SpecFiles, error) {
 	binariesSpecFile := &spec.SpecFiles{}
 	pomSpecFile := &spec.SpecFiles{}
 	deployableArtifacts.Reader().Reset()
@@ -50,44 +47,4 @@ func parseTargetPath(target, serverUrl string) string {
 		return target[len(serverUrl):]
 	}
 	return target
-}
-
-func GetXrayOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err error) {
-	// Default print format is table.
-	format = xrutils.Table
-	if formatFlagVal != "" {
-		switch strings.ToLower(formatFlagVal) {
-		case string(xrutils.Table):
-			format = xrutils.Table
-		case string(xrutils.Json):
-			format = xrutils.Json
-		case string(xrutils.SimpleJson):
-			format = xrutils.SimpleJson
-		case string(xrutils.Sarif):
-			format = xrutils.Sarif
-		default:
-			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(xrutils.OutputFormats))
-		}
-	}
-	return
-}
-
-func GetCurationOutputFormat(formatFlagVal string) (format xrutils.OutputFormat, err error) {
-	// Default print format is table.
-	format = xrutils.Table
-	if formatFlagVal != "" {
-		switch strings.ToLower(formatFlagVal) {
-		case string(xrutils.Table):
-			format = xrutils.Table
-		case string(xrutils.Json):
-			format = xrutils.Json
-		default:
-			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(xrutils.CurationOutputFormats))
-		}
-	}
-	return
-}
-
-func conditionalUploadDefaultScanFunc(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat xrutils.OutputFormat) error {
-	return xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(fileSpec).SetThreads(threads).SetOutputFormat(scanOutputFormat).SetFail(true).SetPrintExtendedTable(false).Run()
 }

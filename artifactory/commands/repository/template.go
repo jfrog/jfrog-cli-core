@@ -158,7 +158,6 @@ const (
 	Conda     = "conda"
 	P2        = "p2"
 	Swift     = "swift"
-	Terraform = "terraform"
 
 	// Repo layout Refs
 	BowerDefaultRepoLayout    = "bower-default"

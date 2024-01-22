@@ -403,7 +403,9 @@ func (configFile *ConfigFile) configDotnet() error {
 }
 
 func (configFile *ConfigFile) configMaven() error {
-	configFile.setDeployerResolver(repository.Maven)
+	if err := configFile.setDeployerResolver(repository.Maven); err != nil {
+		return err
+	}
 	if configFile.Deployer.ServerId != "" {
 		configFile.setIncludeExcludePatterns()
 	}

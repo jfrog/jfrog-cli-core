@@ -60,21 +60,18 @@ var blacklistedRepositories = []string{
 // GetRepositories returns the names of local, remote, virtual or federated repositories filtered by their type.
 // artDetails - Artifactory server details
 // repoTypes - Repository types to filter. If empty - return all repository types.
-func GetRepositories(artDetails *config.ServerDetails, repoTypes ...RepoType) ([]string, error) {
+func GetRepositories(artDetails *config.ServerDetails, packageType string, repoTypes ...RepoType) ([]string, error) {
 	sm, err := CreateServiceManager(artDetails, 3, 0, false)
 	if err != nil {
 		return nil, err
 	}
-	if len(repoTypes) == 0 {
-		return GetFilteredRepositoriesByName(sm, nil, nil)
-	}
 	repos := []string{}
 	for _, repoType := range repoTypes {
-		repoKey, err := GetFilteredRepositoriesByNameAndType(sm, nil, nil, repoType)
+		filteredRepos, err := GetFilteredRepositoriesByPackageAndRepoType(sm, packageType, repoType)
 		if err != nil {
 			return repos, err
 		}
-		repos = append(repos, repoKey...)
+		repos = append(repos, filteredRepos...)
 	}
 
 	return repos, nil
@@ -131,6 +128,15 @@ func GetFilteredRepositoriesByNameAndType(servicesManager artifactory.Artifactor
 	}
 
 	return getFilteredRepositories(repoDetailsList, includePatterns, excludePatterns)
+}
+
+func GetFilteredRepositoriesByPackageAndRepoType(servicesManager artifactory.ArtifactoryServicesManager, packageType string, repoType RepoType) ([]string, error) {
+	repoDetailsList, err := servicesManager.GetAllRepositoriesFiltered(services.RepositoriesFilterParams{RepoType: repoType.String(), PackageType: packageType})
+	if err != nil {
+		return nil, err
+	}
+
+	return getFilteredRepositories(repoDetailsList, nil, nil)
 }
 
 func getFilteredRepositories(repoDetailsList *[]services.RepositoryDetails, includePatterns, excludePatterns []string) ([]string, error) {

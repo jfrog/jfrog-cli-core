@@ -15,7 +15,7 @@ func TestGetArtifactoryRemoteRepoUrl(t *testing.T) {
 	repoName := "test-repo"
 	repoUrl, err := GetArtifactoryRemoteRepoUrl(server, repoName)
 	assert.NoError(t, err)
-	assert.Equal(t, "https://test:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@server.com/artifactoryapi/go/test-repo", repoUrl)
+	assert.Equal(t, "https://test:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@server.com/artifactory/api/go/test-repo", repoUrl)
 }
 
 func TestGetArtifactoryApiUrl(t *testing.T) {

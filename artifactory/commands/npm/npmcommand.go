@@ -393,12 +393,7 @@ func (nc *NpmCommand) GetRepo() string {
 
 // Creates an .npmrc file in the project's directory in order to configure the provided Artifactory server as a resolution server
 func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string) (clearResolutionServerFunc func() error, err error) {
-	if serverDetails == nil || depsRepo == "" {
-		err = errors.New("couldn't set Artifactory as resolution server since server details or Artifactory repo's name weren't provided")
-		return
-	}
-
-	npmCmd := NewNpmCommand("install", false).SetServerDetails(serverDetails)
+	npmCmd := NewNpmInstallCommand().SetServerDetails(serverDetails)
 	if err = npmCmd.PreparePrerequisites(depsRepo); err != nil {
 		return
 	}

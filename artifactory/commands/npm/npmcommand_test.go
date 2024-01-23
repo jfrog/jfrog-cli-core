@@ -5,7 +5,7 @@ import (
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -104,23 +104,17 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 }
 
 func TestSetArtifactoryAsResolutionServer(t *testing.T) {
-	tmpDir, err := fileutils.CreateTempDir()
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, fileutils.RemoveTempDir(tmpDir))
-	}()
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
 
 	npmProjectPath := filepath.Join("..", "..", "..", "tests", "testdata", "npm-project")
-	err = biutils.CopyDir(npmProjectPath, tmpDir, false, nil)
+	err := biutils.CopyDir(npmProjectPath, tmpDir, false, nil)
 	assert.NoError(t, err)
 
-	wd, err := os.Getwd()
+	cwd, err := os.Getwd()
 	assert.NoError(t, err)
-	err = os.Chdir(tmpDir)
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, os.Chdir(wd))
-	}()
+	chdirCallback := testsUtils.ChangeDirWithCallback(t, cwd, tmpDir)
+	defer chdirCallback()
 
 	// Prepare mock server
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -141,8 +135,5 @@ func TestSetArtifactoryAsResolutionServer(t *testing.T) {
 		assert.NoError(t, clearResolutionServerFunc())
 	}()
 
-	_, err = os.Stat(filepath.Join(tmpDir, ".npmrc"))
-	// If .npmrc doesn't exist there should be an error
-	assert.NoError(t, err)
-
+	assert.FileExists(t, filepath.Join(tmpDir, ".npmrc"))
 }

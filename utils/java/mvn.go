@@ -61,39 +61,49 @@ func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDe
 
 func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
 	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
-	outputFilePaths, err := manager.RunMavenDepTree()
+	outputFilePaths, clearMavenDepTreeRun, err := manager.RunMavenDepTree()
 	if err != nil {
 		return
 	}
+
+	// If we got to this defer 'clearMavenDepTreeRun' contains a non-nil value
+	defer func() {
+		err = errors.Join(err, clearMavenDepTreeRun())
+	}()
+
 	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFilePaths)
 	return
 }
 
-func (mdt *MavenDepTreeManager) RunMavenDepTree() (string, error) {
+// Runs maven-dep-tree according to cmdName. Returns the plugin output along with a function pointer to revert the plugin side effects.
+// If a non-nil clearMavenDepTreeRun pointer is returnes it means we had no error during the entire function execution
+func (mdt *MavenDepTreeManager) RunMavenDepTree() (string, func() error, error) {
 	// Create a temp directory for all the files that are required for the maven-dep-tree run
 	depTreeExecDir, err := fileutils.CreateTempDir()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	defer func() {
-		err = errors.Join(err, fileutils.RemoveTempDir(depTreeExecDir))
-	}()
+
+	clearMavenDepTreeRun := func() error { return fileutils.RemoveTempDir(depTreeExecDir) }
 
 	// Create a settings.xml file that sets the dependency resolution from the given server and repository
 	if mdt.depsRepo != "" {
 		if err = mdt.createSettingsXmlWithConfiguredArtifactory(depTreeExecDir); err != nil {
-			return "", err
+			err = errors.Join(err, clearMavenDepTreeRun())
+			return "", nil, err
 		}
 	}
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
-		return "", err
+		err = errors.Join(err, clearMavenDepTreeRun())
+		return "", nil, err
 	}
 
 	depTreeOutput, err := mdt.execMavenDepTree(depTreeExecDir)
 	if err != nil {
-		return "", err
+		err = errors.Join(err, clearMavenDepTreeRun())
+		return "", nil, err
 	}
-	return depTreeOutput, nil
+	return depTreeOutput, clearMavenDepTreeRun, nil
 }
 
 func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string) error {

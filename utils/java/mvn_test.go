@@ -224,8 +224,11 @@ func TestRunProjectsCmd(t *testing.T) {
 	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example"))
 	defer cleanUp()
 	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
-	output, err := mvnDepTreeManager.RunMavenDepTree()
+	output, clearMavenDepTreeRun, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
+	if assert.NotNil(t, clearMavenDepTreeRun) {
+		defer assert.NoError(t, clearMavenDepTreeRun())
+	}
 	pomPathOccurrences := strings.Count(output, "pomPath")
 	assert.Equal(t, 4, pomPathOccurrences)
 }

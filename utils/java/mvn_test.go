@@ -226,13 +226,11 @@ func TestRunProjectsCmd(t *testing.T) {
 	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
 	output, clearMavenDepTreeRun, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
-	if assert.NotNil(t, clearMavenDepTreeRun) {
-		defer func() {
-			assert.NoError(t, clearMavenDepTreeRun())
-		}()
-	}
+	assert.NotNil(t, clearMavenDepTreeRun)
+
 	pomPathOccurrences := strings.Count(output, "pomPath")
 	assert.Equal(t, 4, pomPathOccurrences)
+	assert.NoError(t, clearMavenDepTreeRun())
 }
 
 func TestRemoveMavenConfig(t *testing.T) {

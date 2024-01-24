@@ -390,3 +390,17 @@ func filterFlags(splitArgs []string) []string {
 func (nc *NpmCommand) GetRepo() string {
 	return nc.repo
 }
+
+// Creates an .npmrc file in the project's directory in order to configure the provided Artifactory server as a resolution server
+func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string) (clearResolutionServerFunc func() error, err error) {
+	npmCmd := NewNpmInstallCommand().SetServerDetails(serverDetails)
+	if err = npmCmd.PreparePrerequisites(depsRepo); err != nil {
+		return
+	}
+	if err = npmCmd.CreateTempNpmrc(); err != nil {
+		return
+	}
+	clearResolutionServerFunc = npmCmd.RestoreNpmrcFunc()
+	log.Info(fmt.Sprintf("Resolving dependencies from '%s' from repo '%s'", serverDetails.Url, depsRepo))
+	return
+}

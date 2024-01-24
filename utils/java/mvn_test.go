@@ -228,8 +228,7 @@ func TestRunProjectsCmd(t *testing.T) {
 	assert.NoError(t, err)
 	if assert.NotNil(t, clearMavenDepTreeRun) {
 		defer func() {
-			err = clearMavenDepTreeRun()
-			assert.NoError(t, err)
+			assert.NoError(t, clearMavenDepTreeRun())
 		}()
 	}
 	pomPathOccurrences := strings.Count(output, "pomPath")

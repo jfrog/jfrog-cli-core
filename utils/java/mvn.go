@@ -79,30 +79,18 @@ func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (d
 
 // Runs maven-dep-tree according to cmdName. Returns the plugin output along with a function pointer to revert the plugin side effects.
 // If a non-nil clearMavenDepTreeRun pointer is returnes it means we had no error during the entire function execution
-func (mdt *MavenDepTreeManager) RunMavenDepTree() (string, func() error, error) {
-	// Create a temp directory for all the files that are required for the maven-dep-tree run
-	depTreeExecDir, err := fileutils.CreateTempDir()
-	if err != nil {
-		return "", nil, err
-	}
-
-	clearMavenDepTreeRun := func() error { return fileutils.RemoveTempDir(depTreeExecDir) }
-
-	// Create a settings.xml file that sets the dependency resolution from the given server and repository
-	if mdt.depsRepo != "" {
-		if err = mdt.createSettingsXmlWithConfiguredArtifactory(depTreeExecDir); err != nil {
-			return "", clearMavenDepTreeRun, err
-		}
-	}
+func (mdt *MavenDepTreeManager) RunMavenDepTree() (depTreeOutput string, clearMavenDepTreeRun func() error, err error) {
+	// depTreeExecDir is a temp directory for all the files that are required for the maven-dep-tree run
+	depTreeExecDir, clearMavenDepTreeRun, err := mdt.CreateTempDirWithSettingsXmlIfNeeded()
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
-		return "", clearMavenDepTreeRun, err
+		return
 	}
 
-	depTreeOutput, err := mdt.execMavenDepTree(depTreeExecDir)
+	depTreeOutput, err = mdt.execMavenDepTree(depTreeExecDir)
 	if err != nil {
-		return "", clearMavenDepTreeRun, err
+		return
 	}
-	return depTreeOutput, clearMavenDepTreeRun, nil
+	return
 }
 
 func (mdt *MavenDepTreeManager) installMavenDepTreePlugin(depTreeExecDir string) error {
@@ -179,6 +167,14 @@ func (mdt *MavenDepTreeManager) RunMvnCmd(goals []string) (cmdOutput []byte, err
 	return
 }
 
+func (mdt *MavenDepTreeManager) GetSettingsXmlPath() string {
+	return mdt.settingsXmlPath
+}
+
+func (mdt *MavenDepTreeManager) SetSettingsXmlPath(settingsXmlPath string) {
+	mdt.settingsXmlPath = settingsXmlPath
+}
+
 func removeMavenConfig() (func() error, error) {
 	mavenConfigExists, err := fileutils.IsFileExists(mavenConfigPath, false)
 	if err != nil {
@@ -213,4 +209,21 @@ func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path 
 	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, username, password, remoteRepositoryFullPath)
 
 	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0600))
+}
+
+// Creates a temporary directory.
+// If Artifactory resolution repo is provided, a settings.xml file with the provided server and repository will be created inside the temprary directory.
+func (mdt *MavenDepTreeManager) CreateTempDirWithSettingsXmlIfNeeded() (tempDirPath string, clearMavenDepTreeRun func() error, err error) {
+	tempDirPath, err = fileutils.CreateTempDir()
+	if err != nil {
+		return
+	}
+
+	clearMavenDepTreeRun = func() error { return fileutils.RemoveTempDir(tempDirPath) }
+
+	// Create a settings.xml file that sets the dependency resolution from the given server and repository
+	if mdt.depsRepo != "" {
+		err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDirPath)
+	}
+	return
 }

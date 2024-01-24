@@ -82,6 +82,12 @@ func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (d
 func (mdt *MavenDepTreeManager) RunMavenDepTree() (depTreeOutput string, clearMavenDepTreeRun func() error, err error) {
 	// depTreeExecDir is a temp directory for all the files that are required for the maven-dep-tree run
 	depTreeExecDir, clearMavenDepTreeRun, err := mdt.CreateTempDirWithSettingsXmlIfNeeded()
+	if err != nil {
+		if clearMavenDepTreeRun != nil {
+			err = errors.Join(err, clearMavenDepTreeRun())
+		}
+		return
+	}
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
 		return
 	}

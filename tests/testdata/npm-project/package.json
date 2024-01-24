@@ -1,0 +1,14 @@
+{
+  "name": "npm-example",
+  "version": "0.0.3",
+  "scripts": {
+    "start": "node helloworld"
+  },
+  "dependencies": {
+    "chokidar": "^2.0.3",
+    "send": "^0.16.2"
+  },
+  "devDependencies": {
+    "debug": "^4.1.1"
+  }
+}

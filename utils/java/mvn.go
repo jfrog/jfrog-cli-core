@@ -63,10 +63,12 @@ func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (d
 	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
 	outputFilePaths, clearMavenDepTreeRun, err := manager.RunMavenDepTree()
 	if err != nil {
+		if clearMavenDepTreeRun != nil {
+			err = errors.Join(err, clearMavenDepTreeRun())
+		}
 		return
 	}
 
-	// If we got to this defer 'clearMavenDepTreeRun' contains a non-nil value
 	defer func() {
 		err = errors.Join(err, clearMavenDepTreeRun())
 	}()
@@ -89,19 +91,16 @@ func (mdt *MavenDepTreeManager) RunMavenDepTree() (string, func() error, error) 
 	// Create a settings.xml file that sets the dependency resolution from the given server and repository
 	if mdt.depsRepo != "" {
 		if err = mdt.createSettingsXmlWithConfiguredArtifactory(depTreeExecDir); err != nil {
-			err = errors.Join(err, clearMavenDepTreeRun())
-			return "", nil, err
+			return "", clearMavenDepTreeRun, err
 		}
 	}
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
-		err = errors.Join(err, clearMavenDepTreeRun())
-		return "", nil, err
+		return "", clearMavenDepTreeRun, err
 	}
 
 	depTreeOutput, err := mdt.execMavenDepTree(depTreeExecDir)
 	if err != nil {
-		err = errors.Join(err, clearMavenDepTreeRun())
-		return "", nil, err
+		return "", clearMavenDepTreeRun, err
 	}
 	return depTreeOutput, clearMavenDepTreeRun, nil
 }

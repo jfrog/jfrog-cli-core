@@ -83,9 +83,6 @@ func (mdt *MavenDepTreeManager) RunMavenDepTree() (depTreeOutput string, clearMa
 	// depTreeExecDir is a temp directory for all the files that are required for the maven-dep-tree run
 	depTreeExecDir, clearMavenDepTreeRun, err := mdt.CreateTempDirWithSettingsXmlIfNeeded()
 	if err != nil {
-		if clearMavenDepTreeRun != nil {
-			err = errors.Join(err, clearMavenDepTreeRun())
-		}
 		return
 	}
 	if err = mdt.installMavenDepTreePlugin(depTreeExecDir); err != nil {
@@ -230,6 +227,10 @@ func (mdt *MavenDepTreeManager) CreateTempDirWithSettingsXmlIfNeeded() (tempDirP
 	// Create a settings.xml file that sets the dependency resolution from the given server and repository
 	if mdt.depsRepo != "" {
 		err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDirPath)
+	}
+	if err != nil {
+		err = errors.Join(err, clearMavenDepTreeRun())
+		clearMavenDepTreeRun = nil
 	}
 	return
 }

@@ -95,7 +95,7 @@ func TestMavenTreesMultiModule(t *testing.T) {
 		GavPackageTypeIdentifier + "hsqldb:hsqldb:1.8.0.10",
 	}
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
@@ -145,7 +145,7 @@ func TestMavenWrapperTrees(t *testing.T) {
 		GavPackageTypeIdentifier + "javax.servlet:servlet-api:2.5",
 	}
 
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
 		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
@@ -223,7 +223,7 @@ func TestRunProjectsCmd(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example"))
 	defer cleanUp()
-	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
+	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects)
 	output, clearMavenDepTreeRun, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
 	assert.NotNil(t, clearMavenDepTreeRun)

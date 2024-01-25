@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -42,25 +43,29 @@ var mavenDepTreeJar []byte
 
 type MavenDepTreeManager struct {
 	DepTreeManager
-	isInstalled     bool
-	cmdName         MavenDepTreeCmd
-	settingsXmlPath string
+	isInstalled         bool
+	isCurationCmd       bool
+	curationCacheFolder string
+	cmdName             MavenDepTreeCmd
+	settingsXmlPath     string
 }
 
-func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd, isDepTreeInstalled bool) *MavenDepTreeManager {
+func NewMavenDepTreeManager(params *DepTreeParams, cmdName MavenDepTreeCmd) *MavenDepTreeManager {
 	depTreeManager := NewDepTreeManager(&DepTreeParams{
 		Server:   params.Server,
 		DepsRepo: params.DepsRepo,
 	})
 	return &MavenDepTreeManager{
-		DepTreeManager: depTreeManager,
-		isInstalled:    isDepTreeInstalled,
-		cmdName:        cmdName,
+		DepTreeManager:      depTreeManager,
+		isInstalled:         params.IsMavenDepTreeInstalled,
+		cmdName:             cmdName,
+		isCurationCmd:       params.IsCurationCmd,
+		curationCacheFolder: params.CurationCacheFolder,
 	}
 }
 
-func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
-	manager := NewMavenDepTreeManager(params, Tree, isDepTreeInstalled)
+func buildMavenDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps map[string][]string, err error) {
+	manager := NewMavenDepTreeManager(params, Tree)
 	outputFilePaths, clearMavenDepTreeRun, err := manager.RunMavenDepTree()
 	if err != nil {
 		if clearMavenDepTreeRun != nil {
@@ -68,11 +73,9 @@ func buildMavenDependencyTree(params *DepTreeParams, isDepTreeInstalled bool) (d
 		}
 		return
 	}
-
 	defer func() {
 		err = errors.Join(err, clearMavenDepTreeRun())
 	}()
-
 	dependencyTree, uniqueDeps, err = getGraphFromDepTree(outputFilePaths)
 	return
 }
@@ -123,6 +126,9 @@ func (mdt *MavenDepTreeManager) execMavenDepTree(depTreeExecDir string) (string,
 func (mdt *MavenDepTreeManager) runTreeCmd(depTreeExecDir string) (string, error) {
 	mavenDepTreePath := filepath.Join(depTreeExecDir, mavenDepTreeOutputFile)
 	goals := []string{"com.jfrog:maven-dep-tree:" + mavenDepTreeVersion + ":" + string(Tree), "-DdepsTreeOutputFile=" + mavenDepTreePath, "-B"}
+	if mdt.isCurationCmd {
+		goals = append(goals, "-Dmaven.repo.local="+mdt.curationCacheFolder)
+	}
 	if _, err := mdt.RunMvnCmd(goals); err != nil {
 		return "", err
 	}
@@ -199,16 +205,20 @@ func removeMavenConfig() (func() error, error) {
 
 // Creates a new settings.xml file configured with the provided server and repository from the current MavenDepTreeManager instance.
 // The settings.xml will be written to the given path.
-func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(path string) error {
+func (mdt *MavenDepTreeManager) createSettingsXmlWithConfiguredArtifactory(settingsXmlPath string) error {
 	username, password, err := getArtifactoryAuthFromServer(mdt.server)
 	if err != nil {
 		return err
 	}
-	remoteRepositoryFullPath, err := url.JoinPath(mdt.server.ArtifactoryUrl, mdt.depsRepo)
+	endPoint := mdt.depsRepo
+	if mdt.isCurationCmd {
+		endPoint = path.Join("api/curation/audit", endPoint)
+	}
+	remoteRepositoryFullPath, err := url.JoinPath(mdt.server.ArtifactoryUrl, endPoint)
 	if err != nil {
 		return err
 	}
-	mdt.settingsXmlPath = filepath.Join(path, settingsXmlFile)
+	mdt.settingsXmlPath = filepath.Join(settingsXmlPath, settingsXmlFile)
 	settingsXmlContent := fmt.Sprintf(settingsXmlTemplate, username, password, remoteRepositoryFullPath)
 
 	return errorutils.CheckError(os.WriteFile(mdt.settingsXmlPath, []byte(settingsXmlContent), 0600))

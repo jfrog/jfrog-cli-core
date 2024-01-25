@@ -125,3 +125,7 @@ func getArtifactoryAuthFromServer(server *config.ServerDetails) (string, string,
 	}
 	return username, password, nil
 }
+
+func (dtm *DepTreeManager) GetDepsRepo() string {
+	return dtm.depsRepo
+}

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -128,11 +129,7 @@ func GetProjectConfFilePath(projectType ProjectType) (confFilePath string, exist
 func GetRepoConfigByPrefix(configFilePath, prefix string, vConfig *viper.Viper) (repoConfig *RepositoryConfig, err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%s\nPlease run 'jf %s-config' with your %s repository information",
-				err.Error(),
-				vConfig.GetString("type"),
-				prefix,
-			)
+			err = errors.Join(err, fmt.Errorf("please run 'jf %s-config' with your %s repository information", vConfig.GetString("type"), prefix))
 		}
 	}()
 	if !vConfig.IsSet(prefix) {

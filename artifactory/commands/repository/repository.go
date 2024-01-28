@@ -240,6 +240,7 @@ var localRepoHandlers = map[string]repoHandler{
 	Generic:   localGenericHandler,
 	Swift:     localSwiftHandler,
 	Terraform: localTerraformHandler,
+	Cargo:     localCargoHandler,
 }
 
 func localMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -636,6 +637,21 @@ func localTerraformHandler(servicesManager artifactory.ArtifactoryServicesManage
 	return err
 }
 
+func localCargoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCargoLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Cargo(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Cargo(params)
+	}
+	return err
+}
+
 func localGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericLocalRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -682,6 +698,7 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Generic:   remoteGenericHandler,
 	Swift:     remoteSwiftHandler,
 	Terraform: localTerraformHandler,
+	Cargo:     remoteCargoHandler,
 }
 
 func remoteMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1076,6 +1093,20 @@ func remoteSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 	return err
 }
 
+func remoteCargoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCargoRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Cargo(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Cargo(params)
+	}
+	return err
+}
+
 func remoteGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericRemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -1120,6 +1151,7 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Yum:       federatedYumHandler,
 	Swift:     federatedSwiftHandler,
 	Terraform: federatedTerraformHandler,
+	Cargo:     federatedCargoHandler,
 }
 
 func federatedMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1458,6 +1490,18 @@ func federatedTerraformHandler(servicesManager artifactory.ArtifactoryServicesMa
 		return servicesManager.UpdateFederatedRepository().Terraform(params)
 	}
 	return servicesManager.CreateFederatedRepository().Terraform(params)
+}
+
+func federatedCargoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCargoFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Cargo(params)
+	}
+	return servicesManager.CreateFederatedRepository().Cargo(params)
 }
 
 func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {

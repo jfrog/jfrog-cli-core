@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.5.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.3
-	github.com/jfrog/build-info-go v1.9.20
+	github.com/jfrog/build-info-go v1.9.21
 	github.com/jfrog/gofrog v1.5.1
 	github.com/jfrog/jfrog-client-go v1.35.6
 	github.com/magiconair/properties v1.8.7
@@ -43,7 +43,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
+	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect

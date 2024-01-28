@@ -2,10 +2,15 @@ package npm
 
 import (
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
+	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -96,4 +101,39 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 			assert.NoError(t, os.Unsetenv(tc.expectedEnv))
 		})
 	}
+}
+
+func TestSetArtifactoryAsResolutionServer(t *testing.T) {
+	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer createTempDirCallback()
+
+	npmProjectPath := filepath.Join("..", "..", "..", "tests", "testdata", "npm-project")
+	err := biutils.CopyDir(npmProjectPath, tmpDir, false, nil)
+	assert.NoError(t, err)
+
+	cwd, err := os.Getwd()
+	assert.NoError(t, err)
+	chdirCallback := testsUtils.ChangeDirWithCallback(t, cwd, tmpDir)
+	defer chdirCallback()
+
+	// Prepare mock server
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/api/system/version" {
+			w.WriteHeader(http.StatusOK)
+			_, err = w.Write([]byte("{\"version\" : \"7.75.4\"}"))
+			assert.NoError(t, err)
+		}
+	})
+	defer testServer.Close()
+
+	depsRepo := "my-rt-resolution-repo"
+
+	clearResolutionServerFunc, err := SetArtifactoryAsResolutionServer(serverDetails, depsRepo)
+	assert.NoError(t, err)
+	assert.NotNil(t, clearResolutionServerFunc)
+	defer func() {
+		assert.NoError(t, clearResolutionServerFunc())
+	}()
+
+	assert.FileExists(t, filepath.Join(tmpDir, ".npmrc"))
 }

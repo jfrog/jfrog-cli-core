@@ -138,13 +138,20 @@ func TestMapFilesToRelevantWorkingDirectories(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			detectedWd, detectedExcluded := mapFilesToRelevantWorkingDirectories(test.paths, test.requestedDescriptors)
+			// Assert working directories
 			expectedKeys := maps.Keys(test.expectedWorkingDir)
 			actualKeys := maps.Keys(detectedWd)
 			assert.ElementsMatch(t, expectedKeys, actualKeys, "expected: %s, actual: %s", expectedKeys, actualKeys)
 			for key, value := range test.expectedWorkingDir {
 				assert.ElementsMatch(t, value, detectedWd[key], "expected: %s, actual: %s", value, detectedWd[key])
 			}
-			assert.True(t, reflect.DeepEqual(test.expectedExcluded, detectedExcluded), "expected: %s, actual: %s", test.expectedExcluded, detectedExcluded)
+			// Assert excluded
+			expectedKeys = maps.Keys(test.expectedExcluded)
+			actualKeys = maps.Keys(detectedExcluded)
+			assert.ElementsMatch(t, expectedKeys, actualKeys, "expected: %s, actual: %s", expectedKeys, actualKeys)
+			for key, value := range test.expectedExcluded {
+				assert.ElementsMatch(t, value, detectedExcluded[key], "expected: %s, actual: %s", value, detectedExcluded[key])
+			}
 		})
 	}
 }

@@ -78,7 +78,7 @@ func TestMapFilesToRelevantWorkingDirectories(t *testing.T) {
 			paths:                []string{filepath.Join("dir", "package.json"), filepath.Join("dir", ".yarn")},
 			requestedDescriptors: noRequest,
 			expectedWorkingDir:   map[string][]string{"dir": {filepath.Join("dir", "package.json"), filepath.Join("dir", ".yarn")}},
-			expectedExcluded:     map[string][]Technology{"dir": {Npm}},
+			expectedExcluded:     map[string][]Technology{"dir": {Npm, Pnpm}},
 		},
 		{
 			name:                 "golangTest",

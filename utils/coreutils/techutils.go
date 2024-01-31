@@ -24,6 +24,7 @@ const (
 	Maven  Technology = "maven"
 	Gradle Technology = "gradle"
 	Npm    Technology = "npm"
+	Pnpm   Technology = "pnpm"
 	Yarn   Technology = "yarn"
 	Go     Technology = "go"
 	Pip    Technology = "pip"
@@ -77,7 +78,7 @@ var technologiesData = map[Technology]TechData{
 	},
 	Npm: {
 		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
-		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		exclude:                    []string{"pnpm-lock.yaml", ".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:             true,
 		packageDescriptors:         []string{"package.json"},
 		formal:                     string(Npm),
@@ -85,8 +86,16 @@ var technologiesData = map[Technology]TechData{
 		packageInstallationCommand: "install",
 		applicabilityScannable:     true,
 	},
+	Pnpm: {
+		indicators:             []string{"pnpm-lock.yaml"},
+		exclude:                []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptors:     []string{"package.json"},
+		packageVersionOperator: "@",
+		applicabilityScannable: true,
+	},
 	Yarn: {
 		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"},
+		exclude:                []string{"pnpm-lock.yaml"},
 		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,

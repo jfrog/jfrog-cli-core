@@ -67,13 +67,13 @@ func (rbc *ReleaseBundleCreateCommand) Run() error {
 		return err
 	}
 
-	servicesManager, rbDetails, params, err := rbc.getPrerequisites()
+	servicesManager, rbDetails, queryParams, err := rbc.getPrerequisites()
 	if err != nil {
 		return err
 	}
 
 	if rbc.buildsSpecPath != "" {
-		return rbc.createFromBuilds(servicesManager, rbDetails, params)
+		return rbc.createFromBuilds(servicesManager, rbDetails, queryParams)
 	}
-	return rbc.createFromReleaseBundles(servicesManager, rbDetails, params)
+	return rbc.createFromReleaseBundles(servicesManager, rbDetails, queryParams)
 }

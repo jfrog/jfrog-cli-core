@@ -12,7 +12,7 @@ import (
 )
 
 func (rbc *ReleaseBundleCreateCommand) createFromBuilds(servicesManager *lifecycle.LifecycleServicesManager,
-	rbDetails services.ReleaseBundleDetails, params services.CreateOrPromoteReleaseBundleParams) error {
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams) error {
 
 	builds := CreateFromBuildsSpec{}
 	content, err := fileutils.ReadFile(rbc.buildsSpecPath)
@@ -31,7 +31,7 @@ func (rbc *ReleaseBundleCreateCommand) createFromBuilds(servicesManager *lifecyc
 	if err != nil {
 		return err
 	}
-	return servicesManager.CreateReleaseBundleFromBuilds(rbDetails, params, buildsSource)
+	return servicesManager.CreateReleaseBundleFromBuilds(rbDetails, queryParams, rbc.signingKeyName, buildsSource)
 }
 
 func (rbc *ReleaseBundleCreateCommand) convertToBuildsSource(builds CreateFromBuildsSpec) (services.CreateFromBuildsSource, error) {

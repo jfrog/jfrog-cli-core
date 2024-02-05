@@ -12,7 +12,7 @@ import (
 )
 
 func (rbc *ReleaseBundleCreateCommand) createFromBuilds(servicesManager *lifecycle.LifecycleServicesManager,
-	rbDetails services.ReleaseBundleDetails, params services.CreateOrPromoteReleaseBundleParams) error {
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams) error {
 
 	builds := CreateFromBuildsSpec{}
 	content, err := fileutils.ReadFile(rbc.buildsSpecPath)
@@ -31,13 +31,13 @@ func (rbc *ReleaseBundleCreateCommand) createFromBuilds(servicesManager *lifecyc
 	if err != nil {
 		return err
 	}
-	return servicesManager.CreateReleaseBundleFromBuilds(rbDetails, params, buildsSource)
+	return servicesManager.CreateReleaseBundleFromBuilds(rbDetails, queryParams, rbc.signingKeyName, buildsSource)
 }
 
 func (rbc *ReleaseBundleCreateCommand) convertToBuildsSource(builds CreateFromBuildsSpec) (services.CreateFromBuildsSource, error) {
 	buildsSource := services.CreateFromBuildsSource{}
 	for _, build := range builds.Builds {
-		buildSource := services.BuildSource{BuildName: build.Name}
+		buildSource := services.BuildSource{BuildName: build.Name, IncludeDependencies: build.IncludeDependencies}
 		buildNumber, err := rbc.getLatestBuildNumberIfEmpty(build.Name, build.Number, build.Project)
 		if err != nil {
 			return services.CreateFromBuildsSource{}, err
@@ -82,7 +82,8 @@ type CreateFromBuildsSpec struct {
 }
 
 type SourceBuildSpec struct {
-	Name    string `json:"name,omitempty"`
-	Number  string `json:"number,omitempty"`
-	Project string `json:"project,omitempty"`
+	Name                string `json:"name,omitempty"`
+	Number              string `json:"number,omitempty"`
+	Project             string `json:"project,omitempty"`
+	IncludeDependencies bool   `json:"includeDependencies,omitempty"`
 }

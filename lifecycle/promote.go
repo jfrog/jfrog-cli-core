@@ -3,14 +3,16 @@ package lifecycle
 import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/lifecycle/services"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 type ReleaseBundlePromoteCommand struct {
 	releaseBundleCmd
-	environment string
-	overwrite   bool
+	environment          string
+	includeReposPatterns []string
+	excludeReposPatterns []string
 }
 
 func NewReleaseBundlePromoteCommand() *ReleaseBundlePromoteCommand {
@@ -52,8 +54,13 @@ func (rbp *ReleaseBundlePromoteCommand) SetEnvironment(environment string) *Rele
 	return rbp
 }
 
-func (rbp *ReleaseBundlePromoteCommand) SetOverwrite(overwrite bool) *ReleaseBundlePromoteCommand {
-	rbp.overwrite = overwrite
+func (rbp *ReleaseBundlePromoteCommand) SetIncludeReposPatterns(includeReposPatterns []string) *ReleaseBundlePromoteCommand {
+	rbp.includeReposPatterns = includeReposPatterns
+	return rbp
+}
+
+func (rbp *ReleaseBundlePromoteCommand) SetExcludeReposPatterns(excludeReposPatterns []string) *ReleaseBundlePromoteCommand {
+	rbp.excludeReposPatterns = excludeReposPatterns
 	return rbp
 }
 
@@ -70,12 +77,18 @@ func (rbp *ReleaseBundlePromoteCommand) Run() error {
 		return err
 	}
 
-	servicesManager, rbDetails, params, err := rbp.getPrerequisites()
+	servicesManager, rbDetails, queryParams, err := rbp.getPrerequisites()
 	if err != nil {
 		return err
 	}
 
-	promotionResp, err := servicesManager.PromoteReleaseBundle(rbDetails, params, rbp.environment, rbp.overwrite)
+	promotionParams := services.RbPromotionParams{
+		Environment:            rbp.environment,
+		IncludedRepositoryKeys: rbp.includeReposPatterns,
+		ExcludedRepositoryKeys: rbp.excludeReposPatterns,
+	}
+
+	promotionResp, err := servicesManager.PromoteReleaseBundle(rbDetails, queryParams, rbp.signingKeyName, promotionParams)
 	if err != nil {
 		return err
 	}

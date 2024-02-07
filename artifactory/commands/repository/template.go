@@ -158,6 +158,7 @@ const (
 	Alpine    = "alpine"
 	Conda     = "conda"
 	P2        = "p2"
+	Swift     = "swift"
 
 	// Repo layout Refs
 	BowerDefaultRepoLayout    = "bower-default"

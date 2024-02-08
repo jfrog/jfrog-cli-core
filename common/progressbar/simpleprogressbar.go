@@ -15,6 +15,10 @@ func (p *SimpleProgressBar) ActionWithProgress(reader io.Reader) (results io.Rea
 	return nil
 }
 
+func (p *SimpleProgressBar) SetProgress(progress int64) {
+	p.bar.SetCurrent(progress)
+}
+
 // Abort aborts a progress indicator. Called on both successful and unsuccessful operations
 func (p *SimpleProgressBar) Abort() {
 	p.bar.Abort(true)

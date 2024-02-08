@@ -1,13 +1,14 @@
 package progressbar
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -18,8 +19,6 @@ import (
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
 )
-
-var terminalWidth int
 
 type filesProgressBarManager struct {
 	// A list of progress bar objects.
@@ -74,7 +73,7 @@ func (p *filesProgressBarManager) NewProgressReader(total int64, label, path str
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			// Extra chars length is the max length of the KibiByteCounter
-			decor.Name(buildProgressDescription(label, path, 17)),
+			decor.Name(buildProgressDescription(label, path, progressbar.GetTerminalWidth(), 17)),
 			decor.CountersKibiByte("%3.1f/%3.1f"),
 		),
 	)
@@ -87,33 +86,34 @@ func (p *filesProgressBarManager) NewProgressReader(total int64, label, path str
 	return &readerProgressBar
 }
 
-// Changes progress indicator state and acts accordingly.
-func (p *filesProgressBarManager) SetProgressState(id int, state string) {
-	if state == "Merging" {
-		p.addNewMergingSpinner(id)
-	}
-}
-
 // Initializes a new progress bar, that replaces the progress bar with the given replacedBarId
-func (p *filesProgressBarManager) addNewMergingSpinner(replacedBarId int) {
-	// Write Lock when appending a new bar to the slice
+func (p *filesProgressBarManager) SetMergingState(replacedBarId int, useSpinner bool) (bar ioUtils.Progress) { // Write Lock when appending a new bar to the slice
 	p.barsRWMutex.Lock()
 	defer p.barsRWMutex.Unlock()
 	replacedBar := p.bars[replacedBarId-1].getProgressBarUnit()
 	p.bars[replacedBarId-1].Abort()
-	newBar := p.container.New(1,
-		mpb.SpinnerStyle(createSpinnerFramesArray()...).PositionLeft(),
+	newBar := p.container.New(100,
+		getMergingProgress(useSpinner),
+		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(buildProgressDescription("  Merging  ", replacedBar.description, 0)),
+			decor.Name(buildProgressDescription("  Merging  ", replacedBar.description, progressbar.GetTerminalWidth(), 0)),
 		),
 	)
 	// Bar replacement is a simple spinner and thus does not implement any read functionality
 	unit := &progressBarUnit{bar: newBar, description: replacedBar.description}
 	progressBar := SimpleProgressBar{progressBarUnit: unit, Id: replacedBarId}
 	p.bars[replacedBarId-1] = &progressBar
+	return &progressBar
 }
 
-func buildProgressDescription(label, path string, extraCharsLen int) string {
+func getMergingProgress(useSpinner bool) mpb.BarFillerBuilder {
+	if useSpinner {
+		return mpb.SpinnerStyle(createSpinnerFramesArray()...).PositionLeft()
+	}
+	return mpb.BarStyle().Lbound("|").Filler("🟩").Tip("🟩").Padding("⬛").Refiller("").Rbound("|")
+}
+
+func buildProgressDescription(label, path string, terminalWidth, extraCharsLen int) string {
 	separator := " | "
 	// Max line length after decreasing bar width (*2 in case unicode chars with double width are used) and the extra chars
 	descMaxLength := terminalWidth - (progressbar.ProgressBarWidth*2 + extraCharsLen)
@@ -121,15 +121,11 @@ func buildProgressDescription(label, path string, extraCharsLen int) string {
 }
 
 func shortenUrl(path string) string {
-	if _, err := url.ParseRequestURI(path); err != nil {
+	parsedUrl, err := url.ParseRequestURI(path)
+	if err != nil {
 		return path
 	}
-
-	semicolonIndex := strings.Index(path, ";")
-	if semicolonIndex == -1 {
-		return path
-	}
-	return path[:semicolonIndex]
+	return strings.TrimPrefix(parsedUrl.Path, "/artifactory")
 }
 
 func buildDescByLimits(descMaxLength int, prefix, path, suffix string) string {

@@ -1,16 +1,22 @@
 package tests
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	testsutils "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/access"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/distribution"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -68,4 +74,48 @@ func CreateDsRestsMockServer(t *testing.T, testHandler restsTestHandler) (*httpt
 	serviceManager, err := utils.CreateDistributionServiceManager(serverDetails, false)
 	assert.NoError(t, err)
 	return testServer, serverDetails, serviceManager
+}
+
+// Set progressbar.ShouldInitProgressBar func to always return true
+// so the progress bar library will be initialized and progress will be displayed.
+// The returned callback sets the original func back.
+func MockProgressInitialization() func() {
+	originFunc := progressbar.ShouldInitProgressBar
+	progressbar.ShouldInitProgressBar = func() (bool, error) { return true, nil }
+	return func() {
+		progressbar.ShouldInitProgressBar = originFunc
+	}
+}
+
+// Replace all variables in the form of ${VARIABLE} in the input file, according to the substitution map.
+// path - Path to the input file.
+// destPath - Path to the output file. If empty, the output file will be under ${CWD}/tmp/.
+func ReplaceTemplateVariables(path, destPath string, subMap map[string]string) (string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	for name, value := range subMap {
+		content = bytes.ReplaceAll(content, []byte(name), []byte(value))
+	}
+	if destPath == "" {
+		destPath, err = os.Getwd()
+		if err != nil {
+			return "", errorutils.CheckError(err)
+		}
+		destPath = filepath.Join(destPath, "tmp")
+	}
+	err = os.MkdirAll(destPath, 0700)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	specPath := filepath.Join(destPath, filepath.Base(path))
+	log.Info("Creating spec file at:", specPath)
+	err = os.WriteFile(specPath, content, 0700)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	return specPath, nil
 }

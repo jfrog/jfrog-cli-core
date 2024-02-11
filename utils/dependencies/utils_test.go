@@ -43,7 +43,7 @@ func TestCreateHttpClient(t *testing.T) {
 		User:     "elmar",
 		Password: "Egghead",
 	}
-	httpClient, httpClientDetails, err := createHttpClient(serverDetails)
+	httpClient, httpClientDetails, err := CreateHttpClient(serverDetails)
 	assert.NoError(t, err)
 	assert.NotNil(t, httpClient)
 	assert.NotNil(t, httpClientDetails)

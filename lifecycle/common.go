@@ -19,7 +19,8 @@ type releaseBundleCmd struct {
 	rbProjectKey         string
 }
 
-func (rbc *releaseBundleCmd) getPrerequisites() (servicesManager *lifecycle.LifecycleServicesManager, rbDetails services.ReleaseBundleDetails, params services.CreateOrPromoteReleaseBundleParams, err error) {
+func (rbc *releaseBundleCmd) getPrerequisites() (servicesManager *lifecycle.LifecycleServicesManager,
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams, err error) {
 	servicesManager, err = utils.CreateLifecycleServiceManager(rbc.serverDetails, false)
 	if err != nil {
 		return
@@ -28,12 +29,9 @@ func (rbc *releaseBundleCmd) getPrerequisites() (servicesManager *lifecycle.Life
 		ReleaseBundleName:    rbc.releaseBundleName,
 		ReleaseBundleVersion: rbc.releaseBundleVersion,
 	}
-	params = services.CreateOrPromoteReleaseBundleParams{
-		ReleaseBundleQueryParams: services.ReleaseBundleQueryParams{
-			ProjectKey: rbc.rbProjectKey,
-			Async:      !rbc.sync,
-		},
-		SigningKeyName: rbc.signingKeyName,
+	queryParams = services.CommonOptionalQueryParams{
+		ProjectKey: rbc.rbProjectKey,
+		Async:      !rbc.sync,
 	}
 	return
 }

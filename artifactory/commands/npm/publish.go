@@ -87,6 +87,10 @@ func (npc *NpmPublishCommand) SetXrayScan(xrayScan bool) *NpmPublishCommand {
 	return npc
 }
 
+func (npc *NpmPublishCommand) GetXrayScan() bool {
+	return npc.xrayScan
+}
+
 func (npc *NpmPublishCommand) SetScanOutputFormat(format format.OutputFormat) *NpmPublishCommand {
 	npc.scanOutputFormat = format
 	return npc

@@ -18,7 +18,7 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
       JFROG_CLI_LOG_LEVEL: "DEBUG"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Python3
         uses: actions/setup-python@v4
@@ -39,12 +39,12 @@ jobs:
           nuget-version: 6.x
 
       - name: Install dotnet
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '6.x'
 
       - name: Go Cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}

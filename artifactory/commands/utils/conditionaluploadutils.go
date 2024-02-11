@@ -2,7 +2,6 @@ package utils
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/format"
-	xraycommands "github.com/jfrog/jfrog-cli-core/v2/xray/commands/scan"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -13,7 +12,7 @@ import (
 type ConditionalUploadScanFuncType func(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat format.OutputFormat) error
 
 // Function to run as a condition to upload. If not overridden, the default scan function is used.
-var ConditionalUploadScanFunc ConditionalUploadScanFuncType = conditionalUploadDefaultScanFunc
+var ConditionalUploadScanFunc ConditionalUploadScanFuncType = nil
 
 // ScanDeployableArtifacts scans all files founds in the given parsed deployableArtifacts results.
 // If the scan passes, the function returns two file-specs ready for upload. The first one contains all the binaries
@@ -48,8 +47,4 @@ func parseTargetPath(target, serverUrl string) string {
 		return target[len(serverUrl):]
 	}
 	return target
-}
-
-func conditionalUploadDefaultScanFunc(serverDetails *config.ServerDetails, fileSpec *spec.SpecFiles, threads int, scanOutputFormat format.OutputFormat) error {
-	return xraycommands.NewScanCommand().SetServerDetails(serverDetails).SetSpec(fileSpec).SetThreads(threads).SetOutputFormat(scanOutputFormat).SetFail(true).SetPrintExtendedTable(false).Run()
 }

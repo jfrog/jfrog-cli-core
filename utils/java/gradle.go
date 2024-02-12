@@ -56,7 +56,7 @@ type gradleDepTreeManager struct {
 	DepTreeManager
 }
 
-func buildGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps []string, err error) {
+func buildGradleDependencyTree(params *DepTreeParams) (dependencyTree []*xrayUtils.GraphNode, uniqueDeps map[string][]string, err error) {
 	manager := &gradleDepTreeManager{DepTreeManager: NewDepTreeManager(params)}
 	outputFileContent, err := manager.runGradleDepTree()
 	if err != nil {

@@ -192,16 +192,35 @@ func TestMavenWrapperTreesTypes(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example-with-many-types"))
 	defer cleanUp()
-	_, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
+	tree, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
 	require.NoError(t, err)
 	// dependency of pom type
 	depWithPomType := uniqueDeps["gav://org.webjars:lodash:4.17.21"]
 	assert.NotEmpty(t, depWithPomType)
 	assert.Equal(t, depWithPomType[0], "pom")
+	existInTreePom := false
+	for _, node := range tree[0].Nodes {
+		if node.Id == "gav://org.webjars:lodash:4.17.21" {
+			nodeTypes := *node.Types
+			assert.Equal(t, nodeTypes[0], "pom")
+			existInTreePom = true
+		}
+	}
+	assert.True(t, existInTreePom)
+
 	// dependency of jar type
-	depWithJarType := uniqueDeps["gav://org.hamcrest:hamcrest-core:1.3"]
+	depWithJarType := uniqueDeps["gav://junit:junit:4.11"]
 	assert.NotEmpty(t, depWithJarType)
 	assert.Equal(t, depWithJarType[0], "jar")
+	existInTreeJar := false
+	for _, node := range tree[0].Nodes {
+		if node.Id == "gav://junit:junit:4.11" {
+			nodeTypes := *node.Types
+			assert.Equal(t, nodeTypes[0], "jar")
+			existInTreeJar = true
+		}
+	}
+	assert.True(t, existInTreeJar)
 }
 
 func TestDepTreeWithDedicatedCache(t *testing.T) {
@@ -211,7 +230,7 @@ func TestDepTreeWithDedicatedCache(t *testing.T) {
 	defer cleanUp()
 	assert.NoError(t, err)
 	tempDir := t.TempDir()
-	defer utils.RemoveTempDir(tempDir)
+	defer assert.NoError(t, utils.RemoveTempDir(tempDir))
 	manager := NewMavenDepTreeManager(&DepTreeParams{IsCurationCmd: true, CurationCacheFolder: tempDir}, Tree)
 	_, err = manager.runTreeCmd(tempDir)
 	require.NoError(t, err)
@@ -254,6 +273,7 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	// check curation command write a dedicated api for curation.
 	mdt.isCurationCmd = true
 	err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
+	require.NoError(t, err)
 	actualContent, err = os.ReadFile(settingsXmlPath)
 	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
 	assert.NoError(t, err)

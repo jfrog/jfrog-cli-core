@@ -9,7 +9,7 @@ import (
 )
 
 func (rbc *ReleaseBundleCreateCommand) createFromReleaseBundles(servicesManager *lifecycle.LifecycleServicesManager,
-	rbDetails services.ReleaseBundleDetails, params services.CreateOrPromoteReleaseBundleParams) error {
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams) error {
 
 	bundles := CreateFromReleaseBundlesSpec{}
 	content, err := fileutils.ReadFile(rbc.releaseBundlesSpecPath)
@@ -25,7 +25,7 @@ func (rbc *ReleaseBundleCreateCommand) createFromReleaseBundles(servicesManager 
 	}
 
 	releaseBundlesSource := rbc.convertToReleaseBundlesSource(bundles)
-	return servicesManager.CreateReleaseBundleFromBundles(rbDetails, params, releaseBundlesSource)
+	return servicesManager.CreateReleaseBundleFromBundles(rbDetails, queryParams, rbc.signingKeyName, releaseBundlesSource)
 }
 
 func (rbc *ReleaseBundleCreateCommand) convertToReleaseBundlesSource(bundles CreateFromReleaseBundlesSpec) services.CreateFromReleaseBundlesSource {

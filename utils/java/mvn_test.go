@@ -36,6 +36,7 @@ const (
         </mirror>
     </mirrors>
 </settings>`
+	//#nosec G101 - dummy token for testing
 	settingsXmlWithUsernameAndPasswordAndCurationDedicatedAPi = `<?xml version="1.0" encoding="UTF-8"?>
 <settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
           xmlns="http://maven.apache.org/SETTINGS/1.2.0"

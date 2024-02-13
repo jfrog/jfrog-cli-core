@@ -1,11 +1,14 @@
 package golang
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -41,4 +44,26 @@ func TestGetPackageFilesPath(t *testing.T) {
 	actualPackagePath, err := getFileSystemPackagePath(packageCachePath, packageName, version)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedPackagePath, actualPackagePath)
+}
+
+func TestSetArtifactoryAsResolutionServer(t *testing.T) {
+	server := &config.ServerDetails{
+		Url:            "http://localhost:8080/",
+		ArtifactoryUrl: "http://localhost:8080/artifactory/",
+		User:           "myUser",
+		Password:       "myPassword",
+		ServerId:       "myServer",
+	}
+	repo := "myRepo"
+
+	goProxyOriginalVal := os.Getenv("GOPROXY")
+	defer func() {
+		assert.NoError(t, os.Setenv("GOPROXY", goProxyOriginalVal))
+	}()
+
+	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo))
+
+	serverUrlWithoutHttp := strings.TrimPrefix(server.ArtifactoryUrl, "http://")
+	expectedGoProxy := fmt.Sprintf("http://%s:%s@%sapi/go/%s|direct", server.User, server.Password, serverUrlWithoutHttp, repo)
+	assert.Equal(t, expectedGoProxy, os.Getenv("GOPROXY"))
 }

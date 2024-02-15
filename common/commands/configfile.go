@@ -463,7 +463,7 @@ func (configFile *ConfigFile) setDeployer(withSnapshot bool) error {
 
 	// Set deployment repository
 	if configFile.Deployer.ServerId != "" {
-		deployerRepos, err := getRepositories(configFile.Resolver.ServerId, utils.Virtual, utils.Local)
+		deployerRepos, err := getRepositories(configFile.Deployer.ServerId, utils.Virtual, utils.Local)
 		if err != nil {
 			log.Error("failed getting repositories list: " + err.Error())
 			// Continue without auto complete.

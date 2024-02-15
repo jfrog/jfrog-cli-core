@@ -493,10 +493,10 @@ func (configFile *ConfigFile) setResolver(withSnapshot bool) error {
 			resolverRepos = []string{}
 		}
 		if withSnapshot {
-			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set repository for release dependencies", resolverRepos)
-			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set repository for snapshot dependencies", resolverRepos)
+			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for release dependencies", resolverRepos)
+			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", resolverRepos)
 		} else {
-			configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", resolverRepos)
+			configFile.setRepo(&configFile.Resolver.Repo, "Set resolution repository for dependencies resolution", resolverRepos)
 		}
 	}
 	return nil

@@ -1,11 +1,14 @@
 package java
 
 import (
+	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	coreTests "github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +32,26 @@ const (
         <mirror>
             <id>artifactory</id>
             <url>https://myartifactory.com/artifactory/testRepo</url>
+            <mirrorOf>*</mirrorOf>
+        </mirror>
+    </mirrors>
+</settings>`
+	//#nosec G101 - dummy token for testing
+	settingsXmlWithUsernameAndPasswordAndCurationDedicatedAPi = `<?xml version="1.0" encoding="UTF-8"?>
+<settings xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
+          xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <servers>
+        <server>
+            <id>artifactory</id>
+            <username>testUser</username>
+            <password>testPass</password>
+        </server>
+    </servers>
+    <mirrors>
+        <mirror>
+            <id>artifactory</id>
+            <url>https://myartifactory.com/artifactory/api/curation/audit/testRepo</url>
             <mirrorOf>*</mirrorOf>
         </mirror>
     </mirrors>
@@ -95,9 +118,9 @@ func TestMavenTreesMultiModule(t *testing.T) {
 		GavPackageTypeIdentifier + "hsqldb:hsqldb:1.8.0.10",
 	}
 	// Run getModulesDependencyTrees
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
-		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
+		assert.ElementsMatch(t, maps.Keys(uniqueDeps), expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
 		multi := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {
@@ -145,9 +168,9 @@ func TestMavenWrapperTrees(t *testing.T) {
 		GavPackageTypeIdentifier + "javax.servlet:servlet-api:2.5",
 	}
 
-	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{}, false)
+	modulesDependencyTrees, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
 	if assert.NoError(t, err) && assert.NotEmpty(t, modulesDependencyTrees) {
-		assert.ElementsMatch(t, uniqueDeps, expectedUniqueDeps, "First is actual, Second is Expected")
+		assert.ElementsMatch(t, maps.Keys(uniqueDeps), expectedUniqueDeps, "First is actual, Second is Expected")
 		// Check root module
 		multi := coreTests.GetAndAssertNode(t, modulesDependencyTrees, "org.jfrog.test:multi:3.7-SNAPSHOT")
 		if assert.NotNil(t, multi) {
@@ -164,6 +187,58 @@ func TestMavenWrapperTrees(t *testing.T) {
 			assert.Len(t, multi3.Nodes, 4)
 		}
 	}
+}
+
+func TestMavenWrapperTreesTypes(t *testing.T) {
+	// Create and change directory to test workspace
+	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example-with-many-types"))
+	defer cleanUp()
+	tree, uniqueDeps, err := buildMavenDependencyTree(&DepTreeParams{})
+	require.NoError(t, err)
+	// dependency of pom type
+	depWithPomType := uniqueDeps["gav://org.webjars:lodash:4.17.21"]
+	assert.NotEmpty(t, depWithPomType)
+	assert.Equal(t, depWithPomType[0], "pom")
+	existInTreePom := false
+	for _, node := range tree[0].Nodes {
+		if node.Id == "gav://org.webjars:lodash:4.17.21" {
+			nodeTypes := *node.Types
+			assert.Equal(t, nodeTypes[0], "pom")
+			existInTreePom = true
+		}
+	}
+	assert.True(t, existInTreePom)
+
+	// dependency of jar type
+	depWithJarType := uniqueDeps["gav://junit:junit:4.11"]
+	assert.NotEmpty(t, depWithJarType)
+	assert.Equal(t, depWithJarType[0], "jar")
+	existInTreeJar := false
+	for _, node := range tree[0].Nodes {
+		if node.Id == "gav://junit:junit:4.11" {
+			nodeTypes := *node.Types
+			assert.Equal(t, nodeTypes[0], "jar")
+			existInTreeJar = true
+		}
+	}
+	assert.True(t, existInTreeJar)
+}
+
+func TestDepTreeWithDedicatedCache(t *testing.T) {
+	// Create and change directory to test workspace
+	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example-with-wrapper"))
+	err := os.Chmod("mvnw", 0700)
+	defer cleanUp()
+	assert.NoError(t, err)
+	tempDir := t.TempDir()
+	defer assert.NoError(t, utils.RemoveTempDir(tempDir))
+	manager := NewMavenDepTreeManager(&DepTreeParams{IsCurationCmd: true, CurationCacheFolder: tempDir}, Tree)
+	_, err = manager.runTreeCmd(tempDir)
+	require.NoError(t, err)
+	// validate one of the jars exist in the dedicated cache for curation
+	fileExist, err := utils.IsFileExists(filepath.Join(tempDir, "org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar"), false)
+	require.NoError(t, err)
+	assert.True(t, fileExist)
 }
 
 func TestGetMavenPluginInstallationArgs(t *testing.T) {
@@ -196,6 +271,16 @@ func TestCreateSettingsXmlWithConfiguredArtifactory(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, settingsXmlWithUsernameAndPassword, string(actualContent))
 
+	// check curation command write a dedicated api for curation.
+	mdt.isCurationCmd = true
+	err = mdt.createSettingsXmlWithConfiguredArtifactory(tempDir)
+	require.NoError(t, err)
+	actualContent, err = os.ReadFile(settingsXmlPath)
+	actualContent = []byte(strings.ReplaceAll(string(actualContent), "\r\n", "\n"))
+	assert.NoError(t, err)
+	assert.Equal(t, settingsXmlWithUsernameAndPasswordAndCurationDedicatedAPi, string(actualContent))
+	mdt.isCurationCmd = false
+
 	mdt.server.Password = ""
 	// jfrog-ignore
 	mdt.server.AccessToken = dummyToken
@@ -223,11 +308,14 @@ func TestRunProjectsCmd(t *testing.T) {
 	// Create and change directory to test workspace
 	_, cleanUp := coreTests.CreateTestWorkspace(t, filepath.Join("..", "..", "tests", "testdata", "maven-example"))
 	defer cleanUp()
-	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects, false)
-	output, err := mvnDepTreeManager.RunMavenDepTree()
+	mvnDepTreeManager := NewMavenDepTreeManager(&DepTreeParams{}, Projects)
+	output, clearMavenDepTreeRun, err := mvnDepTreeManager.RunMavenDepTree()
 	assert.NoError(t, err)
+	assert.NotNil(t, clearMavenDepTreeRun)
+
 	pomPathOccurrences := strings.Count(output, "pomPath")
 	assert.Equal(t, 4, pomPathOccurrences)
+	assert.NoError(t, clearMavenDepTreeRun())
 }
 
 func TestRemoveMavenConfig(t *testing.T) {

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/osutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -129,9 +130,9 @@ func (lock *Lock) removeOtherLockOrWait(otherLock Lock, filesList *[]string) err
 	log.Debug("Lock hasn't been acquired.")
 
 	// Check if the process is running.
-	// There are two implementation of the 'isProcessRunning'.
+	// There are two implementation of the 'IsProcessRunning'.
 	// One for Windows and one for Unix based systems.
-	running, err := isProcessRunning(otherLock.pid)
+	running, err := osutils.IsProcessRunning(otherLock.pid)
 	if err != nil {
 		return err
 	}
@@ -241,7 +242,7 @@ func GetLastLockTimestamp(lockDirPath string) (int64, error) {
 	lastLock := locks[len(locks)-1]
 
 	// If the lock isn't acquired by a running process, an unexpected error was occurred.
-	running, err := isProcessRunning(lastLock.pid)
+	running, err := osutils.IsProcessRunning(lastLock.pid)
 	if err != nil {
 		return 0, err
 	}

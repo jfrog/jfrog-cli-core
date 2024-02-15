@@ -470,8 +470,8 @@ func (configFile *ConfigFile) setDeployer(withSnapshot bool) error {
 			deployerRepos = []string{}
 		}
 		if withSnapshot {
-			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set repository for release artifacts deployment", deployerRepos)
-			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set repository for snapshot artifacts deployment", deployerRepos)
+			configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for release artifacts deployment", deployerRepos)
+			configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", deployerRepos)
 		} else {
 			configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", deployerRepos)
 		}

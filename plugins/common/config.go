@@ -14,10 +14,9 @@ import (
 // Any empty configuration could be later overridden by environment variables if set.
 func CreateBuildConfiguration(c *components.Context) *build.BuildConfiguration {
 	buildConfiguration := new(build.BuildConfiguration)
-	buildNameArg, buildNumberArg := c.Arguments[0], c.Arguments[1]
-	if buildNameArg == "" || buildNumberArg == "" {
-		buildNameArg = ""
-		buildNumberArg = ""
+	var buildNameArg, buildNumberArg string
+	if len(c.Arguments) > 1 && c.Arguments[0] != "" && c.Arguments[1] != "" {
+		buildNameArg, buildNumberArg = c.Arguments[0], c.Arguments[1]
 	}
 	buildConfiguration.SetBuildName(buildNameArg).SetBuildNumber(buildNumberArg).SetProject(c.GetStringFlagValue("project")).SetModule(c.GetStringFlagValue("module"))
 	return buildConfiguration

@@ -1107,6 +1107,20 @@ func remoteCargoHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 	return err
 }
 
+func remoteTerraformHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewTerraformRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Terraform(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Terraform(params)
+	}
+	return err
+}
+
 func remoteGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericRemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)

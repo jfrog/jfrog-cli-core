@@ -697,7 +697,7 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Alpine:    remoteAlpineHandler,
 	Generic:   remoteGenericHandler,
 	Swift:     remoteSwiftHandler,
-	Terraform: localTerraformHandler,
+	Terraform: remoteTerraformHandler,
 	Cargo:     remoteCargoHandler,
 }
 

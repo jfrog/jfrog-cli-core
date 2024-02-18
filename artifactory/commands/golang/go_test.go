@@ -56,10 +56,9 @@ func TestSetArtifactoryAsResolutionServer(t *testing.T) {
 	}
 	repo := "myRepo"
 
-	goProxyOriginalVal := os.Getenv("GOPROXY")
-	defer func() {
-		assert.NoError(t, os.Setenv("GOPROXY", goProxyOriginalVal))
-	}()
+	// Setting the GOPROXY value to "" to ensure that the new value set in SetArtifactoryAsResolutionServer is correctly validated.
+	cleanup := testsutils.SetEnvWithCallbackAndAssert(t, "GOPROXY", "")
+	defer cleanup()
 
 	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo))
 

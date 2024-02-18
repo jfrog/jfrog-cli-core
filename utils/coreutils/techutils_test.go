@@ -17,6 +17,7 @@ func TestDetectTechnologiesByFilePaths(t *testing.T) {
 	}{
 		{"simpleMavenTest", []string{"pom.xml"}, map[Technology]bool{Maven: true}},
 		{"npmTest", []string{"../package.json"}, map[Technology]bool{Npm: true}},
+		{"pnpmTest", []string{"../package.json", "pnpm-lock.yaml"}, map[Technology]bool{Pnpm: true}},
 		{"yarnTest", []string{"./package.json", "./.yarn"}, map[Technology]bool{Yarn: true}},
 		{"windowsGradleTest", []string{"c:\\users\\test\\package\\build.gradle"}, map[Technology]bool{Gradle: true}},
 		{"windowsPipTest", []string{"c:\\users\\test\\package\\setup.py"}, map[Technology]bool{Pip: true}},
@@ -74,11 +75,18 @@ func TestMapFilesToRelevantWorkingDirectories(t *testing.T) {
 			expectedExcluded: noExclude,
 		},
 		{
+			name:                 "pnpmTest",
+			paths:                []string{filepath.Join("dir", "package.json"), filepath.Join("dir", "pnpm-lock.yaml")},
+			requestedDescriptors: noRequest,
+			expectedWorkingDir:   map[string][]string{"dir": {filepath.Join("dir", "package.json"), filepath.Join("dir", "pnpm-lock.yaml")}},
+			expectedExcluded:     map[string][]Technology{"dir": {Npm, Yarn}},
+		},
+		{
 			name:                 "yarnTest",
 			paths:                []string{filepath.Join("dir", "package.json"), filepath.Join("dir", ".yarn")},
 			requestedDescriptors: noRequest,
 			expectedWorkingDir:   map[string][]string{"dir": {filepath.Join("dir", "package.json"), filepath.Join("dir", ".yarn")}},
-			expectedExcluded:     map[string][]Technology{"dir": {Npm}},
+			expectedExcluded:     map[string][]Technology{"dir": {Npm, Pnpm}},
 		},
 		{
 			name:                 "golangTest",
@@ -138,13 +146,20 @@ func TestMapFilesToRelevantWorkingDirectories(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			detectedWd, detectedExcluded := mapFilesToRelevantWorkingDirectories(test.paths, test.requestedDescriptors)
+			// Assert working directories
 			expectedKeys := maps.Keys(test.expectedWorkingDir)
 			actualKeys := maps.Keys(detectedWd)
 			assert.ElementsMatch(t, expectedKeys, actualKeys, "expected: %s, actual: %s", expectedKeys, actualKeys)
 			for key, value := range test.expectedWorkingDir {
 				assert.ElementsMatch(t, value, detectedWd[key], "expected: %s, actual: %s", value, detectedWd[key])
 			}
-			assert.True(t, reflect.DeepEqual(test.expectedExcluded, detectedExcluded), "expected: %s, actual: %s", test.expectedExcluded, detectedExcluded)
+			// Assert excluded
+			expectedKeys = maps.Keys(test.expectedExcluded)
+			actualKeys = maps.Keys(detectedExcluded)
+			assert.ElementsMatch(t, expectedKeys, actualKeys, "expected: %s, actual: %s", expectedKeys, actualKeys)
+			for key, value := range test.expectedExcluded {
+				assert.ElementsMatch(t, value, detectedExcluded[key], "expected: %s, actual: %s", value, detectedExcluded[key])
+			}
 		})
 	}
 }
@@ -178,6 +193,7 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 				"dir":                           {filepath.Join("dir", "package.json"), filepath.Join("dir", "package-lock.json"), filepath.Join("dir", "build.gradle.kts"), filepath.Join("dir", "project.sln")},
 				"directory":                     {filepath.Join("directory", "npm-shrinkwrap.json")},
 				"dir3":                          {filepath.Join("dir3", "package.json"), filepath.Join("dir3", ".yarn")},
+				filepath.Join("dir3", "dir"):    {filepath.Join("dir3", "dir", "package.json"), filepath.Join("dir3", "dir", "pnpm-lock.yaml")},
 				filepath.Join("dir", "dir2"):    {filepath.Join("dir", "dir2", "go.mod")},
 				filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
 				filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
@@ -186,7 +202,8 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 			},
 			excludedTechAtWorkingDir: map[string][]Technology{
 				filepath.Join("users", "test", "package"): {Pip},
-				"dir3": {Npm},
+				"dir3":                       {Npm},
+				filepath.Join("dir3", "dir"): {Npm, Yarn},
 			},
 			requestedTechs:       noRequestTech,
 			requestedDescriptors: noRequestSpecialDescriptors,
@@ -196,6 +213,7 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 					"dir":       {filepath.Join("dir", "package.json")},
 					"directory": {},
 				},
+				Pnpm: {filepath.Join("dir3", "dir"): {filepath.Join("dir3", "dir", "package.json")}},
 				Yarn: {"dir3": {filepath.Join("dir3", "package.json")}},
 				Go:   {filepath.Join("dir", "dir2"): {filepath.Join("dir", "dir2", "go.mod")}},
 				Pip: {
@@ -354,6 +372,7 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 		"dir":                           {filepath.Join("dir", "package.json"), filepath.Join("dir", "package-lock.json"), filepath.Join("dir", "build.gradle.kts"), filepath.Join("dir", "project.sln"), filepath.Join("dir", "blabla.txt")},
 		"directory":                     {filepath.Join("directory", "npm-shrinkwrap.json")},
 		"dir3":                          {filepath.Join("dir3", "package.json"), filepath.Join("dir3", ".yarn")},
+		filepath.Join("dir3", "dir"):    {filepath.Join("dir3", "dir", "package.json"), filepath.Join("dir3", "dir", "pnpm-lock.yaml")},
 		filepath.Join("dir", "dir2"):    {filepath.Join("dir", "dir2", "go.mod")},
 		filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
 		filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
@@ -362,7 +381,8 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 	}
 	excludedTechAtWorkingDir := map[string][]Technology{
 		filepath.Join("users", "test", "package"): {Pip},
-		"dir3": {Npm},
+		"dir3":                       {Npm, Pnpm},
+		filepath.Join("dir3", "dir"): {Npm, Yarn},
 	}
 
 	tests := []struct {
@@ -391,6 +411,12 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 				"dir":       {filepath.Join("dir", "package.json")},
 				"directory": {},
 			},
+		},
+		{
+			name:                 "pnpmTest",
+			tech:                 Pnpm,
+			requestedDescriptors: map[Technology][]string{},
+			expected:             map[string][]string{filepath.Join("dir3", "dir"): {filepath.Join("dir3", "dir", "package.json")}},
 		},
 		{
 			name:                 "yarnTest",

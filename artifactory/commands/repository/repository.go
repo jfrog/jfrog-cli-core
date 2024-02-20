@@ -116,7 +116,7 @@ var writersMap = map[string]ioutils.AnswerWriter{
 	YumRootDepth:                      ioutils.WriteIntAnswer,
 	DockerApiVersion:                  ioutils.WriteStringAnswer,
 	EnableFileListsIndexing:           ioutils.WriteBoolAnswer,
-	OptionalIndexCompressionFormats:   ioutils.WriteStringAnswer,
+	OptionalIndexCompressionFormats:   ioutils.WriteStringArrayAnswer,
 	Username:                          ioutils.WriteStringAnswer,
 	Password:                          ioutils.WriteStringAnswer,
 	Proxy:                             ioutils.WriteStringAnswer,
@@ -239,6 +239,8 @@ var localRepoHandlers = map[string]repoHandler{
 	Alpine:    localAlpineHandler,
 	Generic:   localGenericHandler,
 	Swift:     localSwiftHandler,
+	Terraform: localTerraformHandler,
+	Cargo:     localCargoHandler,
 }
 
 func localMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -620,6 +622,36 @@ func localSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, j
 	return err
 }
 
+func localTerraformHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewTerraformLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Terraform(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Terraform(params)
+	}
+	return err
+}
+
+func localCargoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCargoLocalRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+
+	if isUpdate {
+		err = servicesManager.UpdateLocalRepository().Cargo(params)
+	} else {
+		err = servicesManager.CreateLocalRepository().Cargo(params)
+	}
+	return err
+}
+
 func localGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericLocalRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -665,6 +697,8 @@ var remoteRepoHandlers = map[string]repoHandler{
 	Alpine:    remoteAlpineHandler,
 	Generic:   remoteGenericHandler,
 	Swift:     remoteSwiftHandler,
+	Terraform: remoteTerraformHandler,
+	Cargo:     remoteCargoHandler,
 }
 
 func remoteMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1059,6 +1093,34 @@ func remoteSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager, 
 	return err
 }
 
+func remoteCargoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCargoRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Cargo(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Cargo(params)
+	}
+	return err
+}
+
+func remoteTerraformHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewTerraformRemoteRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateRemoteRepository().Terraform(params)
+	} else {
+		err = servicesManager.CreateRemoteRepository().Terraform(params)
+	}
+	return err
+}
+
 func remoteGenericHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewGenericRemoteRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -1102,6 +1164,8 @@ var federatedRepoHandlers = map[string]repoHandler{
 	Generic:   federatedGenericHandler,
 	Yum:       federatedYumHandler,
 	Swift:     federatedSwiftHandler,
+	Terraform: federatedTerraformHandler,
+	Cargo:     federatedCargoHandler,
 }
 
 func federatedMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1430,6 +1494,30 @@ func federatedSwiftHandler(servicesManager artifactory.ArtifactoryServicesManage
 	return servicesManager.CreateFederatedRepository().Swift(params)
 }
 
+func federatedTerraformHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewTerraformFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Terraform(params)
+	}
+	return servicesManager.CreateFederatedRepository().Terraform(params)
+}
+
+func federatedCargoHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewCargoFederatedRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		return servicesManager.UpdateFederatedRepository().Cargo(params)
+	}
+	return servicesManager.CreateFederatedRepository().Cargo(params)
+}
+
 func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
 	params := services.NewYumFederatedRepositoryParams()
 	err := json.Unmarshal(jsonConfig, &params)
@@ -1443,31 +1531,32 @@ func federatedYumHandler(servicesManager artifactory.ArtifactoryServicesManager,
 }
 
 var virtualRepoHandlers = map[string]repoHandler{
-	Maven:   virtualMavenHandler,
-	Gradle:  virtualGradleHandler,
-	Ivy:     virtualIvyHandler,
-	Sbt:     virtualSbtHandler,
-	Helm:    virtualHelmHandler,
-	Rpm:     virtualRpmHandler,
-	Nuget:   virtualNugetHandler,
-	Cran:    virtualCranHandler,
-	Gems:    virtualGemsHandler,
-	Npm:     virtualNpmHandler,
-	Bower:   virtualBowerHandler,
-	Debian:  virtualDebianHandler,
-	Pypi:    virtualPypiHandler,
-	Docker:  virtualDockerHandler,
-	Gitlfs:  virtualGitLfsHandler,
-	Go:      virtualGoHandler,
-	Yum:     virtualYumHandler,
-	Conan:   virtualConanHandler,
-	Chef:    virtualChefHandler,
-	Puppet:  virtualPuppetHandler,
-	Conda:   virtualCondaHandler,
-	P2:      virtualP2Handler,
-	Alpine:  virtualAlpineHandler,
-	Generic: virtualGenericHandler,
-	Swift:   virtualSwiftHandler,
+	Maven:     virtualMavenHandler,
+	Gradle:    virtualGradleHandler,
+	Ivy:       virtualIvyHandler,
+	Sbt:       virtualSbtHandler,
+	Helm:      virtualHelmHandler,
+	Rpm:       virtualRpmHandler,
+	Nuget:     virtualNugetHandler,
+	Cran:      virtualCranHandler,
+	Gems:      virtualGemsHandler,
+	Npm:       virtualNpmHandler,
+	Bower:     virtualBowerHandler,
+	Debian:    virtualDebianHandler,
+	Pypi:      virtualPypiHandler,
+	Docker:    virtualDockerHandler,
+	Gitlfs:    virtualGitLfsHandler,
+	Go:        virtualGoHandler,
+	Yum:       virtualYumHandler,
+	Conan:     virtualConanHandler,
+	Chef:      virtualChefHandler,
+	Puppet:    virtualPuppetHandler,
+	Conda:     virtualCondaHandler,
+	P2:        virtualP2Handler,
+	Alpine:    virtualAlpineHandler,
+	Generic:   virtualGenericHandler,
+	Swift:     virtualSwiftHandler,
+	Terraform: virtualTerraformHandler,
 }
 
 func virtualMavenHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
@@ -1802,6 +1891,20 @@ func virtualSwiftHandler(servicesManager artifactory.ArtifactoryServicesManager,
 		err = servicesManager.UpdateVirtualRepository().Swift(params)
 	} else {
 		err = servicesManager.CreateVirtualRepository().Swift(params)
+	}
+	return err
+}
+
+func virtualTerraformHandler(servicesManager artifactory.ArtifactoryServicesManager, jsonConfig []byte, isUpdate bool) error {
+	params := services.NewTerraformVirtualRepositoryParams()
+	err := json.Unmarshal(jsonConfig, &params)
+	if errorutils.CheckError(err) != nil {
+		return err
+	}
+	if isUpdate {
+		err = servicesManager.UpdateVirtualRepository().Terraform(params)
+	} else {
+		err = servicesManager.CreateVirtualRepository().Terraform(params)
 	}
 	return err
 }

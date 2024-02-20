@@ -18,6 +18,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"net/http"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -327,4 +328,21 @@ func buildPackageVersionRequest(name, branchName string) string {
 	}
 	// No version was given to "go get" command, so the latest version should be requested
 	return path.Join(packageVersionRequest, "latest.info")
+}
+
+func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string) (err error) {
+	err = setGoProxy(serverDetails, depsRepo)
+	if err != nil {
+		err = fmt.Errorf("failed while setting Artifactory as a dependencies resolution registry: %s", err.Error())
+	}
+	return
+}
+
+func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo)
+	if err != nil {
+		return err
+	}
+	repoUrl += "|direct"
+	return os.Setenv("GOPROXY", repoUrl)
 }

@@ -53,23 +53,24 @@ const (
 	BlockPushingSchema1          = "blockPushingSchema1"
 
 	// Mutual local and virtual repository configuration JSON keys
-	DebianTrivialLayout = "debianTrivialLayout"
+	DebianTrivialLayout             = "debianTrivialLayout"
+	OptionalIndexCompressionFormats = "optionalIndexCompressionFormats"
+	PrimaryKeyPairRef               = "primaryKeyPairRef"
 
 	// Mutual remote and virtual repository configuration JSON keys
 	ExternalDependenciesEnabled  = "externalDependenciesEnabled"
 	ExternalDependenciesPatterns = "externalDependenciesPatterns"
 
 	// Unique local repository configuration JSON keys
-	ChecksumPolicyType              = "checksumPolicyType"
-	MaxUniqueTags                   = "maxUniqueTags"
-	SnapshotVersionBehavior         = "snapshotVersionBehavior"
-	ArchiveBrowsingEnabled          = "archiveBrowsingEnabled"
-	CalculateYumMetadata            = "calculateYumMetadata"
-	YumRootDepth                    = "yumRootDepth"
-	DockerApiVersion                = "dockerApiVersion"
-	EnableFileListsIndexing         = "enableFileListsIndexing"
-	OptionalIndexCompressionFormats = "optionalIndexCompressionFormats"
-	ForceNugetAuthentication        = "forceNugetAuthentication"
+	ChecksumPolicyType       = "checksumPolicyType"
+	MaxUniqueTags            = "maxUniqueTags"
+	SnapshotVersionBehavior  = "snapshotVersionBehavior"
+	ArchiveBrowsingEnabled   = "archiveBrowsingEnabled"
+	CalculateYumMetadata     = "calculateYumMetadata"
+	YumRootDepth             = "yumRootDepth"
+	DockerApiVersion         = "dockerApiVersion"
+	EnableFileListsIndexing  = "enableFileListsIndexing"
+	ForceNugetAuthentication = "forceNugetAuthentication"
 
 	// Unique remote repository configuration JSON keys
 	Url                               = "url"
@@ -158,6 +159,8 @@ const (
 	Conda     = "conda"
 	P2        = "p2"
 	Swift     = "swift"
+	Terraform = "terraform"
+	Cargo     = "cargo"
 
 	// Repo layout Refs
 	BowerDefaultRepoLayout    = "bower-default"
@@ -251,6 +254,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	Username:                          {Text: Username},
 	Password:                          {Text: Password},
 	Proxy:                             {Text: Proxy},
+	PrimaryKeyPairRef:                 {Text: PrimaryKeyPairRef},
 	RemoteRepoChecksumPolicyType:      {Text: RemoteRepoChecksumPolicyType},
 	HardFail:                          {Text: HardFail},
 	Offline:                           {Text: Offline},
@@ -306,7 +310,7 @@ var mavenGradleLocalRepoConfKeys = []string{
 }
 
 var rpmLocalRepoConfKeys = []string{
-	YumRootDepth, CalculateYumMetadata, EnableFileListsIndexing,
+	YumRootDepth, CalculateYumMetadata, EnableFileListsIndexing, PrimaryKeyPairRef,
 }
 
 var nugetLocalRepoConfKeys = []string{
@@ -314,7 +318,7 @@ var nugetLocalRepoConfKeys = []string{
 }
 
 var debianLocalRepoConfKeys = []string{
-	DebianTrivialLayout,
+	DebianTrivialLayout, PrimaryKeyPairRef,
 }
 
 var dockerLocalRepoConfKeys = []string{
@@ -388,7 +392,7 @@ var vcsRemoteRepoConfKeys = []string{
 
 var baseVirtualRepoConfKeys = []string{
 	Repositories, Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, ArtifactoryRequestsCanRetrieveRemoteArtifacts,
-	DefaultDeploymentRepo,
+	DefaultDeploymentRepo, OptionalIndexCompressionFormats, PrimaryKeyPairRef,
 }
 
 var mavenGradleVirtualRepoConfKeys = []string{
@@ -851,11 +855,12 @@ var questionMap = map[string]ioutils.QuestionInfo{
 		Msg:       "Enter a comma separated list of values from " + strings.Join([]string{Bz2Compression, LzmaCompression, XzCompression}, ","),
 		Options:   nil,
 		AllowVars: true,
-		Writer:    ioutils.WriteStringArrayAnswer,
+		Writer:    ioutils.WriteStringAnswer,
 	},
-	Username: ioutils.FreeStringQuestionInfo,
-	Password: ioutils.FreeStringQuestionInfo,
-	Proxy:    ioutils.FreeStringQuestionInfo,
+	PrimaryKeyPairRef: ioutils.FreeStringQuestionInfo,
+	Username:          ioutils.FreeStringQuestionInfo,
+	Password:          ioutils.FreeStringQuestionInfo,
+	Proxy:             ioutils.FreeStringQuestionInfo,
 	RemoteRepoChecksumPolicyType: {
 		Options: []prompt.Suggest{
 			{Text: GenerateIfAbsentPolicy},

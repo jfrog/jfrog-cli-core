@@ -31,6 +31,7 @@ const (
 	Pipenv
 	Poetry
 	Npm
+	Pnpm
 	Yarn
 	Nuget
 	Maven
@@ -53,6 +54,7 @@ var ProjectTypes = []string{
 	"pipenv",
 	"poetry",
 	"npm",
+	"pnpm",
 	"yarn",
 	"nuget",
 	"maven",

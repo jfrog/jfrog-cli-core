@@ -33,7 +33,7 @@ require (
 require (
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
-	github.com/CycloneDX/cyclonedx-go v0.7.2 // indirect
+	github.com/CycloneDX/cyclonedx-go v0.8.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
@@ -98,6 +98,6 @@ require (
 
 replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240218093454-1c352a93c23d
 
-replace github.com/jfrog/build-info-go => github.com/attiasas/build-info-go v0.0.0-20240218080400-61fadad9deb8
+replace github.com/jfrog/build-info-go => github.com/attiasas/build-info-go v0.0.0-20240220100016-1eeca190af8e
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.3.3-0.20231223133729-ef57bd08cedc

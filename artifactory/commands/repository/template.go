@@ -159,6 +159,8 @@ const (
 	Conda     = "conda"
 	P2        = "p2"
 	Swift     = "swift"
+	Terraform = "terraform"
+	Cargo     = "cargo"
 
 	// Repo layout Refs
 	BowerDefaultRepoLayout    = "bower-default"
@@ -856,9 +858,9 @@ var questionMap = map[string]ioutils.QuestionInfo{
 		Writer:    ioutils.WriteStringAnswer,
 	},
 	PrimaryKeyPairRef: ioutils.FreeStringQuestionInfo,
-	Username: ioutils.FreeStringQuestionInfo,
-	Password: ioutils.FreeStringQuestionInfo,
-	Proxy:    ioutils.FreeStringQuestionInfo,
+	Username:          ioutils.FreeStringQuestionInfo,
+	Password:          ioutils.FreeStringQuestionInfo,
+	Proxy:             ioutils.FreeStringQuestionInfo,
 	RemoteRepoChecksumPolicyType: {
 		Options: []prompt.Suggest{
 			{Text: GenerateIfAbsentPolicy},

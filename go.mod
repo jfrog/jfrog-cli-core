@@ -9,12 +9,12 @@ require (
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.1.8
 	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
-	github.com/google/uuid v1.4.0
+	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
-	github.com/jedib0t/go-pretty/v6 v6.5.3
+	github.com/jedib0t/go-pretty/v6 v6.5.4
 	github.com/jfrog/build-info-go v1.9.23
 	github.com/jfrog/gofrog v1.6.0
-	github.com/jfrog/jfrog-client-go v1.36.0
+	github.com/jfrog/jfrog-client-go v1.37.1
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c

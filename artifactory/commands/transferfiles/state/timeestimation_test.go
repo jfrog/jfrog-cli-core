@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/jfrog/build-info-go/utils"
+	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
@@ -41,9 +43,9 @@ func TestGetSpeed(t *testing.T) {
 	// Chunk 1: one of the files is checksum-deployed
 	chunkStatus1 := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
-			createFileUploadStatusResponse(repo1Key, 10*bytesInMB, false, api.Success),
-			createFileUploadStatusResponse(repo1Key, 15*bytesInMB, false, api.Success),
-			createFileUploadStatusResponse(repo1Key, 8*bytesInMB, true, api.Success),
+			createFileUploadStatusResponse(repo1Key, 10*rtServicesUtils.SizeMiB, false, api.Success),
+			createFileUploadStatusResponse(repo1Key, 15*rtServicesUtils.SizeMiB, false, api.Success),
+			createFileUploadStatusResponse(repo1Key, 8*rtServicesUtils.SizeMiB, true, api.Success),
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus1, 3, true, 10*milliSecsInSecond)
@@ -54,8 +56,8 @@ func TestGetSpeed(t *testing.T) {
 	// Chunk 2: the upload of one of the files failed and the files are not included in the repository's total size (includedInTotalSize == false)
 	chunkStatus2 := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
-			createFileUploadStatusResponse(repo1Key, 21.25*bytesInMB, false, api.Success),
-			createFileUploadStatusResponse(repo1Key, 6*bytesInMB, false, api.Fail),
+			createFileUploadStatusResponse(repo1Key, int64(21.25*float64(rtServicesUtils.SizeMiB)), false, api.Success),
+			createFileUploadStatusResponse(repo1Key, 6*rtServicesUtils.SizeMiB, false, api.Fail),
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus2, 2, false, 5*milliSecsInSecond)
@@ -85,7 +87,7 @@ func TestGetEstimatedRemainingTimeStringNotAvailableYet(t *testing.T) {
 	// Chunk 1: one of the files is checksum-deployed
 	chunkStatus1 := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
-			createFileUploadStatusResponse(repo1Key, 8*bytesInMB, true, api.Success),
+			createFileUploadStatusResponse(repo1Key, 8*rtServicesUtils.SizeMiB, true, api.Success),
 		},
 	}
 	assert.Equal(t, "Not available yet", timeEstMng.GetEstimatedRemainingTimeString())
@@ -119,8 +121,8 @@ func newDefaultTimeEstimationManager(t *testing.T, buildInfoRepos bool) *TimeEst
 	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, buildInfoRepos, true))
 	assert.NoError(t, stateManager.SetRepoState(repo2Key, 0, 0, buildInfoRepos, true))
 
-	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(0, 100*bytesInMB))
-	stateManager.OverallTransfer.TotalSizeBytes = 600 * bytesInMB
+	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(0, 100*rtServicesUtils.SizeMiB))
+	stateManager.OverallTransfer.TotalSizeBytes = 600 * rtServicesUtils.SizeMiB
 	return &TimeEstimationManager{stateManager: stateManager}
 }
 
@@ -149,7 +151,7 @@ func TestAddingToFullLastSpeedsSlice(t *testing.T) {
 // Adds a chunk with one non checksum-deployed file and calculates and returns the chunk speed.
 func addOneFileChunk(t *testing.T, timeEstMng *TimeEstimationManager, workingThreads, chunkDurationMilli, chunkSizeMb int) float64 {
 	chunkDuration := int64(chunkDurationMilli * milliSecsInSecond)
-	chunkSize := int64(chunkSizeMb * bytesInMB)
+	chunkSize := int64(chunkSizeMb) * rtServicesUtils.SizeMiB
 	chunkStatus := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
 			createFileUploadStatusResponse(repo1Key, chunkSize, false, api.Success),
@@ -174,9 +176,9 @@ func TestTransferredSizeInState(t *testing.T) {
 	// Add a chunk of repo1 with multiple successful files, which are included in total.
 	chunkStatus1 := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
-			createFileUploadStatusResponse(repo1Key, 10*bytesInMB, false, api.Success),
+			createFileUploadStatusResponse(repo1Key, 10*rtServicesUtils.SizeMiB, false, api.Success),
 			// Checksum-deploy should not affect the update size.
-			createFileUploadStatusResponse(repo1Key, 15*bytesInMB, true, api.Success),
+			createFileUploadStatusResponse(repo1Key, 15*rtServicesUtils.SizeMiB, true, api.Success),
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus1, 3, true, 10*milliSecsInSecond)
@@ -184,7 +186,7 @@ func TestTransferredSizeInState(t *testing.T) {
 	// Add another chunk of repo1 which is not included in total. Expected not to be included in update.
 	chunkStatus2 := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
-			createFileUploadStatusResponse(repo1Key, 21*bytesInMB, false, api.Success),
+			createFileUploadStatusResponse(repo1Key, 21*rtServicesUtils.SizeMiB, false, api.Success),
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus2, 3, false, 10*milliSecsInSecond)
@@ -195,8 +197,8 @@ func TestTransferredSizeInState(t *testing.T) {
 	// Add a chunk of repo2 which is included in total. The failed file should be ignored.
 	chunkStatus3 := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
-			createFileUploadStatusResponse(repo2Key, 13*bytesInMB, false, api.Success),
-			createFileUploadStatusResponse(repo2Key, 133*bytesInMB, false, api.Fail),
+			createFileUploadStatusResponse(repo2Key, 13*rtServicesUtils.SizeMiB, false, api.Success),
+			createFileUploadStatusResponse(repo2Key, 133*rtServicesUtils.SizeMiB, false, api.Fail),
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus3, 3, true, 10*milliSecsInSecond)
@@ -205,7 +207,7 @@ func TestTransferredSizeInState(t *testing.T) {
 	// Add one more chunk of repo2.
 	chunkStatus4 := api.ChunkStatus{
 		Files: []api.FileUploadStatusResponse{
-			createFileUploadStatusResponse(repo2Key, 9*bytesInMB, false, api.Success),
+			createFileUploadStatusResponse(repo2Key, 9*rtServicesUtils.SizeMiB, false, api.Success),
 		},
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus4, 3, true, 10*milliSecsInSecond)

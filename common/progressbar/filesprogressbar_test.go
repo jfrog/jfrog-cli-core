@@ -1,22 +1,19 @@
 package progressbar
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
+	"github.com/stretchr/testify/assert"
 )
+
+const terminalWidth = 100
 
 func TestBuildProgressDescription(t *testing.T) {
 	// Set an arbitrary terminal width
-	terminalWidth = 100
-	tests := getTestCases()
-	for _, test := range tests {
+	for _, test := range getTestCases() {
 		t.Run(test.name, func(t *testing.T) {
-			desc := buildProgressDescription(test.prefix, test.path, test.extraCharsLen)
-
-			// Validate result
-			if desc != test.expectedDesc {
-				t.Errorf("Expected value of: \"%s\", got: \"%s\".", test.expectedDesc, desc)
-			}
+			assert.Equal(t, test.expectedDesc, buildProgressDescription(test.prefix, test.path, terminalWidth, test.extraCharsLen))
 		})
 	}
 }

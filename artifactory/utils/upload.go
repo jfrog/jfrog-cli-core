@@ -15,4 +15,6 @@ type UploadConfiguration struct {
 	Threads               int
 	MinChecksumDeploySize int64
 	ExplodeArchive        bool
+	SplitCount            int
+	MinSplitSizeMB        int64
 }

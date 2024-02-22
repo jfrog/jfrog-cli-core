@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
@@ -32,6 +33,8 @@ const (
 	WHITE Color = iota
 	GREEN       = 1
 )
+
+var terminalWidth int
 
 type ProgressBarMng struct {
 	// A container of all external mpb bar objects to be displayed.
@@ -331,20 +334,17 @@ var ShouldInitProgressBar = func() (bool, error) {
 	if !log.IsStdErrTerminal() {
 		return false, err
 	}
-	err = setTerminalWidthVar()
+	err = setTerminalWidth()
 	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-var terminalWidth int
-
-// Get terminal dimensions
-func setTerminalWidthVar() error {
+func setTerminalWidth() error {
 	width, _, err := term.GetSize(int(os.Stderr.Fd()))
 	if err != nil {
-		return err
+		return errorutils.CheckError(err)
 	}
 	// -5 to avoid edges
 	terminalWidth = width - 5
@@ -352,4 +352,8 @@ func setTerminalWidthVar() error {
 		terminalWidth = 5
 	}
 	return err
+}
+
+func GetTerminalWidth() int {
+	return terminalWidth
 }

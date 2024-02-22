@@ -200,7 +200,7 @@ func (uc *UploadCommand) upload() (err error) {
 func getMinChecksumDeploySize() (int64, error) {
 	minChecksumDeploySize := os.Getenv("JFROG_CLI_MIN_CHECKSUM_DEPLOY_SIZE_KB")
 	if minChecksumDeploySize == "" {
-		return 10240, nil
+		return services.DefaultMinChecksumDeploy, nil
 	}
 	minSize, err := strconv.ParseInt(minChecksumDeploySize, 10, 64)
 	err = errorutils.CheckError(err)
@@ -218,6 +218,8 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bui
 	}
 	uploadParams.Deb = configuration.Deb
 	uploadParams.MinChecksumDeploy = configuration.MinChecksumDeploySize
+	uploadParams.MinSplitSize = configuration.MinSplitSizeMB * rtServicesUtils.SizeMiB
+	uploadParams.SplitCount = configuration.SplitCount
 	uploadParams.AddVcsProps = addVcsProps
 	uploadParams.BuildProps = buildProps
 	uploadParams.Archive = f.Archive

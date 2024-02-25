@@ -4,6 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -11,20 +15,12 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
 	serviceManagerRetriesPerRequest                  = 3
 	serviceManagerRetriesWaitPerRequestMilliSecs int = 1000
 	storageInfoRepoMissingError                      = "one or more of the requested repositories were not found"
-
-	bytesInKB int64 = 1024
-	bytesInMB       = 1024 * bytesInKB
-	bytesInGB       = 1024 * bytesInMB
-	bytesInTB       = 1024 * bytesInGB
 )
 
 var getRepoSummaryPollingTimeout = 10 * time.Minute
@@ -171,13 +167,13 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 	case "bytes":
 		sizeInBytes = sizeInUnit
 	case "KB":
-		sizeInBytes = sizeInUnit * float64(bytesInKB)
+		sizeInBytes = sizeInUnit * float64(utils.SizeKib)
 	case "MB":
-		sizeInBytes = sizeInUnit * float64(bytesInMB)
+		sizeInBytes = sizeInUnit * float64(utils.SizeMiB)
 	case "GB":
-		sizeInBytes = sizeInUnit * float64(bytesInGB)
+		sizeInBytes = sizeInUnit * float64(utils.SizeGiB)
 	case "TB":
-		sizeInBytes = sizeInUnit * float64(bytesInTB)
+		sizeInBytes = sizeInUnit * float64(utils.SizeTiB)
 	default:
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}
@@ -185,22 +181,22 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 }
 
 func ConvertIntToStorageSizeString(num int64) string {
-	if num > bytesInTB {
-		newNum := float64(num) / float64(bytesInTB)
+	if num > utils.SizeTiB {
+		newNum := float64(num) / float64(utils.SizeTiB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
 		return stringNum + "TB"
 	}
-	if num > bytesInGB {
-		newNum := float64(num) / float64(bytesInGB)
+	if num > utils.SizeGiB {
+		newNum := float64(num) / float64(utils.SizeGiB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
 		return stringNum + "GB"
 	}
-	if num > bytesInMB {
-		newNum := float64(num) / float64(bytesInMB)
+	if num > utils.SizeMiB {
+		newNum := float64(num) / float64(utils.SizeMiB)
 		stringNum := fmt.Sprintf("%.1f", newNum)
 		return stringNum + "MB"
 	}
-	newNum := float64(num) / float64(bytesInKB)
+	newNum := float64(num) / float64(utils.SizeKib)
 	stringNum := fmt.Sprintf("%.1f", newNum)
 	return stringNum + "KB"
 }

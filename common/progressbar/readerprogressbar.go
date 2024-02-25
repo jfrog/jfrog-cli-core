@@ -20,6 +20,10 @@ func (p *ReaderProgressBar) ActionWithProgress(reader io.Reader) (results io.Rea
 	return p.readWithProgress(reader)
 }
 
+func (p *ReaderProgressBar) SetProgress(progress int64) {
+	p.bar.SetCurrent(progress)
+}
+
 // Abort aborts a progress indicator. Called on both successful and unsuccessful operations
 func (p *ReaderProgressBar) Abort() {
 	close(p.incrChannel)

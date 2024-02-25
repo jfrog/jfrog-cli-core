@@ -76,7 +76,14 @@ func (rbd *ReleaseBundleDistributeCommand) Run() error {
 		Target:  rbd.pathMappingTarget,
 	}
 
-	return servicesManager.DistributeReleaseBundle(rbd.distributeBundlesParams, rbd.autoCreateRepo, pathMapping)
+	return servicesManager.DistributeReleaseBundle(services.ReleaseBundleDetails{
+		ReleaseBundleName:    rbd.distributeBundlesParams.Name,
+		ReleaseBundleVersion: rbd.distributeBundlesParams.Version,
+	}, services.DistributeReleaseBundleParams{
+		AutoCreateRepo:    rbd.autoCreateRepo,
+		DistributionRules: rbd.distributeBundlesParams.DistributionRules,
+		PathMappings:      []services.PathMapping{pathMapping},
+	})
 }
 
 func (rbd *ReleaseBundleDistributeCommand) ServerDetails() (*config.ServerDetails, error) {

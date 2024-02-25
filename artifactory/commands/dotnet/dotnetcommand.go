@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
+	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/io"
 	commonBuild "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -15,6 +16,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -27,6 +29,8 @@ Note that JFrog CLI does not restore dependencies during a 'dotnet test' command
 The initial error is:
 `
 	noRestoreFlag = "--no-restore"
+
+	nugetConfigFileName = "NuGet.config"
 )
 
 type DotnetCommand struct {
@@ -237,7 +241,7 @@ func (dc *DotnetCommand) prepareConfigFileIfNeeded() (cleanup func() error, err 
 		return fileutils.RemoveTempDir(tempDirPath)
 	}
 
-	configFile, err := InitNewConfig(tempDirPath, dc.repoName, dc.serverDetails, dc.useNugetV2)
+	configFile, err := InitNewConfig(tempDirPath, dc.repoName, "", dc.serverDetails, dc.useNugetV2)
 	if err == nil {
 		dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
@@ -263,10 +267,15 @@ func getFlagValueIfExists(cmdFlag string, argAndFlags []string) (string, error) 
 	return "", nil
 }
 
+// TODO ERAN fix test?
 // InitNewConfig is used when neither of the flags were provided, and we need to init our own config.
-func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails, useNugetV2 bool) (configFile *os.File, err error) {
-	// Initializing a new NuGet config file that NuGet will use into a temp file
-	configFile, err = os.CreateTemp(configDirPath, configFilePattern)
+func InitNewConfig(configDirPath, repoName, configFileName string, server *config.ServerDetails, useNugetV2 bool) (configFile *os.File, err error) {
+	// Initializing a new NuGet config file to be used by NuGet commands
+	if configFileName == "" {
+		configFile, err = os.CreateTemp(configDirPath, configFilePattern)
+	} else {
+		configFile, err = os.OpenFile(configFileName, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	}
 	if errorutils.CheckError(err) != nil {
 		return
 	}
@@ -325,6 +334,57 @@ func getSourceDetails(details *config.ServerDetails, repoName string, useNugetV2
 			user = auth.ExtractUsernameFromAccessToken(details.AccessToken)
 		}
 		password = details.AccessToken
+	}
+	return
+}
+
+// TODO ERAN add test + fix comments
+// Configures an Artifactory server as a dependencies resolution registry by creating a configfile that is passed by a flag to the 'install' command
+// dirPath is the directory in which we create the config file
+// toolType is the dependencies management tool we use: .NET or NuGet
+// canPassConfigFileDirectly tells us if we can pass the created config file directly with the flag --configfile. If not, in some cases, we must use
+func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, dirPath string, toolType dotnet.ToolchainType, canPassConfigFileDirectly bool) (installCommandArgs []string, clearResolutionServerFunc func() error, err error) {
+	log.Info(fmt.Sprintf("Resolving dependencies from '%s' from repo '%s'", serverDetails.Url, depsRepo))
+	var configFile *os.File
+	if canPassConfigFileDirectly {
+		// If the command we wish to run after configuring the integration with an Artifactory server allow passing a config file directly using -configfile / --configfile flag
+		// We create a config file with a random name and send its path to the command
+		configFile, err = InitNewConfig(dirPath, depsRepo, "", serverDetails, false)
+		if err != nil {
+			err = fmt.Errorf("failed while attempting to generate a configuration file for setting up an Artifactory as a resolution registry")
+			return
+		}
+		installCommandArgs = append(installCommandArgs, toolType.GetTypeFlagPrefix()+"configfile", configFile.Name())
+
+		clearResolutionServerFunc = func() error {
+			return errors.Join(err, os.Remove(configFile.Name()))
+		}
+	} else {
+		// If the command we wish to run after configuring the integration with an Artifactory server doesn't allow passing a config file directly using -configfile / --configfile flag
+		// We create a config file with the default expected name, NuGet.config, since some commands doesn't support any other convention or able to recognize this file with any other name
+
+		// If we already have NuGet.config in the directory we keep it in a temp dir before overriding it
+		var containerDir string
+		existingConfigFilePath := filepath.Join(dirPath, nugetConfigFileName)
+		if containerDir, err = utils.KeepFilesInTempDirIfExist([]string{existingConfigFilePath}); err != nil {
+			return
+		}
+
+		configFile, err = InitNewConfig(dirPath, depsRepo, nugetConfigFileName, serverDetails, false)
+		if err != nil {
+			err = fmt.Errorf("failed while attempting to generate a configuration file for setting up an Artifactory as a resolution registry")
+			return
+		}
+
+		clearResolutionServerFunc = func() error {
+			err = errors.Join(err, os.Remove(configFile.Name()))
+			if containerDir != "" {
+				oldConfigFilePath := filepath.Join(containerDir, nugetConfigFileName)
+				err = errors.Join(err, utils.CopyFile(dirPath, oldConfigFilePath))
+				err = errors.Join(err, utils.RemoveTempDir(containerDir))
+			}
+			return err
+		}
 	}
 	return
 }

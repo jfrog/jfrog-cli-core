@@ -470,7 +470,7 @@ func (configFile *ConfigFile) setDeployer(withSnapshot bool) error {
 			deployerRepos = []string{}
 		}
 		if withSnapshot {
-			configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for release artifacts deployment", deployerRepos)
+			configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", deployerRepos)
 			configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", deployerRepos)
 		} else {
 			configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", deployerRepos)
@@ -493,10 +493,10 @@ func (configFile *ConfigFile) setResolver(withSnapshot bool) error {
 			resolverRepos = []string{}
 		}
 		if withSnapshot {
-			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for release dependencies", resolverRepos)
+			configFile.setRepo(&configFile.Resolver.ReleaseRepo, "Set resolution repository for release dependencies", resolverRepos)
 			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", resolverRepos)
 		} else {
-			configFile.setRepo(&configFile.Resolver.Repo, "Set resolution repository for dependencies resolution", resolverRepos)
+			configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", resolverRepos)
 		}
 	}
 	return nil

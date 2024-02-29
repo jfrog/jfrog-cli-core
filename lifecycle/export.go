@@ -17,7 +17,6 @@ type ReleaseBundleExportCommand struct {
 	releaseBundleCmd
 	modifications          *services.Modifications
 	downloadConfigurations *utils2.DownloadConfiguration
-	dryRun                 bool
 }
 
 func (rbe *ReleaseBundleExportCommand) Run() (err error) {
@@ -62,6 +61,9 @@ func (rbe *ReleaseBundleExportCommand) downloadReleaseBundle(exportResponse *ser
 		SkipChecksum:    downloadConfiguration.SkipChecksum,
 	}
 	artifactoryServiceManager, err := createArtifactoryServiceManager(rbe.serverDetails)
+	if err != nil {
+		return
+	}
 	sum, err := artifactoryServiceManager.DownloadFilesWithSummary(downloadParams)
 	return sum.Close, err
 }

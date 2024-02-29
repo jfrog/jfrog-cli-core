@@ -100,11 +100,11 @@ func GetRepositoryTransferDir(repoKey string) (string, error) {
 }
 
 func getRepositoryHash(repoKey string) (string, error) {
-	checksumInfo, err := utils.CalcChecksums(strings.NewReader(repoKey), utils.SHA1)
+	checksums, err := utils.CalcChecksums(strings.NewReader(repoKey), utils.SHA1)
 	if err = errorutils.CheckError(err); err != nil {
 		return "", err
 	}
-	return checksumInfo[utils.SHA1], nil
+	return checksums[utils.SHA1], nil
 }
 
 func GetJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {

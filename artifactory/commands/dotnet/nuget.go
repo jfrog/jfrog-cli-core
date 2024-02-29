@@ -29,7 +29,7 @@ func DependencyTreeCmd() error {
 		return errorutils.CheckError(err)
 	}
 
-	sol, err := solution.Load(workspace, "", log.Logger)
+	sol, err := solution.Load(workspace, "", "", log.Logger)
 	if err != nil {
 		return err
 	}

@@ -346,6 +346,10 @@ func TestRemoveMavenConfig(t *testing.T) {
 }
 
 func TestMavenDepTreeManager_suspectCurationBlockedError(t *testing.T) {
+	errPrefix := "[ERROR] Failed to execute goal on project my-app: Could not resolve dependencies for project com.mycompany.app:my-app:jar:1.0-SNAPSHOT: Failed to " +
+		"collect dependencies at junit:junit:jar:3.8.1: Failed to read artifact descriptor for junit:junit:jar:3.8.1: " +
+		"The following artifacts could not be resolved: junit:junit:pom:3.8.1 (absent): Could not transfer artifact junit:junit:pom:3.8.1 " +
+		"from/to artifactory (http://test:8046/artifactory/api/curation/audit/maven-remote):"
 	tests := []struct {
 		name          string
 		wantMsgToUser string
@@ -354,33 +358,23 @@ func TestMavenDepTreeManager_suspectCurationBlockedError(t *testing.T) {
 		{
 			name:          "failed on 403",
 			wantMsgToUser: "Please verify pass-through enabled on the curated repos",
-			input: "ERROR] Failed to execute goal on project my-app: Could not resolve dependencies for project com.mycompany.app:my-app:jar:1.0-SNAPSHOT: Failed to " +
-				"collect dependencies at junit:junit:jar:3.8.1: Failed to read artifact descriptor for junit:junit:jar:3.8.1: " +
-				"The following artifacts could not be resolved: junit:junit:pom:3.8.1 (absent): Could not transfer artifact junit:junit:pom:3.8.1 " +
-				"from/to artifactory (http://test:8046/artifactory/api/curation/audit/maven-remote): status code: 403, reason phrase: Forbidden (403)",
+			input:         errPrefix + "status code: 403, reason phrase: Forbidden (403)",
 		},
 		{
 			name:          "failed on 500",
 			wantMsgToUser: "Please verify pass-through enabled on the curated repos",
-			input: "[ERROR] Failed to execute goal on project my-app: Could not resolve dependencies for project com.mycompany.app:my-app:jar:1.0-SNAPSHOT: " +
-				"Failed to collect dependencies at junit:junit:jar:3.8.1: Failed to read artifact descriptor for junit:junit:jar:3.8.1: The following artifacts" +
-				" could not be resolved: junit:junit:pom:3.8.1 (absent): Could not transfer artifact junit:junit:pom:3.8.1 from/to artifactory" +
-				" (http://test:8046/artifactory/api/curation/audit/virtual-to-smart): status code: 500, reason phrase: Internal Server Error (500)",
+			input:         errPrefix + " status code: 500, reason phrase: Internal Server Error (500)",
 		},
 		{
 			name:          "not 403 or 500",
 			wantMsgToUser: "",
-			input: "ERROR] Failed to execute goal on project my-app: Could not resolve dependencies for project com.mycompany.app:my-app:jar:1.0-SNAPSHOT: Failed to " +
-				"collect dependencies at junit:junit:jar:3.8.1: Failed to read artifact descriptor for junit:junit:jar:3.8.1: " +
-				"The following artifacts could not be resolved: junit:junit:pom:3.8.1 (absent): Could not transfer artifact junit:junit:pom:3.8.1 " +
-				"from/to artifactory (http://test:8046/artifactory/api/curation/audit/maven-remote): status code: 400, reason phrase: Forbidden (400)",
+			input:         errPrefix + " status code: 400, reason phrase: Forbidden (400)",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mdt := &MavenDepTreeManager{}
-			msg := mdt.suspectCurationBlockedError(tt.input)
-			assert.Contains(t, tt.wantMsgToUser, msg)
+			assert.Contains(t, tt.wantMsgToUser, mdt.suspectCurationBlockedError(tt.input))
 		})
 	}
 }

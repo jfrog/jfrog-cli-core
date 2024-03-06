@@ -193,7 +193,7 @@ func (nc *NpmCommand) setJsonOutput() error {
 		return err
 	}
 
-	// In case of --json=<not boolean>, the value of json is set to 'true', but the result from the command is not 'true'
+	// In case of --json=<not boolean>, the value of json is set to 'true', but the results from the command is not 'true'
 	nc.jsonOutput = jsonOutput != "false"
 	return nil
 }

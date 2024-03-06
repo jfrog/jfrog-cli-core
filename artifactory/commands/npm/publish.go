@@ -50,14 +50,14 @@ type NpmPublishCommandArgs struct {
 type NpmPublishCommand struct {
 	configFilePath  string
 	commandName     string
-	result          *commandsutils.Result
+	results         []*commandsutils.Result
 	detailedSummary bool
 	npmVersion      *version.Version
 	*NpmPublishCommandArgs
 }
 
 func NewNpmPublishCommand() *NpmPublishCommand {
-	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish", result: new(commandsutils.Result)}
+	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish", results: []*commandsutils.Result{}}
 }
 
 func NewNpmPublishCommandArgs() *NpmPublishCommandArgs {
@@ -97,8 +97,8 @@ func (npc *NpmPublishCommand) SetScanOutputFormat(format format.OutputFormat) *N
 	return npc
 }
 
-func (npc *NpmPublishCommand) Result() *commandsutils.Result {
-	return npc.result
+func (npc *NpmPublishCommand) Result() []*commandsutils.Result {
+	return npc.results
 }
 
 func (npc *NpmPublishCommand) IsDetailedSummary() bool {
@@ -219,6 +219,7 @@ func (npc *NpmPublishCommand) CommandName() string {
 
 func (npc *NpmPublishCommand) preparePrerequisites() error {
 	npc.packedFilesPath = make([]string, 0)
+	npc.results = make([]*commandsutils.Result, 0)
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -285,7 +286,7 @@ func (npc *NpmPublishCommand) getTarballDir() (string, error) {
 }
 
 func (npc *NpmPublishCommand) publish() (err error) {
-	for deployCount, packedFilePath := range npc.packedFilesPath {
+	for index, packedFilePath := range npc.packedFilesPath {
 		log.Debug("Deploying npm package.")
 		if err = npc.readPackageInfoFromTarball(packedFilePath); err != nil {
 			return
@@ -298,14 +299,16 @@ func (npc *NpmPublishCommand) publish() (err error) {
 				Pattern(packedFilePath).
 				Target(npc.repo + "/").
 				BuildSpec()
-			err = commandsutils.ConditionalUploadScanFunc(npc.serverDetails, fileSpec, 1, npc.scanOutputFormat)
+			if err = commandsutils.ConditionalUploadScanFunc(npc.serverDetails, fileSpec, 1, npc.scanOutputFormat); err != nil {
+				return
+			}
 		}
-		err = errors.Join(err, npc.doDeploy(target, npc.serverDetails, packedFilePath, deployCount))
+		err = errors.Join(err, npc.doDeploy(target, npc.serverDetails, packedFilePath, index))
 	}
 	return
 }
 
-func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails, packedFilePath string, deployCount int) error {
+func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails, packedFilePath string, uploadCount int) error {
 	servicesManager, err := utils.CreateServiceManager(artDetails, -1, 0, false)
 	if err != nil {
 		return err
@@ -346,9 +349,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			}
 		}
 		if npc.detailedSummary {
-			npc.result.SetReader(summary.TransferDetailsReader)
-			npc.result.SetFailCount(totalFailed)
-			npc.result.SetSuccessCount(summary.TotalSucceeded)
+			res := &commandsutils.Result{}
+			res.SetReader(summary.TransferDetailsReader)
+			res.SetFailCount(totalFailed)
+			res.SetSuccessCount(summary.TotalSucceeded)
+			npc.results = append(npc.results, res)
 		} else {
 			err = summary.TransferDetailsReader.Close()
 			if err != nil {

@@ -25,11 +25,7 @@ func TestGetPackageFileNameFromOutput(t *testing.T) {
 				assert.NoError(t, err)
 				return
 			}
-			actualFilename, err := getPackageFileNameFromOutput(string(output))
-			if err != nil {
-				assert.NoError(t, err)
-				return
-			}
+			actualFilename := getPackageFileNameFromOutput(string(output))
 			assert.Equal(t, test.expectedPackageFilename, actualFilename)
 		})
 	}

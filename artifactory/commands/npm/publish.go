@@ -285,7 +285,7 @@ func (npc *NpmPublishCommand) getTarballDir() (string, error) {
 }
 
 func (npc *NpmPublishCommand) publish() (err error) {
-	for index, packedFilePath := range npc.packedFilesPath {
+	for _, packedFilePath := range npc.packedFilesPath {
 		log.Debug("Deploying npm package.")
 		if err = npc.readPackageInfoFromTarball(packedFilePath); err != nil {
 			return
@@ -302,12 +302,12 @@ func (npc *NpmPublishCommand) publish() (err error) {
 				return
 			}
 		}
-		err = errors.Join(err, npc.doDeploy(target, npc.serverDetails, packedFilePath, index))
+		err = errors.Join(err, npc.doDeploy(target, npc.serverDetails, packedFilePath))
 	}
 	return
 }
 
-func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails, packedFilePath string, uploadCount int) error {
+func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails, packedFilePath string) error {
 	servicesManager, err := utils.CreateServiceManager(artDetails, -1, 0, false)
 	if err != nil {
 		return err

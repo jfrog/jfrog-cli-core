@@ -9,10 +9,12 @@ import (
 
 func TestReadPackageInfoFromTarball(t *testing.T) {
 	npmPublish := NewNpmPublishCommand()
-	npmPublish.packedFilePath = filepath.Join("..", "testdata", "npm", "npm-example-0.0.3.tgz")
-	err := npmPublish.readPackageInfoFromTarball()
-	assert.NoError(t, err)
+	for index, file := range npmPublish.packedFilesPath {
+		npmPublish.packedFilesPath[index] = filepath.Join("..", "testdata", "npm", "npm-example-0.0.3.tgz")
+		err := npmPublish.readPackageInfoFromTarball(file)
+		assert.NoError(t, err)
 
-	assert.Equal(t, "npm-example", npmPublish.packageInfo.Name)
-	assert.Equal(t, "0.0.3", npmPublish.packageInfo.Version)
+		assert.Equal(t, "npm-example", npmPublish.packageInfo.Name)
+		assert.Equal(t, "0.0.3", npmPublish.packageInfo.Version)
+	}
 }

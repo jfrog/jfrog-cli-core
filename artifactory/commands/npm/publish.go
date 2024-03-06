@@ -50,14 +50,14 @@ type NpmPublishCommandArgs struct {
 type NpmPublishCommand struct {
 	configFilePath  string
 	commandName     string
-	results         []*commandsutils.Result
+	result          *commandsutils.Result
 	detailedSummary bool
 	npmVersion      *version.Version
 	*NpmPublishCommandArgs
 }
 
 func NewNpmPublishCommand() *NpmPublishCommand {
-	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish", results: []*commandsutils.Result{}}
+	return &NpmPublishCommand{NpmPublishCommandArgs: NewNpmPublishCommandArgs(), commandName: "rt_npm_publish", result: new(commandsutils.Result)}
 }
 
 func NewNpmPublishCommandArgs() *NpmPublishCommandArgs {
@@ -97,8 +97,8 @@ func (npc *NpmPublishCommand) SetScanOutputFormat(format format.OutputFormat) *N
 	return npc
 }
 
-func (npc *NpmPublishCommand) Result() []*commandsutils.Result {
-	return npc.results
+func (npc *NpmPublishCommand) Result() *commandsutils.Result {
+	return npc.result
 }
 
 func (npc *NpmPublishCommand) IsDetailedSummary() bool {
@@ -219,7 +219,6 @@ func (npc *NpmPublishCommand) CommandName() string {
 
 func (npc *NpmPublishCommand) preparePrerequisites() error {
 	npc.packedFilesPath = make([]string, 0)
-	npc.results = make([]*commandsutils.Result, 0)
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -349,11 +348,15 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			}
 		}
 		if npc.detailedSummary {
-			res := &commandsutils.Result{}
-			res.SetReader(summary.TransferDetailsReader)
-			res.SetFailCount(totalFailed)
-			res.SetSuccessCount(summary.TotalSucceeded)
-			npc.results = append(npc.results, res)
+			npc.result.SetFailCount(npc.result.FailCount() + totalFailed)
+			npc.result.SetSuccessCount(npc.result.SuccessCount() + summary.TotalSucceeded)
+			if npc.result.Reader() == nil {
+				npc.result.SetReader(summary.TransferDetailsReader)
+			} else {
+				if err = npc.appendReader(summary); err != nil {
+					return err
+				}
+			}
 		} else {
 			err = summary.TransferDetailsReader.Close()
 			if err != nil {
@@ -371,6 +374,16 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	if totalFailed > 0 {
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
+	return nil
+}
+
+func (npc *NpmPublishCommand) appendReader(summary *specutils.OperationSummary) error {
+	readersSlice := []*content.ContentReader{npc.result.Reader(), summary.TransferDetailsReader}
+	reader, err := content.MergeReaders(readersSlice, content.DefaultKey)
+	if err != nil {
+		return err
+	}
+	npc.result.SetReader(reader)
 	return nil
 }
 

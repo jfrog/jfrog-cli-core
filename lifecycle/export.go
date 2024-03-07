@@ -1,7 +1,6 @@
 package lifecycle
 
 import (
-	"encoding/json"
 	artUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -10,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/lifecycle/services"
-	utils2 "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
@@ -43,11 +41,6 @@ func (rbe *ReleaseBundleExportCommand) Run() (err error) {
 		return
 	}
 	log.Info("Successfully Downloaded Release Bundle archive")
-	content, err := json.Marshal(exportResponse)
-	if err != nil {
-		return err
-	}
-	log.Output(utils2.IndentJson(content))
 	return
 }
 

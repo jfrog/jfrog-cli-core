@@ -11,14 +11,15 @@ import (
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/lifecycle/services"
 	utils2 "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 )
 
 type ReleaseBundleExportCommand struct {
 	releaseBundleCmd
-	modifications          *services.Modifications
-	downloadConfigurations *artUtils.DownloadConfiguration
+	modifications          services.Modifications
+	downloadConfigurations artUtils.DownloadConfiguration
 }
 
 func (rbe *ReleaseBundleExportCommand) Run() (err error) {
@@ -27,24 +28,18 @@ func (rbe *ReleaseBundleExportCommand) Run() (err error) {
 	}
 	servicesManager, rbDetails, queryParams, err := rbe.getPrerequisites()
 	if err != nil {
-		log.Debug("Failed getting prerequisites for exporting command, error: ", err.Error())
-		return
+		return errorutils.CheckErrorf("Failed getting prerequisites for exporting command, error: '%s'", err.Error())
 	}
 	// Start the Export process and wait for completion
 	log.Info("Exporting Release Bundle archive...")
-	releaseBundleExportParams := NewReleaseBundleExportParams(rbDetails, *rbe.modifications)
-	exportResponse, err := servicesManager.ExportReleaseBundle(releaseBundleExportParams, queryParams)
+	exportResponse, err := servicesManager.ExportReleaseBundle(rbDetails, rbe.modifications, queryParams)
 	if err != nil {
-		log.Debug("Failed exporting release bundle, error: ", err.Error())
-		return
+		return errorutils.CheckErrorf("Failed exporting release bundle, error: '%s'", err.Error())
 	}
 	// Download the exported bundle
 	log.Debug("Downloading the exported bundle...")
-	cleanUp, err := rbe.downloadReleaseBundle(exportResponse, rbe.downloadConfigurations)
-	defer func() {
-		err = cleanUp()
-	}()
-	if err != nil {
+	_, failed, err := rbe.downloadReleaseBundle(exportResponse, rbe.downloadConfigurations)
+	if err != nil || failed > 0 {
 		return
 	}
 	log.Info("Successfully Downloaded Release Bundle archive")
@@ -57,35 +52,21 @@ func (rbe *ReleaseBundleExportCommand) Run() (err error) {
 }
 
 // Download the exported release bundle using artifactory service manager
-func (rbe *ReleaseBundleExportCommand) downloadReleaseBundle(exportResponse services.ReleaseBundleExportedStatusResponse, downloadConfiguration *artUtils.DownloadConfiguration) (cleanUp func() error, err error) {
+func (rbe *ReleaseBundleExportCommand) downloadReleaseBundle(exportResponse services.ReleaseBundleExportedStatusResponse, downloadConfiguration artUtils.DownloadConfiguration) (downloaded int, failed int, err error) {
 	downloadParams := artServices.DownloadParams{
 		CommonParams: &utils.CommonParams{
 			Pattern: strings.TrimPrefix(exportResponse.RelativeUrl, "/"),
 		},
-		Symlink:         downloadConfiguration.Symlink,
-		ValidateSymlink: downloadConfiguration.ValidateSymlink,
-		MinSplitSize:    downloadConfiguration.MinSplitSize,
-		SplitCount:      downloadConfiguration.SplitCount,
-		SkipChecksum:    downloadConfiguration.SkipChecksum,
+		MinSplitSize: downloadConfiguration.MinSplitSize,
+		SplitCount:   downloadConfiguration.SplitCount,
 	}
 	artifactoryServiceManager, err := createArtifactoryServiceManager(rbe.serverDetails)
 	if err != nil {
 		return
 	}
-	sum, err := artifactoryServiceManager.DownloadFilesWithSummary(downloadParams)
-	return sum.Close, err
-}
+	return artifactoryServiceManager.DownloadFiles(downloadParams)
 
-func NewReleaseBundleExportParams(details services.ReleaseBundleDetails, modifications services.Modifications) (rbExportParams *services.ReleaseBundleExportParams) {
-	return &services.ReleaseBundleExportParams{
-		ReleaseBundleDetails: services.ReleaseBundleDetails{
-			ReleaseBundleName:    details.ReleaseBundleName,
-			ReleaseBundleVersion: details.ReleaseBundleVersion,
-		},
-		Modifications: modifications,
-	}
 }
-
 func (rbe *ReleaseBundleExportCommand) ServerDetails() (*config.ServerDetails, error) {
 	return rbe.serverDetails, nil
 }
@@ -103,7 +84,7 @@ func (rbe *ReleaseBundleExportCommand) SetServerDetails(serverDetails *config.Se
 	return rbe
 }
 
-func (rbe *ReleaseBundleExportCommand) SetReleaseBundleExportModifications(modifications *services.Modifications) *ReleaseBundleExportCommand {
+func (rbe *ReleaseBundleExportCommand) SetReleaseBundleExportModifications(modifications services.Modifications) *ReleaseBundleExportCommand {
 	rbe.modifications = modifications
 	return rbe
 }
@@ -122,7 +103,7 @@ func (rbe *ReleaseBundleExportCommand) SetProject(project string) *ReleaseBundle
 	return rbe
 }
 
-func (rbe *ReleaseBundleExportCommand) SetDownloadConfiguration(downloadConfig *artUtils.DownloadConfiguration) *ReleaseBundleExportCommand {
+func (rbe *ReleaseBundleExportCommand) SetDownloadConfiguration(downloadConfig artUtils.DownloadConfiguration) *ReleaseBundleExportCommand {
 	rbe.downloadConfigurations = downloadConfig
 	return rbe
 }

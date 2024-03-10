@@ -84,17 +84,17 @@ func ConfigPoetryRepo(url, username, password, configRepoName string) error {
 	if err = addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), configRepoName, url); err != nil {
 		return err
 	}
-	return poetryUpdate(err)
+	return poetryUpdate()
 }
 
-func poetryUpdate(err error) error {
+func poetryUpdate() (err error) {
 	log.Info("Running Poetry update")
 	cmd := io.NewCommand("poetry", "update", []string{"--verbose"})
 	err = gofrogcmd.RunCmd(cmd)
 	if err != nil {
 		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
 	}
-	return nil
+	return
 }
 
 func runPoetryConfigCommand(args []string, maskArgs bool) error {

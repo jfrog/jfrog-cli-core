@@ -18,6 +18,7 @@ type ReleaseBundleExportCommand struct {
 	releaseBundleCmd
 	modifications          services.Modifications
 	downloadConfigurations artUtils.DownloadConfiguration
+	targetPath             string
 }
 
 func (rbe *ReleaseBundleExportCommand) Run() (err error) {
@@ -49,6 +50,7 @@ func (rbe *ReleaseBundleExportCommand) downloadReleaseBundle(exportResponse serv
 	downloadParams := artServices.DownloadParams{
 		CommonParams: &utils.CommonParams{
 			Pattern: strings.TrimPrefix(exportResponse.RelativeUrl, "/"),
+			Target:  rbe.targetPath,
 		},
 		MinSplitSize: downloadConfiguration.MinSplitSize,
 		SplitCount:   downloadConfiguration.SplitCount,
@@ -98,6 +100,14 @@ func (rbe *ReleaseBundleExportCommand) SetProject(project string) *ReleaseBundle
 
 func (rbe *ReleaseBundleExportCommand) SetDownloadConfiguration(downloadConfig artUtils.DownloadConfiguration) *ReleaseBundleExportCommand {
 	rbe.downloadConfigurations = downloadConfig
+	return rbe
+}
+
+func (rbe *ReleaseBundleExportCommand) SetTargetPath(target string) *ReleaseBundleExportCommand {
+	if target == "" || !strings.HasSuffix(target, "/") {
+		target += "/"
+	}
+	rbe.targetPath = target
 	return rbe
 }
 

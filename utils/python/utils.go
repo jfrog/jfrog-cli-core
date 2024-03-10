@@ -89,7 +89,7 @@ func ConfigPoetryRepo(url, username, password, configRepoName string) error {
 
 func poetryUpdate() (err error) {
 	log.Info("Running Poetry update")
-	cmd := io.NewCommand("poetry", "update", []string{"--verbose"})
+	cmd := io.NewCommand("poetry", "update", []string{})
 	err = gofrogcmd.RunCmd(cmd)
 	if err != nil {
 		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())

@@ -38,7 +38,7 @@ type NpmPublishCommandArgs struct {
 	executablePath         string
 	workingDirectory       string
 	collectBuildInfo       bool
-	packedFilesPath        []string
+	packedFilePaths        []string
 	packageInfo            *biutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
@@ -173,11 +173,11 @@ func (npc *NpmPublishCommand) Run() (err error) {
 			return err
 		}
 		// We should delete the tarball we created
-		return deleteCreatedTarballAndError(npc.packedFilesPath, err)
+		return deleteCreatedTarballAndError(npc.packedFilePaths, err)
 	}
 
 	if !npc.tarballProvided {
-		if err := deleteCreatedTarball(npc.packedFilesPath); err != nil {
+		if err := deleteCreatedTarball(npc.packedFilePaths); err != nil {
 			return err
 		}
 	}
@@ -218,7 +218,7 @@ func (npc *NpmPublishCommand) CommandName() string {
 }
 
 func (npc *NpmPublishCommand) preparePrerequisites() error {
-	npc.packedFilesPath = make([]string, 0)
+	npc.packedFilePaths = make([]string, 0)
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -263,9 +263,8 @@ func (npc *NpmPublishCommand) pack() error {
 		return err
 	}
 
-	for index, packageFileName := range packedFileNames {
-		npc.packedFilesPath = append(npc.packedFilesPath, filepath.Join(tarballDir, packageFileName))
-		log.Debug("Created npm package at", npc.packedFilesPath[index])
+	for _, packageFileName := range packedFileNames {
+		npc.packedFilePaths = append(npc.packedFilePaths, filepath.Join(tarballDir, packageFileName))
 	}
 
 	return nil
@@ -285,7 +284,7 @@ func (npc *NpmPublishCommand) getTarballDir() (string, error) {
 }
 
 func (npc *NpmPublishCommand) publish() (err error) {
-	for _, packedFilePath := range npc.packedFilesPath {
+	for _, packedFilePath := range npc.packedFilePaths {
 		log.Debug("Deploying npm package.")
 		if err = npc.readPackageInfoFromTarball(packedFilePath); err != nil {
 			return
@@ -348,18 +347,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			}
 		}
 		if npc.detailedSummary {
-			npc.result.SetFailCount(npc.result.FailCount() + totalFailed)
-			npc.result.SetSuccessCount(npc.result.SuccessCount() + summary.TotalSucceeded)
-			if npc.result.Reader() == nil {
-				npc.result.SetReader(summary.TransferDetailsReader)
-			} else {
-				if err = npc.appendReader(summary); err != nil {
-					return err
-				}
+			if err = npc.setDetailedSummary(summary); err != nil {
+				return err
 			}
 		} else {
-			err = summary.TransferDetailsReader.Close()
-			if err != nil {
+			if err = summary.TransferDetailsReader.Close(); err != nil {
 				return err
 			}
 		}
@@ -375,6 +367,19 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
 	return nil
+}
+
+func (npc *NpmPublishCommand) setDetailedSummary(summary *specutils.OperationSummary) (err error) {
+	npc.result.SetFailCount(npc.result.FailCount() + summary.TotalFailed)
+	npc.result.SetSuccessCount(npc.result.SuccessCount() + summary.TotalSucceeded)
+	if npc.result.Reader() == nil {
+		npc.result.SetReader(summary.TransferDetailsReader)
+	} else {
+		if err = npc.appendReader(summary); err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (npc *NpmPublishCommand) appendReader(summary *specutils.OperationSummary) error {
@@ -421,7 +426,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 }
 
 func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) (err error) {
-	log.Debug("Extracting info from npm package:", npc.packedFilesPath)
+	log.Debug("Extracting info from npm package:", npc.packedFilePaths)
 	tarball, err := os.Open(packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -459,11 +464,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) 
 }
 
 func deleteCreatedTarballAndError(packedFilesPath []string, currentError error) error {
-	if err := deleteCreatedTarball(packedFilesPath); err != nil {
-		errorText := fmt.Sprintf("Two errors occurred: \n%s \n%s", currentError, err)
-		return errorutils.CheckErrorf(errorText)
-	}
-	return currentError
+	return errors.Join(currentError, deleteCreatedTarball(packedFilesPath))
 }
 
 func deleteCreatedTarball(packedFilesPath []string) error {

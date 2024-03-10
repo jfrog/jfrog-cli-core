@@ -81,7 +81,20 @@ func ConfigPoetryRepo(url, username, password, configRepoName string) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	return addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), configRepoName, url)
+	if err = addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), configRepoName, url); err != nil {
+		return err
+	}
+	return poetryUpdate(err)
+}
+
+func poetryUpdate(err error) error {
+	log.Info("Running Poetry update")
+	cmd := io.NewCommand("poetry", "update", []string{"--verbose"})
+	err = gofrogcmd.RunCmd(cmd)
+	if err != nil {
+		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
+	}
+	return nil
 }
 
 func runPoetryConfigCommand(args []string, maskArgs bool) error {
@@ -113,11 +126,5 @@ func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {
 		return errorutils.CheckErrorf("Failed to add tool.poetry.source to pyproject.toml: %s", err.Error())
 	}
 	log.Info(fmt.Sprintf("Added tool.poetry.source name:%q url:%q", poetryRepoName, repoUrl))
-	log.Info("Running Poetry update")
-	cmd := io.NewCommand("poetry", "update", []string{})
-	err = gofrogcmd.RunCmd(cmd)
-	if err != nil {
-		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
-	}
 	return err
 }

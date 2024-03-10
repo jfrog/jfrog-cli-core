@@ -87,11 +87,12 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Pnpm: {
-		indicators:             []string{"pnpm-lock.yaml"},
-		exclude:                []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptors:     []string{"package.json"},
-		packageVersionOperator: "@",
-		applicabilityScannable: true,
+		indicators:                 []string{"pnpm-lock.yaml"},
+		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptors:         []string{"package.json"},
+		packageVersionOperator:     "@",
+		packageInstallationCommand: "update", // TODO ERAN check if any test needs to be updated following this change
+		applicabilityScannable:     true,
 	},
 	Yarn: {
 		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"},

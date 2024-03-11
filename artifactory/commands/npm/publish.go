@@ -173,7 +173,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 			return err
 		}
 		// We should delete the tarball we created
-		return deleteCreatedTarballAndError(npc.packedFilePaths, err)
+		return errors.Join(err, deleteCreatedTarball(npc.packedFilePaths))
 	}
 
 	if !npc.tarballProvided {
@@ -461,10 +461,6 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) 
 			return err
 		}
 	}
-}
-
-func deleteCreatedTarballAndError(packedFilesPath []string, currentError error) error {
-	return errors.Join(currentError, deleteCreatedTarball(packedFilesPath))
 }
 
 func deleteCreatedTarball(packedFilesPath []string) error {

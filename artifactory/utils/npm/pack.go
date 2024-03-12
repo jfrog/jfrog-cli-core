@@ -8,13 +8,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-func Pack(npmFlags []string, executablePath string) (string, error) {
+func Pack(npmFlags []string, executablePath string) ([]string, error) {
 	configListCmdConfig := createPackCmdConfig(executablePath, npmFlags)
 	output, err := gofrogcmd.RunCmdOutput(configListCmdConfig)
 	if err != nil {
-		return "", errorutils.CheckError(err)
+		return []string{}, errorutils.CheckError(err)
 	}
-	return getPackageFileNameFromOutput(output)
+	return getPackageFileNameFromOutput(output), nil
 }
 
 func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.NpmConfig {
@@ -27,8 +27,7 @@ func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.N
 	}
 }
 
-func getPackageFileNameFromOutput(output string) (string, error) {
+func getPackageFileNameFromOutput(output string) []string {
 	output = strings.TrimSpace(output)
-	lines := strings.Split(output, "\n")
-	return strings.TrimSpace(lines[len(lines)-1]), nil
+	return strings.Split(output, "\n")
 }

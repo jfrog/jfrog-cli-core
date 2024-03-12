@@ -48,8 +48,6 @@ type TechData struct {
 	exclude []string
 	// Whether this technology is supported by the 'jf ci-setup' command.
 	ciSetupSupport bool
-	// Whether Contextual Analysis supported in this technology.
-	applicabilityScannable bool
 	// The files that handle the project's dependencies.
 	packageDescriptors []string
 	// Formal name of the technology
@@ -64,17 +62,15 @@ type TechData struct {
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		indicators:             []string{"pom.xml"},
-		ciSetupSupport:         true,
-		packageDescriptors:     []string{"pom.xml"},
-		execCommand:            "mvn",
-		applicabilityScannable: true,
+		indicators:         []string{"pom.xml"},
+		ciSetupSupport:     true,
+		packageDescriptors: []string{"pom.xml"},
+		execCommand:        "mvn",
 	},
 	Gradle: {
-		indicators:             []string{"build.gradle", "build.gradle.kts"},
-		ciSetupSupport:         true,
-		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
-		applicabilityScannable: true,
+		indicators:         []string{"build.gradle", "build.gradle.kts"},
+		ciSetupSupport:     true,
+		packageDescriptors: []string{"build.gradle", "build.gradle.kts"},
 	},
 	Npm: {
 		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
@@ -84,21 +80,18 @@ var technologiesData = map[Technology]TechData{
 		formal:                     string(Npm),
 		packageVersionOperator:     "@",
 		packageInstallationCommand: "install",
-		applicabilityScannable:     true,
 	},
 	Pnpm: {
 		indicators:             []string{"pnpm-lock.yaml"},
 		exclude:                []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
-		applicabilityScannable: true,
 	},
 	Yarn: {
 		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"},
 		exclude:                []string{"pnpm-lock.yaml"},
 		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
-		applicabilityScannable: true,
 	},
 	Go: {
 		indicators:                 []string{"go.mod"},
@@ -107,11 +100,10 @@ var technologiesData = map[Technology]TechData{
 		packageInstallationCommand: "get",
 	},
 	Pip: {
-		packageType:            Pypi,
-		indicators:             []string{"setup.py", "requirements.txt"},
-		packageDescriptors:     []string{"setup.py", "requirements.txt"},
-		exclude:                []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
-		applicabilityScannable: true,
+		packageType:        Pypi,
+		indicators:         []string{"setup.py", "requirements.txt"},
+		packageDescriptors: []string{"setup.py", "requirements.txt"},
+		exclude:            []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 	},
 	Pipenv: {
 		packageType:                Pypi,
@@ -119,7 +111,6 @@ var technologiesData = map[Technology]TechData{
 		packageDescriptors:         []string{"Pipfile"},
 		packageVersionOperator:     "==",
 		packageInstallationCommand: "install",
-		applicabilityScannable:     true,
 	},
 	Poetry: {
 		packageType:                Pypi,
@@ -127,7 +118,6 @@ var technologiesData = map[Technology]TechData{
 		packageDescriptors:         []string{"pyproject.toml"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
-		applicabilityScannable:     true,
 	},
 	Nuget: {
 		indicators:         []string{".sln", ".csproj"},
@@ -185,10 +175,6 @@ func (tech Technology) GetPackageVersionOperator() string {
 
 func (tech Technology) GetPackageInstallationCommand() string {
 	return technologiesData[tech].packageInstallationCommand
-}
-
-func (tech Technology) ApplicabilityScannable() bool {
-	return technologiesData[tech].applicabilityScannable
 }
 
 func DetectedTechnologiesList() (technologies []string) {
@@ -476,13 +462,4 @@ func GetAllTechnologiesList() (technologies []Technology) {
 		technologies = append(technologies, tech)
 	}
 	return
-}
-
-func ContainsApplicabilityScannableTech(technologies []Technology) bool {
-	for _, technology := range technologies {
-		if technology.ApplicabilityScannable() {
-			return true
-		}
-	}
-	return false
 }

@@ -46,6 +46,7 @@ func TestNpmPackWorkspaces(t *testing.T) {
 func TestNpmPack(t *testing.T) {
 
 	_, executablePath, err := biutils.GetNpmVersionAndExecPath(nil)
+	assert.NoError(t, err)
 	tmpDir, createTempDirCallback := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer createTempDirCallback()
 	npmProjectPath := filepath.Join("..", "..", "..", "tests", "testdata", "npm-workspaces")

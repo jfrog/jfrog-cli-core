@@ -103,7 +103,7 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 }
 
 func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, err := python.GetPypiRepoUrl(pc.serverDetails, pc.repository)
+	rtUrl, err := python.GetPypiRepoUrl(pc.serverDetails, pc.repository, false)
 	if err != nil {
 		return err
 	}

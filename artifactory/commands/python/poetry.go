@@ -129,7 +129,7 @@ func (pc *PoetryCommand) SetCommandName(commandName string) *PoetryCommand {
 }
 
 func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, username, password, err := python.GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository)
+	rtUrl, username, password, err := python.GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository, false)
 	if err != nil {
 		return err
 	}

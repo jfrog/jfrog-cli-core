@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/stretchr/testify/require"
 	"path/filepath"
 	"testing"
 
@@ -30,4 +32,33 @@ func initPoetryTest(t *testing.T) (string, func()) {
 	assert.NoError(t, err)
 	poetryProjectPath, cleanUp := tests.CreateTestWorkspace(t, testAbs)
 	return poetryProjectPath, cleanUp
+}
+
+func TestGetPypiRepoUrlWithCredentials(t *testing.T) {
+	tests := []struct {
+		name        string
+		curationCmd bool
+	}{
+		{
+			name:        "test curation command true",
+			curationCmd: true,
+		},
+		{
+			name:        "test curation command false",
+			curationCmd: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			url, _, _, err := GetPypiRepoUrlWithCredentials(&config.ServerDetails{}, "test", tt.curationCmd)
+			require.NoError(t, err)
+			if tt.curationCmd {
+				assert.Contains(t, url.Path, "api/curation/audit")
+			} else {
+				assert.NotContains(t, url.Path, "api/curation/audit")
+
+			}
+		})
+	}
 }

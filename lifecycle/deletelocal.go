@@ -108,7 +108,7 @@ func (rbd *ReleaseBundleDeleteCommand) deletePromotionsOnly(servicesManager *lif
 	if success == 0 && fail == 0 {
 		log.Info(fmt.Sprintf("No promotions were found for environment '%s'", rbd.environment))
 	} else {
-		log.Info(fmt.Sprintf("Promotions deleted successfuly: %d, failed: %d", success, fail))
+		log.Info(fmt.Sprintf("Promotions deleted successfully: %d, failed: %d", success, fail))
 	}
 
 	return err

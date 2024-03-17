@@ -14,7 +14,6 @@ type releaseBundleCmd struct {
 	serverDetails        *config.ServerDetails
 	releaseBundleName    string
 	releaseBundleVersion string
-	signingKeyName       string
 	sync                 bool
 	rbProjectKey         string
 }

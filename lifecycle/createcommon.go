@@ -6,6 +6,7 @@ import (
 
 type ReleaseBundleCreateCommand struct {
 	releaseBundleCmd
+	signingKeyName         string
 	buildsSpecPath         string
 	releaseBundlesSpecPath string
 }

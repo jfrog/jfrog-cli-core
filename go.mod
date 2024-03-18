@@ -96,7 +96,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/eyaldelarea/jfrog-client-go v1.28.4-0.20240311084609-d75d6a7b329e
+replace github.com/jfrog/jfrog-client-go => github.com/eyaldelarea/jfrog-client-go v1.28.4-0.20240318091644-cd1b2ea37878
 
 replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20240225113943-096bf22ca54c
 

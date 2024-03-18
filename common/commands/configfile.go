@@ -152,27 +152,23 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 	}
 	switch confType {
 	case project.Go:
-		err = configFile.configGo()
-	case project.Pip:
-		err = configFile.configPip()
-	case project.Pipenv:
-		err = configFile.configPipenv()
-	case project.Poetry:
-		err = configFile.configPoetry()
+		return configFile.setDeployerResolver()
+	case project.Pip, project.Pipenv, project.Poetry:
+		return configFile.setResolver(false)
 	case project.Yarn:
-		err = configFile.configYarn()
+		return configFile.setResolver(false)
 	case project.Npm:
-		err = configFile.configNpm()
+		return configFile.setDeployerResolver()
 	case project.Nuget, project.Dotnet:
-		err = configFile.configDotnet()
+		return configFile.configDotnet()
 	case project.Maven:
-		err = configFile.configMaven()
+		return configFile.configMaven()
 	case project.Gradle:
-		err = configFile.configGradle()
+		return configFile.configGradle()
 	case project.Terraform:
-		err = configFile.configTerraform()
+		return configFile.setResolver(false)
 	}
-	return errorutils.CheckError(err)
+	return
 }
 
 func writeConfigFile(configFile *ConfigFile, destination string) (err error) {
@@ -394,32 +390,8 @@ func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 	return errorutils.CheckError(os.Remove(configFilePath))
 }
 
-func (configFile *ConfigFile) configGo() error {
-	return configFile.setDeployerResolver()
-}
-
-func (configFile *ConfigFile) configPip() error {
-	return configFile.setResolver()
-}
-
-func (configFile *ConfigFile) configPipenv() error {
-	return configFile.setResolver()
-}
-
-func (configFile *ConfigFile) configPoetry() error {
-	return configFile.setResolver()
-}
-
-func (configFile *ConfigFile) configYarn() error {
-	return configFile.setResolver()
-}
-
-func (configFile *ConfigFile) configNpm() error {
-	return configFile.setDeployerResolver()
-}
-
 func (configFile *ConfigFile) configDotnet() error {
-	if err := configFile.setResolver(); err != nil {
+	if err := configFile.setResolver(false); err != nil {
 		return err
 	}
 	if configFile.Resolver.ServerId != "" {
@@ -429,21 +401,10 @@ func (configFile *ConfigFile) configDotnet() error {
 }
 
 func (configFile *ConfigFile) configMaven() error {
-	// Set resolution repositories
-	if err := configFile.setResolverId(); err != nil {
-		return err
-	}
-	if configFile.Resolver.ServerId != "" {
-		configFile.setRepo(&configFile.Resolver.ReleaseRepo, "Set resolution repository for release dependencies", configFile.Resolver.ServerId, utils.Remote)
-		configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", configFile.Resolver.ServerId, utils.Remote)
-	}
-	// Set deployment repositories
-	if err := configFile.setDeployerId(); err != nil {
+	if err := configFile.setDeployerResolverWithSnapshot(); err != nil {
 		return err
 	}
 	if configFile.Deployer.ServerId != "" {
-		configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", configFile.Deployer.ServerId, utils.Local)
-		configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", configFile.Deployer.ServerId, utils.Local)
 		configFile.setIncludeExcludePatterns()
 	}
 	configFile.UseWrapper = coreutils.AskYesNo("Use Maven wrapper?", true)
@@ -494,11 +455,7 @@ func (configFile *ConfigFile) readGradleGlobalConfig() {
 	configFile.UseWrapper = coreutils.AskYesNo("Use Gradle wrapper?", true)
 }
 
-func (configFile *ConfigFile) configTerraform() error {
-	return configFile.setDeployer()
-}
-
-func (configFile *ConfigFile) setDeployer() error {
+func (configFile *ConfigFile) setDeployer(withSnapshot bool) error {
 	// Set deployer id
 	if err := configFile.setDeployerId(); err != nil {
 		return err
@@ -506,28 +463,57 @@ func (configFile *ConfigFile) setDeployer() error {
 
 	// Set deployment repository
 	if configFile.Deployer.ServerId != "" {
-		configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", configFile.Deployer.ServerId, utils.Local)
+		deployerRepos, err := getRepositories(configFile.Deployer.ServerId, utils.Virtual, utils.Local)
+		if err != nil {
+			log.Error("failed getting repositories list: " + err.Error())
+			// Continue without auto complete.
+			deployerRepos = []string{}
+		}
+		if withSnapshot {
+			configFile.setRepo(&configFile.Deployer.ReleaseRepo, "Set repository for release artifacts deployment", deployerRepos)
+			configFile.setRepo(&configFile.Deployer.SnapshotRepo, "Set repository for snapshot artifacts deployment", deployerRepos)
+		} else {
+			configFile.setRepo(&configFile.Deployer.Repo, "Set repository for artifacts deployment", deployerRepos)
+		}
 	}
 	return nil
 }
 
-func (configFile *ConfigFile) setResolver() error {
+func (configFile *ConfigFile) setResolver(withSnapshot bool) error {
 	// Set resolver id
 	if err := configFile.setResolverId(); err != nil {
 		return err
 	}
 	// Set resolution repository
 	if configFile.Resolver.ServerId != "" {
-		configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", configFile.Resolver.ServerId, utils.Remote)
+		resolverRepos, err := getRepositories(configFile.Resolver.ServerId, utils.Virtual, utils.Remote)
+		if err != nil {
+			log.Error("failed getting repositories list: " + err.Error())
+			// Continue without auto complete.
+			resolverRepos = []string{}
+		}
+		if withSnapshot {
+			configFile.setRepo(&configFile.Resolver.ReleaseRepo, "Set resolution repository for release dependencies", resolverRepos)
+			configFile.setRepo(&configFile.Resolver.SnapshotRepo, "Set resolution repository for snapshot dependencies", resolverRepos)
+		} else {
+			configFile.setRepo(&configFile.Resolver.Repo, "Set repository for dependencies resolution", resolverRepos)
+		}
 	}
 	return nil
 }
 
 func (configFile *ConfigFile) setDeployerResolver() error {
-	if err := configFile.setResolver(); err != nil {
+	if err := configFile.setResolver(false); err != nil {
 		return err
 	}
-	return configFile.setDeployer()
+	return configFile.setDeployer(false)
+}
+
+func (configFile *ConfigFile) setDeployerResolverWithSnapshot() error {
+	if err := configFile.setResolver(true); err != nil {
+		return err
+	}
+	return configFile.setDeployer(true)
 }
 
 func (configFile *ConfigFile) setResolverId() error {
@@ -544,9 +530,13 @@ func (configFile *ConfigFile) setServerId(serverId *string, useArtifactoryQuesti
 	return err
 }
 
-func (configFile *ConfigFile) setRepo(repo *string, message string, serverId string, repoType utils.RepoType) {
+func (configFile *ConfigFile) setRepo(repo *string, promptPrefix string, availableRepos []string) {
 	if *repo == "" {
-		*repo = readRepo(message+ioutils.PressTabMsg, serverId, repoType, utils.Virtual)
+		if len(availableRepos) > 0 {
+			*repo = ioutils.AskFromListWithMismatchConfirmation(promptPrefix, "Repository not found.", ioutils.ConvertToSuggests(availableRepos))
+		} else {
+			*repo = ioutils.AskString("", promptPrefix, false, false)
+		}
 	}
 }
 
@@ -633,19 +623,6 @@ func readArtifactoryServer(useArtifactoryQuestion string) (string, error) {
 	}
 
 	return ioutils.AskFromList("", "Set Artifactory server ID", false, ioutils.ConvertToSuggests(serversIds), defaultServer), nil
-}
-
-func readRepo(promptPrefix string, serverId string, repoTypes ...utils.RepoType) string {
-	availableRepos, err := getRepositories(serverId, repoTypes...)
-	if err != nil {
-		log.Error("failed getting repositories list: " + err.Error())
-		// Continue without auto complete.
-		availableRepos = []string{}
-	}
-	if len(availableRepos) > 0 {
-		return ioutils.AskFromListWithMismatchConfirmation(promptPrefix, "Repository not found.", ioutils.ConvertToSuggests(availableRepos))
-	}
-	return ioutils.AskString("", promptPrefix, false, false)
 }
 
 func getServersIdAndDefault() ([]string, string, error) {

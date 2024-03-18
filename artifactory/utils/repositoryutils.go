@@ -65,16 +65,13 @@ func GetRepositories(artDetails *config.ServerDetails, repoTypes ...RepoType) ([
 	if err != nil {
 		return nil, err
 	}
-	if len(repoTypes) == 0 {
-		return GetFilteredRepositoriesByName(sm, nil, nil)
-	}
 	repos := []string{}
 	for _, repoType := range repoTypes {
-		repoKey, err := GetFilteredRepositoriesByNameAndType(sm, nil, nil, repoType)
+		filteredRepos, err := GetFilteredRepositoriesByNameAndType(sm, nil, nil, repoType)
 		if err != nil {
 			return repos, err
 		}
-		repos = append(repos, repoKey...)
+		repos = append(repos, filteredRepos...)
 	}
 
 	return repos, nil

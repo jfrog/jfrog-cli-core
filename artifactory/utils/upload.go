@@ -6,6 +6,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io"
 )
@@ -19,12 +20,14 @@ type UploadConfiguration struct {
 	Threads               int
 	MinChecksumDeploySize int64
 	ExplodeArchive        bool
+	SplitCount            int
+	MinSplitSizeMB        int64
 }
 
 func GetMinChecksumDeploySize() (int64, error) {
 	minChecksumDeploySize := os.Getenv("JFROG_CLI_MIN_CHECKSUM_DEPLOY_SIZE_KB")
 	if minChecksumDeploySize == "" {
-		return 10240, nil
+		return services.DefaultMinChecksumDeploy, nil
 	}
 	minSize, err := strconv.ParseInt(minChecksumDeploySize, 10, 64)
 	err = errorutils.CheckError(err)

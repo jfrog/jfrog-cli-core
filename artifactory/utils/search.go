@@ -2,6 +2,8 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -168,5 +170,30 @@ func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.C
 	}
 	reader.Reset()
 	contentReader = content.NewContentReader(writer.GetFilePath(), writer.GetArrayKey())
+	return
+}
+
+func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *spec.SpecFiles) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
+	callbackFunc = func() error {
+		var errs error
+		for _, reader := range searchResults {
+			errs = errors.Join(errs, reader.Close())
+		}
+		return errs
+	}
+
+	var curSearchParams services.SearchParams
+	var curReader *content.ContentReader
+	for i := 0; i < len(spec.Files); i++ {
+		curSearchParams, err = GetSearchParams(spec.Get(i))
+		if err != nil {
+			return
+		}
+		curReader, err = servicesManager.SearchFiles(curSearchParams)
+		if err != nil {
+			return
+		}
+		searchResults = append(searchResults, curReader)
+	}
 	return
 }

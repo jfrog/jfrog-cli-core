@@ -6,13 +6,13 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 
+	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
 	milliSecsInSecond               = 1000
-	bytesInMB                       = 1024 * 1024
-	bytesPerMilliSecToMBPerSec      = float64(milliSecsInSecond) / float64(bytesInMB)
+	bytesPerMilliSecToMBPerSec      = float64(milliSecsInSecond) / float64(utils.SizeMiB)
 	minTransferTimeToShowEstimation = time.Minute * 5
 )
 

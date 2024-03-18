@@ -91,7 +91,7 @@ var technologiesData = map[Technology]TechData{
 		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptors:         []string{"package.json"},
 		packageVersionOperator:     "@",
-		packageInstallationCommand: "update", // TODO ERAN check if any test needs to be updated following this change
+		packageInstallationCommand: "update",
 		applicabilityScannable:     true,
 	},
 	Yarn: {

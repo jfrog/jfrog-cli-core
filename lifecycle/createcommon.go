@@ -8,6 +8,12 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
+const (
+	missingCreationSourcesErrMsg  = "unexpected err while validating spec - could not detect any creation sources"
+	multipleCreationSourcesErrMsg = "multiple creation sources were detected in separate spec files. Only a single creation source should be provided. Detected:"
+	singleAqlErrMsg               = "only a single aql query can be provided"
+)
+
 type ReleaseBundleCreateCommand struct {
 	releaseBundleCmd
 	signingKeyName string
@@ -140,7 +146,7 @@ func validateAndIdentifyRbCreationSpec(files []spec.File) (services.SourceType, 
 
 func validateCreationSources(detectedCreationSources []services.SourceType) error {
 	if len(detectedCreationSources) == 0 {
-		return errorutils.CheckErrorf("unexpected err while validating spec - could not detect any creation sources")
+		return errorutils.CheckErrorf(missingCreationSourcesErrMsg)
 	}
 
 	// Assert single creation source.
@@ -152,7 +158,7 @@ func validateCreationSources(detectedCreationSources []services.SourceType) erro
 
 	// If aql, assert single file.
 	if detectedCreationSources[0] == services.Aql && len(detectedCreationSources) > 1 {
-		return errorutils.CheckErrorf("only a single aql query can be provided")
+		return errorutils.CheckErrorf(singleAqlErrMsg)
 	}
 	return nil
 }
@@ -163,8 +169,7 @@ func generateSingleCreationSourceErr(detectedCreationSources []services.SourceTy
 		detectedStr = append(detectedStr, string(source))
 	}
 	return errorutils.CheckErrorf(
-		"multiple creation sources were detected in separate spec files. Only a single creation source should be provided. Detected: '%s'",
-		coreutils.ListToText(detectedStr))
+		"%s '%s'", multipleCreationSourcesErrMsg, coreutils.ListToText(detectedStr))
 }
 
 func validateFile(file spec.File) (services.SourceType, error) {
@@ -186,10 +191,13 @@ func validateFile(file spec.File) (services.SourceType, error) {
 	isExclusions := len(file.Exclusions) > 0 && len(file.Exclusions[0]) > 0
 	isProps := len(file.Props) > 0
 	isExcludeProps := len(file.ExcludeProps) > 0
-	isRecursive, _ := file.IsRecursive(true)
+	isRecursive, err := file.IsRecursive(true)
+	if err != nil {
+		return "", errorutils.CheckErrorf("invalid value provided to the 'recursive' field. error: %s", err.Error())
+	}
 
 	// Unsupported:
-	isPathMapping := len(file.PathMapping.Input) > 0 && len(file.PathMapping.Output) > 0
+	isPathMapping := len(file.PathMapping.Input) > 0 || len(file.PathMapping.Output) > 0
 	isTarget := len(file.Target) > 0
 	isSortOrder := len(file.SortOrder) > 0
 	isSortBy := len(file.SortBy) > 0

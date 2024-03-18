@@ -177,10 +177,9 @@ func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *s
 	callbackFunc = func() error {
 		var errs error
 		for _, reader := range searchResults {
-			e := reader.Close()
-			errs = errors.Join(errs, e)
+			errs = errors.Join(errs, reader.Close())
 		}
-		return err
+		return errs
 	}
 
 	var curSearchParams services.SearchParams

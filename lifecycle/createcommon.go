@@ -10,7 +10,8 @@ import (
 
 type ReleaseBundleCreateCommand struct {
 	releaseBundleCmd
-	spec *spec.SpecFiles
+	signingKeyName string
+	spec           *spec.SpecFiles
 	// Backward compatibility:
 	buildsSpecPath         string
 	releaseBundlesSpecPath string

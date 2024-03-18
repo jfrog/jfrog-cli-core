@@ -5,7 +5,6 @@ import (
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
-	"os"
 	"strconv"
 	"time"
 
@@ -81,7 +80,7 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 
 	// Create Service Manager:
-	uc.uploadConfiguration.MinChecksumDeploySize, err = getMinChecksumDeploySize()
+	uc.uploadConfiguration.MinChecksumDeploySize, err = utils.GetMinChecksumDeploySize()
 	if err != nil {
 		return
 	}
@@ -195,19 +194,6 @@ func (uc *UploadCommand) upload() (err error) {
 		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
 	return
-}
-
-func getMinChecksumDeploySize() (int64, error) {
-	minChecksumDeploySize := os.Getenv("JFROG_CLI_MIN_CHECKSUM_DEPLOY_SIZE_KB")
-	if minChecksumDeploySize == "" {
-		return services.DefaultMinChecksumDeploy, nil
-	}
-	minSize, err := strconv.ParseInt(minChecksumDeploySize, 10, 64)
-	err = errorutils.CheckError(err)
-	if err != nil {
-		return 0, err
-	}
-	return minSize * 1000, nil
 }
 
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, buildProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {

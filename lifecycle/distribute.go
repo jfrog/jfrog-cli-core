@@ -1,21 +1,19 @@
 package lifecycle
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/lifecycle/services"
-	"github.com/jfrog/jfrog-client-go/utils/distribution"
 )
 
 type ReleaseBundleDistributeCommand struct {
-	serverDetails           *config.ServerDetails
-	distributeBundlesParams distribution.DistributionParams
-	distributionRules       *spec.DistributionRules
-	dryRun                  bool
-	autoCreateRepo          bool
-	pathMappingPattern      string
-	pathMappingTarget       string
+	releaseBundleCmd
+	distributionRules  *spec.DistributionRules
+	dryRun             bool
+	autoCreateRepo     bool
+	pathMappingPattern string
+	pathMappingTarget  string
+	maxWaitMinutes     int
 }
 
 func NewReleaseBundleDistributeCommand() *ReleaseBundleDistributeCommand {
@@ -27,8 +25,18 @@ func (rbd *ReleaseBundleDistributeCommand) SetServerDetails(serverDetails *confi
 	return rbd
 }
 
-func (rbd *ReleaseBundleDistributeCommand) SetDistributeBundleParams(params distribution.DistributionParams) *ReleaseBundleDistributeCommand {
-	rbd.distributeBundlesParams = params
+func (rbd *ReleaseBundleDistributeCommand) SetReleaseBundleName(releaseBundleName string) *ReleaseBundleDistributeCommand {
+	rbd.releaseBundleName = releaseBundleName
+	return rbd
+}
+
+func (rbd *ReleaseBundleDistributeCommand) SetReleaseBundleVersion(releaseBundleVersion string) *ReleaseBundleDistributeCommand {
+	rbd.releaseBundleVersion = releaseBundleVersion
+	return rbd
+}
+
+func (rbd *ReleaseBundleDistributeCommand) SetReleaseBundleProject(rbProjectKey string) *ReleaseBundleDistributeCommand {
+	rbd.rbProjectKey = rbProjectKey
 	return rbd
 }
 
@@ -57,18 +65,24 @@ func (rbd *ReleaseBundleDistributeCommand) SetPathMappingTarget(pathMappingTarge
 	return rbd
 }
 
+func (rbd *ReleaseBundleDistributeCommand) SetSync(sync bool) *ReleaseBundleDistributeCommand {
+	rbd.sync = sync
+	return rbd
+}
+
+func (rbd *ReleaseBundleDistributeCommand) SetMaxWaitMinutes(maxWaitMinutes int) *ReleaseBundleDistributeCommand {
+	rbd.maxWaitMinutes = maxWaitMinutes
+	return rbd
+}
+
 func (rbd *ReleaseBundleDistributeCommand) Run() error {
 	if err := validateArtifactoryVersionSupported(rbd.serverDetails); err != nil {
 		return err
 	}
 
-	servicesManager, err := utils.CreateLifecycleServiceManager(rbd.serverDetails, rbd.dryRun)
+	servicesManager, rbDetails, _, err := rbd.getPrerequisites()
 	if err != nil {
 		return err
-	}
-
-	for _, rule := range rbd.distributionRules.DistributionRules {
-		rbd.distributeBundlesParams.DistributionRules = append(rbd.distributeBundlesParams.DistributionRules, rule.ToDistributionCommonParams())
 	}
 
 	pathMapping := services.PathMapping{
@@ -76,14 +90,16 @@ func (rbd *ReleaseBundleDistributeCommand) Run() error {
 		Target:  rbd.pathMappingTarget,
 	}
 
-	return servicesManager.DistributeReleaseBundle(services.ReleaseBundleDetails{
-		ReleaseBundleName:    rbd.distributeBundlesParams.Name,
-		ReleaseBundleVersion: rbd.distributeBundlesParams.Version,
-	}, services.DistributeReleaseBundleParams{
+	distributeParams := services.DistributeReleaseBundleParams{
+		Sync:              rbd.sync,
 		AutoCreateRepo:    rbd.autoCreateRepo,
-		DistributionRules: rbd.distributeBundlesParams.DistributionRules,
+		MaxWaitMinutes:    rbd.maxWaitMinutes,
+		DistributionRules: getAggregatedDistRules(rbd.distributionRules),
 		PathMappings:      []services.PathMapping{pathMapping},
-	})
+		ProjectKey:        rbd.rbProjectKey,
+	}
+
+	return servicesManager.DistributeReleaseBundle(rbDetails, distributeParams)
 }
 
 func (rbd *ReleaseBundleDistributeCommand) ServerDetails() (*config.ServerDetails, error) {

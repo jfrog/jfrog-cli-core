@@ -27,7 +27,7 @@ func (sc *SearchCommand) Run() error {
 	return err
 }
 
-func (sc *SearchCommand) Search() (contentReader *content.ContentReader, err error) {
+func (sc *SearchCommand) Search() (*content.ContentReader, error) {
 	// Service Manager
 	serverDetails, err := sc.ServerDetails()
 	if errorutils.CheckError(err) != nil {

@@ -428,10 +428,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) 
 		return errorutils.CheckError(err)
 	}
 	defer func() {
-		e := tarball.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(tarball.Close()))
 	}()
 	gZipReader, err := gzip.NewReader(tarball)
 	if err != nil {

@@ -139,12 +139,7 @@ func (uc *UploadCommand) upload() (err error) {
 		}
 		if summary != nil {
 			artifactsDetailsReader = summary.ArtifactsDetailsReader
-			defer func() {
-				e := artifactsDetailsReader.Close()
-				if err == nil {
-					err = e
-				}
-			}()
+			defer ioutils.Close(artifactsDetailsReader, &err)
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if uc.DetailedSummary() {

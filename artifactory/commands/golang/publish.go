@@ -85,18 +85,17 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 	version := version.NewVersion(artifactoryVersion)
 	if version.AtLeast(_go.ArtifactoryMinSupportedVersion) {
 		log.Debug("Creating info file", projectPath)
-		pathToInfo, err := createInfoFile(packageVersion)
+		var pathToInfo string
+		pathToInfo, err = createInfoFile(packageVersion)
 		if err != nil {
 			return nil, nil, err
 		}
 		defer func() {
-			e := os.Remove(pathToInfo)
-			if err == nil {
-				err = errorutils.CheckError(e)
-			}
+			err = errors.Join(err, errorutils.CheckError(os.Remove(pathToInfo)))
 		}()
 		if collectBuildInfo {
-			infoArtifact, err := createInfoFileArtifact(pathToInfo, packageVersion)
+			var infoArtifact *buildinfo.Artifact
+			infoArtifact, err = createInfoFileArtifact(pathToInfo, packageVersion)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -123,10 +122,7 @@ func createInfoFile(packageVersion string) (path string, err error) {
 		return "", errorutils.CheckError(err)
 	}
 	defer func() {
-		e := file.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(file.Close()))
 	}()
 	_, err = file.Write(content)
 	if err != nil {
@@ -153,10 +149,7 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 		return nil, nil, err
 	}
 	defer func() {
-		e := modFile.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(modFile.Close()))
 	}()
 	content, err := io.ReadAll(modFile)
 	if err != nil {
@@ -189,10 +182,7 @@ func archive(moduleName, version, projectPath, tempDir string, excludedPatterns 
 	openedFile = true
 	defer func() {
 		if openedFile {
-			e := tempFile.Close()
-			if err == nil {
-				err = errorutils.CheckError(e)
-			}
+			err = errors.Join(err, errorutils.CheckError(tempFile.Close()))
 		}
 	}()
 	if err = archiveProject(tempFile, projectPath, moduleName, version, excludedPatterns); err != nil {
@@ -214,10 +204,10 @@ func archive(moduleName, version, projectPath, tempDir string, excludedPatterns 
 		}
 	}
 	// Sync the file before renaming it
-	if err := tempFile.Sync(); err != nil {
+	if err = tempFile.Sync(); err != nil {
 		return "", nil, err
 	}
-	if err := tempFile.Close(); err != nil {
+	if err = tempFile.Close(); err != nil {
 		return "", nil, err
 	}
 	openedFile = false

@@ -119,23 +119,13 @@ func (dc *DownloadCommand) download() (err error) {
 			log.Error(err)
 		}
 		if summary != nil {
-			defer func() {
-				e := summary.ArtifactsDetailsReader.Close()
-				if err == nil {
-					err = e
-				}
-			}()
+			defer gofrog.Close(summary.ArtifactsDetailsReader, &err)
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if dc.DetailedSummary() {
 				dc.result.SetReader(summary.TransferDetailsReader)
 			} else {
-				defer func() {
-					e := summary.TransferDetailsReader.Close()
-					if err == nil {
-						err = e
-					}
-				}()
+				defer gofrog.Close(summary.TransferDetailsReader, &err)
 			}
 			totalDownloaded = summary.TotalSucceeded
 			totalFailed = summary.TotalFailed
@@ -168,10 +158,7 @@ func (dc *DownloadCommand) download() (err error) {
 			var tmpRoot string
 			tmpRoot, err = createDownloadResultEmptyTmpReflection(summary.TransferDetailsReader)
 			defer func() {
-				e := fileutils.RemoveTempDir(tmpRoot)
-				if err == nil {
-					err = e
-				}
+				err = errors.Join(err, fileutils.RemoveTempDir(tmpRoot))
 			}()
 			if err != nil {
 				return err

@@ -336,7 +336,7 @@ func checkIfTerraformModule(path string) (isModule bool, err error) {
 		return false, errorutils.CheckError(err)
 	}
 	defer func() {
-		errors.Join(err, d.Close())
+		err = errors.Join(err, d.Close())
 	}()
 
 	files, err := d.Readdir(-1)

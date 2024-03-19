@@ -175,7 +175,8 @@ func (m *fullTransferPhase) searchAndHandleFolderContents(params folderParams, p
 		CheckExistenceInFilestore: m.checkExistenceInFilestore,
 		// Skip file filtering in the Data Transfer plugin if it is already enabled in the JFrog CLI.
 		// The local generated filter is enabled in the JFrog CLI for target Artifactory servers >= 7.55.
-		SkipFileFiltering: m.locallyGeneratedFilter.IsEnabled(),
+		SkipFileFiltering:     m.locallyGeneratedFilter.IsEnabled(),
+		MinCheckSumDeploySize: m.minCheckSumDeploySize,
 	}
 
 	var result []servicesUtils.ResultItem

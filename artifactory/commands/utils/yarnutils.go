@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"strconv"
 	"strings"
@@ -54,12 +55,7 @@ func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*e
 	if err != nil {
 		return
 	}
-	defer func() {
-		e := stream.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(stream, &err)
 	var result []byte
 	result, err = io.ReadAll(stream)
 	if err != nil {

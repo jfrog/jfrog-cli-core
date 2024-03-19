@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	biutils "github.com/jfrog/build-info-go/utils"
@@ -57,10 +58,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		return nil, nil, err
 	}
 	defer func() {
-		e := fileutils.RemoveTempDir(tempDirPath)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, fileutils.RemoveTempDir(tempDirPath))
 	}()
 
 	var zipArtifact *buildinfo.Artifact

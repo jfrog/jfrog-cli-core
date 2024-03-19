@@ -2,6 +2,7 @@ package container
 
 import (
 	"encoding/json"
+	ioutils "github.com/jfrog/gofrog/io"
 	"os"
 	"path"
 	"strings"
@@ -94,12 +95,7 @@ func setBuildProperties(buildName, buildNumber, project string, imageLayers []ut
 		return
 	}
 	reader := content.NewContentReader(pathToFile, content.DefaultKey)
-	defer func() {
-		e := reader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(reader, &err)
 	_, err = serviceManager.SetProps(services.PropsParams{Reader: reader, Props: props})
 	return
 }

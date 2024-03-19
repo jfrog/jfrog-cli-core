@@ -1,6 +1,7 @@
 package transferconfigmerge
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"

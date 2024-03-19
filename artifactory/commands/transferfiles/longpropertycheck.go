@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sync"

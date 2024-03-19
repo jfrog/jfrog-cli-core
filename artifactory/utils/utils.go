@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"net/http"
 	"net/url"

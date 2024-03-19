@@ -194,7 +194,7 @@ func performSearch(imagePathPattern string, serviceManager artifactory.Artifacto
 	if err != nil {
 		return nil, err
 	}
-	defer defer ioutils.Close(reader, &err)
+	defer ioutils.Close(reader, &err)
 	resultMap = make(map[string]*utils.ResultItem)
 	for resultItem := new(utils.ResultItem); reader.NextRecord(resultItem) == nil; resultItem = new(utils.ResultItem) {
 		resultMap[resultItem.Name] = resultItem

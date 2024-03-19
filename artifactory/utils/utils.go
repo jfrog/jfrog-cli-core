@@ -227,11 +227,7 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 	if err != nil {
 		return
 	}
-	defer func() {
-		if localErr := ioReaderCloser.Close(); err == nil {
-			err = localErr
-		}
-	}()
+	defer ioutils.Close(ioReaderCloser, &err)
 	content, err := io.ReadAll(ioReaderCloser)
 	if err != nil {
 		return errorutils.CheckError(err)

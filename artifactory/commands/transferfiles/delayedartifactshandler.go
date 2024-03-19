@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -62,9 +63,7 @@ func getDelaysFilePrefix(repoKey string, phaseStartTime string) string {
 func (mng *TransferDelayedArtifactsMng) start() (err error) {
 	defer func() {
 		if mng.delayedWriter != nil {
-			if e := mng.delayedWriter.close(); err == nil {
-				err = errorutils.CheckError(e)
-			}
+			err = errors.Join(err, errorutils.CheckError(mng.delayedWriter.close()))
 		}
 	}()
 

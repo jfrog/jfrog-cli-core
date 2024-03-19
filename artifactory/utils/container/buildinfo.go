@@ -114,9 +114,7 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 	if err != nil {
 		return
 	}
-	defer func() {
-		err = writer.Close()
-	}()
+	defer ioutils.Close(writer, &err)
 	for _, layer := range layers {
 		writer.Write(layer)
 	}
@@ -196,11 +194,7 @@ func performSearch(imagePathPattern string, serviceManager artifactory.Artifacto
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if deferErr := reader.Close(); err == nil {
-			err = deferErr
-		}
-	}()
+	defer defer ioutils.Close(reader, &err)
 	resultMap = make(map[string]*utils.ResultItem)
 	for resultItem := new(utils.ResultItem); reader.NextRecord(resultItem) == nil; resultItem = new(utils.ResultItem) {
 		resultMap[resultItem.Name] = resultItem
@@ -220,11 +214,7 @@ func performMultiPlatformImageSearch(imagePathPattern string, serviceManager art
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if deferErr := reader.Close(); err == nil {
-			err = deferErr
-		}
-	}()
+	defer ioutils.Close(reader, &err)
 	pathToSha2 := make(map[string]string)
 	pathToImageLayers := make(map[string][]*utils.ResultItem)
 	resultMap = make(map[string][]*utils.ResultItem)

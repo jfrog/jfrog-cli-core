@@ -228,10 +228,7 @@ func runAqlService(serviceManager artifactory.ArtifactoryServicesManager, query 
 	}
 	defer func() {
 		if reader != nil {
-			e := reader.Close()
-			if err == nil {
-				err = errorutils.CheckError(e)
-			}
+			err = errors.Join(err, errorutils.CheckError(reader.Close()))
 		}
 	}()
 	respBody, err := io.ReadAll(reader)

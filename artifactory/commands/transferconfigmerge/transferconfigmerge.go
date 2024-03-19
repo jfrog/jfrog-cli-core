@@ -358,9 +358,7 @@ func (tcmc *TransferConfigMergeCommand) decryptAndGetAllRemoteRepositories(remot
 		return
 	}
 	defer func() {
-		if reactivationErr := reactivateKeyEncryption(); err == nil {
-			err = reactivationErr
-		}
+		err = errors.Join(err, reactivateKeyEncryption())
 	}()
 	var remoteRepositoryKeys []string
 	for _, remoteRepositoryDetails := range remoteRepositoriesDetails {

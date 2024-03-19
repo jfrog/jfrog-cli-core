@@ -68,10 +68,7 @@ func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReade
 	var temp []*content.ContentReader
 	defer func() {
 		for _, reader := range temp {
-			e := reader.Close()
-			if err == nil {
-				err = e
-			}
+			ioutils.Close(reader, &err)
 		}
 	}()
 	for i := 0; i < len(dc.Spec().Files); i++ {

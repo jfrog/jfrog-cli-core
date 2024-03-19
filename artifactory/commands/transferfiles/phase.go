@@ -36,7 +36,9 @@ type transferPhase interface {
 	setProxyKey(proxyKey string)
 	setBuildInfo(setBuildInfo bool)
 	setPackageType(packageType string)
+	setDisabledDistinctiveAql()
 	setStopSignal(stopSignal chan os.Signal)
+	setMinCheckSumDeploySize(minCheckSumDeploySize int64)
 	StopGracefully()
 }
 
@@ -59,6 +61,9 @@ type phaseBase struct {
 	stateManager              *state.TransferStateManager
 	locallyGeneratedFilter    *locallyGeneratedFilter
 	stopSignal                chan os.Signal
+	// Optimization in Artifactory version 7.37 and above enables the exclusion of setting DISTINCT in SQL queries
+	disabledDistinctiveAql bool
+	minCheckSumDeploySize  int64
 }
 
 func (pb *phaseBase) ShouldStop() bool {
@@ -79,8 +84,8 @@ func (pb *phaseBase) StopGracefully() {
 		pb.progressBar.StopGracefully()
 	}
 	if pb.pcDetails != nil {
-		pb.pcDetails.chunkBuilderProducerConsumer.Cancel()
-		pb.pcDetails.chunkUploaderProducerConsumer.Cancel()
+		pb.pcDetails.chunkBuilderProducerConsumer.Cancel(true)
+		pb.pcDetails.chunkUploaderProducerConsumer.Cancel(true)
 	}
 }
 
@@ -140,12 +145,21 @@ func (pb *phaseBase) setPackageType(packageType string) {
 	pb.packageType = packageType
 }
 
+func (pb *phaseBase) setDisabledDistinctiveAql() {
+	pb.disabledDistinctiveAql = true
+}
+
+func (pb *phaseBase) setMinCheckSumDeploySize(minCheckSumDeploySize int64) {
+	pb.minCheckSumDeploySize = minCheckSumDeploySize
+}
+
 func (pb *phaseBase) setStopSignal(stopSignal chan os.Signal) {
 	pb.stopSignal = stopSignal
 }
 
 func createTransferPhase(i int) transferPhase {
-	curPhaseBase := phaseBase{phaseId: i}
+	// Initialize a pointer to an empty producerConsumerWrapper to allow access the real value in StopGracefully
+	curPhaseBase := phaseBase{phaseId: i, pcDetails: &producerConsumerWrapper{}}
 	switch i {
 	case api.Phase1:
 		return &fullTransferPhase{phaseBase: curPhaseBase}

@@ -2,6 +2,7 @@ package coreutils
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -458,6 +459,14 @@ func GetJfrogTransferRepositoriesDir() (string, error) {
 	return filepath.Join(transferDir, JfrogTransferRepositoriesDirName), nil
 }
 
+func GetJfrogTransferTempDir() (string, error) {
+	transferDir, err := GetJfrogTransferDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(transferDir, JfrogTransferTempDirName), nil
+}
+
 // Ask a yes or no question, with a default answer.
 func AskYesNo(promptPrefix string, defaultValue bool) bool {
 	defStr := "[n]"
@@ -500,6 +509,16 @@ func parseYesNo(s string, def bool) (ans, valid bool) {
 		return false, true
 	}
 	return false, false
+}
+
+func GetJsonIndent(o any) (strJson string, err error) {
+	byteJson, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		err = errorutils.CheckError(err)
+		return
+	}
+	strJson = string(byteJson)
+	return
 }
 
 func GetCliUserAgent() string {

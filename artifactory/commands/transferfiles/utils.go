@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	buildInfoUtils "github.com/jfrog/build-info-go/utils"
@@ -30,6 +29,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/maps"
 )
 
 const (
@@ -43,12 +43,9 @@ const (
 	StopFileName = "stop"
 )
 
-type (
-	nodeId string
-)
-
 var AqlPaginationLimit = DefaultAqlPaginationLimit
-var curThreads int
+var curChunkBuilderThreads int
+var curChunkUploaderThreads int
 
 type UploadedChunk struct {
 	api.UploadChunkResponse
@@ -68,9 +65,16 @@ type ChunksLifeCycleManager struct {
 	// In each node, we store a map of the chunks that are currently in progress and their matching files.
 	// In case network fails, and the uploaded chunks data is lost,
 	// These chunks files will be written to the errors file using this map.
-	nodeToChunksMap map[nodeId]map[api.ChunkId]UploadedChunkData
-	// Counts the total of chunks that are currently in progress by the source Artifactory instance.
-	totalChunks int
+	nodeToChunksMap map[api.NodeId]map[api.ChunkId]UploadedChunkData
+}
+
+// Convert to map of nodeID to list of chunk IDs to allow printing it
+func (clcm *ChunksLifeCycleManager) GetNodeIdToChunkIdsMap() map[api.NodeId][]api.ChunkId {
+	nodeIdToChunks := make(map[api.NodeId][]api.ChunkId, len(clcm.nodeToChunksMap))
+	for nodeId, chunks := range clcm.nodeToChunksMap {
+		nodeIdToChunks[nodeId] = maps.Keys(chunks)
+	}
+	return nodeIdToChunks
 }
 
 func (clcm *ChunksLifeCycleManager) GetInProgressTokensSlice() []api.ChunkId {
@@ -84,7 +88,7 @@ func (clcm *ChunksLifeCycleManager) GetInProgressTokensSlice() []api.ChunkId {
 	return inProgressTokens
 }
 
-func (clcm *ChunksLifeCycleManager) GetInProgressTokensSliceByNodeId(nodeId nodeId) []api.ChunkId {
+func (clcm *ChunksLifeCycleManager) GetInProgressTokensSliceByNodeId(nodeId api.NodeId) []api.ChunkId {
 	var inProgressTokens []api.ChunkId
 	for chunkId := range clcm.nodeToChunksMap[nodeId] {
 		inProgressTokens = append(inProgressTokens, chunkId)
@@ -124,6 +128,33 @@ func (clcm *ChunksLifeCycleManager) StoreStaleChunks(stateManager *state.Transfe
 	return stateManager.SetStaleChunks(staleChunks)
 }
 
+// Set the JFrog CLI temp dir to be ~/.jfrog/transfer/tmp/
+func initTempDir() (unsetTempDir func(), err error) {
+	// If JFROG_CLI_TEMP_DIR environment variable provided, use it
+	if os.Getenv(coreutils.TempDir) != "" {
+		return
+	}
+
+	oldTempDir := fileutils.GetTempDirBase()
+	var transferTempDir string
+	if transferTempDir, err = coreutils.GetJfrogTransferTempDir(); err != nil {
+		return
+	}
+
+	if err = fileutils.CreateDirIfNotExist(transferTempDir); err != nil {
+		return
+	}
+
+	if err = fileutils.RemoveDirContents(transferTempDir); err != nil {
+		return
+	}
+	fileutils.SetTempDirBase(transferTempDir)
+	unsetTempDir = func() {
+		fileutils.SetTempDirBase(oldTempDir)
+	}
+	return
+}
+
 type InterruptionErr struct{}
 
 func (m *InterruptionErr) Error() string {
@@ -131,7 +162,7 @@ func (m *InterruptionErr) Error() string {
 }
 
 func createTransferServiceManager(ctx context.Context, serverDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
-	return utils.CreateServiceManagerWithContext(ctx, serverDetails, false, 0, retries, retriesWaitMilliSecs)
+	return utils.CreateServiceManagerWithContext(ctx, serverDetails, false, 0, retries, retriesWaitMilliSecs, time.Minute)
 }
 
 func createSrcRtUserPluginServiceManager(ctx context.Context, sourceRtDetails *config.ServerDetails) (*srcUserPluginService, error) {
@@ -140,6 +171,13 @@ func createSrcRtUserPluginServiceManager(ctx context.Context, sourceRtDetails *c
 		return nil, err
 	}
 	return NewSrcUserPluginService(serviceManager.GetConfig().GetServiceDetails(), serviceManager.Client()), nil
+}
+
+func appendDistinctIfNeeded(disabledDistinctiveAql bool) string {
+	if disabledDistinctiveAql {
+		return `.distinct(false)`
+	}
+	return ""
 }
 
 func runAql(ctx context.Context, sourceRtDetails *config.ServerDetails, query string) (result *serviceUtils.AqlSearchResult, err error) {
@@ -180,31 +218,6 @@ func createTargetAuth(targetRtDetails *config.ServerDetails, proxyKey string) ap
 	return targetAuth
 }
 
-// This variable holds the total number of upload chunk that were sent to the source Artifactory instance to process.
-// Together with this mutex, they control the load on the user plugin and couple it to the local number of threads.
-var curProcessedUploadChunks = 0
-var processedUploadChunksMutex sync.Mutex
-
-// Checks whether the total number of upload chunks sent is lower than the number of threads, and if so, increments it.
-// Returns true if the total number was indeed incremented.
-func incrCurProcessedChunksWhenPossible() bool {
-	processedUploadChunksMutex.Lock()
-	defer processedUploadChunksMutex.Unlock()
-	if curProcessedUploadChunks < GetThreads() {
-		curProcessedUploadChunks++
-		return true
-	}
-	return false
-}
-
-// Reduces the current total number of upload chunks processed. Called when an upload chunks doesn't require polling for status -
-// if it's done processing, or an error occurred when sending it.
-func reduceCurProcessedChunks() {
-	processedUploadChunksMutex.Lock()
-	defer processedUploadChunksMutex.Unlock()
-	curProcessedUploadChunks--
-}
-
 func handleFilesOfCompletedChunk(chunkFiles []api.FileUploadStatusResponse, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for _, file := range chunkFiles {
 		if file.Status == api.Fail || file.Status == api.SkippedLargeProps {
@@ -219,13 +232,13 @@ func handleFilesOfCompletedChunk(chunkFiles []api.FileUploadStatusResponse, erro
 
 // Uploads chunk when there is room in queue.
 // This is a blocking method.
-func uploadChunkWhenPossible(phaseBase *phaseBase, chunk api.UploadChunk, uploadTokensChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
+func uploadChunkWhenPossible(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk api.UploadChunk, uploadTokensChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) (stopped bool) {
 	for {
 		if ShouldStop(phaseBase, nil, errorsChannelMng) {
 			return true
 		}
 		// If increment done, this go routine can proceed to upload the chunk. Otherwise, sleep and try again.
-		isIncr := incrCurProcessedChunksWhenPossible()
+		isIncr := pcWrapper.incProcessedChunksWhenPossible()
 		if !isIncr {
 			time.Sleep(waitTimeBetweenChunkStatusSeconds * time.Second)
 			continue
@@ -233,7 +246,7 @@ func uploadChunkWhenPossible(phaseBase *phaseBase, chunk api.UploadChunk, upload
 		err := uploadChunkAndAddToken(phaseBase.srcUpService, chunk, uploadTokensChan)
 		if err != nil {
 			// Chunk not uploaded due to error. Reduce processed chunks count and send all chunk content to error channel, so that the files could be uploaded on next run.
-			reduceCurProcessedChunks()
+			pcWrapper.decProcessedChunks()
 			// If the transfer is interrupted by the user, we shouldn't write it in the CSV file
 			if errors.Is(err, context.Canceled) {
 				return true
@@ -318,8 +331,12 @@ func newUploadedChunkStruct(uploadChunkResponse api.UploadChunkResponse, chunk a
 	}
 }
 
-func GetThreads() int {
-	return curThreads
+func GetChunkBuilderThreads() int {
+	return curChunkBuilderThreads
+}
+
+func GetChunkUploaderThreads() int {
+	return curChunkUploaderThreads
 }
 
 // Periodically reads settings file and updates the number of threads.
@@ -349,16 +366,20 @@ func updateThreads(pcWrapper *producerConsumerWrapper, buildInfoRepo bool) error
 	if err != nil || settings == nil {
 		return err
 	}
-	calculatedNumberOfThreads := settings.CalcNumberOfThreads(buildInfoRepo)
-	if curThreads != calculatedNumberOfThreads {
+	calculatedChunkBuilderThreads, calculatedChunkUploaderThreads := settings.CalcNumberOfThreads(buildInfoRepo)
+	if curChunkUploaderThreads != calculatedChunkUploaderThreads {
 		if pcWrapper != nil {
-			updateProducerConsumerMaxParallel(pcWrapper.chunkBuilderProducerConsumer, calculatedNumberOfThreads)
-			updateProducerConsumerMaxParallel(pcWrapper.chunkUploaderProducerConsumer, calculatedNumberOfThreads)
+			if curChunkBuilderThreads != calculatedChunkBuilderThreads {
+				updateProducerConsumerMaxParallel(pcWrapper.chunkBuilderProducerConsumer, calculatedChunkBuilderThreads)
+			}
+			updateProducerConsumerMaxParallel(pcWrapper.chunkUploaderProducerConsumer, calculatedChunkUploaderThreads)
 		}
-		log.Info(fmt.Sprintf("Number of threads have been updated to %s (was %s).", strconv.Itoa(calculatedNumberOfThreads), strconv.Itoa(curThreads)))
-		curThreads = calculatedNumberOfThreads
+		log.Info(fmt.Sprintf("Number of threads has been updated to %s (was %s).", strconv.Itoa(calculatedChunkUploaderThreads), strconv.Itoa(curChunkUploaderThreads)))
+		curChunkBuilderThreads = calculatedChunkBuilderThreads
+		curChunkUploaderThreads = calculatedChunkUploaderThreads
 	} else {
-		log.Debug("No change to the number of threads have been detected.")
+		log.Debug(fmt.Sprintf("No change to the number of threads has been detected. Max chunks builder threads: %d. Max chunks uploader threads: %d.",
+			calculatedChunkBuilderThreads, calculatedChunkUploaderThreads))
 	}
 	return nil
 }
@@ -374,7 +395,10 @@ func interruptIfRequested(stopSignal chan os.Signal) error {
 		return err
 	}
 	if exist {
-		stopSignal <- os.Interrupt
+		select {
+		case stopSignal <- os.Interrupt:
+		default:
+		}
 	}
 	return nil
 }
@@ -385,12 +409,12 @@ func updateProducerConsumerMaxParallel(producerConsumer parallel.Runner, calcula
 	}
 }
 
-func uploadChunkWhenPossibleHandler(phaseBase *phaseBase, chunk api.UploadChunk,
+func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBase *phaseBase, chunk api.UploadChunk,
 	uploadTokensChan chan UploadedChunk, errorsChannelMng *ErrorsChannelMng) parallel.TaskFunc {
 	return func(threadId int) error {
 		logMsgPrefix := clientUtils.GetLogMsgPrefix(threadId, false)
 		log.Debug(logMsgPrefix + "Handling chunk upload")
-		shouldStop := uploadChunkWhenPossible(phaseBase, chunk, uploadTokensChan, errorsChannelMng)
+		shouldStop := uploadChunkWhenPossible(pcWrapper, phaseBase, chunk, uploadTokensChan, errorsChannelMng)
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
 			return errorutils.CheckErrorf(logMsgPrefix + "stopped")
@@ -406,6 +430,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 		TargetAuth:                createTargetAuth(base.targetRtDetails, base.proxyKey),
 		CheckExistenceInFilestore: base.checkExistenceInFilestore,
 		SkipFileFiltering:         base.locallyGeneratedFilter.IsEnabled(),
+		MinCheckSumDeploySize:     base.minCheckSumDeploySize,
 	}
 
 	for _, item := range files {
@@ -419,8 +444,8 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 			continue
 		}
 		curUploadChunk.AppendUploadCandidateIfNeeded(file, base.buildInfoRepo)
-		if len(curUploadChunk.UploadCandidates) == uploadChunkSize {
-			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		if curUploadChunk.IsChunkFull() {
+			_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 			if err != nil {
 				return
 			}
@@ -430,7 +455,7 @@ func uploadByChunks(files []api.FileRepresentation, uploadTokensChan chan Upload
 	}
 	// Chunk didn't reach full size. Upload the remaining files.
 	if len(curUploadChunk.UploadCandidates) > 0 {
-		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(&base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
+		_, err = pcWrapper.chunkUploaderProducerConsumer.AddTaskWithError(uploadChunkWhenPossibleHandler(pcWrapper, &base, curUploadChunk, uploadTokensChan, errorsChannelMng), pcWrapper.errorsQueue.AddError)
 		if err != nil {
 			return
 		}
@@ -729,6 +754,14 @@ func getUniqueErrorOrDelayFilePath(dirPath string, getFileNamePrefix func() stri
 			break
 		}
 		index++
+	}
+	return
+}
+
+func deleteAllFiles(filesToDelete []string) (err error) {
+	for _, fileToDelete := range filesToDelete {
+		log.Debug("Deleting:", fileToDelete, "...")
+		err = errors.Join(err, errorutils.CheckError(os.Remove(fileToDelete)))
 	}
 	return
 }

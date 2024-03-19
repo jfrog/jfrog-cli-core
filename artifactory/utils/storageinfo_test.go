@@ -69,12 +69,12 @@ func TestConvertStorageSizeStringToBytes(t *testing.T) {
 		expectedSizeBeforeConversion float64
 	}{
 		{"bytes", "2.22 bytes", false, 2.22},
-		{"KB", "3.333 KB", false, 3.333 * float64(bytesInKB)},
-		{"KB with comma", "1,004.64 KB", false, 1004.64 * float64(bytesInKB)},
-		{"MB", "4.4444 MB", false, 4.4444 * float64(bytesInMB)},
-		{"GB", "5.55555 GB", false, 5.55555 * float64(bytesInGB)},
-		{"TB", "6.666666 TB", false, 6.666666 * float64(bytesInTB)},
-		{"int", "7 KB", false, 7 * float64(bytesInKB)},
+		{"KB", "3.333 KB", false, 3.333 * float64(clientUtils.SizeKib)},
+		{"KB with comma", "1,004.64 KB", false, 1004.64 * float64(clientUtils.SizeKib)},
+		{"MB", "4.4444 MB", false, 4.4444 * float64(clientUtils.SizeMiB)},
+		{"GB", "5.55555 GB", false, 5.55555 * float64(clientUtils.SizeGiB)},
+		{"TB", "6.666666 TB", false, 6.666666 * float64(clientUtils.SizeTiB)},
+		{"int", "7 KB", false, 7 * float64(clientUtils.SizeKib)},
 		{"size missing", "8", true, -1},
 		{"unexpected size", "8 kb", true, -1},
 		{"too many separators", "8 K B", true, -1},

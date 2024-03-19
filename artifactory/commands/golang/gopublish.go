@@ -6,6 +6,8 @@ import (
 	"github.com/jfrog/build-info-go/build"
 	commandutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -14,12 +16,12 @@ import (
 const minSupportedArtifactoryVersion = "6.2.0"
 
 type GoPublishCommandArgs struct {
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *buildUtils.BuildConfiguration
 	version            string
 	detailedSummary    bool
 	excludedPatterns   []string
 	result             *commandutils.Result
-	utils.RepositoryConfig
+	project.RepositoryConfig
 }
 
 type GoPublishCommand struct {
@@ -61,11 +63,11 @@ func (gpc *GoPublishCommand) Run() error {
 		return err
 	}
 	// Read config file.
-	vConfig, err := utils.ReadConfigFile(gpc.configFilePath, utils.YAML)
+	vConfig, err := project.ReadConfigFile(gpc.configFilePath, project.YAML)
 	if err != nil {
 		return err
 	}
-	repoConfig, err := utils.GetRepoConfigByPrefix(gpc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+	repoConfig, err := project.GetRepoConfigByPrefix(gpc.configFilePath, project.ProjectConfigDeployerPrefix, vConfig)
 	if err != nil {
 		return err
 	}
@@ -102,7 +104,7 @@ func (gpc *GoPublishCommand) Run() error {
 			return err
 		}
 		project = gpc.buildConfiguration.GetProject()
-		buildInfoService := utils.CreateBuildInfoService()
+		buildInfoService := buildUtils.CreateBuildInfoService()
 		goBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, project)
 		if err != nil {
 			return errorutils.CheckError(err)
@@ -147,7 +149,7 @@ func (gpc *GoPublishCommandArgs) SetVersion(version string) *GoPublishCommandArg
 	return gpc
 }
 
-func (gpc *GoPublishCommandArgs) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *GoPublishCommandArgs {
+func (gpc *GoPublishCommandArgs) SetBuildConfiguration(buildConfiguration *buildUtils.BuildConfiguration) *GoPublishCommandArgs {
 	gpc.buildConfiguration = buildConfiguration
 	return gpc
 }

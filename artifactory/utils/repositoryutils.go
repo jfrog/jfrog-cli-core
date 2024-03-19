@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"github.com/jfrog/gofrog/datastructures"
+	"golang.org/x/exp/slices"
 	"path"
 	"strings"
 
@@ -63,16 +65,13 @@ func GetRepositories(artDetails *config.ServerDetails, repoTypes ...RepoType) ([
 	if err != nil {
 		return nil, err
 	}
-	if len(repoTypes) == 0 {
-		return GetFilteredRepositoriesByName(sm, nil, nil)
-	}
 	repos := []string{}
 	for _, repoType := range repoTypes {
-		repoKey, err := GetFilteredRepositoriesByNameAndType(sm, nil, nil, repoType)
+		filteredRepos, err := GetFilteredRepositoriesByNameAndType(sm, nil, nil, repoType)
 		if err != nil {
 			return repos, err
 		}
-		repos = append(repos, repoKey...)
+		repos = append(repos, filteredRepos...)
 	}
 
 	return repos, nil
@@ -162,7 +161,7 @@ func GetFilteredBuildInfoRepositories(storageInfo *clientUtils.StorageInfo, incl
 // includePatterns - Repositories inclusion wildcard pattern
 // excludePatterns - Repositories exclusion wildcard pattern
 func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns []string) ([]string, error) {
-	var included []string
+	includedRepos := datastructures.MakeSet[string]()
 	includeExcludeFilter := &IncludeExcludeFilter{
 		IncludePatterns: includePatterns,
 		ExcludePatterns: excludePatterns,
@@ -170,13 +169,13 @@ func filterRepositoryNames(repoKeys *[]string, includePatterns, excludePatterns 
 	for _, repoKey := range *repoKeys {
 		repoIncluded, err := includeExcludeFilter.ShouldIncludeRepository(repoKey)
 		if err != nil {
-			return included, err
+			return nil, err
 		}
 		if repoIncluded {
-			included = append(included, repoKey)
+			includedRepos.Add(repoKey)
 		}
 	}
-	return included, nil
+	return includedRepos.ToSlice(), nil
 }
 
 type IncludeExcludeFilter struct {
@@ -184,17 +183,20 @@ type IncludeExcludeFilter struct {
 	ExcludePatterns []string
 }
 
-func (rf *IncludeExcludeFilter) ShouldIncludeRepository(repoKey string) (bool, error) {
-	rf.ExcludePatterns = append(rf.ExcludePatterns, blacklistedRepositories...)
-	return rf.ShouldIncludeItem(repoKey)
+func (ief *IncludeExcludeFilter) ShouldIncludeRepository(repoKey string) (bool, error) {
+	if slices.Contains(blacklistedRepositories, repoKey) {
+		// This repository is blacklisted.
+		return false, nil
+	}
+	return ief.ShouldIncludeItem(repoKey)
 }
 
-func (rf *IncludeExcludeFilter) ShouldIncludeItem(item string) (bool, error) {
+func (ief *IncludeExcludeFilter) ShouldIncludeItem(item string) (bool, error) {
 	// If includePattens is empty, include all.
-	repoIncluded := len(rf.IncludePatterns) == 0
+	repoIncluded := len(ief.IncludePatterns) == 0
 
 	// Check if this item name matches any include pattern.
-	for _, includePattern := range rf.IncludePatterns {
+	for _, includePattern := range ief.IncludePatterns {
 		matched, err := path.Match(includePattern, item)
 		if err != nil {
 			return false, err
@@ -210,7 +212,7 @@ func (rf *IncludeExcludeFilter) ShouldIncludeItem(item string) (bool, error) {
 	}
 
 	// Check if this item name matches any exclude pattern.
-	for _, excludePattern := range rf.ExcludePatterns {
+	for _, excludePattern := range ief.ExcludePatterns {
 		matched, err := path.Match(excludePattern, item)
 		if err != nil {
 			return false, err

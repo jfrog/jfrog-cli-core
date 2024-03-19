@@ -229,22 +229,23 @@ func getConfigFile() (content []byte, err error) {
 	}
 	// Try to look for older config files
 	for i := coreutils.GetCliConfigVersion() - 1; i >= 3; i-- {
-		versionedConfigPath, err := getLegacyConfigFilePath(i)
+		var versionedConfigPath string
+		versionedConfigPath, err = getLegacyConfigFilePath(i)
 		if err != nil {
-			return nil, err
+			return
 		}
-		exists, err := fileutils.IsFileExists(versionedConfigPath, false)
+		exists, err = fileutils.IsFileExists(versionedConfigPath, false)
 		if err != nil {
-			return nil, err
+			return
 		}
 		if exists {
 			// If an old config file was found returns its content or an error.
 			content, err = fileutils.ReadFile(versionedConfigPath)
-			return content, err
+			return
 		}
 	}
 
-	return content, nil
+	return
 }
 
 func (config *Config) Clone() (*Config, error) {
@@ -392,7 +393,7 @@ func createHomeDirBackup() error {
 		return err
 	}
 
-	// Copy homedir contents to backup dir, excluding redundant dirs and the backup dir itself.
+	// Copy homedir contents to back up dir, excluding redundant dirs and the backup dir itself.
 	backupName := ".jfrog-" + strconv.FormatInt(time.Now().Unix(), 10)
 	curBackupPath := filepath.Join(backupDir, backupName)
 	log.Debug("Creating a homedir backup at: " + curBackupPath)
@@ -748,6 +749,39 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 	details.SetSshKeyPath(serverDetails.SshKeyPath)
 	details.SetSshPassphrase(serverDetails.SshPassphrase)
 	return details, nil
+}
+
+// GetAuthenticationCredentials retrieves authentication credentials for the serverDetails instance.
+// If both a username and password are provided, they are returned.
+// If only an access token is provided, the function extracts the username from the access token,
+// and both the username and access token are returned.
+//
+// Returns:
+// - Username and password if both are provided.
+// - Username extracted from the access token, along with the access token, if the access token is provided.
+// - An error if neither username/password nor access token is provided, with details about the missing credentials.
+func (serverDetails *ServerDetails) GetAuthenticationCredentials() (string, string, error) {
+	// Username and password are set
+	if serverDetails.Password != "" && serverDetails.User != "" {
+		return serverDetails.User, serverDetails.Password, nil
+	}
+
+	// Access token is set, extract the username from the access token if needed
+	if serverDetails.AccessToken != "" {
+		if serverDetails.User == "" {
+			serverDetails.User = auth.ExtractUsernameFromAccessToken(serverDetails.AccessToken)
+		}
+		return serverDetails.User, serverDetails.AccessToken, nil
+	}
+
+	// Username/Password or Access token isn't set
+	errMissingCredsMsg := "either username/password or access token must be set for "
+	if serverDetails.Url != "" {
+		errMissingCredsMsg += serverDetails.Url
+	} else if serverDetails.ArtifactoryUrl != "" {
+		errMissingCredsMsg += serverDetails.ArtifactoryUrl
+	}
+	return "", "", errorutils.CheckErrorf(errMissingCredsMsg)
 }
 
 func (missionControlDetails *MissionControlDetails) GetAccessToken() string {

@@ -2,6 +2,7 @@ package coreutils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -136,10 +137,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 	tableWriter.Style().Options.SeparateRows = true
 	stdoutWriter := bufio.NewWriter(os.Stdout)
 	defer func() {
-		e := stdoutWriter.Flush()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, stdoutWriter.Flush())
 	}()
 	tableWriter.SetOutputMirror(stdoutWriter)
 	tableWriter.Render()
@@ -249,7 +247,10 @@ func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []field
 		if err != nil {
 			return err
 		}
-		colMaxWidth = int(math.Floor(float64(termWidth) / float64(colNum)))
+		if termWidth > 0 {
+			// Terminal width should be a positive number, if it's not then we couldn't get the terminal width successfully.
+			colMaxWidth = int(math.Floor(float64(termWidth) / float64(colNum)))
+		}
 	}
 
 	// Set the max width on every column and cell.

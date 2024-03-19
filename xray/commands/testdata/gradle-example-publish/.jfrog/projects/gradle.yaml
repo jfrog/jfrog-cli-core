@@ -1,4 +1,0 @@
-version: 1
-type: gradle
-usePlugin: true
-useWrapper: true

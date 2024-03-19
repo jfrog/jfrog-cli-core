@@ -13,6 +13,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -26,7 +27,7 @@ type OcStartBuildCommand struct {
 	repo               string
 	ocArgs             []string
 	serverDetails      *config.ServerDetails
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 }
 
 func NewOcStartBuildCommand() *OcStartBuildCommand {
@@ -78,7 +79,7 @@ func (osb *OcStartBuildCommand) Run() error {
 		return err
 	}
 
-	if err := utils.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
+	if err := build.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
 	serviceManager, err := utils.CreateServiceManager(osb.serverDetails, -1, 0, false)
@@ -96,7 +97,7 @@ func (osb *OcStartBuildCommand) Run() error {
 	}
 
 	log.Info("oc start-build finished successfully.")
-	return utils.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
+	return build.SaveBuildInfo(buildName, buildNumber, project, buildInfo)
 }
 
 func (osb *OcStartBuildCommand) ServerDetails() (*config.ServerDetails, error) {
@@ -133,7 +134,7 @@ func (osb *OcStartBuildCommand) SetServerId(serverId string) *OcStartBuildComman
 	return osb
 }
 
-func (osb *OcStartBuildCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *OcStartBuildCommand {
+func (osb *OcStartBuildCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *OcStartBuildCommand {
 	osb.buildConfiguration = buildConfiguration
 	return osb
 }

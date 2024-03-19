@@ -4,24 +4,26 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	gradleutils "github.com/jfrog/jfrog-cli-core/v2/utils/gradle"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	xrutils "github.com/jfrog/jfrog-cli-core/v2/xray/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
 )
 
 type GradleCommand struct {
-	tasks              string
+	tasks              []string
 	configPath         string
-	configuration      *utils.BuildConfiguration
+	configuration      *build.BuildConfiguration
 	serverDetails      *config.ServerDetails
 	threads            int
 	detailedSummary    bool
 	xrayScan           bool
-	scanOutputFormat   xrutils.OutputFormat
+	scanOutputFormat   format.OutputFormat
 	result             *commandsutils.Result
 	deploymentDisabled bool
 	// File path for Gradle extractor in which all build's artifacts details will be listed at the end of the build.
@@ -37,11 +39,11 @@ func (gc *GradleCommand) ServerDetails() (*config.ServerDetails, error) {
 	// Get the serverDetails from the config file.
 	var err error
 	if gc.serverDetails == nil {
-		vConfig, err := utils.ReadConfigFile(gc.configPath, utils.YAML)
+		vConfig, err := project.ReadConfigFile(gc.configPath, project.YAML)
 		if err != nil {
 			return nil, err
 		}
-		gc.serverDetails, err = utils.GetServerDetails(vConfig)
+		gc.serverDetails, err = build.GetServerDetails(vConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +58,7 @@ func (gc *GradleCommand) SetServerDetails(serverDetails *config.ServerDetails) *
 
 func (gc *GradleCommand) init() (vConfig *viper.Viper, err error) {
 	// Read config
-	vConfig, err = utils.ReadConfigFile(gc.configPath, utils.YAML)
+	vConfig, err = project.ReadConfigFile(gc.configPath, project.YAML)
 	if err != nil {
 		return
 	}
@@ -169,7 +171,7 @@ func (gc *GradleCommand) CommandName() string {
 	return "rt_gradle"
 }
 
-func (gc *GradleCommand) SetConfiguration(configuration *utils.BuildConfiguration) *GradleCommand {
+func (gc *GradleCommand) SetConfiguration(configuration *build.BuildConfiguration) *GradleCommand {
 	gc.configuration = configuration
 	return gc
 }
@@ -179,7 +181,7 @@ func (gc *GradleCommand) SetConfigPath(configPath string) *GradleCommand {
 	return gc
 }
 
-func (gc *GradleCommand) SetTasks(tasks string) *GradleCommand {
+func (gc *GradleCommand) SetTasks(tasks []string) *GradleCommand {
 	gc.tasks = tasks
 	return gc
 }
@@ -207,7 +209,7 @@ func (gc *GradleCommand) IsXrayScan() bool {
 	return gc.xrayScan
 }
 
-func (gc *GradleCommand) SetScanOutputFormat(format xrutils.OutputFormat) *GradleCommand {
+func (gc *GradleCommand) SetScanOutputFormat(format format.OutputFormat) *GradleCommand {
 	gc.scanOutputFormat = format
 	return gc
 }

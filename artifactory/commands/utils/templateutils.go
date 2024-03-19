@@ -2,10 +2,12 @@ package utils
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
@@ -36,7 +38,7 @@ func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, erro
 	return configMap, errorutils.CheckError(err)
 }
 
-func ValidateMapEntry(key string, value interface{}, writersMap map[string]AnswerWriter) error {
+func ValidateMapEntry(key string, value interface{}, writersMap map[string]ioutils.AnswerWriter) error {
 	if _, ok := writersMap[key]; !ok {
 		return errorutils.CheckErrorf("template syntax error: unknown key: \"" + key + "\".")
 	}

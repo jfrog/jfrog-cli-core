@@ -9,6 +9,7 @@ import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -35,12 +36,12 @@ func NewPoetryCommand() *PoetryCommand {
 
 func (pc *PoetryCommand) Run() (err error) {
 	log.Info(fmt.Sprintf("Running Poetry %s.", pc.commandName))
-	var buildConfiguration *utils.BuildConfiguration
-	pc.args, buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(pc.args)
+	var buildConfiguration *buildUtils.BuildConfiguration
+	pc.args, buildConfiguration, err = buildUtils.ExtractBuildDetailsFromArgs(pc.args)
 	if err != nil {
 		return err
 	}
-	pythonBuildInfo, err := utils.PrepareBuildPrerequisites(buildConfiguration)
+	pythonBuildInfo, err := buildUtils.PrepareBuildPrerequisites(buildConfiguration)
 	if err != nil {
 		return
 	}
@@ -71,7 +72,7 @@ func (pc *PoetryCommand) Run() (err error) {
 	return gofrogcmd.RunCmd(pc)
 }
 
-func (pc *PoetryCommand) install(buildConfiguration *utils.BuildConfiguration, pythonBuildInfo *build.Build) (err error) {
+func (pc *PoetryCommand) install(buildConfiguration *buildUtils.BuildConfiguration, pythonBuildInfo *build.Build) (err error) {
 	var pythonModule *build.PythonModule
 	pythonModule, err = pythonBuildInfo.AddPythonModule("", pc.pythonTool)
 	if err != nil {
@@ -91,7 +92,7 @@ func (pc *PoetryCommand) install(buildConfiguration *utils.BuildConfiguration, p
 	return errorutils.CheckError(pythonModule.RunInstallAndCollectDependencies(pc.args))
 }
 
-func (pc *PoetryCommand) publish(buildConfiguration *utils.BuildConfiguration, pythonBuildInfo *build.Build) error {
+func (pc *PoetryCommand) publish(buildConfiguration *buildUtils.BuildConfiguration, pythonBuildInfo *build.Build) error {
 	publishCmdArgs := append(slices.Clone(pc.args), "-r "+pc.poetryConfigRepoName)
 	// Collect build info by running the jf poetry install cmd
 	pc.args = []string{}

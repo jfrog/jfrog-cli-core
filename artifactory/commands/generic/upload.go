@@ -5,11 +5,9 @@ import (
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
-	"os"
-	"strconv"
-	"time"
-
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -18,12 +16,14 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strconv"
+	"time"
 )
 
 type UploadCommand struct {
 	GenericCommand
 	uploadConfiguration *utils.UploadConfiguration
-	buildConfiguration  *utils.BuildConfiguration
+	buildConfiguration  *build.BuildConfiguration
 	progress            ioUtils.ProgressMgr
 }
 
@@ -31,7 +31,7 @@ func NewUploadCommand() *UploadCommand {
 	return &UploadCommand{GenericCommand: *NewGenericCommand()}
 }
 
-func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *utils.BuildConfiguration) *UploadCommand {
+func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *UploadCommand {
 	uc.buildConfiguration = buildConfiguration
 	return uc
 }
@@ -80,7 +80,7 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 
 	// Create Service Manager:
-	uc.uploadConfiguration.MinChecksumDeploySize, err = getMinChecksumDeploySize()
+	uc.uploadConfiguration.MinChecksumDeploySize, err = utils.GetMinChecksumDeploySize()
 	if err != nil {
 		return
 	}
@@ -102,7 +102,7 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 	if toCollect && !uc.DryRun() {
 		addVcsProps = true
-		buildProps, err = utils.CreateBuildPropsFromConfiguration(uc.buildConfiguration)
+		buildProps, err = build.CreateBuildPropsFromConfiguration(uc.buildConfiguration)
 		if err != nil {
 			return err
 		}
@@ -191,22 +191,9 @@ func (uc *UploadCommand) upload() (err error) {
 		if err != nil {
 			return
 		}
-		return utils.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
+		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
 	return
-}
-
-func getMinChecksumDeploySize() (int64, error) {
-	minChecksumDeploySize := os.Getenv("JFROG_CLI_MIN_CHECKSUM_DEPLOY_SIZE_KB")
-	if minChecksumDeploySize == "" {
-		return 10240, nil
-	}
-	minSize, err := strconv.ParseInt(minChecksumDeploySize, 10, 64)
-	err = errorutils.CheckError(err)
-	if err != nil {
-		return 0, err
-	}
-	return minSize * 1000, nil
 }
 
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, buildProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
@@ -217,6 +204,8 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bui
 	}
 	uploadParams.Deb = configuration.Deb
 	uploadParams.MinChecksumDeploy = configuration.MinChecksumDeploySize
+	uploadParams.MinSplitSize = configuration.MinSplitSizeMB * rtServicesUtils.SizeMiB
+	uploadParams.SplitCount = configuration.SplitCount
 	uploadParams.AddVcsProps = addVcsProps
 	uploadParams.BuildProps = buildProps
 	uploadParams.Archive = f.Archive
@@ -274,12 +263,7 @@ func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := resultItems.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(resultItems, &err)
 	_, err = servicesManager.DeleteFiles(resultItems)
 	return err
 }

@@ -2,6 +2,7 @@ package container
 
 import (
 	"encoding/json"
+	ioutils "github.com/jfrog/gofrog/io"
 	"os"
 	"path"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
 	artutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -84,7 +86,7 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 
 // Set build properties on image layers in Artifactory.
 func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (err error) {
-	props, err := artutils.CreateBuildProperties(buildName, buildNumber, project)
+	props, err := build.CreateBuildProperties(buildName, buildNumber, project)
 	if err != nil {
 		return
 	}
@@ -93,12 +95,7 @@ func setBuildProperties(buildName, buildNumber, project string, imageLayers []ut
 		return
 	}
 	reader := content.NewContentReader(pathToFile, content.DefaultKey)
-	defer func() {
-		e := reader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(reader, &err)
 	_, err = serviceManager.SetProps(services.PropsParams{Reader: reader, Props: props})
 	return
 }

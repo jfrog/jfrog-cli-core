@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	biutils "github.com/jfrog/build-info-go/utils"
@@ -14,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
@@ -45,7 +46,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 
 	log.Info("Publishing", moduleName, "to", targetRepo)
 
-	props, err := utils.CreateBuildProperties(buildName, buildNumber, projectKey)
+	props, err := build.CreateBuildProperties(buildName, buildNumber, projectKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -57,10 +58,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		return nil, nil, err
 	}
 	defer func() {
-		e := fileutils.RemoveTempDir(tempDirPath)
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, fileutils.RemoveTempDir(tempDirPath))
 	}()
 
 	var zipArtifact *buildinfo.Artifact

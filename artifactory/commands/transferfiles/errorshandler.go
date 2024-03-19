@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -11,6 +12,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
+	"path"
 	"time"
 )
 
@@ -118,10 +120,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 		return err
 	}
 	defer func() {
-		e := mng.errorWriterMng.retryable.closeWriter()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, mng.errorWriterMng.retryable.closeWriter())
 	}()
 	writerMng.retryable = errorWriter{writer: writerRetry, filePath: retryFilePath}
 	// Init the content writer which is responsible for writing 'skipped errors' into files.
@@ -135,10 +134,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 		return err
 	}
 	defer func() {
-		e := mng.errorWriterMng.skipped.closeWriter()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, mng.errorWriterMng.skipped.closeWriter())
 	}()
 	writerMng.skipped = errorWriter{writer: writerSkip, filePath: skipFilePath}
 	mng.errorWriterMng = writerMng
@@ -189,7 +185,7 @@ func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusRespon
 }
 
 func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatusResponse) error {
-	log.Debug(fmt.Sprintf("Writing '%s' to file %s", e.Reason, mng.errorWriterMng.skipped.filePath))
+	logWritingArtifact(e, mng.errorWriterMng.skipped.filePath)
 	mng.errorWriterMng.skipped.writer.Write(e)
 	mng.errorWriterMng.skipped.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file
@@ -213,7 +209,7 @@ func (mng *TransferErrorsMng) writeSkippedErrorContent(e ExtendedFileUploadStatu
 }
 
 func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadStatusResponse) error {
-	log.Debug(fmt.Sprintf("Writing '%s' to file %s", e.Reason, mng.errorWriterMng.retryable.filePath))
+	logWritingArtifact(e, mng.errorWriterMng.retryable.filePath)
 	mng.errorWriterMng.retryable.writer.Write(e)
 	mng.errorWriterMng.retryable.errorCount++
 	// If file contains maximum number of errors - create and write to a new errors file
@@ -234,6 +230,17 @@ func (mng *TransferErrorsMng) writeRetryableErrorContent(e ExtendedFileUploadSta
 		mng.errorWriterMng.retryable.errorCount = 0
 	}
 	return nil
+}
+
+func logWritingArtifact(e ExtendedFileUploadStatusResponse, errorsFilePath string) {
+	if log.GetLogger().GetLogLevel() != log.DEBUG {
+		return
+	}
+	msg := fmt.Sprintf("Writing artifact '%s' to errors file '%s'.", path.Join(e.Repo, e.Path, e.Name), errorsFilePath)
+	if e.Reason != "" {
+		msg += fmt.Sprintf(" Reason: '%s'.", e.Reason)
+	}
+	log.Debug(msg)
 }
 
 func (writerMng *errorWriter) closeWriter() error {

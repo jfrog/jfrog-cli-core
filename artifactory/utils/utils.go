@@ -4,7 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/jfrog/build-info-go/build"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"time"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
@@ -17,13 +24,6 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 func GetProjectDir(global bool) (string, error) {
@@ -84,16 +84,16 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, 0, httpRetries, httpRetryWaitMilliSecs)
+	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, 0, httpRetries, httpRetryWaitMilliSecs, 0)
 }
 
 // Create a service manager with threads.
 // If the value sent for httpRetries is negative, the default will be used.
 func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitMilliSecs int) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, threads, httpRetries, httpRetryWaitMilliSecs)
+	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, threads, httpRetries, httpRetryWaitMilliSecs, 0)
 }
 
-func CreateServiceManagerWithContext(context context.Context, serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitMilliSecs int) (artifactory.ArtifactoryServicesManager, error) {
+func CreateServiceManagerWithContext(context context.Context, serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitMilliSecs int, timeout time.Duration) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -114,6 +114,9 @@ func CreateServiceManagerWithContext(context context.Context, serverDetails *con
 	}
 	if threads > 0 {
 		configBuilder.SetThreads(threads)
+	}
+	if timeout > 0 {
+		configBuilder.SetOverallRequestTimeout(timeout)
 	}
 	serviceConfig, err := configBuilder.Build()
 	if err != nil {
@@ -234,13 +237,6 @@ func RemoteUnmarshal(serviceManager artifactory.ArtifactoryServicesManager, remo
 		return errorutils.CheckError(err)
 	}
 	return errorutils.CheckError(json.Unmarshal(content, loadTarget))
-}
-
-func CreateBuildInfoService() *build.BuildInfoService {
-	buildInfoService := build.NewBuildInfoService()
-	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
-	buildInfoService.SetLogger(log.Logger)
-	return buildInfoService
 }
 
 // Returns an error if the given repo doesn't exist.

@@ -2,14 +2,14 @@ package gradleutils
 
 import (
 	"fmt"
-	"path/filepath"
-	"strings"
-
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/dependencies"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/spf13/viper"
+	"path/filepath"
 )
 
 const (
@@ -17,8 +17,8 @@ const (
 	useWrapper = "usewrapper"
 )
 
-func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, configuration *utils.BuildConfiguration, threads int, disableDeploy bool) error {
-	buildInfoService := utils.CreateBuildInfoService()
+func RunGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile string, configuration *build.BuildConfiguration, threads int, disableDeploy bool) error {
+	buildInfoService := build.CreateBuildInfoService()
 	buildName, err := configuration.GetBuildName()
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func RunGradle(vConfig *viper.Viper, tasks, deployableArtifactsFile string, conf
 	if err != nil {
 		return err
 	}
-	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), utils.PropertiesTempPath), strings.Split(tasks, " "), wrapper, plugin, utils.DownloadExtractor, props)
+	gradleModule.SetExtractorDetails(dependencyLocalPath, filepath.Join(coreutils.GetCliPersistentTempDirPath(), build.PropertiesTempPath), tasks, wrapper, plugin, dependencies.DownloadExtractor, props)
 	return coreutils.ConvertExitCodeError(gradleModule.CalcDependencies())
 }
 
@@ -58,30 +58,30 @@ func getGradleDependencyLocalPath() (string, error) {
 func createGradleRunConfig(vConfig *viper.Viper, deployableArtifactsFile string, threads int, disableDeploy bool) (props map[string]string, wrapper, plugin bool, err error) {
 	wrapper = vConfig.GetBool(useWrapper)
 	if threads > 0 {
-		vConfig.Set(utils.ForkCount, threads)
+		vConfig.Set(build.ForkCount, threads)
 	}
 
 	if disableDeploy {
 		setDeployFalse(vConfig)
 	}
-	props, err = utils.CreateBuildInfoProps(deployableArtifactsFile, vConfig, utils.Gradle)
+	props, err = build.CreateBuildInfoProps(deployableArtifactsFile, vConfig, project.Gradle)
 	if err != nil {
 		return
 	}
 	if deployableArtifactsFile != "" {
 		// Save the path to a temp file, where buildinfo project will write the deployable artifacts details.
-		props[utils.DeployableArtifacts] = fmt.Sprint(vConfig.Get(utils.DeployableArtifacts))
+		props[build.DeployableArtifacts] = fmt.Sprint(vConfig.Get(build.DeployableArtifacts))
 	}
 	plugin = vConfig.GetBool(usePlugin)
 	return
 }
 
 func setDeployFalse(vConfig *viper.Viper) {
-	vConfig.Set(utils.DeployerPrefix+utils.DeployArtifacts, "false")
-	if vConfig.GetString(utils.DeployerPrefix+utils.Url) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.Url, "http://empty_url")
+	vConfig.Set(build.DeployerPrefix+build.DeployArtifacts, "false")
+	if vConfig.GetString(build.DeployerPrefix+build.Url) == "" {
+		vConfig.Set(build.DeployerPrefix+build.Url, "http://empty_url")
 	}
-	if vConfig.GetString(utils.DeployerPrefix+utils.Repo) == "" {
-		vConfig.Set(utils.DeployerPrefix+utils.Repo, "empty_repo")
+	if vConfig.GetString(build.DeployerPrefix+build.Repo) == "" {
+		vConfig.Set(build.DeployerPrefix+build.Repo, "empty_repo")
 	}
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/vbauerster/mpb/v7"
 	"github.com/vbauerster/mpb/v7/decor"
@@ -32,6 +33,8 @@ const (
 	WHITE Color = iota
 	GREEN       = 1
 )
+
+var terminalWidth int
 
 type ProgressBarMng struct {
 	// A container of all external mpb bar objects to be displayed.
@@ -205,7 +208,7 @@ func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 	bm.barsRWMutex.RLock()
 	defer bm.barsRWMutex.RUnlock()
 	diff := prog.tasksProgressBar.total - prog.tasksProgressBar.tasksCount
-	// Handle large number of total tasks
+	// diff is int64, but we can increase the progress up to math.MaxInt in a time
 	for ; diff > math.MaxInt; diff -= math.MaxInt {
 		prog.tasksProgressBar.bar.IncrBy(math.MaxInt)
 	}
@@ -250,14 +253,14 @@ func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denomina
 }
 
 // Initializing a counter progress bar
-func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err error), headLine string) *TasksProgressBar {
+func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err error), headLine string, counterDescription decor.Decorator) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	pb.bar = bm.container.Add(0,
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
 			decor.Name(headLine),
-			decor.Any(func(statistics decor.Statistics) string {
+			decor.Any(func(decor.Statistics) string {
 				value, err := getVal()
 				if err != nil {
 					log.Error(err)
@@ -266,6 +269,7 @@ func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err er
 				return color.Green.Render(s1)
 			}),
 		),
+		mpb.AppendDecorators(counterDescription),
 	)
 	return pb
 }
@@ -330,20 +334,17 @@ var ShouldInitProgressBar = func() (bool, error) {
 	if !log.IsStdErrTerminal() {
 		return false, err
 	}
-	err = setTerminalWidthVar()
+	err = setTerminalWidth()
 	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-var terminalWidth int
-
-// Get terminal dimensions
-func setTerminalWidthVar() error {
+func setTerminalWidth() error {
 	width, _, err := term.GetSize(int(os.Stderr.Fd()))
 	if err != nil {
-		return err
+		return errorutils.CheckError(err)
 	}
 	// -5 to avoid edges
 	terminalWidth = width - 5
@@ -351,4 +352,8 @@ func setTerminalWidthVar() error {
 		terminalWidth = 5
 	}
 	return err
+}
+
+func GetTerminalWidth() int {
+	return terminalWidth
 }

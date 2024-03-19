@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -14,8 +15,11 @@ import (
 
 const (
 	// DefaultThreads is the default number of threads working while transferring Artifactory's data
-	DefaultThreads      = 8
+	DefaultThreads = 8
+	// Maximum working threads allowed to execute the AQL queries and upload chunks for build-info repositories
 	MaxBuildInfoThreads = 8
+	// Maximum working threads allowed to execute the AQL queries
+	MaxChunkBuilderThreads = 16
 
 	transferSettingsFile     = "transfer.conf"
 	transferSettingsLockFile = "transfer-settings"
@@ -25,11 +29,17 @@ type TransferSettings struct {
 	ThreadsNumber int `json:"threadsNumber,omitempty"`
 }
 
-func (ts *TransferSettings) CalcNumberOfThreads(buildInfoRepo bool) int {
+func (ts *TransferSettings) CalcNumberOfThreads(buildInfoRepo bool) (chunkBuilderThreads, chunkUploaderThreads int) {
+	chunkBuilderThreads = ts.ThreadsNumber
+	chunkUploaderThreads = ts.ThreadsNumber
 	if buildInfoRepo && MaxBuildInfoThreads < ts.ThreadsNumber {
-		return MaxBuildInfoThreads
+		chunkBuilderThreads = MaxBuildInfoThreads
+		chunkUploaderThreads = MaxBuildInfoThreads
 	}
-	return ts.ThreadsNumber
+	if MaxChunkBuilderThreads < chunkBuilderThreads {
+		chunkBuilderThreads = MaxChunkBuilderThreads
+	}
+	return
 }
 
 func LoadTransferSettings() (settings *TransferSettings, err error) {
@@ -45,10 +55,7 @@ func LoadTransferSettings() (settings *TransferSettings, err error) {
 	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return
@@ -90,10 +97,7 @@ func SaveTransferSettings(settings *TransferSettings) (err error) {
 	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return

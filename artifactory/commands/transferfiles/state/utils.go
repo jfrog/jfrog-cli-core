@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/jfrog/build-info-go/utils"
@@ -99,11 +100,11 @@ func GetRepositoryTransferDir(repoKey string) (string, error) {
 }
 
 func getRepositoryHash(repoKey string) (string, error) {
-	checksumInfo, err := utils.CalcChecksums(strings.NewReader(repoKey), utils.SHA1)
+	checksums, err := utils.CalcChecksums(strings.NewReader(repoKey), utils.SHA1)
 	if err = errorutils.CheckError(err); err != nil {
 		return "", err
 	}
-	return checksumInfo[utils.SHA1], nil
+	return checksums[utils.SHA1], nil
 }
 
 func GetJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {
@@ -120,4 +121,23 @@ func GetOldTransferDirectoryStructureError() error {
 		return err
 	}
 	return errorutils.CheckErrorf(oldTransferDirectoryStructureErrorFormat, transferDir)
+}
+
+// Atomically add to an int64 variable.
+// addr     - Pointer to int64 variable
+// delta    - The change to do
+func atomicallyAddInt64(addr *int64, delta int64) {
+	atomic.AddInt64(addr, delta)
+}
+
+// Atomically add to an uint64 variable.
+// addr     - Pointer to uint64 variable
+// delta    - The change to do
+// increase - True to increment, false to decrement
+func atomicallyAddUint64(addr *uint64, delta uint64, increase bool) {
+	if increase {
+		atomic.AddUint64(addr, delta)
+	} else {
+		atomic.AddUint64(addr, ^(delta - 1))
+	}
 }

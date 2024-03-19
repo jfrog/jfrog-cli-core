@@ -1,6 +1,8 @@
 package plugins
 
 import (
+	"os"
+
 	jfrogclicore "github.com/jfrog/jfrog-cli-core/v2"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -9,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	clientLog "github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/urfave/cli"
-	"os"
 )
 
 const commandHelpTemplate = `{{.HelpName}}{{if .UsageText}}
@@ -47,26 +48,33 @@ GLOBAL OPTIONS:
 `
 
 func PluginMain(jfrogApp components.App) {
-	log.SetDefaultLogger()
+	coreutils.ExitOnErr(RunCliWithPlugin(jfrogApp)())
+}
 
-	// Set the plugin's user-agent as the jfrog-cli-core's.
-	utils.SetUserAgent(jfrogclicore.GetUserAgent())
+// Use os.Args to pass the command name and arguments to the plugin before running the function to run a specific command.
+func RunCliWithPlugin(jfrogApp components.App) func() error {
+	return func() error {
+		log.SetDefaultLogger()
 
-	cli.CommandHelpTemplate = commandHelpTemplate
-	cli.AppHelpTemplate = appHelpTemplate
+		// Set the plugin's user-agent as the jfrog-cli-core's.
+		utils.SetUserAgent(jfrogclicore.GetUserAgent())
 
-	baseApp, err := components.ConvertApp(jfrogApp)
-	if err != nil {
-		coreutils.ExitOnErr(err)
+		cli.CommandHelpTemplate = commandHelpTemplate
+		cli.AppHelpTemplate = appHelpTemplate
+
+		baseApp, err := components.ConvertApp(jfrogApp)
+		if err != nil {
+			coreutils.ExitOnErr(err)
+		}
+		addHiddenPluginSignatureCommand(baseApp)
+
+		args := os.Args
+		err = baseApp.Run(args)
+
+		if cleanupErr := fileutils.CleanOldDirs(); cleanupErr != nil {
+			clientLog.Warn(cleanupErr)
+		}
+
+		return err
 	}
-	addHiddenPluginSignatureCommand(baseApp)
-
-	args := os.Args
-	err = baseApp.Run(args)
-
-	if cleanupErr := fileutils.CleanOldDirs(); cleanupErr != nil {
-		clientLog.Warn(cleanupErr)
-	}
-
-	coreutils.ExitOnErr(err)
 }

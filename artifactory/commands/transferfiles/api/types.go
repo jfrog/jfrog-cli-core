@@ -9,6 +9,7 @@ import (
 type ProcessStatusType string
 type ChunkFileStatusType string
 type ChunkId string
+type NodeId string
 
 const (
 	Done       ProcessStatusType = "DONE"
@@ -23,6 +24,10 @@ const (
 	Phase1 int = 0
 	Phase2 int = 1
 	Phase3 int = 2
+
+	maxFilesInChunk = 16
+	// 1 GiB
+	maxBytesInChunk = 1 << 30
 )
 
 type TargetAuth struct {
@@ -42,6 +47,8 @@ type UploadChunk struct {
 	CheckExistenceInFilestore bool `json:"check_existence_in_filestore,omitempty"`
 	// True if should skip file filtering in the Data Transfer plugin
 	SkipFileFiltering bool `json:"skip_file_filtering,omitempty"`
+	// Minimum file size in bytes for which JFrog CLI performs checksum deploy optimization
+	MinCheckSumDeploySize int64 `json:"min_checksum_deploy_size,omitempty"`
 }
 
 type FileRepresentation struct {
@@ -100,4 +107,19 @@ func (uc *UploadChunk) AppendUploadCandidateIfNeeded(file FileRepresentation, bu
 		return
 	}
 	uc.UploadCandidates = append(uc.UploadCandidates, file)
+}
+
+// Return true if the chunk contains at least 16 files or at least 1GiB in total
+func (uc *UploadChunk) IsChunkFull() bool {
+	if len(uc.UploadCandidates) >= maxFilesInChunk {
+		return true
+	}
+	var totalSize int64 = 0
+	for _, uploadCandidate := range uc.UploadCandidates {
+		totalSize += uploadCandidate.Size
+		if totalSize > maxBytesInChunk {
+			return true
+		}
+	}
+	return false
 }

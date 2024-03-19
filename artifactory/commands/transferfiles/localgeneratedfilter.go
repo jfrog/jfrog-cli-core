@@ -20,7 +20,7 @@ import (
 const (
 	locallyGeneratedApi                      = "api/localgenerated/filter/paths"
 	minArtifactoryVersionForLocallyGenerated = "7.55.0"
-	maxConcurrentLocallyGeneratedRequests    = 2
+	maxConcurrentLocallyGeneratedRequests    = 5
 )
 
 // The request and response payload of POST '/api/localgenerated/filter/paths'
@@ -160,5 +160,8 @@ func (lg *locallyGeneratedFilter) getNonLocallyGeneratedResults(aqlResultItems [
 }
 
 func getPathInRepo(aqlResultItem *utils.ResultItem) string {
+	if aqlResultItem.Path == "." {
+		return aqlResultItem.Name
+	}
 	return aqlResultItem.Path + "/" + aqlResultItem.Name
 }

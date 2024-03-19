@@ -9,6 +9,7 @@ import (
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -148,18 +149,18 @@ func updateArtifactoryInfo(param *services.CreateReplicationParams, serverId, ta
 	return nil
 }
 
-var writersMap = map[string]utils.AnswerWriter{
-	ServerId:                 utils.WriteStringAnswer,
-	RepoKey:                  utils.WriteStringAnswer,
-	TargetRepoKey:            utils.WriteStringAnswer,
-	CronExp:                  utils.WriteStringAnswer,
-	EnableEventReplication:   utils.WriteBoolAnswer,
-	Enabled:                  utils.WriteBoolAnswer,
-	SyncDeletes:              utils.WriteBoolAnswer,
-	SyncProperties:           utils.WriteBoolAnswer,
-	SyncStatistics:           utils.WriteBoolAnswer,
-	PathPrefix:               utils.WriteStringAnswer,
-	IncludePathPrefixPattern: utils.WriteStringAnswer,
-	SocketTimeoutMillis:      utils.WriteIntAnswer,
-	DisableProxy:             utils.WriteBoolAnswer,
+var writersMap = map[string]ioutils.AnswerWriter{
+	ServerId:                 ioutils.WriteStringAnswer,
+	RepoKey:                  ioutils.WriteStringAnswer,
+	TargetRepoKey:            ioutils.WriteStringAnswer,
+	CronExp:                  ioutils.WriteStringAnswer,
+	EnableEventReplication:   ioutils.WriteBoolAnswer,
+	Enabled:                  ioutils.WriteBoolAnswer,
+	SyncDeletes:              ioutils.WriteBoolAnswer,
+	SyncProperties:           ioutils.WriteBoolAnswer,
+	SyncStatistics:           ioutils.WriteBoolAnswer,
+	PathPrefix:               ioutils.WriteStringAnswer,
+	IncludePathPrefixPattern: ioutils.WriteStringAnswer,
+	SocketTimeoutMillis:      ioutils.WriteIntAnswer,
+	DisableProxy:             ioutils.WriteBoolAnswer,
 }

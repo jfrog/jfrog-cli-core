@@ -26,6 +26,7 @@ const (
 	JfrogTransferRepoSnapshotFileName   = "repo-snapshot.json"
 	JfrogTransferRepoStateFileName      = "repo-state.json"
 	JfrogTransferRepositoriesDirName    = "repositories"
+	JfrogTransferTempDirName            = "tmp"
 	JfrogTransferRetryableErrorsDirName = "retryable"
 	JfrogTransferRunStatusFileName      = "run-status.json"
 	JfrogTransferSkippedErrorsDirName   = "skipped"

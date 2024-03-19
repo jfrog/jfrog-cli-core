@@ -2,9 +2,12 @@ package terraform
 
 import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -28,7 +31,7 @@ type TerraformPublishCommandArgs struct {
 	provider           string
 	tag                string
 	exclusions         []string
-	buildConfiguration *utils.BuildConfiguration
+	buildConfiguration *build.BuildConfiguration
 	collectBuildInfo   bool
 	buildProps         string
 }
@@ -59,7 +62,7 @@ func (tpc *TerraformPublishCommand) setServerDetails(serverDetails *config.Serve
 	tpc.serverDetails = serverDetails
 }
 
-func (tpc *TerraformPublishCommand) setRepoConfig(conf *utils.RepositoryConfig) *TerraformPublishCommand {
+func (tpc *TerraformPublishCommand) setRepoConfig(conf *project.RepositoryConfig) *TerraformPublishCommand {
 	serverDetails, _ := conf.ServerDetails()
 	tpc.setRepo(conf.TargetRepo()).setServerDetails(serverDetails)
 	return tpc
@@ -120,7 +123,7 @@ func (tpc *TerraformPublishCommand) Init() error {
 		return err
 	}
 	if tpc.collectBuildInfo {
-		tpc.buildProps, err = utils.CreateBuildPropsFromConfiguration(tpc.buildConfiguration)
+		tpc.buildProps, err = build.CreateBuildPropsFromConfiguration(tpc.buildConfiguration)
 	}
 	return err
 }
@@ -163,7 +166,7 @@ func (tpa *TerraformPublishCommandArgs) extractTerraformPublishOptionsFromArgs(a
 	}
 	tpa.exclusions = append(tpa.exclusions, strings.Split(exclusionsString, ";")...)
 	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
-	args, tpa.buildConfiguration, err = utils.ExtractBuildDetailsFromArgs(args)
+	args, tpa.buildConfiguration, err = build.ExtractBuildDetailsFromArgs(args)
 	if err != nil {
 		return err
 	}
@@ -292,7 +295,7 @@ func (tpc *TerraformPublishCommand) aggregateSummaryResults(uploadSummary *[][]*
 		}
 	}
 	if tpc.collectBuildInfo {
-		err = utils.PopulateBuildArtifactsAsPartials(artifacts, tpc.buildConfiguration, buildInfo.Terraform)
+		err = build.PopulateBuildArtifactsAsPartials(artifacts, tpc.buildConfiguration, buildInfo.Terraform)
 	}
 	return
 }
@@ -302,12 +305,7 @@ func readArtifactsFromSummary(summary *servicesUtils.OperationSummary) (artifact
 	if artifactsDetailsReader == nil {
 		return []buildInfo.Artifact{}, nil
 	}
-	defer func() {
-		e := artifactsDetailsReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(artifactsDetailsReader, &err)
 	return servicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 }
 
@@ -360,11 +358,11 @@ func checkIfTerraformModule(path string) (isModule bool, err error) {
 func (tpc *TerraformPublishCommand) setRepoFromConfiguration() error {
 	// Read config file.
 	log.Debug("Preparing to read the config file", tpc.configFilePath)
-	vConfig, err := utils.ReadConfigFile(tpc.configFilePath, utils.YAML)
+	vConfig, err := project.ReadConfigFile(tpc.configFilePath, project.YAML)
 	if err != nil {
 		return err
 	}
-	deployerParams, err := utils.GetRepoConfigByPrefix(tpc.configFilePath, utils.ProjectConfigDeployerPrefix, vConfig)
+	deployerParams, err := project.GetRepoConfigByPrefix(tpc.configFilePath, project.ProjectConfigDeployerPrefix, vConfig)
 	if err != nil {
 		return err
 	}

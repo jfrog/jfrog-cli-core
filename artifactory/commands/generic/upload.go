@@ -5,9 +5,7 @@ import (
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
-	"strconv"
-	"time"
-
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -18,6 +16,8 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strconv"
+	"time"
 )
 
 type UploadCommand struct {
@@ -263,12 +263,7 @@ func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := resultItems.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(resultItems, &err)
 	_, err = servicesManager.DeleteFiles(resultItems)
 	return err
 }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-client-go/access"
 	accessservices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -75,10 +76,7 @@ func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAcc
 	unlockFunc, err := lock.CreateLock(lockDirPath)
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return
@@ -211,10 +209,7 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 	unlockFunc, err := lock.CreateLock(lockDirPath)
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return

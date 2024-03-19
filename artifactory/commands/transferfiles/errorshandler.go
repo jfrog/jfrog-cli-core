@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -119,10 +120,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 		return err
 	}
 	defer func() {
-		e := mng.errorWriterMng.retryable.closeWriter()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, mng.errorWriterMng.retryable.closeWriter())
 	}()
 	writerMng.retryable = errorWriter{writer: writerRetry, filePath: retryFilePath}
 	// Init the content writer which is responsible for writing 'skipped errors' into files.
@@ -136,10 +134,7 @@ func (mng *TransferErrorsMng) start() (err error) {
 		return err
 	}
 	defer func() {
-		e := mng.errorWriterMng.skipped.closeWriter()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, mng.errorWriterMng.skipped.closeWriter())
 	}()
 	writerMng.skipped = errorWriter{writer: writerSkip, filePath: skipFilePath}
 	mng.errorWriterMng = writerMng

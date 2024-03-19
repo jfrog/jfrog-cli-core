@@ -1,6 +1,7 @@
 package npm
 
 import (
+	"errors"
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -12,10 +13,7 @@ import (
 func GetConfigList(npmFlags []string, executablePath string) (data []byte, err error) {
 	pipeReader, pipeWriter := io.Pipe()
 	defer func(pipeReader *io.PipeReader) {
-		e := pipeReader.Close()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, pipeReader.Close())
 	}(pipeReader)
 
 	npmFlags = append(npmFlags, "--json=false")

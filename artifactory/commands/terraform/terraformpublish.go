@@ -2,6 +2,7 @@ package terraform
 
 import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/parallel"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -304,12 +305,7 @@ func readArtifactsFromSummary(summary *servicesUtils.OperationSummary) (artifact
 	if artifactsDetailsReader == nil {
 		return []buildInfo.Artifact{}, nil
 	}
-	defer func() {
-		e := artifactsDetailsReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(artifactsDetailsReader, &err)
 	return servicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 }
 

@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"os"
 	"path/filepath"
@@ -198,12 +199,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := npc.artifactsDetailsReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(npc.artifactsDetailsReader, &err)
 	err = npmModule.AddArtifacts(buildArtifacts...)
 	if err != nil {
 		return errorutils.CheckError(err)

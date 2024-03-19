@@ -267,7 +267,7 @@ func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails,
 	}
 	log.Debug("Nuget config file created at:", configFile.Name())
 	defer func() {
-		err = errors.Join(err,errorutils.CheckError(configFile.Close()))
+		err = errors.Join(err, errorutils.CheckError(configFile.Close()))
 	}()
 
 	// We would prefer to write the NuGet configuration using the `nuget add source` command,

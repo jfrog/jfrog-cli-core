@@ -37,8 +37,8 @@ func (rbe *ReleaseBundleExportCommand) Run() (err error) {
 	}
 	// Download the exported bundle
 	log.Debug("Downloading the exported bundle...")
-	_, failed, err := rbe.downloadReleaseBundle(exportResponse, rbe.downloadConfigurations)
-	if err != nil || failed > 0 {
+	downloaded, failed, err := rbe.downloadReleaseBundle(exportResponse, rbe.downloadConfigurations)
+	if err != nil || failed > 0 || downloaded < 1 {
 		return
 	}
 	log.Info("Successfully Downloaded Release Bundle archive")
@@ -75,7 +75,6 @@ func NewReleaseBundleExportCommand() *ReleaseBundleExportCommand {
 }
 func (rbe *ReleaseBundleExportCommand) SetServerDetails(serverDetails *config.ServerDetails) *ReleaseBundleExportCommand {
 	rbe.serverDetails = serverDetails
-	rbe.releaseBundleCmd.serverDetails = serverDetails
 	return rbe
 }
 
@@ -104,8 +103,9 @@ func (rbe *ReleaseBundleExportCommand) SetDownloadConfiguration(downloadConfig a
 }
 
 func (rbe *ReleaseBundleExportCommand) SetTargetPath(target string) *ReleaseBundleExportCommand {
-	if target == "" || !strings.HasSuffix(target, "/") {
-		target += "/"
+	if target == "" {
+		// Default value as current dir
+		target += "./"
 	}
 	rbe.targetPath = target
 	return rbe

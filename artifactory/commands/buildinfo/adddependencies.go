@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"errors"
+	ioutils "github.com/jfrog/gofrog/io"
 	regxp "regexp"
 	"strconv"
 
@@ -316,15 +317,12 @@ func convertFileInfoToDependencies(files map[string]*fileutils.FileDetails) []bu
 func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactoryServicesManager) (resultReader *content.ContentReader, err error) {
 	temp := []*content.ContentReader{}
 	var searchParams services.SearchParams
-	var reader *content.ContentReader
 	defer func() {
 		for _, reader := range temp {
-			e := reader.Close()
-			if err == nil {
-				err = e
-			}
+			ioutils.Close(reader, &err)
 		}
 	}()
+	var reader *content.ContentReader
 	for i := 0; i < len(spec.Files); i++ {
 		searchParams, err = utils.GetSearchParams(spec.Get(i))
 		if err != nil {

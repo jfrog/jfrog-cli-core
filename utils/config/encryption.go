@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"os"
 	"strconv"
@@ -115,12 +116,7 @@ func getEncryptionKeyFromSecurityConfFile() (key string, err error) {
 	config := viper.New()
 	config.SetConfigType("yaml")
 	f, err := os.Open(secFile)
-	defer func() {
-		e := f.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(f, &err)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

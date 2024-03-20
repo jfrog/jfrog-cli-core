@@ -3,7 +3,9 @@ package npm
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
+	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,7 +39,7 @@ type NpmPublishCommandArgs struct {
 	executablePath         string
 	workingDirectory       string
 	collectBuildInfo       bool
-	packedFilePath         string
+	packedFilePaths        []string
 	packageInfo            *biutils.PackageInfo
 	publishPath            string
 	tarballProvided        bool
@@ -172,11 +174,11 @@ func (npc *NpmPublishCommand) Run() (err error) {
 			return err
 		}
 		// We should delete the tarball we created
-		return deleteCreatedTarballAndError(npc.packedFilePath, err)
+		return errors.Join(err, deleteCreatedTarball(npc.packedFilePaths))
 	}
 
 	if !npc.tarballProvided {
-		if err := deleteCreatedTarball(npc.packedFilePath); err != nil {
+		if err := deleteCreatedTarball(npc.packedFilePaths); err != nil {
 			return err
 		}
 	}
@@ -197,12 +199,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := npc.artifactsDetailsReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(npc.artifactsDetailsReader, &err)
 	err = npmModule.AddArtifacts(buildArtifacts...)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -217,6 +214,7 @@ func (npc *NpmPublishCommand) CommandName() string {
 }
 
 func (npc *NpmPublishCommand) preparePrerequisites() error {
+	npc.packedFilePaths = make([]string, 0)
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -251,7 +249,7 @@ func (npc *NpmPublishCommand) preparePrerequisites() error {
 
 func (npc *NpmPublishCommand) pack() error {
 	log.Debug("Creating npm package.")
-	packageFileName, err := npm.Pack(npc.npmArgs, npc.executablePath)
+	packedFileNames, err := npm.Pack(npc.npmArgs, npc.executablePath)
 	if err != nil {
 		return err
 	}
@@ -261,8 +259,10 @@ func (npc *NpmPublishCommand) pack() error {
 		return err
 	}
 
-	npc.packedFilePath = filepath.Join(tarballDir, packageFileName)
-	log.Debug("Created npm package at", npc.packedFilePath)
+	for _, packageFileName := range packedFileNames {
+		npc.packedFilePaths = append(npc.packedFilePaths, filepath.Join(tarballDir, packageFileName))
+	}
+
 	return nil
 }
 
@@ -279,34 +279,36 @@ func (npc *NpmPublishCommand) getTarballDir() (string, error) {
 	return dest, nil
 }
 
-func (npc *NpmPublishCommand) publish() error {
-	log.Debug("Deploying npm package.")
-	if err := npc.readPackageInfoFromTarball(); err != nil {
-		return err
-	}
-	target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
-
-	// If requested, perform a Xray binary scan before deployment. If a FailBuildError is returned, skip the deployment.
-	if npc.xrayScan {
-		fileSpec := spec.NewBuilder().
-			Pattern(npc.packedFilePath).
-			Target(npc.repo + "/").
-			BuildSpec()
-		err := commandsutils.ConditionalUploadScanFunc(npc.serverDetails, fileSpec, 1, npc.scanOutputFormat)
-		if err != nil {
-			return err
+func (npc *NpmPublishCommand) publish() (err error) {
+	for _, packedFilePath := range npc.packedFilePaths {
+		log.Debug("Deploying npm package.")
+		if err = npc.readPackageInfoFromTarball(packedFilePath); err != nil {
+			return
 		}
+		target := fmt.Sprintf("%s/%s", npc.repo, npc.packageInfo.GetDeployPath())
+
+		// If requested, perform a Xray binary scan before deployment. If a FailBuildError is returned, skip the deployment.
+		if npc.xrayScan {
+			fileSpec := spec.NewBuilder().
+				Pattern(packedFilePath).
+				Target(npc.repo + "/").
+				BuildSpec()
+			if err = commandsutils.ConditionalUploadScanFunc(npc.serverDetails, fileSpec, 1, npc.scanOutputFormat); err != nil {
+				return
+			}
+		}
+		err = errors.Join(err, npc.doDeploy(target, npc.serverDetails, packedFilePath))
 	}
-	return npc.doDeploy(target, npc.serverDetails)
+	return
 }
 
-func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails) error {
+func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerDetails, packedFilePath string) error {
 	servicesManager, err := utils.CreateServiceManager(artDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
 	up := services.NewUploadParams()
-	up.CommonParams = &specutils.CommonParams{Pattern: npc.packedFilePath, Target: target}
+	up.CommonParams = &specutils.CommonParams{Pattern: packedFilePath, Target: target}
 	var totalFailed int
 	if npc.collectBuildInfo || npc.detailedSummary {
 		if npc.collectBuildInfo {
@@ -341,12 +343,11 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			}
 		}
 		if npc.detailedSummary {
-			npc.result.SetReader(summary.TransferDetailsReader)
-			npc.result.SetFailCount(totalFailed)
-			npc.result.SetSuccessCount(summary.TotalSucceeded)
+			if err = npc.setDetailedSummary(summary); err != nil {
+				return err
+			}
 		} else {
-			err = summary.TransferDetailsReader.Close()
-			if err != nil {
+			if err = summary.TransferDetailsReader.Close(); err != nil {
 				return err
 			}
 		}
@@ -361,6 +362,29 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	if totalFailed > 0 {
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
+	return nil
+}
+
+func (npc *NpmPublishCommand) setDetailedSummary(summary *specutils.OperationSummary) (err error) {
+	npc.result.SetFailCount(npc.result.FailCount() + summary.TotalFailed)
+	npc.result.SetSuccessCount(npc.result.SuccessCount() + summary.TotalSucceeded)
+	if npc.result.Reader() == nil {
+		npc.result.SetReader(summary.TransferDetailsReader)
+	} else {
+		if err = npc.appendReader(summary); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (npc *NpmPublishCommand) appendReader(summary *specutils.OperationSummary) error {
+	readersSlice := []*content.ContentReader{npc.result.Reader(), summary.TransferDetailsReader}
+	reader, err := content.MergeReaders(readersSlice, content.DefaultKey)
+	if err != nil {
+		return err
+	}
+	npc.result.SetReader(reader)
 	return nil
 }
 
@@ -394,21 +418,17 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
 	npc.tarballProvided = true
-	npc.packedFilePath = npc.publishPath
-	return npc.readPackageInfoFromTarball()
+	return npc.readPackageInfoFromTarball(npc.publishPath)
 }
 
-func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
-	log.Debug("Extracting info from npm package:", npc.packedFilePath)
-	tarball, err := os.Open(npc.packedFilePath)
+func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) (err error) {
+	log.Debug("Extracting info from npm package:", npc.packedFilePaths)
+	tarball, err := os.Open(packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 	defer func() {
-		e := tarball.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(tarball.Close()))
 	}()
 	gZipReader, err := gzip.NewReader(tarball)
 	if err != nil {
@@ -420,7 +440,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
 		hdr, err := tarReader.Next()
 		if err != nil {
 			if err == io.EOF {
-				return errorutils.CheckErrorf("Could not find 'package.json' in the compressed npm package: " + npc.packedFilePath)
+				return errorutils.CheckErrorf("Could not find 'package.json' in the compressed npm package: " + packedFilePath)
 			}
 			return errorutils.CheckError(err)
 		}
@@ -436,18 +456,12 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball() (err error) {
 	}
 }
 
-func deleteCreatedTarballAndError(packedFilePath string, currentError error) error {
-	if err := deleteCreatedTarball(packedFilePath); err != nil {
-		errorText := fmt.Sprintf("Two errors occurred: \n%s \n%s", currentError, err)
-		return errorutils.CheckErrorf(errorText)
+func deleteCreatedTarball(packedFilesPath []string) error {
+	for _, packedFilePath := range packedFilesPath {
+		if err := os.Remove(packedFilePath); err != nil {
+			return errorutils.CheckError(err)
+		}
+		log.Debug("Successfully deleted the created npm package:", packedFilePath)
 	}
-	return currentError
-}
-
-func deleteCreatedTarball(packedFilePath string) error {
-	if err := os.Remove(packedFilePath); err != nil {
-		return errorutils.CheckError(err)
-	}
-	log.Debug("Successfully deleted the created npm package:", packedFilePath)
 	return nil
 }

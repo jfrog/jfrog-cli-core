@@ -118,10 +118,7 @@ func (cc *ConfigCommand) Run() (err error) {
 	unlockFunc, err := lock.CreateLock(lockDirPath)
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return

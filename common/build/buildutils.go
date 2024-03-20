@@ -120,10 +120,7 @@ func saveBuildData(action interface{}, buildName, buildNumber, projectKey string
 		return err
 	}
 	defer func() {
-		e := tempFile.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(tempFile.Close()))
 	}()
 	_, err = tempFile.Write(content.Bytes())
 	return err
@@ -149,10 +146,7 @@ func SaveBuildInfo(buildName, buildNumber, projectKey string, buildInfo *buildIn
 		return err
 	}
 	defer func() {
-		e := tempFile.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(tempFile.Close()))
 	}()
 	_, err = tempFile.Write(content.Bytes())
 	return errorutils.CheckError(err)

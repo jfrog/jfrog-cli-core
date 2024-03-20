@@ -38,6 +38,7 @@ type transferPhase interface {
 	setPackageType(packageType string)
 	setDisabledDistinctiveAql()
 	setStopSignal(stopSignal chan os.Signal)
+	setMinCheckSumDeploySize(minCheckSumDeploySize int64)
 	StopGracefully()
 }
 
@@ -62,6 +63,7 @@ type phaseBase struct {
 	stopSignal                chan os.Signal
 	// Optimization in Artifactory version 7.37 and above enables the exclusion of setting DISTINCT in SQL queries
 	disabledDistinctiveAql bool
+	minCheckSumDeploySize  int64
 }
 
 func (pb *phaseBase) ShouldStop() bool {
@@ -145,6 +147,10 @@ func (pb *phaseBase) setPackageType(packageType string) {
 
 func (pb *phaseBase) setDisabledDistinctiveAql() {
 	pb.disabledDistinctiveAql = true
+}
+
+func (pb *phaseBase) setMinCheckSumDeploySize(minCheckSumDeploySize int64) {
+	pb.minCheckSumDeploySize = minCheckSumDeploySize
 }
 
 func (pb *phaseBase) setStopSignal(stopSignal chan os.Signal) {

@@ -2,9 +2,6 @@ package lifecycle
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/artifactory"
-	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -49,25 +46,4 @@ func (rbi *ReleaseBundleImportCommand) Run() (err error) {
 	}
 	log.Info("Successfully Imported Release Bundle archive")
 	return
-}
-
-func createArtifactoryServiceManager(artDetails *config.ServerDetails) (artifactory.ArtifactoryServicesManager, error) {
-	certsPath, err := coreutils.GetJfrogCertsDir()
-	if err != nil {
-		return nil, err
-	}
-	artAuth, err := artDetails.CreateArtAuthConfig()
-	if err != nil {
-		return nil, err
-	}
-	serviceConfig, err := clientConfig.NewConfigBuilder().
-		SetServiceDetails(artAuth).
-		SetCertificatesPath(certsPath).
-		SetInsecureTls(artDetails.InsecureTls).
-		SetDryRun(false).
-		Build()
-	if err != nil {
-		return nil, err
-	}
-	return artifactory.New(serviceConfig)
 }

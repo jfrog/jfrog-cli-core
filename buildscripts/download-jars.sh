@@ -7,7 +7,7 @@
 # https://github.com/jfrog/maven-dep-tree
 
 # Once you have updated the versions mentioned below, please execute this script from the root directory of the jfrog-cli-core to ensure the JAR files are updated.
-GRADLE_DEP_TREE_VERSION="3.0.1"
+GRADLE_DEP_TREE_VERSION="3.0.2"
 # Changing this version also requires a change in mavenDepTreeVersion within utils/java/mvn.go.
 MAVEN_DEP_TREE_VERSION="1.1.0"
 

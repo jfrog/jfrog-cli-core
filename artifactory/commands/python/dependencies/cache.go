@@ -3,6 +3,7 @@ package dependencies
 import (
 	"encoding/json"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"io"
@@ -31,12 +32,7 @@ func GetProjectDependenciesCache(cacheDir string) (cache *DependenciesCache, err
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
-	defer func() {
-		e := jsonFile.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(jsonFile, &err)
 	byteValue, err := io.ReadAll(jsonFile)
 	if errorutils.CheckError(err) != nil {
 		return nil, err
@@ -66,12 +62,7 @@ func UpdateDependenciesCache(updatedMap map[string]buildinfo.Dependency, cacheDi
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	defer func() {
-		e := cacheFile.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(cacheFile, &err)
 	_, err = cacheFile.Write(content)
 	if err != nil {
 		return errorutils.CheckError(err)

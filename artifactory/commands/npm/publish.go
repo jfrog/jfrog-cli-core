@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"os"
 	"path/filepath"
@@ -198,12 +199,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := npc.artifactsDetailsReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(npc.artifactsDetailsReader, &err)
 	err = npmModule.AddArtifacts(buildArtifacts...)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -432,10 +428,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) 
 		return errorutils.CheckError(err)
 	}
 	defer func() {
-		e := tarball.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(tarball.Close()))
 	}()
 	gZipReader, err := gzip.NewReader(tarball)
 	if err != nil {

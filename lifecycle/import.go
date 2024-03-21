@@ -1,8 +1,17 @@
 package lifecycle
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strings"
+)
+
+const (
+	artifactoryCloudSuffix               = "jfrog.io/artifactory/"
+	minCloudImportReleaseBundleSupported = "7.85.0"
 )
 
 type ReleaseBundleImportCommand struct {
@@ -15,7 +24,7 @@ func (rbi *ReleaseBundleImportCommand) ServerDetails() (*config.ServerDetails, e
 }
 
 func (rbi *ReleaseBundleImportCommand) CommandName() string {
-	return "rb_export"
+	return "rb_import"
 }
 
 func NewReleaseBundleImportCommand() *ReleaseBundleImportCommand {
@@ -23,7 +32,6 @@ func NewReleaseBundleImportCommand() *ReleaseBundleImportCommand {
 }
 func (rbi *ReleaseBundleImportCommand) SetServerDetails(serverDetails *config.ServerDetails) *ReleaseBundleImportCommand {
 	rbi.serverDetails = serverDetails
-	rbi.releaseBundleCmd.serverDetails = serverDetails
 	return rbi
 }
 
@@ -36,14 +44,32 @@ func (rbi *ReleaseBundleImportCommand) Run() (err error) {
 	if err = validateArtifactoryVersionSupported(rbi.serverDetails); err != nil {
 		return
 	}
-	artService, err := createArtifactoryServiceManager(rbi.serverDetails)
+	artService, err := utils.CreateServiceManager(rbi.serverDetails, 3, 0, false)
 	if err != nil {
 		return
 	}
-	log.Info("Importing Release Bundle Archive...")
-	if err = artService.ReleaseBundleImport(rbi.filePath); err != nil {
+
+	if err = verifyCloudReleaseBundleImportSupported(rbi.serverDetails); err != nil {
 		return
 	}
-	log.Info("Successfully Imported Release Bundle archive")
+
+	exists, err := fileutils.IsFileExists(rbi.filePath, false)
+	if !exists || err != nil {
+		return
+	}
+
+	log.Info("Importing the release bundle archive...")
+	if err = artService.ImportReleaseBundle(rbi.filePath); err != nil {
+		return
+	}
+	log.Info("Successfully imported the release bundle archive")
+	return
+}
+
+// Release bundle import is not supported in cloud platforms versions before the minCloudImportReleaseBundleSupported
+func verifyCloudReleaseBundleImportSupported(serverDetails *config.ServerDetails) (err error) {
+	if strings.HasSuffix(serverDetails.GetArtifactoryUrl(), artifactoryCloudSuffix) {
+		return clientUtils.ValidateMinimumVersion(clientUtils.Artifactory, minCloudImportReleaseBundleSupported, minimalLifecycleArtifactoryVersion)
+	}
 	return
 }

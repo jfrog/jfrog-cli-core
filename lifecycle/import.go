@@ -66,7 +66,7 @@ func (rbi *ReleaseBundleImportCommand) Run() (err error) {
 	return
 }
 
-// Release bundle import is not supported in cloud platforms versions before the minCloudImportReleaseBundleSupported
+// Import release bundle is not supported in cloud platforms versions before the minCloudImportReleaseBundleSupported
 func verifyCloudReleaseBundleImportSupported(serverDetails *config.ServerDetails) (err error) {
 	if strings.HasSuffix(serverDetails.GetArtifactoryUrl(), artifactoryCloudSuffix) {
 		return clientUtils.ValidateMinimumVersion(clientUtils.Artifactory, minCloudImportReleaseBundleSupported, minimalLifecycleArtifactoryVersion)

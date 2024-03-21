@@ -7,11 +7,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const (
-	artifactoryCloudSuffix               = "jfrog.io/artifactory/"
-	minCloudImportReleaseBundleSupported = "7.85.0"
-)
-
 type ReleaseBundleImportCommand struct {
 	releaseBundleCmd
 	filePath string

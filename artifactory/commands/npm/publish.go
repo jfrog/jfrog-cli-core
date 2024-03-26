@@ -422,7 +422,7 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 }
 
 func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) (err error) {
-	log.Debug("Extracting info from npm package:", npc.packedFilePaths)
+	log.Debug("Extracting info from npm package:", packedFilePath)
 	tarball, err := os.Open(packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -451,6 +451,7 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) 
 			}
 
 			npc.packageInfo, err = biutils.ReadPackageInfo(packageJson, npc.npmVersion)
+			npc.packedFilePaths = []string{packedFilePath}
 			return err
 		}
 	}

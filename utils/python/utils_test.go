@@ -54,7 +54,7 @@ func TestGetPypiRepoUrlWithCredentials(t *testing.T) {
 			url, _, _, err := GetPypiRepoUrlWithCredentials(&config.ServerDetails{}, "test", tt.curationCmd)
 			require.NoError(t, err)
 			if tt.curationCmd {
-				assert.Contains(t, url.Path, "api/curation/audit")
+				assert.Contains(t, url.Path, "api/curation/audit/api/pypi/")
 			} else {
 				assert.NotContains(t, url.Path, "api/curation/audit")
 

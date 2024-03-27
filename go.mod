@@ -7,12 +7,12 @@ require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due
 require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
-	github.com/forPelevin/gomoji v1.2.0
+	github.com/forPelevin/gomoji v1.1.8
 	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
-	github.com/jedib0t/go-pretty/v6 v6.5.6
-	github.com/jfrog/build-info-go v1.9.25
+	github.com/jedib0t/go-pretty/v6 v6.5.5
+	github.com/jfrog/build-info-go v1.9.24
 	github.com/jfrog/gofrog v1.6.3
 	github.com/jfrog/jfrog-client-go v1.38.0
 	github.com/magiconair/properties v1.8.7
@@ -28,7 +28,6 @@ require (
 	golang.org/x/term v0.18.0
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
-
 )
 
 require (
@@ -97,8 +96,8 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240327154209-77a304635e42
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240320102352-af2f392bb490
 
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20240319160313-0093dee91fc1
+replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20240319160313-0093dee91fc1
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.3.3-0.20231223133729-ef57bd08cedc

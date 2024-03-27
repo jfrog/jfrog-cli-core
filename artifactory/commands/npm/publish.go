@@ -418,11 +418,13 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
 	npc.tarballProvided = true
+	// Sets the location of the provided tarball
+	npc.packedFilePaths = []string{npc.publishPath}
 	return npc.readPackageInfoFromTarball(npc.publishPath)
 }
 
 func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) (err error) {
-	log.Debug("Extracting info from npm package:", npc.packedFilePaths)
+	log.Debug("Extracting info from npm package:", packedFilePath)
 	tarball, err := os.Open(packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -449,7 +451,6 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) 
 			if err != nil {
 				return errorutils.CheckError(err)
 			}
-
 			npc.packageInfo, err = biutils.ReadPackageInfo(packageJson, npc.npmVersion)
 			return err
 		}

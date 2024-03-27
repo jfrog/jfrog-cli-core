@@ -29,13 +29,30 @@ const (
 	Go     Technology = "go"
 	Pip    Technology = "pip"
 	Pipenv Technology = "pipenv"
+	Pypi   Technology = "pypi"
 	Poetry Technology = "poetry"
 	Nuget  Technology = "nuget"
 	Dotnet Technology = "dotnet"
 	Docker Technology = "docker"
 )
 
-const Pypi = "pypi"
+func TechnologyToLanguage(technology Technology) string {
+	languageMap := map[Technology]string{
+		Npm:    "JavaScript",
+		Pip:    "Python",
+		Poetry: "Python",
+		Pipenv: "Python",
+		Pypi:   "Python",
+		Go:     "Go",
+		Maven:  "Java",
+		Gradle: "Java",
+		Nuget:  "C#",
+		Dotnet: "C#",
+		Yarn:   "JavaScript",
+		Pnpm:   "JavaScript",
+	}
+	return languageMap[technology]
+}
 
 type TechData struct {
 	// The name of the package type used in this technology.
@@ -107,14 +124,14 @@ var technologiesData = map[Technology]TechData{
 		packageInstallationCommand: "get",
 	},
 	Pip: {
-		packageType:            Pypi,
+		packageType:            Pypi.String(),
 		indicators:             []string{"setup.py", "requirements.txt"},
 		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "pyproject.toml", "poetry.lock"},
 		applicabilityScannable: true,
 	},
 	Pipenv: {
-		packageType:                Pypi,
+		packageType:                Pypi.String(),
 		indicators:                 []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptors:         []string{"Pipfile"},
 		packageVersionOperator:     "==",
@@ -122,7 +139,7 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Poetry: {
-		packageType:                Pypi,
+		packageType:                Pypi.String(),
 		indicators:                 []string{"pyproject.toml", "poetry.lock"},
 		packageDescriptors:         []string{"pyproject.toml"},
 		packageInstallationCommand: "add",

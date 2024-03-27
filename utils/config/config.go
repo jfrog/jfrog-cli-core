@@ -573,7 +573,6 @@ type ServerDetails struct {
 	ArtifactoryUrl                  string `json:"artifactoryUrl,omitempty"`
 	DistributionUrl                 string `json:"distributionUrl,omitempty"`
 	XrayUrl                         string `json:"xrayUrl,omitempty"`
-	XscUrl                          string `json:"xscUrl,omitempty"`
 	MissionControlUrl               string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
 	AccessUrl                       string `json:"accessUrl,omitempty"`
@@ -712,8 +711,15 @@ func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails,
 
 func (serverDetails *ServerDetails) CreateXscAuthConfig() (auth.ServiceDetails, error) {
 	ascAuth := xscAuth.NewXscDetails()
-	ascAuth.SetUrl(serverDetails.XscUrl)
+	ascAuth.SetUrl(convertXrayUrlToXscUrl(serverDetails.XrayUrl))
 	return serverDetails.createAuthConfig(ascAuth)
+}
+
+// Xray ans Xsc will always have the same platform url.
+func convertXrayUrlToXscUrl(xrayUrl string) string {
+	xscUrl := strings.TrimSuffix(xrayUrl, "/")
+	xscUrl = strings.TrimSuffix(xrayUrl, "xray")
+	return xscUrl + "xsc/"
 }
 
 func (serverDetails *ServerDetails) CreatePipelinesAuthConfig() (auth.ServiceDetails, error) {

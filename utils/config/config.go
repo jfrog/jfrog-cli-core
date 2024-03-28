@@ -718,7 +718,7 @@ func (serverDetails *ServerDetails) CreateXscAuthConfig() (auth.ServiceDetails, 
 // Xray ans Xsc will always have the same platform url.
 func convertXrayUrlToXscUrl(xrayUrl string) string {
 	xscUrl := strings.TrimSuffix(xrayUrl, "/")
-	xscUrl = strings.TrimSuffix(xrayUrl, "xray")
+	xscUrl = strings.TrimSuffix(xscUrl, "xray")
 	return xscUrl + "xsc/"
 }
 

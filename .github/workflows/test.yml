@@ -35,7 +35,7 @@ jobs:
           cache: false
 
       - name: Install NuGet
-        uses: nuget/setup-nuget@v1
+        uses: nuget/setup-nuget@v2
         with:
           nuget-version: 6.x
 

@@ -14,7 +14,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.6
 	github.com/jfrog/build-info-go v1.9.25
 	github.com/jfrog/gofrog v1.6.3
-	github.com/jfrog/jfrog-client-go v1.38.0
+	github.com/jfrog/jfrog-client-go v1.39.0
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -22,13 +22,12 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.14
 	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20240318143956-a85f2c67cd81
+	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	golang.org/x/mod v0.16.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/term v0.18.0
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
-
 )
 
 require (
@@ -97,7 +96,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240327154209-77a304635e42
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240327154209-77a304635e42
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20240319160313-0093dee91fc1
 

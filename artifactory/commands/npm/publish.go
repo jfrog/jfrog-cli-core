@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
+	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"os"
 	"path/filepath"
@@ -198,12 +199,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := npc.artifactsDetailsReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(npc.artifactsDetailsReader, &err)
 	err = npmModule.AddArtifacts(buildArtifacts...)
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -422,20 +418,19 @@ func (npc *NpmPublishCommand) setPackageInfo() error {
 	}
 	log.Debug("The provided path is not a directory, we assume this is a compressed npm package")
 	npc.tarballProvided = true
+	// Sets the location of the provided tarball
+	npc.packedFilePaths = []string{npc.publishPath}
 	return npc.readPackageInfoFromTarball(npc.publishPath)
 }
 
 func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) (err error) {
-	log.Debug("Extracting info from npm package:", npc.packedFilePaths)
+	log.Debug("Extracting info from npm package:", packedFilePath)
 	tarball, err := os.Open(packedFilePath)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
 	defer func() {
-		e := tarball.Close()
-		if err == nil {
-			err = errorutils.CheckError(e)
-		}
+		err = errors.Join(err, errorutils.CheckError(tarball.Close()))
 	}()
 	gZipReader, err := gzip.NewReader(tarball)
 	if err != nil {
@@ -456,7 +451,6 @@ func (npc *NpmPublishCommand) readPackageInfoFromTarball(packedFilePath string) 
 			if err != nil {
 				return errorutils.CheckError(err)
 			}
-
 			npc.packageInfo, err = biutils.ReadPackageInfo(packageJson, npc.npmVersion)
 			return err
 		}

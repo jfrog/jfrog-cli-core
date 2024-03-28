@@ -2,6 +2,7 @@ package coreutils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -136,10 +137,7 @@ func PrintTable(rows interface{}, title string, emptyTableMessage string, printE
 	tableWriter.Style().Options.SeparateRows = true
 	stdoutWriter := bufio.NewWriter(os.Stdout)
 	defer func() {
-		e := stdoutWriter.Flush()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, stdoutWriter.Flush())
 	}()
 	tableWriter.SetOutputMirror(stdoutWriter)
 	tableWriter.Render()

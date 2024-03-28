@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/flate"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -31,10 +32,7 @@ func archiveConfig(exportPath string, configXml string) (buffer *bytes.Buffer, r
 		return flate.NewWriter(out, flate.BestCompression)
 	})
 	defer func() {
-		closeErr := writer.Close()
-		if retErr == nil {
-			retErr = errorutils.CheckError(closeErr)
-		}
+		retErr = errors.Join(retErr, errorutils.CheckError(writer.Close()))
 	}()
 
 	err := handleTypoInAccessBootstrap(exportPath)

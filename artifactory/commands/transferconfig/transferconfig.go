@@ -3,6 +3,7 @@ package transferconfig
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -105,10 +106,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	tcc.LogTitle("Phase 2/5 - Export configuration from the source Artifactory")
 	exportPath, cleanUp, err := tcc.exportSourceArtifactory()
 	defer func() {
-		cleanUpErr := cleanUp()
-		if err == nil {
-			err = cleanUpErr
-		}
+		err = errors.Join(err, cleanUp())
 	}()
 	if err != nil {
 		return
@@ -313,9 +311,7 @@ func (tcc *TransferConfigCommand) getEncryptedItems(selectedSourceRepos map[util
 		return "", nil, err
 	}
 	defer func() {
-		if reactivationErr := reactivateKeyEncryption(); err == nil {
-			err = reactivationErr
-		}
+		err = errors.Join(err, reactivateKeyEncryption())
 	}()
 
 	// Download artifactory.config.xml from the source Artifactory server.

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gocarina/gocsv"
+	ioutils "github.com/jfrog/gofrog/io"
 	logutils "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -54,12 +55,7 @@ func CreateCSVFile(filePrefix string, items interface{}, timeStarted time.Time) 
 		return
 	}
 	csvPath = summaryCsv.Name()
-	defer func() {
-		e := summaryCsv.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(summaryCsv, &err)
 	// Marshal JSON typed items array to CSV file
 	err = errorutils.CheckError(gocsv.MarshalFile(items, summaryCsv))
 	return

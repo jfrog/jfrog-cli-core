@@ -390,10 +390,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		return
 	}
 	defer func() {
-		e := restoreFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, restoreFunc())
 	}()
 
 	if err = tdc.initCurThreads(buildInfoRepo); err != nil {
@@ -643,10 +640,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	err = originalErr
 	// Quit progress bar (before printing logs)
 	if tdc.progressbar != nil {
-		e := tdc.progressbar.Quit()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, tdc.progressbar.Quit())
 	}
 	// Transferring finished successfully
 	if originalErr == nil {

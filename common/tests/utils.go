@@ -76,6 +76,15 @@ func CreateDsRestsMockServer(t *testing.T, testHandler restsTestHandler) (*httpt
 	return testServer, serverDetails, serviceManager
 }
 
+func CreateXscRestsMockServer(t *testing.T, testHandler restsTestHandler) (*httptest.Server, *config.ServerDetails, artifactory.ArtifactoryServicesManager) {
+	testServer := CreateRestsMockServer(testHandler)
+	serverDetails := &config.ServerDetails{Url: testServer.URL + "/", XrayUrl: testServer.URL + "/xray/"}
+
+	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
+	assert.NoError(t, err)
+	return testServer, serverDetails, serviceManager
+}
+
 // Set progressbar.ShouldInitProgressBar func to always return true
 // so the progress bar library will be initialized and progress will be displayed.
 // The returned callback sets the original func back.

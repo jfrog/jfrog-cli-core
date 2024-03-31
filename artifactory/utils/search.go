@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -70,12 +71,7 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (contentReader *c
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		e := writer.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(writer, &err)
 	for _, reader := range readers {
 		for searchResult := new(utils.ResultItem); reader.NextRecord(searchResult) == nil; searchResult = new(utils.ResultItem) {
 			if err != nil {
@@ -149,12 +145,7 @@ func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.C
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		e := writer.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(writer, &err)
 	for resultItem := new(SearchResult); reader.NextRecord(resultItem) == nil; resultItem = new(SearchResult) {
 		if err != nil {
 			return nil, err

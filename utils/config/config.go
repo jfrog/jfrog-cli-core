@@ -711,13 +711,13 @@ func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails,
 
 func (serverDetails *ServerDetails) CreateXscAuthConfig() (auth.ServiceDetails, error) {
 	ascAuth := xscAuth.NewXscDetails()
-	ascAuth.SetUrl(convertXrayUrlToXscUrl(serverDetails.XrayUrl))
+	ascAuth.SetUrl(serverDetails.convertXrayUrlToXscUrl())
 	return serverDetails.createAuthConfig(ascAuth)
 }
 
-// Xray ans Xsc will always have the same platform url.
-func convertXrayUrlToXscUrl(xrayUrl string) string {
-	xscUrl := strings.TrimSuffix(xrayUrl, "/")
+// Xray and Xsc will always have the same platform url.
+func (serverDetails *ServerDetails) convertXrayUrlToXscUrl() string {
+	xscUrl := strings.TrimSuffix(serverDetails.XrayUrl, "/")
 	xscUrl = strings.TrimSuffix(xscUrl, "xray")
 	return xscUrl + "xsc/"
 }

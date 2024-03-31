@@ -507,3 +507,28 @@ func TestContainsApplicabilityScannableTech(t *testing.T) {
 		})
 	}
 }
+
+func TestTechnologyToLanguage(t *testing.T) {
+	tests := []struct {
+		name       string
+		technology Technology
+		language   CodeLanguage
+	}{
+		{name: "Maven to Java", technology: Maven, language: Java},
+		{name: "Gradle to Java", technology: Gradle, language: Java},
+		{name: "Npm to JavaScript", technology: Npm, language: JavaScript},
+		{name: "Pnpm to JavaScript", technology: Pnpm, language: JavaScript},
+		{name: "Yarn to JavaScript", technology: Yarn, language: JavaScript},
+		{name: "Go to GoLang", technology: Go, language: GoLang},
+		{name: "Pip to Python", technology: Pip, language: Python},
+		{name: "Pipenv to Python", technology: Pipenv, language: Python},
+		{name: "Poetry to Python", technology: Poetry, language: Python},
+		{name: "Nuget to CSharp", technology: Nuget, language: CSharp},
+		{name: "Dotnet to CSharp", technology: Dotnet, language: CSharp},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.language, TechnologyToLanguage(tt.technology), "TechnologyToLanguage(%v) == %v", tt.technology, tt.language)
+		})
+	}
+}

@@ -47,6 +47,8 @@ type UploadChunk struct {
 	CheckExistenceInFilestore bool `json:"check_existence_in_filestore,omitempty"`
 	// True if should skip file filtering in the Data Transfer plugin
 	SkipFileFiltering bool `json:"skip_file_filtering,omitempty"`
+	// Minimum file size in bytes for which JFrog CLI performs checksum deploy optimization
+	MinCheckSumDeploySize int64 `json:"min_checksum_deploy_size,omitempty"`
 }
 
 type FileRepresentation struct {

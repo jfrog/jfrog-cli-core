@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -54,10 +55,7 @@ func LoadTransferSettings() (settings *TransferSettings, err error) {
 	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return
@@ -99,10 +97,7 @@ func SaveTransferSettings(settings *TransferSettings) (err error) {
 	unlockFunc, err := lock.CreateLock(filepath.Join(locksDirPath, transferSettingsLockFile))
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return

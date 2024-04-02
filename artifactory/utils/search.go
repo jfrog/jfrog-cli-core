@@ -2,6 +2,9 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
+	ioutils "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -68,12 +71,7 @@ func AqlResultToSearchResult(readers []*content.ContentReader) (contentReader *c
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		e := writer.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(writer, &err)
 	for _, reader := range readers {
 		for searchResult := new(utils.ResultItem); reader.NextRecord(searchResult) == nil; searchResult = new(utils.ResultItem) {
 			if err != nil {
@@ -147,12 +145,7 @@ func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.C
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		e := writer.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(writer, &err)
 	for resultItem := new(SearchResult); reader.NextRecord(resultItem) == nil; resultItem = new(SearchResult) {
 		if err != nil {
 			return nil, err
@@ -168,5 +161,30 @@ func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.C
 	}
 	reader.Reset()
 	contentReader = content.NewContentReader(writer.GetFilePath(), writer.GetArrayKey())
+	return
+}
+
+func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *spec.SpecFiles) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
+	callbackFunc = func() error {
+		var errs error
+		for _, reader := range searchResults {
+			errs = errors.Join(errs, reader.Close())
+		}
+		return errs
+	}
+
+	var curSearchParams services.SearchParams
+	var curReader *content.ContentReader
+	for i := 0; i < len(spec.Files); i++ {
+		curSearchParams, err = GetSearchParams(spec.Get(i))
+		if err != nil {
+			return
+		}
+		curReader, err = servicesManager.SearchFiles(curSearchParams)
+		if err != nil {
+			return
+		}
+		searchResults = append(searchResults, curReader)
+	}
 	return
 }

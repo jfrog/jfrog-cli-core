@@ -10,6 +10,7 @@ import (
 
 type ReleaseBundlePromoteCommand struct {
 	releaseBundleCmd
+	signingKeyName       string
 	environment          string
 	includeReposPatterns []string
 	excludeReposPatterns []string

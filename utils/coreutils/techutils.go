@@ -82,10 +82,11 @@ var technologiesData = map[Technology]TechData{
 		packageInstallationCommand: "install",
 	},
 	Pnpm: {
-		indicators:             []string{"pnpm-lock.yaml"},
-		exclude:                []string{".yarnrc.yml", "yarn.lock", ".yarn"},
-		packageDescriptors:     []string{"package.json"},
-		packageVersionOperator: "@",
+		indicators:                 []string{"pnpm-lock.yaml"},
+		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
+		packageDescriptors:         []string{"package.json"},
+		packageVersionOperator:     "@",
+		packageInstallationCommand: "update",
 	},
 	Yarn: {
 		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"},

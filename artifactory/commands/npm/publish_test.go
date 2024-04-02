@@ -9,10 +9,26 @@ import (
 
 func TestReadPackageInfoFromTarball(t *testing.T) {
 	npmPublish := NewNpmPublishCommand()
-	npmPublish.packedFilePath = filepath.Join("..", "testdata", "npm", "npm-example-0.0.3.tgz")
-	err := npmPublish.readPackageInfoFromTarball()
-	assert.NoError(t, err)
 
-	assert.Equal(t, "npm-example", npmPublish.packageInfo.Name)
-	assert.Equal(t, "0.0.3", npmPublish.packageInfo.Version)
+	var testCases = []struct {
+		filePath       string
+		packageName    string
+		packageVersion string
+	}{
+		{
+			filePath:       filepath.Join("..", "testdata", "npm", "npm-example-0.0.3.tgz"),
+			packageName:    "npm-example",
+			packageVersion: "0.0.3",
+		}, {
+			filePath:       filepath.Join("..", "testdata", "npm", "npm-example-0.0.4.tgz"),
+			packageName:    "npm-example",
+			packageVersion: "0.0.4",
+		},
+	}
+	for _, test := range testCases {
+		err := npmPublish.readPackageInfoFromTarball(test.filePath)
+		assert.NoError(t, err)
+		assert.Equal(t, test.packageName, npmPublish.packageInfo.Name)
+		assert.Equal(t, test.packageVersion, npmPublish.packageInfo.Version)
+	}
 }

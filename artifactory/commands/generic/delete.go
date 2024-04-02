@@ -1,6 +1,7 @@
 package generic
 
 import (
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -36,12 +37,7 @@ func (dc *DeleteCommand) Run() (err error) {
 	if err != nil {
 		return
 	}
-	defer func() {
-		e := reader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(reader, &err)
 	allowDelete := true
 	if !dc.quiet {
 		allowDelete, err = utils.ConfirmDelete(reader)
@@ -72,10 +68,7 @@ func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReade
 	var temp []*content.ContentReader
 	defer func() {
 		for _, reader := range temp {
-			e := reader.Close()
-			if err == nil {
-				err = e
-			}
+			ioutils.Close(reader, &err)
 		}
 	}()
 	for i := 0; i < len(dc.Spec().Files); i++ {
@@ -95,12 +88,7 @@ func (dc *DeleteCommand) GetPathsToDelete() (contentReader *content.ContentReade
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		e := tempMergedReader.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(tempMergedReader, &err)
 	// After merge, remove top chain dirs as we may encounter duplicates and collisions between files and directories to delete.
 	// For example:
 	// Reader1: {"a"}

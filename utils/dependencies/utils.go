@@ -39,8 +39,7 @@ func DownloadExtractor(targetPath, downloadPath string) error {
 func CreateChecksumFile(targetPath, checksum string) (err error) {
 	out, err := os.Create(targetPath)
 	defer func() {
-		e := errorutils.CheckError(out.Close())
-		err = errors.Join(err, e)
+		err = errors.Join(err, errorutils.CheckError(out.Close()))
 	}()
 	if errorutils.CheckError(err) != nil {
 		return err

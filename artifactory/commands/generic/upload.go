@@ -5,10 +5,7 @@ import (
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
-	"os"
-	"strconv"
-	"time"
-
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -19,6 +16,8 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strconv"
+	"time"
 )
 
 type UploadCommand struct {
@@ -81,7 +80,7 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 
 	// Create Service Manager:
-	uc.uploadConfiguration.MinChecksumDeploySize, err = getMinChecksumDeploySize()
+	uc.uploadConfiguration.MinChecksumDeploySize, err = utils.GetMinChecksumDeploySize()
 	if err != nil {
 		return
 	}
@@ -140,12 +139,7 @@ func (uc *UploadCommand) upload() (err error) {
 		}
 		if summary != nil {
 			artifactsDetailsReader = summary.ArtifactsDetailsReader
-			defer func() {
-				e := artifactsDetailsReader.Close()
-				if err == nil {
-					err = e
-				}
-			}()
+			defer ioutils.Close(artifactsDetailsReader, &err)
 			// If 'detailed summary' was requested, then the reader should not be closed here.
 			// It will be closed after it will be used to generate the summary.
 			if uc.DetailedSummary() {
@@ -195,19 +189,6 @@ func (uc *UploadCommand) upload() (err error) {
 		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
 	return
-}
-
-func getMinChecksumDeploySize() (int64, error) {
-	minChecksumDeploySize := os.Getenv("JFROG_CLI_MIN_CHECKSUM_DEPLOY_SIZE_KB")
-	if minChecksumDeploySize == "" {
-		return services.DefaultMinChecksumDeploy, nil
-	}
-	minSize, err := strconv.ParseInt(minChecksumDeploySize, 10, 64)
-	err = errorutils.CheckError(err)
-	if err != nil {
-		return 0, err
-	}
-	return minSize * 1000, nil
 }
 
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, buildProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
@@ -277,12 +258,7 @@ func (uc *UploadCommand) handleSyncDeletes(syncDeletesProp string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		e := resultItems.Close()
-		if err == nil {
-			err = e
-		}
-	}()
+	defer ioutils.Close(resultItems, &err)
 	_, err = servicesManager.DeleteFiles(resultItems)
 	return err
 }

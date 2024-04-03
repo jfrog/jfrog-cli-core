@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	clientartutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -26,7 +27,7 @@ func (sc *SearchCommand) Run() error {
 	return err
 }
 
-func (sc *SearchCommand) Search() (contentReader *content.ContentReader, err error) {
+func (sc *SearchCommand) Search() (*content.ContentReader, error) {
 	// Service Manager
 	serverDetails, err := sc.ServerDetails()
 	if errorutils.CheckError(err) != nil {
@@ -38,28 +39,15 @@ func (sc *SearchCommand) Search() (contentReader *content.ContentReader, err err
 	}
 	// Search Loop
 	log.Info("Searching artifacts...")
-	var searchResults []*content.ContentReader
+
+	searchResults, callbackFunc, err := utils.SearchFiles(servicesManager, sc.Spec())
 	defer func() {
-		for _, reader := range searchResults {
-			e := reader.Close()
-			if err == nil {
-				err = e
-			}
-		}
+		err = errors.Join(err, callbackFunc())
 	}()
-	for i := 0; i < len(sc.Spec().Files); i++ {
-		searchParams, err := utils.GetSearchParams(sc.Spec().Get(i))
-		if err != nil {
-			log.Error(err)
-			return nil, err
-		}
-		reader, err := servicesManager.SearchFiles(searchParams)
-		if err != nil {
-			log.Error(err)
-			return nil, err
-		}
-		searchResults = append(searchResults, reader)
+	if err != nil {
+		return nil, err
 	}
+
 	reader, err := utils.AqlResultToSearchResult(searchResults)
 	if err != nil {
 		return nil, err

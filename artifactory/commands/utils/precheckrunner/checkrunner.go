@@ -2,6 +2,7 @@ package precheckrunner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -116,9 +117,7 @@ func (pcr *PreCheckRunner) Run(context context.Context, serverDetails *config.Se
 	}
 	// Execute checks
 	defer func() {
-		if e := pcr.cleanup(); e != nil && err == nil {
-			err = e
-		}
+		err = errors.Join(err, pcr.cleanup())
 	}()
 	var checkPassed bool
 	for i, check := range pcr.checks {

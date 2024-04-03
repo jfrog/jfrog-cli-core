@@ -43,10 +43,7 @@ func (pc *PythonCommand) Run() (err error) {
 	}
 	defer func() {
 		if pythonBuildInfo != nil && err != nil {
-			e := pythonBuildInfo.Clean()
-			if e != nil {
-				err = errors.New(err.Error() + "\n" + e.Error())
-			}
+			err = errors.Join(err, pythonBuildInfo.Clean())
 		}
 	}()
 	err = pc.SetPypiRepoUrlWithCredentials()

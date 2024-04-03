@@ -390,13 +390,14 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		return
 	}
 	defer func() {
-		e := restoreFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, restoreFunc())
 	}()
 
 	if err = tdc.initCurThreads(buildInfoRepo); err != nil {
+		return
+	}
+	minChecksumDeploySize, err := utils.GetMinChecksumDeploySize()
+	if err != nil {
 		return
 	}
 	for currentPhaseId := 0; currentPhaseId < NumberOfPhases; currentPhaseId++ {
@@ -413,7 +414,7 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		if err = tdc.stateManager.SetRepoPhase(currentPhaseId); err != nil {
 			return
 		}
-		if err = tdc.startPhase(newPhase, sourceRepoKey, buildInfoRepo, *repoSummary, srcUpService); err != nil {
+		if err = tdc.startPhase(newPhase, sourceRepoKey, buildInfoRepo, *repoSummary, srcUpService, minChecksumDeploySize); err != nil {
 			return
 		}
 	}
@@ -479,8 +480,8 @@ func (tdc *TransferFilesCommand) removeOldFilesIfNeeded(repos []string) error {
 	return nil
 }
 
-func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string, buildInfoRepo bool, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService) error {
-	tdc.initNewPhase(*newPhase, srcUpService, repoSummary, repo, buildInfoRepo)
+func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string, buildInfoRepo bool, repoSummary serviceUtils.RepositorySummary, srcUpService *srcUserPluginService, minChecksumDeploySize int64) error {
+	tdc.initNewPhase(*newPhase, srcUpService, repoSummary, repo, buildInfoRepo, minChecksumDeploySize)
 	skip, err := (*newPhase).shouldSkipPhase()
 	if err != nil || skip {
 		return err
@@ -546,7 +547,7 @@ func (tdc *TransferFilesCommand) handleStop(srcUpService *srcUserPluginService) 
 	}, &newPhase
 }
 
-func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary, repoKey string, buildInfoRepo bool) {
+func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpService *srcUserPluginService, repoSummary serviceUtils.RepositorySummary, repoKey string, buildInfoRepo bool, minChecksumDeploySize int64) {
 	newPhase.setContext(tdc.context)
 	newPhase.setRepoKey(repoKey)
 	newPhase.setCheckExistenceInFilestore(tdc.checkExistenceInFilestore)
@@ -561,6 +562,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setPackageType(repoSummary.PackageType)
 	newPhase.setLocallyGeneratedFilter(tdc.locallyGeneratedFilter)
 	newPhase.setStopSignal(tdc.stopSignal)
+	newPhase.setMinCheckSumDeploySize(minChecksumDeploySize)
 }
 
 // Get all local and build-info repositories of the input server
@@ -638,10 +640,7 @@ func (tdc *TransferFilesCommand) cleanup(originalErr error, sourceRepos []string
 	err = originalErr
 	// Quit progress bar (before printing logs)
 	if tdc.progressbar != nil {
-		e := tdc.progressbar.Quit()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, tdc.progressbar.Quit())
 	}
 	// Transferring finished successfully
 	if originalErr == nil {

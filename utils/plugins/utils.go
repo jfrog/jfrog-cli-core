@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -61,10 +62,7 @@ func readPluginsConfigAndConvertV0tToV1IfNeeded() (err error) {
 	unlockFunc, err = lock.CreateLock(lockDirPath)
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
-		e := unlockFunc()
-		if err == nil {
-			err = e
-		}
+		err = errors.Join(err, unlockFunc())
 	}()
 	if err != nil {
 		return

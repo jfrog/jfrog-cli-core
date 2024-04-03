@@ -1,6 +1,7 @@
 package progressbar
 
 import (
+	"errors"
 	"net/url"
 	"os"
 	"strings"
@@ -323,10 +324,7 @@ func ExecWithProgress(cmd CommandWithProgress) (err error) {
 	if progressBar != nil {
 		cmd.SetProgress(progressBar)
 		defer func() {
-			e := progressBar.Quit()
-			if err == nil {
-				err = e
-			}
+			err = errors.Join(err, progressBar.Quit())
 		}()
 	}
 	err = commands.Exec(cmd)

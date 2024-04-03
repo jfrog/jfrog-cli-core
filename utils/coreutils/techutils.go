@@ -37,33 +37,6 @@ const (
 
 const Pypi = "pypi"
 
-func TechnologyToLanguage(technology Technology) CodeLanguage {
-	languageMap := map[Technology]CodeLanguage{
-		Npm:    JavaScript,
-		Pip:    Python,
-		Poetry: Python,
-		Pipenv: Python,
-		Go:     GoLang,
-		Maven:  Java,
-		Gradle: Java,
-		Nuget:  CSharp,
-		Dotnet: CSharp,
-		Yarn:   JavaScript,
-		Pnpm:   JavaScript,
-	}
-	return languageMap[technology]
-}
-
-type CodeLanguage string
-
-const (
-	JavaScript CodeLanguage = "javascript"
-	Python     CodeLanguage = "python"
-	GoLang     CodeLanguage = "go"
-	Java       CodeLanguage = "java"
-	CSharp     CodeLanguage = "C#"
-)
-
 type TechData struct {
 	// The name of the package type used in this technology.
 	packageType string

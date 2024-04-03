@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -43,7 +44,7 @@ func GetPypiRepoUrlWithCredentials(serverDetails *config.ServerDetails, reposito
 	}
 	// In case of curation command, the download urls should be routed through a dedicated api.
 	if isCurationCmd {
-		rtUrl.Path += "api/curation/audit/"
+		rtUrl.Path += coreutils.CurationPassThroughApi
 	}
 	rtUrl.Path += "api/pypi/" + repository + "/simple"
 	return rtUrl, username, password, err

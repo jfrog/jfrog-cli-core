@@ -2,8 +2,10 @@ package utils
 
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/require"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
@@ -53,12 +55,7 @@ func TestGetPypiRepoUrlWithCredentials(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			url, _, _, err := GetPypiRepoUrlWithCredentials(&config.ServerDetails{}, "test", tt.curationCmd)
 			require.NoError(t, err)
-			if tt.curationCmd {
-				assert.Contains(t, url.Path, "api/curation/audit/api/pypi/")
-			} else {
-				assert.NotContains(t, url.Path, "api/curation/audit")
-
-			}
+			assert.Equal(t, tt.curationCmd, strings.Contains(url.Path, coreutils.CurationPassThroughApi))
 		})
 	}
 }

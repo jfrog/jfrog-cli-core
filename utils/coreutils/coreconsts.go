@@ -34,7 +34,8 @@ const (
 	JfrogTransferStateFileName          = "state.json"
 	PluginsExecDirName                  = "bin"
 	PluginsResourcesDirName             = "resources"
-	CurationPassThroughApi              = "api/curation/audit/"
+	//#nosec G101
+	CurationPassThroughApi = "api/curation/audit/"
 
 	//#nosec G101
 	ErrorHandling      = "JFROG_CLI_ERROR_HANDLING"

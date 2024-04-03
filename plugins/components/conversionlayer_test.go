@@ -11,7 +11,7 @@ import (
 func TestCreateCommandUsages(t *testing.T) {
 	appNameSpace := "test-app"
 	cmdName := "test-command"
-	expectedPrefix := fmt.Sprintf("%s %s %s", coreutils.GetCliExecutableName(), appNameSpace, cmdName)
+	expectedPrefix := fmt.Sprintf("%s %s", appNameSpace, cmdName)
 
 	optFlag := NewBoolFlag("dummyFlag", "")
 	optStrFlag := NewStringFlag("optFlag", "", WithHelpValue("alias"))

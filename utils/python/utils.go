@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -25,7 +26,7 @@ const (
 	pyproject                = "pyproject.toml"
 )
 
-func GetPypiRepoUrlWithCredentials(serverDetails *config.ServerDetails, repository string) (*url.URL, string, string, error) {
+func GetPypiRepoUrlWithCredentials(serverDetails *config.ServerDetails, repository string, isCurationCmd bool) (*url.URL, string, string, error) {
 	rtUrl, err := url.Parse(serverDetails.GetArtifactoryUrl())
 	if err != nil {
 		return nil, "", "", errorutils.CheckError(err)
@@ -41,6 +42,10 @@ func GetPypiRepoUrlWithCredentials(serverDetails *config.ServerDetails, reposito
 		}
 		password = serverDetails.GetAccessToken()
 	}
+	// In case of curation command, the download urls should be routed through a dedicated api.
+	if isCurationCmd {
+		rtUrl.Path += coreutils.CurationPassThroughApi
+	}
 	rtUrl.Path += "api/pypi/" + repository + "/simple"
 	return rtUrl, username, password, err
 }
@@ -52,8 +57,8 @@ func GetPypiRemoteRegistryFlag(tool pythonutils.PythonTool) string {
 	return pipenvRemoteRegistryFlag
 }
 
-func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string) (string, error) {
-	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(serverDetails, repository)
+func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string, isCurationCmd bool) (string, error) {
+	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(serverDetails, repository, isCurationCmd)
 	if err != nil {
 		return "", err
 	}

@@ -1,6 +1,7 @@
 package lifecycle
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -43,8 +44,11 @@ func (rbi *ReleaseBundleImportCommand) Run() (err error) {
 	}
 
 	exists, err := fileutils.IsFileExists(rbi.filePath, false)
-	if !exists || err != nil {
+	if err != nil {
 		return
+	}
+	if !exists {
+		return fmt.Errorf("file not found: %s", rbi.filePath)
 	}
 
 	log.Info("Importing the release bundle archive...")

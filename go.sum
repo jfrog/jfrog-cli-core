@@ -87,8 +87,8 @@ github.com/jfrog/build-info-go v1.9.25 h1:IkjydGQA/HjOWjRaoKq1hOEgCCyBEJwQgXJSo4
 github.com/jfrog/build-info-go v1.9.25/go.mod h1:doFB4bFDVHeGulD6GF9LzsrRaIOrSoklV9DgIAEqHgc=
 github.com/jfrog/gofrog v1.6.3 h1:F7He0+75HcgCe6SGTSHLFCBDxiE2Ja0tekvvcktW6wc=
 github.com/jfrog/gofrog v1.6.3/go.mod h1:SZ1EPJUruxrVGndOzHd+LTiwWYKMlHqhKD+eu+v5Hqg=
-github.com/jfrog/jfrog-client-go v1.28.1-0.20240403100335-8292671b7cc4 h1:A67yoFRYjRzg+xhLYhH0QN7b4/wggRa/lSQKSjzOwNQ=
-github.com/jfrog/jfrog-client-go v1.28.1-0.20240403100335-8292671b7cc4/go.mod h1:tUyEmxznphh0nwAGo6xz9Sps7RRW/TBMxIJZteo+j2k=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20240408071430-62ee0279ac58 h1:yyhOfECY3WGs6MsnJQWm/U7DYNIzxBiVlEwQ3RvqxwQ=
+github.com/jfrog/jfrog-client-go v1.28.1-0.20240408071430-62ee0279ac58/go.mod h1:tUyEmxznphh0nwAGo6xz9Sps7RRW/TBMxIJZteo+j2k=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
 github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=

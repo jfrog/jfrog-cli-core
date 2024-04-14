@@ -27,7 +27,20 @@ func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.N
 	}
 }
 
+// Extracts packed file names from npm pack command output
+// The output can differ when a prePack script exists,
+// This function will filter the output and search for the .tgz files.
 func getPackageFileNameFromOutput(output string) []string {
-	output = strings.TrimSpace(output)
-	return strings.Split(output, "\n")
+	// Split the output into lines
+	lines := strings.Split(output, "\n")
+	// Filter the lines to only include those that end with .tgz
+	var packagesFileNames []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// If the line ends with .tgz, add it to the tgzFiles slice
+		if strings.HasSuffix(line, ".tgz") {
+			packagesFileNames = append(packagesFileNames, line)
+		}
+	}
+	return packagesFileNames
 }

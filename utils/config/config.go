@@ -19,6 +19,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayAuth "github.com/jfrog/jfrog-client-go/xray/auth"
+	xscAuth "github.com/jfrog/jfrog-client-go/xsc/auth"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -572,6 +573,7 @@ type ServerDetails struct {
 	ArtifactoryUrl                  string `json:"artifactoryUrl,omitempty"`
 	DistributionUrl                 string `json:"distributionUrl,omitempty"`
 	XrayUrl                         string `json:"xrayUrl,omitempty"`
+	XscUrl                          string `json:"xscUrl,omitempty"`
 	MissionControlUrl               string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
 	AccessUrl                       string `json:"accessUrl,omitempty"`
@@ -706,6 +708,19 @@ func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails,
 	artAuth := xrayAuth.NewXrayDetails()
 	artAuth.SetUrl(serverDetails.XrayUrl)
 	return serverDetails.createAuthConfig(artAuth)
+}
+
+func (serverDetails *ServerDetails) CreateXscAuthConfig() (auth.ServiceDetails, error) {
+	ascAuth := xscAuth.NewXscDetails()
+	ascAuth.SetUrl(serverDetails.convertXrayUrlToXscUrl())
+	return serverDetails.createAuthConfig(ascAuth)
+}
+
+// Xray and Xsc will always have the same platform url.
+func (serverDetails *ServerDetails) convertXrayUrlToXscUrl() string {
+	xscUrl := strings.TrimSuffix(serverDetails.XrayUrl, "/")
+	xscUrl = strings.TrimSuffix(xscUrl, "/xray")
+	return xscUrl + "/xsc/"
 }
 
 func (serverDetails *ServerDetails) CreatePipelinesAuthConfig() (auth.ServiceDetails, error) {

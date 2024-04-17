@@ -1,6 +1,6 @@
 module github.com/jfrog/jfrog-cli-core/v2
 
-go 1.20
+go 1.22
 
 require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 

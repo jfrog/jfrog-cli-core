@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -178,25 +177,4 @@ func convertStorageSizeStringToBytes(sizeStr string) (int64, error) {
 		return 0, errorutils.CheckErrorf("could not parse size string '%s'", sizeStr)
 	}
 	return int64(sizeInBytes), nil
-}
-
-func ConvertIntToStorageSizeString(num int64) string {
-	if num > utils.SizeTiB {
-		newNum := float64(num) / float64(utils.SizeTiB)
-		stringNum := fmt.Sprintf("%.1f", newNum)
-		return stringNum + "TB"
-	}
-	if num > utils.SizeGiB {
-		newNum := float64(num) / float64(utils.SizeGiB)
-		stringNum := fmt.Sprintf("%.1f", newNum)
-		return stringNum + "GB"
-	}
-	if num > utils.SizeMiB {
-		newNum := float64(num) / float64(utils.SizeMiB)
-		stringNum := fmt.Sprintf("%.1f", newNum)
-		return stringNum + "MB"
-	}
-	newNum := float64(num) / float64(utils.SizeKib)
-	stringNum := fmt.Sprintf("%.1f", newNum)
-	return stringNum + "KB"
 }

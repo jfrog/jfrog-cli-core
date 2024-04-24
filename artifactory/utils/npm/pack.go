@@ -1,11 +1,17 @@
 package npm
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+)
+
+const (
+	npmPackedTarballSuffix = ".tgz"
 )
 
 func Pack(npmFlags []string, executablePath string) ([]string, error) {
@@ -14,7 +20,7 @@ func Pack(npmFlags []string, executablePath string) ([]string, error) {
 	if err != nil {
 		return []string{}, errorutils.CheckError(err)
 	}
-	return getPackageFileNameFromOutput(output), nil
+	return getPackageFileNameFromOutput(output)
 }
 
 func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.NpmConfig {
@@ -27,7 +33,27 @@ func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.N
 	}
 }
 
-func getPackageFileNameFromOutput(output string) []string {
-	output = strings.TrimSpace(output)
-	return strings.Split(output, "\n")
+// Extracts packed file names from npm pack command output
+// The output can differ when a prePack script exists,
+// This function will filter the output and search for the .tgz files
+// To avoid misidentifying files, we will verify file exists
+func getPackageFileNameFromOutput(output string) (packedTgzFiles []string, err error) {
+	lines := strings.Split(output, "\n")
+	var packedFileNamesFromOutput []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.HasSuffix(line, npmPackedTarballSuffix) {
+			packedFileNamesFromOutput = append(packedFileNamesFromOutput, line)
+		}
+	}
+	for _, file := range packedFileNamesFromOutput {
+		exists, err := fileutils.IsFileExists(file, true)
+		if err != nil {
+			return nil, fmt.Errorf("error occurred while checking packed npm tarball exists: %w", err)
+		}
+		if exists {
+			packedTgzFiles = append(packedTgzFiles, file)
+		}
+	}
+	return
 }

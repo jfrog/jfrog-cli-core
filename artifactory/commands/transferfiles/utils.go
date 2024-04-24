@@ -115,7 +115,7 @@ func (clcm *ChunksLifeCycleManager) StoreStaleChunks(stateManager *state.Transfe
 			for _, file := range uploadedChunkData.ChunkFiles {
 				var sizeStr string
 				if file.Size > 0 {
-					sizeStr = " (" + utils.ConvertIntToStorageSizeString(file.Size) + ")"
+					sizeStr = " (" + serviceUtils.ConvertIntToStorageSizeString(file.Size) + ")"
 				}
 				staleNodeChunk.Files = append(staleNodeChunk.Files, path.Join(file.Repo, file.Path, file.Name)+sizeStr)
 			}

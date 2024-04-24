@@ -22,6 +22,7 @@ type UploadConfiguration struct {
 	ExplodeArchive        bool
 	SplitCount            int
 	MinSplitSizeMB        int64
+	ChunkSizeMB           int64
 }
 
 func GetMinChecksumDeploySize() (int64, error) {

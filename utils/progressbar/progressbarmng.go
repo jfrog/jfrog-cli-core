@@ -1,6 +1,16 @@
 package progressbar
 
 import (
+	"github.com/gookit/color"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v7/decor"
+	"golang.org/x/term"
 	golangLog "log"
 	"math"
 	"os"
@@ -8,17 +18,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/gookit/color"
-	artifactoryutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
-	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/vbauerster/mpb/v7"
-	"github.com/vbauerster/mpb/v7/decor"
-	"golang.org/x/term"
 )
 
 const (
@@ -98,8 +97,8 @@ func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerato
 				if err != nil {
 					log.Error(err)
 				}
-				s1 := artifactoryutils.ConvertIntToStorageSizeString(*firstNumerator)
-				s2 := artifactoryutils.ConvertIntToStorageSizeString(*firstDenominator)
+				s1 := servicesUtils.ConvertIntToStorageSizeString(*firstNumerator)
+				s2 := servicesUtils.ConvertIntToStorageSizeString(*firstDenominator)
 				return color.Green.Render(s1 + "/" + s2)
 			}), decor.Name(" "+secondValueLine+": "), decor.Any(func(statistics decor.Statistics) string {
 				_, _, secondNumerator, secondDenominator, err := getVal()

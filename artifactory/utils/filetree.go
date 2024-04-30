@@ -98,3 +98,49 @@ func (dn *dirNode) strings() []string {
 	}
 	return strs
 }
+
+func (ft *FileTree) StringWithLinks(artHome string) string {
+	if ft.exceedsMax {
+		return ""
+	}
+	treeStr := ""
+	for _, repo := range ft.repos {
+		treeStr += strings.Join(repo.stringsWithLinks(artHome), "\n") + "\n"
+	}
+	return treeStr
+}
+
+func (dn *dirNode) stringsWithLinks(artHome string) []string {
+	strs := []string{dn.prefix + dn.name}
+	subDirIndex := 0
+	for subDirName := range dn.subDirNodes {
+		var subDirPrefix string
+		var innerStrPrefix string
+		if subDirIndex == len(dn.subDirNodes)-1 && len(dn.fileNames) == 0 {
+			subDirPrefix = "└── "
+			innerStrPrefix = "    "
+		} else {
+			subDirPrefix = "├── "
+			innerStrPrefix = "│   "
+		}
+		subDirStrs := dn.subDirNodes[subDirName].stringsWithLinks(artHome)
+		strs = append(strs, subDirPrefix+subDirStrs[0])
+		for subDirStrIndex := 1; subDirStrIndex < len(subDirStrs); subDirStrIndex++ {
+			strs = append(strs, innerStrPrefix+subDirStrs[subDirStrIndex])
+		}
+		subDirIndex++
+	}
+	fileIndex := 0
+	for fileName := range dn.fileNames {
+		var filePrefix string
+		if fileIndex == len(dn.fileNames)-1 {
+			filePrefix = "└── 📄 "
+		} else {
+			filePrefix = "├── 📄 "
+			fileIndex++
+		}
+		fileNameWithLink := "[" + fileName + "]" + "(" + artHome + ")"
+		strs = append(strs, filePrefix+fileNameWithLink)
+	}
+	return strs
+}

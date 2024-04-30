@@ -117,11 +117,11 @@ func (dn *dirNode) stringsWithLinks(artHome string) []string {
 		var subDirPrefix string
 		var innerStrPrefix string
 		if subDirIndex == len(dn.subDirNodes)-1 && len(dn.fileNames) == 0 {
-			subDirPrefix = "└── "
-			innerStrPrefix = "    "
+			subDirPrefix = "└──&nbsp;"
+			innerStrPrefix = " &nbsp;&nbsp;&nbsp;"
 		} else {
-			subDirPrefix = "├── "
-			innerStrPrefix = "│   "
+			subDirPrefix = "├──&nbsp;"
+			innerStrPrefix = "│&nbsp;&nbsp;&nbsp;"
 		}
 		subDirStrs := dn.subDirNodes[subDirName].stringsWithLinks(artHome)
 		strs = append(strs, subDirPrefix+subDirStrs[0])
@@ -134,9 +134,9 @@ func (dn *dirNode) stringsWithLinks(artHome string) []string {
 	for fileName := range dn.fileNames {
 		var filePrefix string
 		if fileIndex == len(dn.fileNames)-1 {
-			filePrefix = "└── 📄 "
+			filePrefix = "└──&nbsp;📄&nbsp;"
 		} else {
-			filePrefix = "├── 📄 "
+			filePrefix = "├──&nbsp;📄&nbsp;"
 			fileIndex++
 		}
 		fileNameWithLink := "[" + fileName + "]" + "(" + artHome + ")"

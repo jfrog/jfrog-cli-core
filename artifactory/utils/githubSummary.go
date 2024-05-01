@@ -75,7 +75,7 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 	}
 
 	// Title
-	WriteStringToFile(file, "<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"85px\"></picture>  JFrog Job Summary \n     </h1> \n</p>  \n\n")
+	WriteStringToFile(file, "<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"85px\"></picture> Job Summary \n     </h1> \n</p>  \n\n")
 
 	// Uploaded artifacts
 	if err = gh.generateUploadedFilesTree(); err != nil {
@@ -83,7 +83,7 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 	}
 	if gh.uploadTree.size > 0 {
 		WriteStringToFile(file, "<details open>\n")
-		WriteStringToFile(file, "<summary> 📁 Files uploaded to Artifactory by this workflow </summary>\n\n")
+		WriteStringToFile(file, "<summary> 📁 Files uploaded to Artifactory by this workflow </summary>\n\n\n\n")
 		WriteStringToFile(file, "```\n"+gh.uploadTree.String()+"\n```\n")
 		WriteStringToFile(file, "</details>\n\n")
 	}
@@ -94,7 +94,7 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 	}
 	if len(gh.publishedBuildInfo) > 0 {
 		WriteStringToFile(file, "<details open>\n\n")
-		WriteStringToFile(file, "<summary> 📦 Build Info published to Artifactory by this workflow </summary>\n\n")
+		WriteStringToFile(file, "<summary> 📦 Build Info published to Artifactory by this workflow </summary>\n\n\n\n")
 		WriteStringToFile(file, gh.buildInfoTable())
 		WriteStringToFile(file, "\n</details>\n")
 	}
@@ -223,7 +223,7 @@ func (gh *GitHubActionSummary) ensureHomeDirExists() error {
 func (gh *GitHubActionSummary) buildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("| Build | Timestamp | \n")
+	tableBuilder.WriteString("| 🔢 Build | 🕒 Timestamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range gh.publishedBuildInfo {
 		buildTime := parseBuildTime(build.Started)
@@ -254,7 +254,6 @@ func (gh *GitHubActionSummary) loadBuildInfoData() (err error) {
 	return
 }
 
-// Initializes a new GitHubActionSummary
 func createNewGithubSummary() (gh *GitHubActionSummary, err error) {
 	gh = newGithubActionSummary()
 	if err = gh.ensureHomeDirExists(); err != nil {

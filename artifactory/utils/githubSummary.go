@@ -72,8 +72,7 @@ func (gh *GitHubActionSummary) generateUploadArtifactsTree(contentReader *conten
 
 // Reads the result file and generates a file tree object.
 func (gh *GitHubActionSummary) generateUploadedFilesTree() (err error) {
-	object, _, err := gh.loadAndMarshalResultsFile()
-
+	object, err := gh.loadAndMarshalResultsFile()
 	if err != nil {
 		return
 	}

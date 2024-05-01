@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type UploadResult struct {
@@ -160,8 +161,7 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
 
-	WriteStringToFile(file, "<p align=\"center\">\n  <img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" />\n</p> \n\n")
-	WriteStringToFile(file, "<h1 align=\"center\">JFrog CLI Github Action Summary </h1> \n\n")
+	WriteStringToFile(file, "<p >\n  <h1> \n    <img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"70px\">  CLI Github Action Summary \n     </h1> \n</p>  \n\n")
 
 	if gh.uploadTree.size > 0 {
 		WriteStringToFile(file, "<details open>\n")
@@ -226,9 +226,20 @@ func (gh *GitHubActionSummary) buildInfoTable() string {
 	tableBuilder.WriteString("| Build | Timestamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range gh.publishedBuildInfo {
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+build.Number, build.BuildUrl, build.Started))
+		buildTime := parseBuildTime(build.Started)
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+build.Number, build.BuildUrl, buildTime))
 	}
 	return tableBuilder.String()
+}
+
+func parseBuildTime(timestamp string) string {
+	// Parse the timestamp string into a time.Time object
+	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timestamp)
+	if err != nil {
+		return "N/A"
+	}
+	// Format the time in a more human-readable format and save it in a variable
+	return t.Format("Mon Jan _2 15:04:05 2006")
 }
 
 func (gh *GitHubActionSummary) loadBuildInfoData() (err error) {

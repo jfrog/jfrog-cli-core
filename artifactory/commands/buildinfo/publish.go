@@ -127,6 +127,9 @@ func (bpc *BuildPublishCommand) Run() error {
 		bpc.SetSummary(summary)
 	}
 	if err != nil || bpc.config.DryRun {
+		if err = utils.GitHubJobSummariesCollectBuildInfoData(buildInfo); err != nil {
+			log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
+		}
 		return err
 	}
 

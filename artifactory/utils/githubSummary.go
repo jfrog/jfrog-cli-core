@@ -227,6 +227,10 @@ func (gh *GitHubActionSummary) buildInfoTable() string {
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range gh.publishedBuildInfo {
 		buildTime := parseBuildTime(build.Started)
+		if build.BuildUrl == "" {
+			// This is for dry runs that don't have a build URL
+			build.BuildUrl = "https://jfrog.com/"
+		}
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+build.Number, build.BuildUrl, buildTime))
 	}
 	return tableBuilder.String()

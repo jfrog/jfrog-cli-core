@@ -210,6 +210,7 @@ func (gh *GitHubActionSummary) buildInfoTable() string {
 	log.Info("building build info table...")
 	// Read the content of the file
 	data, err := fileutils.ReadFile(gh.getPublishedBuildInfoDataFilePath())
+	log.Debug("reading build info data: ", string(data))
 	if err != nil {
 		log.Error("Failed to read file: ", err)
 		return ""
@@ -273,7 +274,8 @@ func GetHomeDirByOs() string {
 	case "Linux", "macOS":
 		return filepath.Join(os.Getenv("HOME"), ".jfrog", "jfrog-github-summary")
 	default:
-		return ""
+		// TODO remove this,used for developing
+		return filepath.Join("/Users/eyalde/IdeaProjects/githubRunner/_work", ".jfrog", "jfrog-github-summary")
 	}
 }
 

@@ -28,8 +28,8 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 	}
 	if err = accessManager.SendLoginAuthenticationRequest(uuidStr); err != nil {
 		err = errors.Join(err,
-			errorutils.CheckErrorf("it looks like the Web Login is unavailable. This could be because your JFrog Artifactory version is less than 7.64.0. "+
-				"You can use the \"jf c add\" command to authenticate with the JFrog Platform"))
+			errorutils.CheckErrorf("Oops! it looks like the web login option is unavailable right now. This could be because your JFrog Artifactory version is less than 7.64.0. \n"+
+				"Don't worry! You can use the \"jf c add\" command to authenticate with the JFrog Platform using other methods"))
 		return
 	}
 	log.Info("After logging in via your web browser, please enter the code if prompted: " + uuidStr[len(uuidStr)-4:])

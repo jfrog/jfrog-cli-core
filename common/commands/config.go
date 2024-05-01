@@ -322,7 +322,11 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 	}
 
 	if cc.details.Url == "" {
-		ioutils.ScanFromConsole("JFrog Platform URL", &cc.details.Url, cc.defaultDetails.Url)
+		urlPrompt := "JFrog Platform URL"
+		if cc.useWebLogin {
+			urlPrompt = "Enter your " + urlPrompt
+		}
+		ioutils.ScanFromConsole(urlPrompt, &cc.details.Url, cc.defaultDetails.Url)
 	}
 
 	if fileutils.IsSshUrl(cc.details.Url) || fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
@@ -462,7 +466,7 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 }
 
 func (cc *ConfigCommand) checkClientCertForReverseProxy() {
-	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
+	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" || cc.useWebLogin {
 		return
 	}
 	if coreutils.AskYesNo("Is the Artifactory reverse proxy configured to accept a client certificate?", false) {

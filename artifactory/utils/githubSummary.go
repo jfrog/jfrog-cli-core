@@ -231,7 +231,7 @@ func (gh *GitHubActionSummary) buildInfoTable() string {
 			// This is for dry runs that don't have a build URL
 			build.BuildUrl = "https://jfrog.com/"
 		}
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+build.Number, build.BuildUrl, buildTime))
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+"/"+build.Number, build.BuildUrl, buildTime))
 	}
 	return tableBuilder.String()
 }
@@ -281,7 +281,7 @@ func newGithubActionSummary() (gh *GitHubActionSummary) {
 }
 
 func isGitHubActionsRunner() bool {
-	return os.Getenv(githubActionsEnv) != "true"
+	return os.Getenv(githubActionsEnv) == "true"
 }
 
 func parseBuildTime(timestamp string) string {
@@ -291,7 +291,7 @@ func parseBuildTime(timestamp string) string {
 		return "N/A"
 	}
 	// Format the time in a more human-readable format and save it in a variable
-	return t.Format("Mon Jan _2 15:04:05 2006")
+	return t.Format("Jan 2, 15:04:05, 2006")
 }
 
 func WriteStringToFile(file *os.File, str string) {

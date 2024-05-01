@@ -112,24 +112,23 @@ func (gh *GitHubActionSummary) appendCurrentCommandUploadResults(contentReader *
 			readContent = append(readContent, sourceWrapper.Results...)
 		}
 	}
-	targetWrapper, targetBytes, err := gh.loadAndMarshalResultsFile()
+	targetWrapper, err := gh.loadAndMarshalResultsFile()
 	// Append source results to target results
 	targetWrapper.Results = append(targetWrapper.Results, readContent...)
-	// Marshal target results
-	targetBytes, err = json.MarshalIndent(targetWrapper, "", "  ")
+	// Write target results to target file
+	bytes, err := json.Marshal(targetWrapper)
 	if err != nil {
 		return err
 	}
-	// Write target results to target file
-	return os.WriteFile(gh.getUploadedArtifactsDataFilePath(), targetBytes, 0644)
+	return os.WriteFile(gh.getUploadedArtifactsDataFilePath(), bytes, 0644)
 }
 
-func (gh *GitHubActionSummary) loadAndMarshalResultsFile() (targetWrapper ResultsWrapper, targetBytes []byte, err error) {
+func (gh *GitHubActionSummary) loadAndMarshalResultsFile() (targetWrapper ResultsWrapper, err error) {
 	// Load target file
-	targetBytes, err = os.ReadFile(gh.getUploadedArtifactsDataFilePath())
+	targetBytes, err := os.ReadFile(gh.getUploadedArtifactsDataFilePath())
 	if err != nil && !os.IsNotExist(err) {
 		log.Warn("data file not found ", gh.getUploadedArtifactsDataFilePath())
-		return ResultsWrapper{}, nil, err
+		return ResultsWrapper{}, err
 	}
 	if len(targetBytes) == 0 {
 		log.Warn("empty data file: ", gh.getUploadedArtifactsDataFilePath())
@@ -276,7 +275,7 @@ func GetHomeDirByOs() string {
 	}
 }
 
-func WriteBuildInfoData(build *buildInfo.BuildInfo) (err error) {
+func GitHubJobSummariesCollectBuildInfoData(build *buildInfo.BuildInfo) (err error) {
 	filePath := path.Join(GetHomeDirByOs(), buildInfoFileName)
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {

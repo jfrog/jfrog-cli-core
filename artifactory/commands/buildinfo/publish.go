@@ -121,16 +121,20 @@ func (bpc *BuildPublishCommand) Run() error {
 		}
 		bpc.buildConfiguration.SetBuildNumber(buildInfo.Number)
 	}
+
 	summary, err := servicesManager.PublishBuildInfo(buildInfo, bpc.buildConfiguration.GetProject())
 	if bpc.IsDetailedSummary() {
 		bpc.SetSummary(summary)
 	}
-
-	if err = utils.WriteBuildInfoData(buildInfo); err != nil {
-		log.Warn("Failed to write build info data: ", err)
+	if err != nil {
+		return err
 	}
 
-	if err != nil || bpc.config.DryRun {
+	if err = utils.GitHubJobSummariesCollectBuildInfoData(buildInfo); err != nil {
+		log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
+	}
+
+	if bpc.config.DryRun {
 		return err
 	}
 

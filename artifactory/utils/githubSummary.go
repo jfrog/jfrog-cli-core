@@ -112,6 +112,9 @@ func (gh *GitHubActionSummary) appendCurrentCommandUploadResults(contentReader *
 		}
 	}
 	targetWrapper, err := gh.loadAndMarshalResultsFile()
+	if err != nil {
+		return err
+	}
 	// Append source results to target results
 	targetWrapper.Results = append(targetWrapper.Results, readContent...)
 	// Write target results to target file

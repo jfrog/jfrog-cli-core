@@ -28,6 +28,7 @@ type GitHubActionSummary struct {
 	rawUploadArtifactsFile string    // File which contains all the results of the commands
 	rawBuildInfoFile       string    // File containing build info results
 	uploadTree             *FileTree // Upload a tree object to generate markdown
+	publishedBuildInfo     []*buildInfo.BuildInfo
 }
 
 const (
@@ -160,11 +161,26 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 	}
 
 	WriteStringToFile(file, "<p align=\"center\">\n  <img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" />\n</p> \n\n")
-	WriteStringToFile(file, "# JFrog CLI Github Action Summary \n")
-	WriteStringToFile(file, "## 📁 Files uploaded to Artifactory by this workflow\n")
-	WriteStringToFile(file, "```\n"+gh.uploadTree.String()+"```\n")
-	WriteStringToFile(file, "## 📦 Build Info published to Artifactory by this workflow \n ")
-	WriteStringToFile(file, gh.buildInfoTable())
+	WriteStringToFile(file, "<h1 align=\"center\">JFrog CLI Github Action Summary </h1> \n\n")
+
+	if gh.uploadTree.size > 0 {
+		WriteStringToFile(file, "<details open>\n")
+		WriteStringToFile(file, "<summary> 📁 Files uploaded to Artifactory by this workflow </summary>\n\n")
+		WriteStringToFile(file, "```\n"+gh.uploadTree.String()+"\n```\n")
+		WriteStringToFile(file, "</details>\n\n")
+	}
+
+	if err = gh.loadBuildInfoData(); err != nil {
+		return
+	}
+
+	if len(gh.publishedBuildInfo) > 0 {
+		WriteStringToFile(file, "<details open>\n\n")
+		WriteStringToFile(file, "<summary> 📦 Build Info published to Artifactory by this workflow </summary>\n\n")
+		WriteStringToFile(file, gh.buildInfoTable())
+		WriteStringToFile(file, "\n</details>\n")
+	}
+
 	return
 }
 
@@ -205,32 +221,33 @@ func (gh *GitHubActionSummary) ensureHomeDirExists() error {
 }
 
 func (gh *GitHubActionSummary) buildInfoTable() string {
+	// Generate a string that represents a Markdown table
+	var tableBuilder strings.Builder
+	tableBuilder.WriteString("| Name | Number | Timestamp | \n")
+	tableBuilder.WriteString("|------|--------|------------| \n")
+	for _, build := range gh.publishedBuildInfo {
+		tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name, build.Number, build.Started))
+	}
+	log.Info("build info table: ", tableBuilder.String())
+	return tableBuilder.String()
+}
+
+func (gh *GitHubActionSummary) loadBuildInfoData() (err error) {
 	log.Info("building build info table...")
 	// Read the content of the file
 	data, err := fileutils.ReadFile(gh.getPublishedBuildInfoDataFilePath())
 	log.Debug("reading build info data: ", string(data))
 	if err != nil {
 		log.Error("Failed to read file: ", err)
-		return ""
+		return
 	}
-
 	// Unmarshal the data into an array of build info objects
-	var builds []*buildInfo.BuildInfo
-	err = json.Unmarshal(data, &builds)
+	err = json.Unmarshal(data, &gh.publishedBuildInfo)
 	if err != nil {
 		log.Error("Failed to unmarshal data: ", err)
-		return ""
+		return
 	}
-
-	// Generate a string that represents a Markdown table
-	var tableBuilder strings.Builder
-	tableBuilder.WriteString("| Name | Number | Timestamp | \n")
-	tableBuilder.WriteString("|------|--------|------------| \n")
-	for _, build := range builds {
-		tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name, build.Number, build.Started))
-	}
-	log.Info("build info table: ", tableBuilder.String())
-	return tableBuilder.String()
+	return
 }
 
 // Initializes a new GitHubActionSummary
@@ -254,6 +271,7 @@ func newGithubActionSummary() (gh *GitHubActionSummary) {
 		homeDirPath:            homedir,
 		rawUploadArtifactsFile: uploadedArtifactsFileName,
 		rawBuildInfoFile:       buildInfoFileName,
+		publishedBuildInfo:     make([]*buildInfo.BuildInfo, 0),
 	}
 	return gh
 }

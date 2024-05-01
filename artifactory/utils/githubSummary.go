@@ -24,16 +24,19 @@ type ResultsWrapper struct {
 }
 
 type GitHubActionSummary struct {
-	homeDirPath string                          // Directory path for the GitHubActionSummary data
-	rawDataFile string                          // File which contains all the results of the commands
-	uploadTree  *FileTree                       // Upload a tree object to generate markdown
-	buildInfo   []*buildInfo.PublishedBuildInfo // Build info results
+	homeDirPath            string    // Directory path for the GitHubActionSummary data
+	rawUploadArtifactsFile string    // File which contains all the results of the commands
+	rawBuildInfoFile       string    // File containing build info results
+	uploadTree             *FileTree // Upload a tree object to generate markdown
 }
 
 const (
-	githubActionsEnv = "GITHUB_ACTIONS"
+	githubActionsEnv          = "GITHUB_ACTIONS"
+	buildInfoFileName         = "build-info-data.json"
+	uploadedArtifactsFileName = "data.json"
 )
 
+// GenerateGitHubActionSummary TODO this isn't clear why you should pass a content reader,maybe this can be refactoed.
 func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err error) {
 	if os.Getenv(githubActionsEnv) != "true" {
 		return
@@ -70,6 +73,7 @@ func (gh *GitHubActionSummary) generateUploadArtifactsTree(contentReader *conten
 // Reads the result file and generates a file tree object.
 func (gh *GitHubActionSummary) generateUploadedFilesTree() (err error) {
 	object, _, err := gh.loadAndMarshalResultsFile()
+
 	if err != nil {
 		return
 	}
@@ -80,14 +84,12 @@ func (gh *GitHubActionSummary) generateUploadedFilesTree() (err error) {
 	return
 }
 
-// Reads build info results and generates a Markdown table.
-func (gh *GitHubActionSummary) generatePublishedBuildInfoTable() error {
-
-	return nil
+func (gh *GitHubActionSummary) getUploadedArtifactsDataFilePath() string {
+	return path.Join(gh.homeDirPath, gh.rawUploadArtifactsFile)
 }
 
-func (gh *GitHubActionSummary) getDataFilePath() string {
-	return path.Join(gh.homeDirPath, gh.rawDataFile)
+func (gh *GitHubActionSummary) getPublishedBuildInfoDataFilePath() string {
+	return path.Join(gh.homeDirPath, gh.rawBuildInfoFile)
 }
 
 // Appends current command results to the data file.
@@ -119,18 +121,18 @@ func (gh *GitHubActionSummary) appendCurrentCommandUploadResults(contentReader *
 		return err
 	}
 	// Write target results to target file
-	return os.WriteFile(gh.getDataFilePath(), targetBytes, 0644)
+	return os.WriteFile(gh.getUploadedArtifactsDataFilePath(), targetBytes, 0644)
 }
 
 func (gh *GitHubActionSummary) loadAndMarshalResultsFile() (targetWrapper ResultsWrapper, targetBytes []byte, err error) {
 	// Load target file
-	targetBytes, err = os.ReadFile(gh.getDataFilePath())
+	targetBytes, err = os.ReadFile(gh.getUploadedArtifactsDataFilePath())
 	if err != nil && !os.IsNotExist(err) {
-		log.Warn("data file not found ", gh.getDataFilePath())
+		log.Warn("data file not found ", gh.getUploadedArtifactsDataFilePath())
 		return ResultsWrapper{}, nil, err
 	}
-	if len(targetBytes) <= 0 {
-		log.Warn("empty data file: ", gh.getDataFilePath())
+	if len(targetBytes) == 0 {
+		log.Warn("empty data file: ", gh.getUploadedArtifactsDataFilePath())
 		return
 	}
 	// Unmarshal target file content, if it exists
@@ -206,7 +208,7 @@ func (gh *GitHubActionSummary) ensureHomeDirExists() error {
 func (gh *GitHubActionSummary) buildInfoTable() string {
 	log.Info("building build info table...")
 	// Read the content of the file
-	data, err := fileutils.ReadFile(path.Join(gh.homeDirPath, "build-info-data.json"))
+	data, err := fileutils.ReadFile(gh.getPublishedBuildInfoDataFilePath())
 	if err != nil {
 		log.Error("Failed to read file: ", err)
 		return ""
@@ -233,22 +235,25 @@ func (gh *GitHubActionSummary) buildInfoTable() string {
 
 // Initializes a new GitHubActionSummary
 func createNewGithubSummary() (gh *GitHubActionSummary, err error) {
-	gh = newGithubActionSummary(gh)
+	gh = newGithubActionSummary()
 	if err = gh.ensureHomeDirExists(); err != nil {
 		return nil, err
 	}
-	if err = gh.createTempFileIfNeeded(gh.getDataFilePath(), ResultsWrapper{Results: []UploadResult{}}); err != nil {
+	if err = gh.createTempFileIfNeeded(gh.getUploadedArtifactsDataFilePath(), ResultsWrapper{Results: []UploadResult{}}); err != nil {
+		return nil, err
+	}
+	if err = gh.createTempFileIfNeeded(gh.getPublishedBuildInfoDataFilePath(), ResultsWrapper{Results: []UploadResult{}}); err != nil {
 		return nil, err
 	}
 	return
 }
 
-func newGithubActionSummary(gh *GitHubActionSummary) *GitHubActionSummary {
+func newGithubActionSummary() (gh *GitHubActionSummary) {
 	homedir := GetHomeDirByOs()
-	log.Info("home is is:", homedir)
 	gh = &GitHubActionSummary{
-		homeDirPath: homedir,
-		rawDataFile: "data.json",
+		homeDirPath:            homedir,
+		rawUploadArtifactsFile: uploadedArtifactsFileName,
+		rawBuildInfoFile:       buildInfoFileName,
 	}
 	return gh
 }
@@ -269,4 +274,40 @@ func GetHomeDirByOs() string {
 	default:
 		return ""
 	}
+}
+
+func WriteBuildInfoData(build *buildInfo.BuildInfo) (err error) {
+	filePath := path.Join(GetHomeDirByOs(), buildInfoFileName)
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
+	defer func() {
+		err = file.Close()
+	}()
+	if err != nil {
+		return
+	}
+	// Read the existing data
+	data, err := fileutils.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	// Unmarshal the data into an array of build info objects
+	var builds []*buildInfo.BuildInfo
+	if len(data) > 0 {
+		err = json.Unmarshal(data, &builds)
+		if err != nil {
+			return err
+		}
+	}
+	// Append the new build info object to the array
+	builds = append(builds, build)
+	// Marshal the updated array back into JSON
+	updatedData, err := json.Marshal(builds)
+	if err != nil {
+		return err
+	}
+	_, err = file.Write(updatedData)
+	if err != nil {
+		return err
+	}
+	return
 }

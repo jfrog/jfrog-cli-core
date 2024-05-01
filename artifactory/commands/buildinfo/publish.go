@@ -159,7 +159,8 @@ func (bpc *BuildPublishCommand) Run() error {
 
 // TODO this should be a function of githubSummaries,maybe it has to move to core instead of cli.
 func writeBuildInfoData(build *buildinfo.BuildInfo) (err error) {
-	filePath := "/Users/runner/.jfrog/jfrog-github-summary/build-info-data.json"
+	filePath := "/home/runner/.jfrog/jfrog-github-summary/build-info-data.json"
+	log.Info("creating file: ", filePath)
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()

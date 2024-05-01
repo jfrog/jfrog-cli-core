@@ -1,9 +1,12 @@
 package buildinfo
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -125,6 +128,11 @@ func (bpc *BuildPublishCommand) Run() error {
 	if bpc.IsDetailedSummary() {
 		bpc.SetSummary(summary)
 	}
+
+	if err = writeBuildInfoData(buildInfo); err != nil {
+		log.Warn("Failed to write build info data: ", err)
+	}
+
 	if err != nil || bpc.config.DryRun {
 		return err
 	}
@@ -147,6 +155,43 @@ func (bpc *BuildPublishCommand) Run() error {
 
 	log.Info(logMsg)
 	return logJsonOutput(buildLink)
+}
+
+// TODO this should be a function of githubSummaries,maybe it has to move to core instead of cli.
+func writeBuildInfoData(build *buildinfo.BuildInfo) (err error) {
+	filePath := "/Users/runner/.jfrog/jfrog-github-summary/build-info-data.json"
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
+	defer func() {
+		err = file.Close()
+	}()
+	if err != nil {
+		return
+	}
+	// Read the existing data
+	data, err := fileutils.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	// Unmarshal the data into an array of build info objects
+	var builds []*buildinfo.BuildInfo
+	if len(data) > 0 {
+		err = json.Unmarshal(data, &builds)
+		if err != nil {
+			return err
+		}
+	}
+	// Append the new build info object to the array
+	builds = append(builds, build)
+	// Marshal the updated array back into JSON
+	updatedData, err := json.Marshal(builds)
+	if err != nil {
+		return err
+	}
+	_, err = file.Write(updatedData)
+	if err != nil {
+		return err
+	}
+	return
 }
 
 func logJsonOutput(buildInfoUiUrl string) error {

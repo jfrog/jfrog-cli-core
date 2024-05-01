@@ -54,10 +54,6 @@ func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err erro
 		}
 	}
 
-	// TODO implement scan results
-
-	// Generate the whole markdown
-	log.Debug("generating markdown")
 	return gh.generateMarkdown()
 }
 
@@ -162,10 +158,12 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
-	WriteStringToFile(file, "# 🐸 JFrog CLI Github Action Summary 🐸\n")
-	WriteStringToFile(file, "## 📁 Uploaded artifacts:\n")
+
+	WriteStringToFile(file, "<p align=\"center\">\n  <img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" />\n</p> \n\n")
+	WriteStringToFile(file, "# JFrog CLI Github Action Summary \n")
+	WriteStringToFile(file, "## 📁 Files uploaded to Artifactory by this workflow\n")
 	WriteStringToFile(file, "```\n"+gh.uploadTree.String()+"```\n")
-	WriteStringToFile(file, "## 📦 Published Build info \n ")
+	WriteStringToFile(file, "## 📦 Build Info published to Artifactory by this workflow \n ")
 	WriteStringToFile(file, gh.buildInfoTable())
 	return
 }
@@ -226,10 +224,10 @@ func (gh *GitHubActionSummary) buildInfoTable() string {
 
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("| Name | Number | Agent Name | Agent Version | Build Agent Name | Build Agent Version | Started | Artifactory Principal |\n")
-	tableBuilder.WriteString("|------|--------|------------|---------------|------------------|---------------------|---------|----------------------|\n")
+	tableBuilder.WriteString("| Name | Number | Timestamp | \n")
+	tableBuilder.WriteString("|------|--------|------------| \n")
 	for _, build := range builds {
-		tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s | %s | %s | %s |\n", build.Name, build.Number, build.Agent.Name, build.Agent.Version, build.BuildAgent.Name, build.BuildAgent.Version, build.Started, build.Principal))
+		tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name, build.Number, build.Started))
 	}
 	log.Info("build info table: ", tableBuilder.String())
 	return tableBuilder.String()

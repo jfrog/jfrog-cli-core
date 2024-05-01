@@ -42,7 +42,7 @@ func newConfLogin() error {
 
 func promptPlatformUrl() (string, error) {
 	var platformUrl string
-	ioutils.ScanFromConsole("JFrog Platform URL", &platformUrl, "")
+	ioutils.ScanFromConsole("Enter your JFrog Platform URL", &platformUrl, "")
 	if platformUrl == "" {
 		return "", errorutils.CheckErrorf("providing JFrog Platform URL is mandatory")
 	}

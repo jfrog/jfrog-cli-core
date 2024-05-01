@@ -3,6 +3,13 @@ package commands
 import (
 	"errors"
 	"fmt"
+	"net/url"
+	"os"
+	"reflect"
+	"strconv"
+	"strings"
+	"sync"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -14,12 +21,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/url"
-	"os"
-	"reflect"
-	"strconv"
-	"strings"
-	"sync"
 )
 
 type ConfigAction string
@@ -105,17 +106,7 @@ func (cc *ConfigCommand) SetDetails(details *config.ServerDetails) *ConfigComman
 
 func (cc *ConfigCommand) Run() (err error) {
 	log.Debug("Locking config file to run config " + cc.cmdType + " command.")
-	mutex.Lock()
-	defer func() {
-		mutex.Unlock()
-		log.Debug("Config " + cc.cmdType + " command completed successfully. config file is released.")
-	}()
-
-	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
-	if err != nil {
-		return
-	}
-	unlockFunc, err := lock.CreateLock(lockDirPath)
+	unlockFunc, err := lockConfig()
 	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
 	defer func() {
 		err = errors.Join(err, unlockFunc())
@@ -331,7 +322,11 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 	}
 
 	if cc.details.Url == "" {
-		ioutils.ScanFromConsole("JFrog Platform URL", &cc.details.Url, cc.defaultDetails.Url)
+		urlPrompt := "JFrog Platform URL"
+		if cc.useWebLogin {
+			urlPrompt = "Enter your " + urlPrompt
+		}
+		ioutils.ScanFromConsole(urlPrompt, &cc.details.Url, cc.defaultDetails.Url)
 	}
 
 	if fileutils.IsSshUrl(cc.details.Url) || fileutils.IsSshUrl(cc.details.ArtifactoryUrl) {
@@ -471,7 +466,7 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 }
 
 func (cc *ConfigCommand) checkClientCertForReverseProxy() {
-	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" {
+	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" || cc.useWebLogin {
 		return
 	}
 	if coreutils.AskYesNo("Is the Artifactory reverse proxy configured to accept a client certificate?", false) {
@@ -551,7 +546,21 @@ func ShowConfig(serverName string) error {
 	return nil
 }
 
-func Import(configTokenString string) error {
+func lockConfig() (unlockFunc func() error, err error) {
+	mutex.Lock()
+	defer func() {
+		mutex.Unlock()
+		log.Debug("config file is released.")
+	}()
+
+	lockDirPath, err := coreutils.GetJfrogConfigLockDir()
+	if err != nil {
+		return
+	}
+	return lock.CreateLock(lockDirPath)
+}
+
+func Import(configTokenString string) (err error) {
 	serverDetails, err := config.Import(configTokenString)
 	if err != nil {
 		return err
@@ -560,6 +569,16 @@ func Import(configTokenString string) error {
 	configCommand := &ConfigCommand{
 		details:  serverDetails,
 		serverId: serverDetails.ServerId,
+	}
+
+	log.Debug("Locking config file to run config import command.")
+	unlockFunc, err := lockConfig()
+	// Defer the lockFile.Unlock() function before throwing a possible error to avoid deadlock situations.
+	defer func() {
+		err = errors.Join(err, unlockFunc())
+	}()
+	if err != nil {
+		return err
 	}
 	return configCommand.config()
 }

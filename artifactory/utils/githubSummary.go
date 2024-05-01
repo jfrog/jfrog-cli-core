@@ -244,7 +244,7 @@ func createNewGithubSummary() (gh *GitHubActionSummary, err error) {
 	if err = gh.createTempFileIfNeeded(gh.getUploadedArtifactsDataFilePath(), ResultsWrapper{Results: []UploadResult{}}); err != nil {
 		return nil, err
 	}
-	if err = gh.createTempFileIfNeeded(gh.getPublishedBuildInfoDataFilePath(), ResultsWrapper{Results: []UploadResult{}}); err != nil {
+	if err = gh.createTempFileIfNeeded(gh.getPublishedBuildInfoDataFilePath(), []*buildInfo.BuildInfo{}); err != nil {
 		return nil, err
 	}
 	return

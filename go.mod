@@ -12,8 +12,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.6
-	github.com/jfrog/build-info-go v1.9.25
-	github.com/jfrog/gofrog v1.6.3
+	github.com/jfrog/build-info-go v1.9.26
+	github.com/jfrog/gofrog v1.7.1
 	github.com/jfrog/jfrog-client-go v1.39.0
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
@@ -96,7 +96,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240403100335-8292671b7cc4
+replace github.com/jfrog/jfrog-client-go => github.com/asafambar/jfrog-client-go v0.0.0-20240501183638-2d6d4ea1f9f9
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go dev
 

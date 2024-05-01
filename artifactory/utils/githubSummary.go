@@ -161,7 +161,7 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 		return fmt.Errorf("failed to open file: %w", err)
 	}
 
-	WriteStringToFile(file, "<p >\n  <h1> \n    <img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"70px\">  CLI Github Action Summary \n     </h1> \n</p>  \n\n")
+	WriteStringToFile(file, "<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -15px 0\"width=\"100px\"></picture>  CLI Github Action Summary \n     </h1> \n</p>  \n\n")
 
 	if gh.uploadTree.size > 0 {
 		WriteStringToFile(file, "<details open>\n")

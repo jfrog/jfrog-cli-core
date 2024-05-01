@@ -223,12 +223,11 @@ func (gh *GitHubActionSummary) ensureHomeDirExists() error {
 func (gh *GitHubActionSummary) buildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("| Name | Number | Timestamp | \n")
-	tableBuilder.WriteString("|------|--------|------------| \n")
+	tableBuilder.WriteString("| Build | Timestamp | \n")
+	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range gh.publishedBuildInfo {
-		tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name, build.Number, build.Started))
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+build.Number, build.BuildUrl, build.Started))
 	}
-	log.Info("build info table: ", tableBuilder.String())
 	return tableBuilder.String()
 }
 
@@ -296,6 +295,9 @@ func GetHomeDirByOs() string {
 }
 
 func GitHubJobSummariesCollectBuildInfoData(build *buildInfo.BuildInfo) (err error) {
+	if os.Getenv("GITHUB_ACTIONS") != "true" {
+		return nil
+	}
 	filePath := path.Join(GetHomeDirByOs(), buildInfoFileName)
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {

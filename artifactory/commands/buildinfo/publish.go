@@ -126,15 +126,7 @@ func (bpc *BuildPublishCommand) Run() error {
 	if bpc.IsDetailedSummary() {
 		bpc.SetSummary(summary)
 	}
-	if err != nil {
-		return err
-	}
-
-	if err = utils.GitHubJobSummariesCollectBuildInfoData(buildInfo); err != nil {
-		log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
-	}
-
-	if bpc.config.DryRun {
+	if err != nil || bpc.config.DryRun {
 		return err
 	}
 
@@ -146,6 +138,12 @@ func (bpc *BuildPublishCommand) Run() error {
 	err = build.Clean()
 	if err != nil {
 		return err
+	}
+
+	// Save build info data to display in GitHub Job Summary if needed
+	buildInfo.BuildUrl = buildLink
+	if err = utils.GitHubJobSummariesCollectBuildInfoData(buildInfo); err != nil {
+		log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
 	}
 
 	logMsg := "Build info successfully deployed."

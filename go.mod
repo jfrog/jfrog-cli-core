@@ -12,9 +12,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.6
-	github.com/jfrog/build-info-go v1.9.25
-	github.com/jfrog/gofrog v1.6.3
-	github.com/jfrog/jfrog-client-go v1.39.0
+	github.com/jfrog/build-info-go v1.9.26
+	github.com/jfrog/gofrog v1.7.1
+	github.com/jfrog/jfrog-client-go v1.40.1
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -89,14 +89,14 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/tools v0.19.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240403100335-8292671b7cc4
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240424133643-5bf715f66eac
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go dev
 

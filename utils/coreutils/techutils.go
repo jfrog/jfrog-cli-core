@@ -33,6 +33,7 @@ const (
 	Nuget  Technology = "nuget"
 	Dotnet Technology = "dotnet"
 	Docker Technology = "docker"
+	Oci    Technology = "oci"
 )
 
 const Pypi = "pypi"
@@ -144,6 +145,12 @@ var technologiesData = map[Technology]TechData{
 		indicators:         []string{".sln", ".csproj"},
 		packageDescriptors: []string{".sln", ".csproj"},
 		formal:             ".NET",
+	},
+	Docker: {
+		applicabilityScannable: true,
+	},
+	Oci: {
+		applicabilityScannable: true,
 	},
 }
 

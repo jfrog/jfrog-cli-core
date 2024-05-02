@@ -30,6 +30,7 @@ type GitHubActionSummary struct {
 	rawBuildInfoFile       string    // File containing build info results
 	uploadTree             *FileTree // Upload a tree object to generate markdown
 	publishedBuildInfo     []*buildInfo.BuildInfo
+	finalMarkdownFile      *os.File
 }
 
 const (
@@ -61,44 +62,78 @@ func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err erro
 }
 
 func (gh *GitHubActionSummary) generateMarkdown() (err error) {
-	// Create markdown file and delete previous if exists
+	cleanUp, err := gh.createMarkdownFile()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		err = cleanUp()
+	}()
+	if err = gh.writeTitleToMarkdown(); err != nil {
+		return
+	}
+	if err = gh.writeUploadedArtifactsToMarkdown(); err != nil {
+		return
+	}
+	if err = gh.writePublishedBuildInfoToMarkdown(); err != nil {
+		return
+	}
+	return
+}
+
+func (gh *GitHubActionSummary) createMarkdownFile() (cleanUp func() error, err error) {
 	tempMarkdownPath := path.Join(gh.homeDirPath, summaryReadMeFileName)
 	if err = os.Remove(tempMarkdownPath); err != nil {
 		log.Debug("failed to remove old markdown file: ", err)
 	}
-	file, err := os.OpenFile(tempMarkdownPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer func() {
-		err = file.Close()
-	}()
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
-	}
+	gh.finalMarkdownFile, err = os.OpenFile(tempMarkdownPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	cleanUp = gh.finalMarkdownFile.Close
+	return
+}
 
-	// Title
-	WriteStringToFile(file, "<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> Job Summary \n     </h1> \n</p>  \n\n")
+func (gh *GitHubActionSummary) writeTitleToMarkdown() (err error) {
+	return gh.writeStringToMarkdown("<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> Job Summary \n     </h1> \n</p>  \n\n")
+}
 
-	// Uploaded artifacts
+func (gh *GitHubActionSummary) writeUploadedArtifactsToMarkdown() (err error) {
 	if err = gh.generateUploadedFilesTree(); err != nil {
 		return fmt.Errorf("failed while creating file tree: %w", err)
 	}
 	if gh.uploadTree.size > 0 {
-		WriteStringToFile(file, "<details open>\n")
-		WriteStringToFile(file, "<summary> 📁 Files uploaded to Artifactory by this workflow </summary>\n\n\n\n")
-		WriteStringToFile(file, "<pre>\n"+gh.uploadTree.String(true)+"</pre>\n\n")
-		WriteStringToFile(file, "</details>\n\n")
+		if err = gh.writeStringToMarkdown("<details open>\n"); err != nil {
+			return
+		}
+		if err = gh.writeStringToMarkdown("<summary> 📁 Files uploaded to Artifactory by this workflow </summary>\n\n\n\n"); err != nil {
+			return
+		}
+		if err = gh.writeStringToMarkdown("<pre>\n" + gh.uploadTree.String(true) + "</pre>\n\n"); err != nil {
+			return
+		}
+		if err = gh.writeStringToMarkdown("</details>\n\n"); err != nil {
+			return
+		}
 	}
+	return
+}
 
-	// Published build info
+func (gh *GitHubActionSummary) writePublishedBuildInfoToMarkdown() (err error) {
 	if err = gh.loadBuildInfoData(); err != nil {
 		return
 	}
 	if len(gh.publishedBuildInfo) > 0 {
-		WriteStringToFile(file, "<details open>\n\n")
-		WriteStringToFile(file, "<summary> 📦 Build Info published to Artifactory by this workflow </summary>\n\n\n\n")
-		WriteStringToFile(file, gh.buildInfoTable())
-		WriteStringToFile(file, "\n</details>\n")
+		if err = gh.writeStringToMarkdown("<details open>\n"); err != nil {
+			return
+		}
+		if err = gh.writeStringToMarkdown("<summary> 📦 Build Info published to Artifactory by this workflow </summary>\n\n\n\n"); err != nil {
+			return
+		}
+		if err = gh.writeStringToMarkdown(gh.buildInfoTable()); err != nil {
+			return
+		}
+		if err = gh.writeStringToMarkdown("\n</details>\n"); err != nil {
+			return
+		}
 	}
-
 	return
 }
 
@@ -254,6 +289,15 @@ func (gh *GitHubActionSummary) loadBuildInfoData() (err error) {
 	return
 }
 
+func (gh *GitHubActionSummary) writeStringToMarkdown(str string) error {
+	_, err := gh.finalMarkdownFile.WriteString(str)
+	if err != nil {
+		log.Error(fmt.Errorf("failed to write string to file: %w", err))
+		return err
+	}
+	return nil
+}
+
 func createNewGithubSummary() (gh *GitHubActionSummary, err error) {
 	gh = newGithubActionSummary()
 	if err = gh.ensureHomeDirExists(); err != nil {
@@ -291,13 +335,6 @@ func parseBuildTime(timestamp string) string {
 	}
 	// Format the time in a more human-readable format and save it in a variable
 	return t.Format("Jan 2, 2006 15:04:05")
-}
-
-func WriteStringToFile(file *os.File, str string) {
-	_, err := file.WriteString(str)
-	if err != nil {
-		log.Error(fmt.Errorf("failed to write string to file: %w", err))
-	}
 }
 
 func GetHomeDirByOs() string {

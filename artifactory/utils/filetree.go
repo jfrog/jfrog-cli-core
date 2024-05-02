@@ -99,7 +99,7 @@ func (dn *dirNode) strings(embedReadMeLinks bool) []string {
 
 		var fullFileName string
 		if embedReadMeLinks {
-			fullFileName = fmt.Sprintf("%s<a href=%s>%s</a>", filePrefix, dn.fileNames[fileName], fileName)
+			fullFileName = fmt.Sprintf("%s<a href=external.ink?to=%s>%s</a>", filePrefix, dn.fileNames[fileName], fileName)
 		} else {
 			fullFileName = filePrefix + fileName
 		}

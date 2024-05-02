@@ -119,7 +119,7 @@ func (gh *GitHubActionSummary) generateUploadedFilesTree() (err error) {
 	}
 	gh.uploadTree = NewFileTree()
 	for _, b := range object.Results {
-		gh.uploadTree.AddFile(b.TargetPath, path.Join(b.RtUrl, "ui", "repos", "tree", "General", b.TargetPath))
+		gh.uploadTree.AddFile(b.TargetPath, b.RtUrl+"ui/repos/tree/general/"+b.TargetPath)
 	}
 	return
 }

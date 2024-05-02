@@ -75,7 +75,7 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 	}
 
 	// Title
-	WriteStringToFile(file, "<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"85px\"></picture> Job Summary \n     </h1> \n</p>  \n\n")
+	WriteStringToFile(file, "<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> Job Summary \n     </h1> \n</p>  \n\n")
 
 	// Uploaded artifacts
 	if err = gh.generateUploadedFilesTree(); err != nil {

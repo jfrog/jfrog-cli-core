@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -17,28 +18,29 @@ func NewFileTree() *FileTree {
 	return &FileTree{repos: map[string]*dirNode{}, size: 0}
 }
 
-func (ft *FileTree) AddFile(path string) {
+func (ft *FileTree) AddFile(path, rtUrl string) {
 	if ft.size >= maxFilesInTree {
 		ft.exceedsMax = true
 		return
 	}
 	splitPath := strings.Split(path, "/")
 	if _, exist := ft.repos[splitPath[0]]; !exist {
-		ft.repos[splitPath[0]] = &dirNode{name: splitPath[0], prefix: "📦 ", subDirNodes: map[string]*dirNode{}, fileNames: map[string]bool{}}
+		ft.repos[splitPath[0]] = &dirNode{name: splitPath[0], prefix: "📦 ", subDirNodes: map[string]*dirNode{}, fileNames: map[string]string{}}
 	}
-	if ft.repos[splitPath[0]].addArtifact(splitPath[1:]) {
+	if ft.repos[splitPath[0]].addArtifact(splitPath[1:], rtUrl) {
 		ft.size++
 	}
 }
 
 // Returns a string representation of the tree. If the number of files exceeded the maximum, an empty string will be returned.
-func (ft *FileTree) String() string {
+// embedReadMeLinks - If true, the file names will be embedded with a link to the file in Artifactory, default False.
+func (ft *FileTree) String(embedReadMeLinks bool) string {
 	if ft.exceedsMax {
 		return ""
 	}
 	treeStr := ""
 	for _, repo := range ft.repos {
-		treeStr += strings.Join(repo.strings(), "\n") + "\n"
+		treeStr += strings.Join(repo.strings(embedReadMeLinks), "\n") + "\n"
 	}
 	return treeStr
 }
@@ -47,25 +49,25 @@ type dirNode struct {
 	name        string
 	prefix      string
 	subDirNodes map[string]*dirNode
-	fileNames   map[string]bool
+	fileNames   map[string]string
 }
 
-func (dn *dirNode) addArtifact(pathInDir []string) bool {
+func (dn *dirNode) addArtifact(pathInDir []string, rtUrl string) bool {
 	if len(pathInDir) == 1 {
 		if _, exist := dn.fileNames[pathInDir[0]]; exist {
 			return false
 		}
-		dn.fileNames[pathInDir[0]] = true
+		dn.fileNames[pathInDir[0]] = rtUrl
 	} else {
 		if _, exist := dn.subDirNodes[pathInDir[0]]; !exist {
-			dn.subDirNodes[pathInDir[0]] = &dirNode{name: pathInDir[0], prefix: "📁 ", subDirNodes: map[string]*dirNode{}, fileNames: map[string]bool{}}
+			dn.subDirNodes[pathInDir[0]] = &dirNode{name: pathInDir[0], prefix: "📁 ", subDirNodes: map[string]*dirNode{}, fileNames: map[string]string{}}
 		}
-		return dn.subDirNodes[pathInDir[0]].addArtifact(pathInDir[1:])
+		return dn.subDirNodes[pathInDir[0]].addArtifact(pathInDir[1:], rtUrl)
 	}
 	return true
 }
 
-func (dn *dirNode) strings() []string {
+func (dn *dirNode) strings(embedReadMeLinks bool) []string {
 	strs := []string{dn.prefix + dn.name}
 	subDirIndex := 0
 	for subDirName := range dn.subDirNodes {
@@ -78,7 +80,7 @@ func (dn *dirNode) strings() []string {
 			subDirPrefix = "├── "
 			innerStrPrefix = "│   "
 		}
-		subDirStrs := dn.subDirNodes[subDirName].strings()
+		subDirStrs := dn.subDirNodes[subDirName].strings(embedReadMeLinks)
 		strs = append(strs, subDirPrefix+subDirStrs[0])
 		for subDirStrIndex := 1; subDirStrIndex < len(subDirStrs); subDirStrIndex++ {
 			strs = append(strs, innerStrPrefix+subDirStrs[subDirStrIndex])
@@ -94,7 +96,14 @@ func (dn *dirNode) strings() []string {
 			filePrefix = "├── 📄 "
 			fileIndex++
 		}
-		strs = append(strs, filePrefix+fileName)
+
+		var fullFileName string
+		if embedReadMeLinks {
+			fullFileName = fmt.Sprintf("%s<a href=%s>%s</a>", filePrefix, dn.fileNames[fileName], fileName)
+		} else {
+			fullFileName = filePrefix + fileName
+		}
+		strs = append(strs, fullFileName)
 	}
 	return strs
 }

@@ -84,7 +84,7 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 	if gh.uploadTree.size > 0 {
 		WriteStringToFile(file, "<details open>\n")
 		WriteStringToFile(file, "<summary> 📁 Files uploaded to Artifactory by this workflow </summary>\n\n\n\n")
-		WriteStringToFile(file, "<pre>\n"+gh.uploadTree.String(true)+"\n</pre>\n")
+		WriteStringToFile(file, "\n\n"+gh.uploadTree.String(true)+"\n\n")
 		WriteStringToFile(file, "</details>\n\n")
 	}
 

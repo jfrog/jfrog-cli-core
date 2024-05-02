@@ -99,7 +99,8 @@ func (dn *dirNode) strings(embedReadMeLinks bool) []string {
 
 		var fullFileName string
 		if embedReadMeLinks {
-			fullFileName = fmt.Sprintf("%s<a href=https://external.ink?to=%s target=_blank>%s</a>", filePrefix, strings.Replace(dn.fileNames[fileName], "artifactory/", "", 1), fileName)
+			url := strings.Replace(dn.fileNames[fileName], "artifactory/", "", 1)
+			fullFileName = fmt.Sprintf("%s[%s](%s)", filePrefix, fileName, url)
 		} else {
 			fullFileName = filePrefix + fileName
 		}

@@ -25,12 +25,12 @@ type ResultsWrapper struct {
 }
 
 type GitHubActionSummary struct {
-	homeDirPath            string    // Directory path for the GitHubActionSummary data
-	rawUploadArtifactsFile string    // File which contains all the results of the commands
-	rawBuildInfoFile       string    // File containing build info results
-	uploadTree             *FileTree // Upload a tree object to generate markdown
-	publishedBuildInfo     []*buildInfo.BuildInfo
-	finalMarkdownFile      *os.File
+	homeDirPath            string                 // Directory path for the GitHubActionSummary data
+	rawUploadArtifactsFile string                 // File which contains all the results of the commands
+	rawBuildInfoFile       string                 // File containing build info results
+	uploadTree             *FileTree              // Upload a tree object to generate markdown
+	publishedBuildInfo     []*buildInfo.BuildInfo // Published build info objects
+	finalMarkdownFile      *os.File               // Generated markdown file
 }
 
 const (
@@ -45,19 +45,15 @@ func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err erro
 	if !isGitHubActionsRunner() {
 		return
 	}
-	// Initiate the GitHubActionSummary, will check for previous runs and aggregate results if needed.
-	gh, err := createNewGithubSummary()
+	gh, err := initiateGithubSummary()
 	if err != nil {
-		return fmt.Errorf("failed while initiating Github job summaries: %w", err)
+		return
 	}
-
 	if contentReader != nil {
-		err = gh.generateUploadArtifactsTree(contentReader)
-		if err != nil {
-			return err
+		if err = gh.generateUploadArtifactsTree(contentReader); err != nil {
+			return
 		}
 	}
-
 	return gh.generateMarkdown()
 }
 
@@ -70,6 +66,9 @@ func (gh *GitHubActionSummary) generateMarkdown() (err error) {
 		err = cleanUp()
 	}()
 	if err = gh.writeTitleToMarkdown(); err != nil {
+		return
+	}
+	if err = gh.writeProjectPackagesToMarkdown(); err != nil {
 		return
 	}
 	if err = gh.writeUploadedArtifactsToMarkdown(); err != nil {
@@ -298,7 +297,15 @@ func (gh *GitHubActionSummary) writeStringToMarkdown(str string) error {
 	return nil
 }
 
-func createNewGithubSummary() (gh *GitHubActionSummary, err error) {
+func (gh *GitHubActionSummary) writeProjectPackagesToMarkdown() error {
+	urlFormat := "https://%s/ui/packages?projectKey=%s"
+	projectKey := os.Getenv("JFROG_CLI_PROJECT")
+	rtUrl := os.Getenv("JF_URL")
+	projectPackagesUrl := fmt.Sprintf(urlFormat, rtUrl, projectKey)
+	return gh.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project Packages](%s)\n\n", projectPackagesUrl))
+}
+
+func initiateGithubSummary() (gh *GitHubActionSummary, err error) {
 	gh = newGithubActionSummary()
 	if err = gh.ensureHomeDirExists(); err != nil {
 		return nil, err
@@ -319,6 +326,7 @@ func newGithubActionSummary() (gh *GitHubActionSummary) {
 		rawUploadArtifactsFile: uploadedArtifactsFileName,
 		rawBuildInfoFile:       buildInfoFileName,
 		publishedBuildInfo:     make([]*buildInfo.BuildInfo, 0),
+		finalMarkdownFile:      nil,
 	}
 	return gh
 }

@@ -84,6 +84,7 @@ func convertCommand(cmd Command, namespaces ...string) (cli.Command, error) {
 		Flags:           convertedFlags,
 		Aliases:         cmd.Aliases,
 		Category:        cmd.Category,
+		Usage:           cmd.Description,
 		Description:     cmd.Description,
 		HelpName:        common.CreateUsage(getCmdUsageString(cmd, namespaces...), cmd.Description, cmdUsages),
 		UsageText:       createArgumentsSummary(cmd),

@@ -5,14 +5,9 @@ import (
 	"compress/gzip"
 	"errors"
 	"fmt"
-	ioutils "github.com/jfrog/gofrog/io"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
-
 	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/build/utils"
+	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/gofrog/version"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -29,10 +24,17 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
-// The --pack-destination argument of npm pack was introduced in npm version 7.18.0.
-const packDestinationNpmMinVersion = "7.18.0"
+const (
+	DistTagPropKey = "npm.disttag"
+	// The --pack-destination argument of npm pack was introduced in npm version 7.18.0.
+	packDestinationNpmMinVersion = "7.18.0"
+)
 
 type NpmPublishCommandArgs struct {
 	CommonArgs
@@ -46,6 +48,7 @@ type NpmPublishCommandArgs struct {
 	artifactsDetailsReader *content.ContentReader
 	xrayScan               bool
 	scanOutputFormat       format.OutputFormat
+	distTag                string
 }
 
 type NpmPublishCommand struct {
@@ -98,6 +101,11 @@ func (npc *NpmPublishCommand) SetScanOutputFormat(format format.OutputFormat) *N
 	return npc
 }
 
+func (npc *NpmPublishCommand) SetDistTag(tag string) *NpmPublishCommand {
+	npc.distTag = tag
+	return npc
+}
+
 func (npc *NpmPublishCommand) Result() *commandsutils.Result {
 	return npc.result
 }
@@ -113,6 +121,10 @@ func (npc *NpmPublishCommand) Init() error {
 		return err
 	}
 	detailedSummary, xrayScan, scanOutputFormat, filteredNpmArgs, buildConfiguration, err := commandsutils.ExtractNpmOptionsFromArgs(npc.NpmPublishCommandArgs.npmArgs)
+	if err != nil {
+		return err
+	}
+	filteredNpmArgs, tag, err := coreutils.ExtractTagFromArgs(filteredNpmArgs)
 	if err != nil {
 		return err
 	}
@@ -133,7 +145,7 @@ func (npc *NpmPublishCommand) Init() error {
 		}
 		npc.SetBuildConfiguration(buildConfiguration).SetRepo(deployerParams.TargetRepo()).SetNpmArgs(filteredNpmArgs).SetServerDetails(rtDetails)
 	}
-	npc.SetDetailedSummary(detailedSummary).SetXrayScan(xrayScan).SetScanOutputFormat(scanOutputFormat)
+	npc.SetDetailedSummary(detailedSummary).SetXrayScan(xrayScan).SetScanOutputFormat(scanOutputFormat).SetDistTag(tag)
 	return nil
 }
 
@@ -145,7 +157,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	}
 
 	var npmBuild *build.Build
-	var buildName, buildNumber, project string
+	var buildName, buildNumber, projectKey string
 	if npc.collectBuildInfo {
 		buildName, err = npc.buildConfiguration.GetBuildName()
 		if err != nil {
@@ -155,9 +167,9 @@ func (npc *NpmPublishCommand) Run() (err error) {
 		if err != nil {
 			return err
 		}
-		project = npc.buildConfiguration.GetProject()
+		projectKey = npc.buildConfiguration.GetProject()
 		buildInfoService := buildUtils.CreateBuildInfoService()
-		npmBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, project)
+		npmBuild, err = buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, projectKey)
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
@@ -309,6 +321,9 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	}
 	up := services.NewUploadParams()
 	up.CommonParams = &specutils.CommonParams{Pattern: packedFilePath, Target: target}
+	if err = npc.addDistTagIfSet(up.CommonParams); err != nil {
+		return err
+	}
 	var totalFailed int
 	if npc.collectBuildInfo || npc.detailedSummary {
 		if npc.collectBuildInfo {
@@ -362,6 +377,19 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 	if totalFailed > 0 {
 		return errorutils.CheckErrorf("Failed to upload the npm package to Artifactory. See Artifactory logs for more details.")
 	}
+	return nil
+}
+
+// Set the dist tag property to the package if required by the --tag option.
+func (npc *NpmPublishCommand) addDistTagIfSet(params *specutils.CommonParams) error {
+	if npc.distTag == "" {
+		return nil
+	}
+	props, err := specutils.ParseProperties(DistTagPropKey + "=" + npc.distTag)
+	if err != nil {
+		return err
+	}
+	params.TargetProps = props
 	return nil
 }
 

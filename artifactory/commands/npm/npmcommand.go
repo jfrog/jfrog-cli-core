@@ -5,23 +5,23 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
-	biutils "github.com/jfrog/build-info-go/build/utils"
+	biUtils "github.com/jfrog/build-info-go/build/utils"
 	"github.com/jfrog/gofrog/version"
+	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/spf13/viper"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
-	"github.com/jfrog/jfrog-cli-core/v2/common/project"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
@@ -102,8 +102,8 @@ func (nc *NpmCommand) Init() error {
 	if err != nil {
 		return err
 	}
-	// Extract resolution params.
-	resolverParams, err := project.GetRepoConfigByPrefix(nc.configFilePath, project.ProjectConfigResolverPrefix, vConfig)
+
+	repoConfig, err := nc.getRepoConfig(vConfig)
 	if err != nil {
 		return err
 	}
@@ -111,8 +111,19 @@ func (nc *NpmCommand) Init() error {
 	if err != nil {
 		return err
 	}
-	nc.SetRepoConfig(resolverParams).SetArgs(filteredNpmArgs).SetBuildConfiguration(buildConfiguration)
+	nc.SetRepoConfig(repoConfig).SetArgs(filteredNpmArgs).SetBuildConfiguration(buildConfiguration)
 	return nil
+}
+
+// Get the repository configuration from the config file.
+// Use the resolver prefix for all commands except for 'dist-tag' which use the deployer prefix.
+func (nc *NpmCommand) getRepoConfig(vConfig *viper.Viper) (repoConfig *project.RepositoryConfig, err error) {
+	prefix := project.ProjectConfigResolverPrefix
+	// Aliases accepted by npm.
+	if nc.cmdName == "dist-tag" || nc.cmdName == "dist-tags" {
+		prefix = project.ProjectConfigDeployerPrefix
+	}
+	return project.GetRepoConfigByPrefix(nc.configFilePath, prefix, vConfig)
 }
 
 func (nc *NpmCommand) SetBuildConfiguration(buildConfiguration *buildUtils.BuildConfiguration) *NpmCommand {
@@ -131,7 +142,7 @@ func (nc *NpmCommand) RestoreNpmrcFunc() func() error {
 func (nc *NpmCommand) PreparePrerequisites(repo string) error {
 	log.Debug("Preparing prerequisites...")
 	var err error
-	nc.npmVersion, nc.executablePath, err = biutils.GetNpmVersionAndExecPath(log.Logger)
+	nc.npmVersion, nc.executablePath, err = biUtils.GetNpmVersionAndExecPath(log.Logger)
 	if err != nil {
 		return err
 	}
@@ -229,7 +240,7 @@ func (nc *NpmCommand) setNpmConfigAuthEnv(value string) error {
 		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
 		return os.Setenv(scopedRegistryEnv, value)
 	}
-	// Set "npm_config__auth" environment variable to allow authentication with Artifactory when running postinstall scripts on subdirectories.
+	// Set "npm_config__auth" environment variable to allow authentication with Artifactory when running post-install scripts on subdirectories.
 	// For Legacy NPM version < 9.3.1
 	return os.Setenv(npmLegacyConfigAuthEnv, value)
 }

@@ -303,7 +303,7 @@ func (gh *GitHubActionSummary) writeProjectPackagesToMarkdown() error {
 	projectPackagesUrl := fmt.Sprintf("%s/ui/packages?projectKey=%s", platformUrl, projectKey)
 	log.Debug("packages url is ", projectPackagesUrl)
 	// Test masked url
-	_ = gh.writeStringToMarkdown("https://ecosysjfrog.jfrog.io/ui/builds/build/123/1714658286488/published?buildRepo=eyalde-build-info&projectKey=eyalde")
+	_ = gh.writeStringToMarkdown("[test url](https://ecosysjfrog.jfrog.io/ui/builds/build/123/1714658286488/published?buildRepo=eyalde-build-info&projectKey=eyalde)")
 	return gh.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project Packages](%s)\n\n", projectPackagesUrl))
 }
 

@@ -17,7 +17,7 @@ import (
 type UploadResult struct {
 	SourcePath string `json:"sourcePath"`
 	TargetPath string `json:"targetPath"`
-	RtUrl      string `json:"rtUrl"`
+	BuildUrl   string `json:"url"`
 }
 
 type ResultsWrapper struct {
@@ -153,7 +153,7 @@ func (gh *GitHubActionSummary) generateUploadedFilesTree() (err error) {
 	}
 	gh.uploadTree = NewFileTree()
 	for _, b := range object.Results {
-		gh.uploadTree.AddFile(b.TargetPath, b.RtUrl+"ui/repos/tree/general/"+b.TargetPath)
+		gh.uploadTree.AddFile(b.TargetPath, b.BuildUrl)
 	}
 	return
 }
@@ -298,10 +298,9 @@ func (gh *GitHubActionSummary) writeStringToMarkdown(str string) error {
 }
 
 func (gh *GitHubActionSummary) writeProjectPackagesToMarkdown() error {
-	urlFormat := "https://%s/ui/packages?projectKey=%s"
 	projectKey := os.Getenv("JFROG_CLI_PROJECT")
 	rtUrl := os.Getenv("JF_URL")
-	projectPackagesUrl := fmt.Sprintf(urlFormat, rtUrl, projectKey)
+	projectPackagesUrl := fmt.Sprintf("%s/ui/packages?projectKey=%s", rtUrl, projectKey)
 	return gh.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project Packages](%s)\n\n", projectPackagesUrl))
 }
 

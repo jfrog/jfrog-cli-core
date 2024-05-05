@@ -101,7 +101,8 @@ func (gh *GitHubActionSummary) createMarkdownFile() (cleanUp func() error, err e
 }
 
 func (gh *GitHubActionSummary) writeTitleToMarkdown() (err error) {
-	return gh.writeStringToMarkdown("<p >\n  <h1> \n    <picture><img src=\"https://github.com/jfrog/jfrog-cli-core/assets/23456142/d2df3c49-30a6-4eb6-be66-42014b17d1fb\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> JFrog Platform Job Summary \n     </h1> \n</p>  \n\n")
+	// TODO modify image url before merge
+	return gh.writeStringToMarkdown("<p >\n  <h1> \n    <picture><img src=\"https://github.com/EyalDelarea/jfrog-cli-core/blob/github_job_summary/utils/assests/JFrogLogo.png?raw=true\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> JFrog Platform Job Summary \n     </h1> \n</p>  \n\n")
 }
 
 func (gh *GitHubActionSummary) writeUploadedArtifactsToMarkdown() (err error) {

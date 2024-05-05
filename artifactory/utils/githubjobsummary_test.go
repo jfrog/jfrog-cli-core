@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-func TestGenerateGitHubActionSummary(t *testing.T) {
-	// TODO: Integration test with local file system
-}
-
 func TestBuildUiUrl(t *testing.T) {
 	gh := &GitHubActionSummary{
 		platformUrl:     "https://myplatform.com/",

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -17,7 +18,7 @@ import (
 type UploadResult struct {
 	SourcePath string `json:"sourcePath"`
 	TargetPath string `json:"targetPath"`
-	BuildUrl   string `json:"url"`
+	RtUrl      string `json:"rtUrl"`
 }
 
 type ResultsWrapper struct {
@@ -28,6 +29,8 @@ type GitHubActionSummary struct {
 	homeDirPath            string                 // Directory path for the GitHubActionSummary data
 	rawUploadArtifactsFile string                 // File which contains all the results of the commands
 	rawBuildInfoFile       string                 // File containing build info results
+	platformUrl            string                 // Platform URL from env,used to generate Markdown links.
+	jfrogProjectKey        string                 // [Optional] JFROG_CLI_PROJECT env variable
 	uploadTree             *FileTree              // Upload a tree object to generate markdown
 	publishedBuildInfo     []*buildInfo.BuildInfo // Published build info objects
 	finalMarkdownFile      *os.File               // Generated markdown file
@@ -153,9 +156,14 @@ func (gh *GitHubActionSummary) generateUploadedFilesTree() (err error) {
 	}
 	gh.uploadTree = NewFileTree()
 	for _, b := range object.Results {
-		gh.uploadTree.AddFile(b.TargetPath, b.BuildUrl)
+		gh.uploadTree.AddFile(b.TargetPath, gh.buildUiUrl(b.TargetPath))
 	}
 	return
+}
+
+func (gh *GitHubActionSummary) buildUiUrl(targetPath string) string {
+	template := "%sui/repos/tree/General/%s/?projectKey=%s"
+	return fmt.Sprintf(template, gh.platformUrl, targetPath, gh.jfrogProjectKey)
 }
 
 func (gh *GitHubActionSummary) getUploadedArtifactsDataFilePath() string {
@@ -261,10 +269,6 @@ func (gh *GitHubActionSummary) buildInfoTable() string {
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range gh.publishedBuildInfo {
 		buildTime := parseBuildTime(build.Started)
-		if build.BuildUrl == "" {
-			// This is for dry runs that don't have a build URL
-			build.BuildUrl = "https://jfrog.com/"
-		}
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" / "+build.Number, build.BuildUrl, buildTime))
 	}
 	return tableBuilder.String()
@@ -298,12 +302,7 @@ func (gh *GitHubActionSummary) writeStringToMarkdown(str string) error {
 }
 
 func (gh *GitHubActionSummary) writeProjectPackagesToMarkdown() error {
-	projectKey := os.Getenv("JFROG_CLI_PROJECT")
-	platformUrl := os.Getenv("JF_URL")
-	projectPackagesUrl := fmt.Sprintf("%s/ui/packages?projectKey=%s", platformUrl, projectKey)
-	log.Debug("packages url is ", projectPackagesUrl)
-	// Test masked url
-	_ = gh.writeStringToMarkdown("[test url](https://ecosysjfrog.jfrog.io/ui/builds/build/123/1714658286488/published?buildRepo=eyalde-build-info&projectKey=eyalde)")
+	projectPackagesUrl := fmt.Sprintf("%sui/packages?projectKey=%s", gh.platformUrl, gh.jfrogProjectKey)
 	return gh.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project Packages](%s)\n\n", projectPackagesUrl))
 }
 
@@ -329,6 +328,8 @@ func newGithubActionSummary() (gh *GitHubActionSummary) {
 		rawBuildInfoFile:       buildInfoFileName,
 		publishedBuildInfo:     make([]*buildInfo.BuildInfo, 0),
 		finalMarkdownFile:      nil,
+		platformUrl:            utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
+		jfrogProjectKey:        os.Getenv("JFROG_CLI_PROJECT"),
 	}
 	return gh
 }

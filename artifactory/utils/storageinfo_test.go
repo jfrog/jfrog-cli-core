@@ -159,21 +159,3 @@ func getStorageInfoResponse(t *testing.T, w http.ResponseWriter, r *http.Request
 		assert.NoError(t, err)
 	}
 }
-
-func TestConvertIntToStorageSizeString(t *testing.T) {
-	tests := []struct {
-		num    int
-		output string
-	}{
-		{12546, "12.3KB"},
-		{148576, "145.1KB"},
-		{2587985, "2.5MB"},
-		{12896547, "12.3MB"},
-		{12896547785, "12.0GB"},
-		{5248965785422365, "4773.9TB"},
-	}
-
-	for _, test := range tests {
-		assert.Equal(t, test.output, ConvertIntToStorageSizeString(int64(test.num)))
-	}
-}

@@ -15,7 +15,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const testServerId = "test"
+const (
+	testServerId = "test"
+	// #nosec G101 -- False positive - no hardcoded credentials.
+	// jfrog-ignore - not a real token
+	acmeConfigToken = "eyJ2ZXJzaW9uIjoyLCJ1cmwiOiJodHRwczovL2FjbWUuamZyb2cuaW8vIiwiYXJ0aWZhY3RvcnlVcmwiOiJodHRwczovL2FjbWUuamZyb2cuaW8vYXJ0aWZhY3RvcnkvIiwiZGlzdHJpYnV0aW9uVXJsIjoiaHR0cHM6Ly9hY21lLmpmcm9nLmlvL2Rpc3RyaWJ1dGlvbi8iLCJ4cmF5VXJsIjoiaHR0cHM6Ly9hY21lLmpmcm9nLmlvL3hyYXkvIiwibWlzc2lvbkNvbnRyb2xVcmwiOiJodHRwczovL2FjbWUuamZyb2cuaW8vbWMvIiwicGlwZWxpbmVzVXJsIjoiaHR0cHM6Ly9hY21lLmpmcm9nLmlvL3BpcGVsaW5lcy8iLCJ1c2VyIjoiYWRtaW4iLCJwYXNzd29yZCI6InBhc3N3b3JkIiwidG9rZW5SZWZyZXNoSW50ZXJ2YWwiOjYwLCJzZXJ2ZXJJZCI6ImFjbWUifQ=="
+)
 
 func init() {
 	log.SetDefaultLogger()
@@ -315,6 +320,28 @@ func TestKeyDecryptionError(t *testing.T) {
 	assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
 	_, err = GetConfig(testServerId, false)
 	assert.ErrorContains(t, err, "cannot decrypt config")
+}
+
+func TestImport(t *testing.T) {
+	// Create temp jfrog home
+	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	// Import config token
+	assert.NoError(t, Import(acmeConfigToken))
+	serverDetails, err := GetConfig("acme", true)
+	assert.NoError(t, err)
+
+	// Verify that the configuration was imported correctly
+	assert.Equal(t, "https://acme.jfrog.io/", serverDetails.GetUrl())
+	assert.Equal(t, "https://acme.jfrog.io/artifactory/", serverDetails.GetArtifactoryUrl())
+	assert.Equal(t, "https://acme.jfrog.io/distribution/", serverDetails.GetDistributionUrl())
+	assert.Equal(t, "https://acme.jfrog.io/xray/", serverDetails.GetXrayUrl())
+	assert.Equal(t, "https://acme.jfrog.io/mc/", serverDetails.GetMissionControlUrl())
+	assert.Equal(t, "https://acme.jfrog.io/pipelines/", serverDetails.GetPipelinesUrl())
+	assert.Equal(t, "admin", serverDetails.GetUser())
+	assert.Equal(t, "password", serverDetails.GetPassword())
 }
 
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {

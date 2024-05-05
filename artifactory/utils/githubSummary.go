@@ -299,8 +299,11 @@ func (gh *GitHubActionSummary) writeStringToMarkdown(str string) error {
 
 func (gh *GitHubActionSummary) writeProjectPackagesToMarkdown() error {
 	projectKey := os.Getenv("JFROG_CLI_PROJECT")
-	rtUrl := os.Getenv("JF_URL")
-	projectPackagesUrl := fmt.Sprintf("%s/ui/packages?projectKey=%s", rtUrl, projectKey)
+	platformUrl := os.Getenv("JF_URL")
+	projectPackagesUrl := fmt.Sprintf("%s/ui/packages?projectKey=%s", platformUrl, projectKey)
+	log.Debug("packages url is ", projectPackagesUrl)
+	// Test masked url
+	_ = gh.writeStringToMarkdown("https://ecosysjfrog.jfrog.io/ui/builds/build/123/1714658286488/published?buildRepo=eyalde-build-info&projectKey=eyalde")
 	return gh.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project Packages](%s)\n\n", projectPackagesUrl))
 }
 

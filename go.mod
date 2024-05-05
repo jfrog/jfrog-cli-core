@@ -11,7 +11,7 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20231116093920-b87c2d0e983a
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
-	github.com/jedib0t/go-pretty/v6 v6.5.6
+	github.com/jedib0t/go-pretty/v6 v6.5.8
 	github.com/jfrog/build-info-go v1.9.26
 	github.com/jfrog/gofrog v1.7.1
 	github.com/jfrog/jfrog-client-go v1.40.1
@@ -20,13 +20,13 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.9.0
-	github.com/urfave/cli v1.22.14
+	github.com/urfave/cli v1.22.15
 	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
-	golang.org/x/mod v0.16.0
-	golang.org/x/sync v0.6.0
-	golang.org/x/term v0.18.0
-	golang.org/x/text v0.14.0
+	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
+	golang.org/x/mod v0.17.0
+	golang.org/x/sync v0.7.0
+	golang.org/x/term v0.20.0
+	golang.org/x/text v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -40,7 +40,7 @@ require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/cloudflare/circl v1.3.7 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
@@ -88,10 +88,10 @@ require (
 	github.com/xo/terminfo v0.0.0-20210125001918-ca9a967f8778 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
-	golang.org/x/tools v0.19.0 // indirect
+	golang.org/x/crypto v0.22.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/tools v0.20.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

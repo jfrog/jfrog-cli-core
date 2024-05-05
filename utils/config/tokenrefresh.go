@@ -143,7 +143,7 @@ func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails,
 		log.Debug("Token refreshed successfully.")
 	}
 
-	err = writeNewArtifactoryTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
+	err = writeNewTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken, ArtifactoryToken)
 	return newToken.AccessToken, err
 }
 
@@ -153,13 +153,19 @@ func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, curr
 	if err != nil {
 		return "", errorutils.CheckErrorf("Refresh access token failed: " + err.Error())
 	}
-	err = writeNewArtifactoryTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken)
+	err = writeNewTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken, AccessToken)
 	return newToken.AccessToken, err
 }
 
-func writeNewArtifactoryTokens(serverConfiguration *ServerDetails, serverId, accessToken, refreshToken string) error {
+func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, refreshToken string, tokenType TokenType) error {
 	serverConfiguration.SetAccessToken(accessToken)
-	serverConfiguration.SetArtifactoryRefreshToken(refreshToken)
+
+	switch tokenType {
+	case ArtifactoryToken:
+		serverConfiguration.SetArtifactoryRefreshToken(refreshToken)
+	case AccessToken:
+		serverConfiguration.SetRefreshToken(refreshToken)
+	}
 
 	// Get configurations list
 	configurations, err := GetAllServersConfigs()
@@ -221,7 +227,7 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 	}
 	// Remove initializing value.
 	serverDetails.ArtifactoryTokenRefreshInterval = 0
-	err = writeNewArtifactoryTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken)
+	err = writeNewTokens(serverDetails, serverDetails.ServerId, newToken.AccessToken, newToken.RefreshToken, ArtifactoryToken)
 	return
 }
 

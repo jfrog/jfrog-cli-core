@@ -101,7 +101,7 @@ func (dn *dirNode) strings(embedHtmlLinks bool) []string {
 
 		var fullFileName string
 		if embedHtmlLinks {
-			fullFileName = fmt.Sprintf("%s<a href=%s target=_blank>%s</a>", filePrefix, dn.fileNames[fileName], fileName)
+			fullFileName = fmt.Sprintf("%s<a href=%s target=\"_blank\">%s</a>", filePrefix, dn.fileNames[fileName], fileName)
 		} else {
 			fullFileName = filePrefix + fileName
 		}

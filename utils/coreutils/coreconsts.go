@@ -56,6 +56,7 @@ var (
 	BuildName   = "JFROG_CLI_BUILD_NAME"
 	BuildNumber = "JFROG_CLI_BUILD_NUMBER"
 	Project     = "JFROG_CLI_BUILD_PROJECT"
+	CliProject  = "JFROG_CLI_PROJECT"
 	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
 )

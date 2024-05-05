@@ -354,9 +354,16 @@ func GetHomeDirByOs() string {
 		return filepath.Join(os.Getenv("USERPROFILE"), ".jfrog", "jfrog-github-summary")
 	case "Linux", "macOS":
 		return filepath.Join(os.Getenv("HOME"), ".jfrog", "jfrog-github-summary")
+	case "self-hosted":
+		homeDir := os.Getenv("RUNNER_HOMEDIR")
+		if homeDir == "" {
+			log.Error("Home directory not found in the environment variable: RUNNER_HOMEDIR, please set it to enable GitHub Job Summary on a self hosted machine")
+			return ""
+		}
+		return filepath.Join(homeDir, ".jfrog", "jfrog-github-summary")
 	default:
-		// TODO remove this,used for developing
-		return filepath.Join("/Users/eyalde/IdeaProjects/githubRunner/_work", ".jfrog", "jfrog-github-summary")
+		log.Error("Unsupported OS: ", osString)
+		return ""
 	}
 }
 

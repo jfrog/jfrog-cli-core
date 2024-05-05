@@ -41,9 +41,15 @@ const (
 	buildInfoFileName         = "build-info-data.json"
 	uploadedArtifactsFileName = "data.json"
 	summaryReadMeFileName     = "summary.md"
+	githubSummaryDirName      = "jfrog-github-summary"
+	jfrogHomeDir              = ".jfrog"
 )
 
-// GenerateGitHubActionSummary TODO this isn't clear why you should pass a content reader,maybe this can be refactoed.
+// GenerateGitHubActionSummary creates a markdown file with a summary of the current GitHub Action workflow.
+// The summary includes data gathered from each command and saved to the filesystem; at every call to this function
+// will generate a new markdown file, aggregates the data from the previous calls, and appends the new data.
+// On the cleanup step of the SETUP_CLI action, the markdown file will be set as the GitHub job summary markdown file.
+// contentReader - The content reader object that contains the results of the current command, this is optional.
 func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err error) {
 	if !isGitHubActionsRunner() {
 		return
@@ -52,6 +58,7 @@ func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err erro
 	if err != nil {
 		return
 	}
+	// If content reader is not nil, append the results to the data file.
 	if contentReader != nil {
 		if err = gh.generateUploadArtifactsTree(contentReader); err != nil {
 			return
@@ -307,7 +314,10 @@ func (gh *GitHubActionSummary) writeProjectPackagesToMarkdown() error {
 }
 
 func initiateGithubSummary() (gh *GitHubActionSummary, err error) {
-	gh = newGithubActionSummary()
+	gh, err = newGithubActionSummary()
+	if err != nil {
+		return
+	}
 	if err = gh.ensureHomeDirExists(); err != nil {
 		return nil, err
 	}
@@ -320,8 +330,11 @@ func initiateGithubSummary() (gh *GitHubActionSummary, err error) {
 	return
 }
 
-func newGithubActionSummary() (gh *GitHubActionSummary) {
-	homedir := GetHomeDirByOs()
+func newGithubActionSummary() (gh *GitHubActionSummary, err error) {
+	homedir, err := GetHomeDirByOs()
+	if err != nil {
+		return
+	}
 	gh = &GitHubActionSummary{
 		homeDirPath:            homedir,
 		rawUploadArtifactsFile: uploadedArtifactsFileName,
@@ -331,7 +344,7 @@ func newGithubActionSummary() (gh *GitHubActionSummary) {
 		platformUrl:            utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
 		jfrogProjectKey:        os.Getenv("JFROG_CLI_PROJECT"),
 	}
-	return gh
+	return
 }
 
 func isGitHubActionsRunner() bool {
@@ -348,30 +361,45 @@ func parseBuildTime(timestamp string) string {
 	return t.Format("Jan 2, 2006 15:04:05")
 }
 
-func GetHomeDirByOs() string {
+func GetHomeDirByOs() (homeDir string, err error) {
+	osBasePath, err := getBasePathByOs()
+	if err != nil {
+		return
+	}
+	homeDir = filepath.Join(osBasePath, jfrogHomeDir, githubSummaryDirName)
+	return
+}
+
+func getBasePathByOs() (osBasePath string, err error) {
 	switch osString := os.Getenv("RUNNER_OS"); osString {
 	case "Windows":
-		return filepath.Join(os.Getenv("USERPROFILE"), ".jfrog", "jfrog-github-summary")
+		osBasePath = os.Getenv("USERPROFILE")
 	case "Linux", "macOS":
-		return filepath.Join(os.Getenv("HOME"), ".jfrog", "jfrog-github-summary")
+		osBasePath = os.Getenv("HOME")
 	case "self-hosted":
-		homeDir := os.Getenv("RUNNER_HOMEDIR")
-		if homeDir == "" {
+		osBasePath = os.Getenv("RUNNER_HOMEDIR")
+		if osBasePath == "" {
 			log.Error("Home directory not found in the environment variable: RUNNER_HOMEDIR, please set it to enable GitHub Job Summary on a self hosted machine")
-			return ""
+			err = fmt.Errorf("home directory not found in the environment variable: RUNNER_HOMEDIR, please set it to enable GitHub Job Summary on a self hosted machine")
+			return
 		}
-		return filepath.Join(homeDir, ".jfrog", "jfrog-github-summary")
 	default:
 		log.Error("Unsupported OS: ", osString)
-		return ""
+		err = fmt.Errorf("unsupported OS: %s, supported OS's are: Windows,Linux,MacOS and self-hosted runners", osString)
+		return
 	}
+	return
 }
 
 func GitHubJobSummariesCollectBuildInfoData(build *buildInfo.BuildInfo) (err error) {
 	if !isGitHubActionsRunner() {
 		return nil
 	}
-	filePath := path.Join(GetHomeDirByOs(), buildInfoFileName)
+	runnerHomeDir, err := GetHomeDirByOs()
+	if err != nil {
+		return
+	}
+	filePath := path.Join(runnerHomeDir, buildInfoFileName)
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()

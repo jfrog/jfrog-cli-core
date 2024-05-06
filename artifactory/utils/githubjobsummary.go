@@ -321,7 +321,7 @@ func (gh *GitHubActionSummary) writeStringToMarkdown(str string) error {
 
 func (gh *GitHubActionSummary) writeProjectPackagesToMarkdown() error {
 	projectPackagesUrl := fmt.Sprintf("%sui/packages?projectKey=%s", gh.platformUrl, gh.jfrogProjectKey)
-	return gh.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project Packages](%s)\n\n", projectPackagesUrl))
+	return gh.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project %s Packages](%s)\n\n", gh.jfrogProjectKey, projectPackagesUrl))
 }
 
 func initiateGithubSummary() (gh *GitHubActionSummary, err error) {

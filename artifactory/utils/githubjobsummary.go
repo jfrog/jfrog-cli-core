@@ -45,11 +45,11 @@ const (
 	jfrogHomeDir              = ".jfrog"
 )
 
-// GenerateGitHubActionSummary creates a markdown file with a summary of the current GitHub Action workflow.
-// The summary includes data gathered from each command and saved to the filesystem; at every call to this function
-// will generate a new markdown file, aggregates the data from the previous calls, and appends the new data.
-// On the cleanup step of the SETUP_CLI action, the markdown file will be set as the GitHub job summary markdown file.
-// contentReader - The content reader object that contains the results of the current command, this is optional.
+// GenerateGitHubActionSummary creates a markdown file summarizing the current GitHub Action workflow.
+// It includes data from each command, saved to the filesystem.
+// Each function call generates a new markdown file, aggregates data from previous calls, and appends new data.
+// During the cleanup step of the SETUP_CLI action,
+// The latest markdown file is set as the GitHub job summary markdown file.
 //
 // The function currently supports the following commands for Job Summaries:
 // 1. Rt Upload, using the content reader to append the results to the uploaded-artifacts-data file.

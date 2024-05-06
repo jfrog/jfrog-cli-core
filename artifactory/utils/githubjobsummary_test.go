@@ -37,7 +37,7 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-	expected := "| 🔢 Build | 🕒 Timestamp | \n|---------|------------| \n| [buildName / 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 12:47:20 |\n"
+	expected := "| 🔢 Build Info | 🕒 Timestamp | \n|---------|------------| \n| [buildName / 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 12:47:20 |\n"
 	assert.Equal(t, expected, gh.buildInfoTable())
 }
 

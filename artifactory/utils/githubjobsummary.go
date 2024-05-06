@@ -39,7 +39,7 @@ type GitHubActionSummary struct {
 const (
 	githubActionsEnv          = "GITHUB_ACTIONS"
 	buildInfoFileName         = "build-info-data.json"
-	uploadedArtifactsFileName = "data.json"
+	uploadedArtifactsFileName = "uploaded-artifacts-data.json"
 	summaryReadMeFileName     = "summary.md"
 	githubSummaryDirName      = "jfrog-github-summary"
 	jfrogHomeDir              = ".jfrog"
@@ -50,6 +50,16 @@ const (
 // will generate a new markdown file, aggregates the data from the previous calls, and appends the new data.
 // On the cleanup step of the SETUP_CLI action, the markdown file will be set as the GitHub job summary markdown file.
 // contentReader - The content reader object that contains the results of the current command, this is optional.
+//
+// The function currently supports the following commands for Job Summaries:
+// 1. Rt Upload, using the content reader to append the results to the uploaded-artifacts-data file.
+// 2. Rt Build Publish - the build info object is appended to the build-info-data file.
+//
+// To add support for a new command to the Job Summary, perform the following steps:
+// - Add a file to the GitHubActionSummary struct named as rawMyCommandFile.
+// - Record raw data from the CLI command to this file.
+// - Append the results to the final markdown.
+
 func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err error) {
 	if !isGitHubActionsRunner() {
 		return

@@ -390,7 +390,9 @@ func (tdc *TransferFilesCommand) transferSingleRepo(sourceRepoKey string, target
 		return
 	}
 	defer func() {
-		err = errors.Join(err, restoreFunc())
+		if restoreFunc != nil {
+			err = errors.Join(err, restoreFunc())
+		}
 	}()
 
 	if err = tdc.initCurThreads(buildInfoRepo); err != nil {

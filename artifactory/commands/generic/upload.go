@@ -2,6 +2,7 @@ package generic
 
 import (
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/githubsummaries"
 	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
@@ -154,7 +155,7 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
-			_ = utils.GithubSummaryRecordResult(readDetailsFromReader(summary.TransferDetailsReader), utils.ArtifactsUploadSection)
+			_ = githubsummaries.GithubSummaryRecordResult(readDetailsFromReader(summary.TransferDetailsReader), githubsummaries.ArtifactsUploadSection)
 		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)

@@ -1,4 +1,4 @@
-package utils
+package githubsummariesimpl
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ type GithubSummaryBpImpl struct {
 }
 
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
-func (gh *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
+func (gh *GithubSummaryBpImpl) AppendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
 	build, ok := currentResult.(*buildInfo.BuildInfo)
 	if !ok {
 		return nil, fmt.Errorf("failed to cast currentResult to buildInfo.BuildInfo")
@@ -32,7 +32,7 @@ func (gh *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, pre
 	return json.Marshal(builds)
 }
 
-func (gh *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
+func (gh *GithubSummaryBpImpl) RenderContentToMarkdown(content []byte) (markdown string, err error) {
 	// Unmarshal the data into an array of build info objects
 	if err = json.Unmarshal(content, &gh.builds); err != nil {
 		log.Error("Failed to unmarshal data: ", err)

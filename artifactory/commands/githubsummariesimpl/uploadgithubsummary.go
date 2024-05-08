@@ -1,16 +1,17 @@
-package utils
+package githubsummariesimpl
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"strings"
 )
 
 type GithubSummaryRtUploadImpl struct {
-	uploadTree        *FileTree // Upload a tree object to generate markdown
+	uploadTree        *utils.FileTree // Upload a tree object to generate markdown
 	uploadedArtifacts ResultsWrapper
-	platformUrl       string
-	jfrogProjectKey   string
+	PlatformUrl       string
+	JfrogProjectKey   string
 }
 
 type UploadResult struct {
@@ -23,12 +24,12 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
+func (ga *GithubSummaryRtUploadImpl) RenderContentToMarkdown(content []byte) (markdown string, err error) {
 	if err = ga.generateUploadedFilesTree(content); err != nil {
 		return "", fmt.Errorf("failed while creating file tree: %w", err)
 	}
 	var markdownBuilder strings.Builder
-	if ga.uploadTree.size > 0 {
+	if ga.uploadTree.String(false) != "" {
 		if _, err = markdownBuilder.WriteString("<pre>\n" + ga.uploadTree.String(true) + "</pre>\n\n"); err != nil {
 			return
 		}
@@ -36,7 +37,7 @@ func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (ma
 	return markdownBuilder.String(), nil
 }
 
-func (ga *GithubSummaryRtUploadImpl) appendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
+func (ga *GithubSummaryRtUploadImpl) AppendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
 	currentResults, ok := currentResult.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("failed to convert currentResult to []byte")
@@ -69,7 +70,7 @@ func (ga *GithubSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err
 	if err = json.Unmarshal(currentResults, &currentUpload); err != nil {
 		return
 	}
-	ga.uploadTree = NewFileTree()
+	ga.uploadTree = utils.NewFileTree()
 	for _, b := range currentUpload.Results {
 		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))
 	}
@@ -78,5 +79,5 @@ func (ga *GithubSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err
 
 func (ga *GithubSummaryRtUploadImpl) buildUiUrl(targetPath string) string {
 	template := "%sui/repos/tree/General/%s/?projectKey=%s"
-	return fmt.Sprintf(template, ga.platformUrl, targetPath, ga.jfrogProjectKey)
+	return fmt.Sprintf(template, ga.PlatformUrl, targetPath, ga.JfrogProjectKey)
 }

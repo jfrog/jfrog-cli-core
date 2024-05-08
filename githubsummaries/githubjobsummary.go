@@ -1,7 +1,8 @@
-package utils
+package githubsummaries
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/githubsummariesimpl"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -13,10 +14,10 @@ import (
 
 type GithubSummaryInterface interface {
 	// Accepts a result object, and append it to previous runs of the same objects
-	appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error)
+	AppendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error)
 	// Renders an array of results objects into markdown.
 	// Notice your markdown will be inserted into collapsable sections in the final markdown file.
-	renderContentToMarkdown(content []byte) (string, error)
+	RenderContentToMarkdown(content []byte) (string, error)
 }
 
 type GitHubActionSummaryImpl struct {
@@ -61,7 +62,7 @@ func GithubSummaryRecordResult(content any, section MarkdownSection) (err error)
 		return fmt.Errorf("failed to load previous objects: %w", err)
 	}
 
-	dataAsBytes, err := ga.userMethods.appendResultObject(content, previousObjects)
+	dataAsBytes, err := ga.userMethods.AppendResultObject(content, previousObjects)
 	if err != nil {
 		return fmt.Errorf("failed to parase markdown section objects: %w", err)
 	}
@@ -145,13 +146,13 @@ func (ga *GitHubActionSummaryImpl) writeMarkdownHeaders() (err error) {
 }
 
 func (ga *GitHubActionSummaryImpl) writeArtifactsUploadSection() error {
-	uploadCommand := GithubSummaryRtUploadImpl{
-		platformUrl:     ga.platformUrl,
-		jfrogProjectKey: ga.jfrogProjectKey,
+	uploadCommand := githubsummariesimpl.GithubSummaryRtUploadImpl{
+		PlatformUrl:     ga.platformUrl,
+		JfrogProjectKey: ga.jfrogProjectKey,
 	}
 	uploadedArtifactsData := ga.loadDataFileFromSystem(ga.getSectionFileName(ArtifactsUploadSection))
 	if uploadedArtifactsData != nil {
-		uploadMarkdown, err := uploadCommand.renderContentToMarkdown(uploadedArtifactsData)
+		uploadMarkdown, err := uploadCommand.RenderContentToMarkdown(uploadedArtifactsData)
 		if err != nil {
 			return err
 		}
@@ -167,10 +168,10 @@ func (ga *GitHubActionSummaryImpl) writeArtifactsUploadSection() error {
 }
 
 func (ga *GitHubActionSummaryImpl) writeBuildPublishSection() error {
-	buildPublishCommand := GithubSummaryBpImpl{}
+	buildPublishCommand := githubsummariesimpl.GithubSummaryBpImpl{}
 	buildPublishData := ga.loadDataFileFromSystem(ga.getSectionFileName(BuildPublishSection))
 	if buildPublishData != nil {
-		buildPublishMarkdown, err := buildPublishCommand.renderContentToMarkdown(buildPublishData)
+		buildPublishMarkdown, err := buildPublishCommand.RenderContentToMarkdown(buildPublishData)
 		if err != nil {
 			return err
 		}
@@ -277,9 +278,9 @@ func newGithubActionSummary(section MarkdownSection) (gh *GitHubActionSummaryImp
 func getCommandMethods(section MarkdownSection) GithubSummaryInterface {
 	switch section {
 	case ArtifactsUploadSection:
-		return &GithubSummaryRtUploadImpl{}
+		return &githubsummariesimpl.GithubSummaryRtUploadImpl{}
 	case BuildPublishSection:
-		return &GithubSummaryBpImpl{}
+		return &githubsummariesimpl.GithubSummaryBpImpl{}
 	// case Scan:
 	//	return &ScanSummary{}
 	default:

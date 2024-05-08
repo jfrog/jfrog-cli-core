@@ -1,13 +1,15 @@
-package utils
+package githubsummaries
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/githubsummariesimpl"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 func TestBuildUiUrl(t *testing.T) {
-	gh := &GithubSummaryRtUploadImpl{
+	gh := &githubsummariesimpl.GithubSummaryRtUploadImpl{
 		platformUrl:     "https://myplatform.com/",
 		jfrogProjectKey: "myProject",
 	}
@@ -15,7 +17,7 @@ func TestBuildUiUrl(t *testing.T) {
 	actual := gh.buildUiUrl("myPath")
 	assert.Equal(t, expected, actual)
 
-	gh = &GithubSummaryRtUploadImpl{
+	gh = &githubsummariesimpl.GithubSummaryRtUploadImpl{
 		platformUrl:     "https://myplatform.com/",
 		jfrogProjectKey: "",
 	}
@@ -25,7 +27,7 @@ func TestBuildUiUrl(t *testing.T) {
 }
 
 func TestBuildInfoTable(t *testing.T) {
-	gh := &GithubSummaryBpImpl{}
+	gh := &githubsummariesimpl.GithubSummaryBpImpl{}
 	gh.builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -40,10 +42,10 @@ func TestBuildInfoTable(t *testing.T) {
 
 func TestParseBuildTime(t *testing.T) {
 	expected := "Jan 2, 2006 15:04:05"
-	actual := parseBuildTime("2006-01-02T15:04:05.000-0700")
+	actual := utils.parseBuildTime("2006-01-02T15:04:05.000-0700")
 	assert.Equal(t, expected, actual)
 
 	expected = "N/A"
-	actual = parseBuildTime("")
+	actual = utils.parseBuildTime("")
 	assert.Equal(t, expected, actual)
 }

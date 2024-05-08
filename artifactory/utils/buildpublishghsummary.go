@@ -6,6 +6,7 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
+	"time"
 )
 
 type GithubSummaryBpImpl struct {
@@ -72,4 +73,14 @@ func (gh *GithubSummaryBpImpl) buildInfoTable() string {
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" / "+build.Number, build.BuildUrl, buildTime))
 	}
 	return tableBuilder.String()
+}
+
+func parseBuildTime(timestamp string) string {
+	// Parse the timestamp string into a time.Time object
+	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timestamp)
+	if err != nil {
+		return "N/A"
+	}
+	// Format the time in a more human-readable format and save it in a variable
+	return t.Format("Jan 2, 2006 15:04:05")
 }

@@ -9,10 +9,40 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"time"
 )
 
-func (ga *GitHubActionSummaryImpl) RecordCommandOutput(content any) (err error) {
+// GithubSummaryInterface The interface for the GitHub Summary implementation
+// Users that would like to implement their own GitHub Summary should implement this interface
+type GithubSummaryInterface interface {
+	convertContentToMarkdown(content []byte) (string, error)
+	handleSpecificObject(output interface{}, previousObjects []byte) ([]byte, error)
+	getDataFileName() string
+}
+
+type GitHubActionSummaryImpl struct {
+	userMethods       GithubSummaryInterface
+	homeDirPath       string   // Directory path for the GitHubActionSummaryImpl data
+	platformUrl       string   // Platform URL from env,used to generate Markdown links.
+	jfrogProjectKey   string   // [Optional] JFROG_CLI_PROJECT env variable
+	finalMarkdownFile *os.File // Generated markdown file
+}
+
+const (
+	githubActionsEnv      = "GITHUB_ACTIONS"
+	summaryReadMeFileName = "summary.md"
+	githubSummaryDirName  = "jfrog-github-summary"
+	jfrogHomeDir          = ".jfrog"
+)
+
+type MarkdownSection string
+
+const (
+	Upload       MarkdownSection = "upload"
+	BuildPublish MarkdownSection = "buildPublish"
+	Security     MarkdownSection = "security"
+)
+
+func (ga *GitHubActionSummaryImpl) RecordCommandOutput(content any, section MarkdownSection) (err error) {
 	if !IsGithubActions() {
 		return nil
 	}
@@ -26,7 +56,10 @@ func (ga *GitHubActionSummaryImpl) RecordCommandOutput(content any) (err error) 
 		return
 	}
 
-	return ga.writeAggregatedDataToFile(dataAsBytes, ga.getDataFileName())
+	if err = ga.writeAggregatedDataToFile(dataAsBytes, ga.getDataFileName()); err != nil {
+		return
+	}
+	return triggerMarkdownGeneration(section)
 }
 
 func (ga *GitHubActionSummaryImpl) loadPreviousObjectsAsBytes(fileName string) (data []byte, err error) {
@@ -65,50 +98,6 @@ func (ga *GitHubActionSummaryImpl) getDataFileName() string {
 	return path.Join(ga.homeDirPath, ga.userMethods.getDataFileName())
 }
 
-// GithubSummaryInterface The interface for the GitHub Summary implementation
-// Users that would like to implement their own GitHub Summary should implement this interface
-type GithubSummaryInterface interface {
-	convertContentToMarkdown(content []byte) (string, error)
-	handleSpecificObject(output interface{}, previousObjects []byte) ([]byte, error)
-	getDataFileName() string
-}
-
-type GitHubActionSummaryImpl struct {
-	userMethods       GithubSummaryInterface
-	homeDirPath       string   // Directory path for the GitHubActionSummaryImpl data
-	platformUrl       string   // Platform URL from env,used to generate Markdown links.
-	jfrogProjectKey   string   // [Optional] JFROG_CLI_PROJECT env variable
-	finalMarkdownFile *os.File // Generated markdown file
-}
-
-const (
-	githubActionsEnv      = "GITHUB_ACTIONS"
-	summaryReadMeFileName = "summary.md"
-	githubSummaryDirName  = "jfrog-github-summary"
-	jfrogHomeDir          = ".jfrog"
-)
-
-type Command string
-
-const (
-	Upload       Command = "upload"
-	BuildPublish Command = "buildPublish"
-	Scan         Command = "scan"
-)
-
-// GenerateGitHubActionSummary called by the CLI, it will aggregate the markdown as if
-// this current command is that last command in the workflow.
-func GenerateGitHubActionSummary(command Command) (err error) {
-	if !IsGithubActions() {
-		return
-	}
-	gh, err := initiateGithubSummary(command)
-	if err != nil {
-		return
-	}
-	return gh.generateMarkdown()
-}
-
 func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 	cleanUp, err := ga.createMarkdownFile()
 	if err != nil {
@@ -127,24 +116,17 @@ func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 
 	// Upload Artifacts Section
 	uploadCommand := GithubSummaryRtUploadImpl{}
-	uploadedArtifactsData, err := ga.loadDataFileFromSystem(uploadCommand.getDataFileName())
-	if err != nil {
-		return
-	}
+	uploadedArtifactsData := ga.loadDataFileFromSystem(uploadCommand.getDataFileName())
 	uploadMarkdown, err := uploadCommand.convertContentToMarkdown(uploadedArtifactsData)
 	_, err = ga.finalMarkdownFile.WriteString(uploadMarkdown)
 
 	// Build Publish Section
 	buildPublishCommand := GithubSummaryBpImpl{}
-	buildPublishData, err := ga.loadDataFileFromSystem(buildPublishCommand.getDataFileName())
-	if err != nil {
-		return
-	}
+	buildPublishData := ga.loadDataFileFromSystem(buildPublishCommand.getDataFileName())
 	buildPublishMarkdown, err := buildPublishCommand.convertContentToMarkdown(buildPublishData)
 	_, err = ga.finalMarkdownFile.WriteString(buildPublishMarkdown)
 
 	// Security section
-	// TODO implement here
 
 	return
 }
@@ -204,8 +186,9 @@ func (ga *GitHubActionSummaryImpl) ensureHomeDirExists() error {
 	return nil
 }
 
-func (ga *GitHubActionSummaryImpl) loadDataFileFromSystem(fileName string) (data []byte, err error) {
-	return fileutils.ReadFile(filepath.Join(ga.homeDirPath, fileName))
+func (ga *GitHubActionSummaryImpl) loadDataFileFromSystem(fileName string) (data []byte) {
+	data, _ = fileutils.ReadFile(filepath.Join(ga.homeDirPath, fileName))
+	return data
 }
 
 func (ga *GitHubActionSummaryImpl) writeStringToMarkdown(str string) error {
@@ -222,8 +205,8 @@ func (ga *GitHubActionSummaryImpl) writeProjectPackagesToMarkdown() error {
 	return ga.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project %s packages](%s)\n\n", ga.jfrogProjectKey, projectPackagesUrl))
 }
 
-func initiateGithubSummary(command Command) (gh *GitHubActionSummaryImpl, err error) {
-	gh, err = newGithubActionSummary(command)
+func initiateGithubSummary(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
+	gh, err = newGithubActionSummary(section)
 	if err != nil {
 		return
 	}
@@ -233,13 +216,13 @@ func initiateGithubSummary(command Command) (gh *GitHubActionSummaryImpl, err er
 	return
 }
 
-func newGithubActionSummary(command Command) (gh *GitHubActionSummaryImpl, err error) {
+func newGithubActionSummary(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
 	homedir, err := getHomeDirByOs()
 	if err != nil {
 		return
 	}
 	gh = &GitHubActionSummaryImpl{
-		userMethods:       getCommandMethods(command),
+		userMethods:       getCommandMethods(section),
 		homeDirPath:       homedir,
 		finalMarkdownFile: nil,
 		platformUrl:       utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
@@ -248,8 +231,8 @@ func newGithubActionSummary(command Command) (gh *GitHubActionSummaryImpl, err e
 	return
 }
 
-func getCommandMethods(command Command) GithubSummaryInterface {
-	switch command {
+func getCommandMethods(section MarkdownSection) GithubSummaryInterface {
+	switch section {
 	case Upload:
 		return &GithubSummaryRtUploadImpl{}
 	case BuildPublish:
@@ -263,16 +246,6 @@ func getCommandMethods(command Command) GithubSummaryInterface {
 
 func IsGithubActions() bool {
 	return os.Getenv(githubActionsEnv) == "true"
-}
-
-func parseBuildTime(timestamp string) string {
-	// Parse the timestamp string into a time.Time object
-	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timestamp)
-	if err != nil {
-		return "N/A"
-	}
-	// Format the time in a more human-readable format and save it in a variable
-	return t.Format("Jan 2, 2006 15:04:05")
 }
 
 func getHomeDirByOs() (homeDir string, err error) {
@@ -303,4 +276,16 @@ func getBasePathByOs() (osBasePath string, err error) {
 		return
 	}
 	return
+}
+
+// Called after each record function to trigger the markdown generation.
+func triggerMarkdownGeneration(command MarkdownSection) (err error) {
+	if !IsGithubActions() {
+		return
+	}
+	gh, err := initiateGithubSummary(command)
+	if err != nil {
+		return
+	}
+	return gh.generateMarkdown()
 }

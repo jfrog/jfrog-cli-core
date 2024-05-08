@@ -187,7 +187,7 @@ func (uc *UploadCommand) upload() (err error) {
 		if err != nil {
 			return
 		}
-		_ = uc.GithubSummary.RecordCommandOutput(buildArtifacts)
+		_ = uc.GithubSummary.RecordCommandOutput(buildArtifacts, utils.ArtifactsUploadSection)
 		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
 

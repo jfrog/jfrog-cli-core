@@ -142,7 +142,7 @@ func (bpc *BuildPublishCommand) Run() error {
 
 	// Save build info data to display in GitHub Job Summary if needed
 	buildInfo.BuildUrl = buildLink
-	if err = bpc.githubSummary.RecordCommandOutput(buildInfo); err != nil {
+	if err = bpc.githubSummary.RecordCommandOutput(buildInfo, utils.BuildPublishSection); err != nil {
 		log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
 	}
 

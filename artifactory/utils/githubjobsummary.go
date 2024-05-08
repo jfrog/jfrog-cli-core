@@ -37,9 +37,9 @@ const (
 type MarkdownSection string
 
 const (
-	Upload       MarkdownSection = "upload"
-	BuildPublish MarkdownSection = "buildPublish"
-	Security     MarkdownSection = "security"
+	ArtifactsUploadSection MarkdownSection = "upload"
+	BuildPublishSection    MarkdownSection = "buildPublish"
+	SecuritySection        MarkdownSection = "security"
 )
 
 func (ga *GitHubActionSummaryImpl) RecordCommandOutput(content any, section MarkdownSection) (err error) {
@@ -233,9 +233,9 @@ func newGithubActionSummary(section MarkdownSection) (gh *GitHubActionSummaryImp
 
 func getCommandMethods(section MarkdownSection) GithubSummaryInterface {
 	switch section {
-	case Upload:
+	case ArtifactsUploadSection:
 		return &GithubSummaryRtUploadImpl{}
-	case BuildPublish:
+	case BuildPublishSection:
 		return &GithubSummaryBpImpl{}
 	//case Scan:
 	//	return &ScanSummary{}

@@ -194,22 +194,6 @@ func (uc *UploadCommand) upload() (err error) {
 	return
 }
 
-func readDetailsFromReader(reader *content.ContentReader) []byte {
-	// Read all the current command contentReader files.
-	var readContent []byte
-	if reader != nil {
-		for _, file := range reader.GetFilesPaths() {
-			// Read source file
-			sourceBytes, err := os.ReadFile(file)
-			if err != nil {
-				return nil
-			}
-			readContent = append(readContent, sourceBytes...)
-		}
-	}
-	return readContent
-}
-
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, buildProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {
 	uploadParams = services.NewUploadParams()
 	uploadParams.CommonParams, err = f.ToCommonParams()
@@ -289,4 +273,20 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		ExcludeProps(syncDeletesProp).
 		Recursive(true).
 		BuildSpec()
+}
+
+// Reads transfer details from the reader and return the content as bytes for further processing
+func readDetailsFromReader(reader *content.ContentReader) []byte {
+	var readContent []byte
+	if reader != nil {
+		for _, file := range reader.GetFilesPaths() {
+			// Read source file
+			sourceBytes, err := os.ReadFile(file)
+			if err != nil {
+				return nil
+			}
+			readContent = append(readContent, sourceBytes...)
+		}
+	}
+	return readContent
 }

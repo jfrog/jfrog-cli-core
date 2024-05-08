@@ -19,7 +19,10 @@ func NewBuildPublishGithubSummary() *GitHubActionSummaryImpl {
 
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
 func (gh *GithubSummaryBpImpl) handleSpecificObject(output interface{}, previousObjects []byte) ([]byte, error) {
-	build := output.(*buildInfo.BuildInfo)
+	build, ok := output.(*buildInfo.BuildInfo)
+	if !ok {
+		return nil, fmt.Errorf("failed to cast output to buildInfo.BuildInfo")
+	}
 	// Unmarshal the data into an array of build info objects
 	var builds []*buildInfo.BuildInfo
 	if len(previousObjects) > 0 {

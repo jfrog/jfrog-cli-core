@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -133,6 +132,9 @@ func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 			return err
 		}
 		_, err = ga.finalMarkdownFile.WriteString(buildPublishMarkdown)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Security section
@@ -152,30 +154,6 @@ func (ga *GitHubActionSummaryImpl) createMarkdownFile() (cleanUp func() error, e
 
 func (ga *GitHubActionSummaryImpl) writeTitleToMarkdown() (err error) {
 	return ga.writeStringToMarkdown("<p >\n  <h1> \n    <picture><img src=\"https://github.com/EyalDelarea/jfrog-cli-core/blob/github_job_summary/utils/assests/JFrogLogo.png?raw=true\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> JFrog Platform Job Summary \n     </h1> \n</p>  \n\n")
-}
-
-func (ga *GitHubActionSummaryImpl) createTempFileIfNeeded(filePath string, content any) (err error) {
-	exists, err := fileutils.IsFileExists(filePath, true)
-	if err != nil || exists {
-		return
-	}
-	file, err := os.Create(filePath)
-	defer func() {
-		err = file.Close()
-	}()
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	bytes, err := json.Marshal(content)
-	if err != nil {
-		return fmt.Errorf("failed to marshal content: %w", err)
-	}
-	_, err = file.Write(bytes)
-	if err != nil {
-		return fmt.Errorf("failed to write content: %w", err)
-	}
-	log.Info("created file:", file.Name())
-	return
 }
 
 func (ga *GitHubActionSummaryImpl) ensureHomeDirExists() error {
@@ -241,7 +219,7 @@ func getCommandMethods(section MarkdownSection) GithubSummaryInterface {
 		return &GithubSummaryRtUploadImpl{}
 	case BuildPublishSection:
 		return &GithubSummaryBpImpl{}
-	//case Scan:
+	// case Scan:
 	//	return &ScanSummary{}
 	default:
 		return nil

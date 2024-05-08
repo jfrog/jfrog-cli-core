@@ -56,7 +56,10 @@ func (ga *GithubSummaryRtUploadImpl) convertContentToMarkdown(content []byte) (m
 }
 
 func (ga *GithubSummaryRtUploadImpl) handleSpecificObject(output interface{}, previousObjectsBytes []byte) (data []byte, err error) {
-	currentResults := output.([]byte)
+	currentResults, ok := output.([]byte)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert output to []byte")
+	}
 	currentUpload := ResultsWrapper{}
 	if err = json.Unmarshal(currentResults, &currentUpload); err != nil {
 		return
@@ -81,7 +84,10 @@ func (ga *GithubSummaryRtUploadImpl) getDataFileName() string {
 
 // Reads the result file and generates a file tree object.
 func (ga *GithubSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err error) {
-	currentResults := content.([]byte)
+	currentResults, ok := content.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to convert content to []byte")
+	}
 	currentUpload := ResultsWrapper{}
 	if err = json.Unmarshal(currentResults, &currentUpload); err != nil {
 		return

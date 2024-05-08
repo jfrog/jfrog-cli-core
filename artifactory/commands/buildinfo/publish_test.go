@@ -48,6 +48,7 @@ func TestPrintBuildInfoLink(t *testing.T) {
 			nil,
 			true,
 			nil,
+			nil,
 		}
 		buildPubComService, err := buildPubConf.getBuildInfoUiUrl(linkTypes[i].majorVersion, linkTypes[i].buildTime)
 		assert.NoError(t, err)

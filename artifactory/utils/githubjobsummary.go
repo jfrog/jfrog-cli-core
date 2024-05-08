@@ -8,12 +8,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 )
 
 type GithubSummaryInterface interface {
 	// Accepts a result object, and append it to previous runs of the same objects
-	appendResultObject(output interface{}, previousObjects []byte) ([]byte, error)
+	appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error)
 	// Renders an array of results objects into markdown.
+	// Notice your markdown will be inserted into collapsable sections in the final markdown file.
 	renderContentToMarkdown(content []byte) (string, error)
 }
 
@@ -26,10 +28,13 @@ type GitHubActionSummaryImpl struct {
 }
 
 const (
-	githubActionsEnv      = "GITHUB_ACTIONS"
-	summaryReadMeFileName = "summary.md"
-	githubSummaryDirName  = "jfrog-github-summary"
-	jfrogHomeDir          = ".jfrog"
+	githubActionsEnv            = "GITHUB_ACTIONS"
+	summaryReadMeFileName       = "summary.md"
+	githubSummaryDirName        = "jfrog-github-summary"
+	jfrogHomeDir                = ".jfrog"
+	artifactsUploadSectionTitle = " 📁 Files uploaded to Artifactory by this job"
+	buildPublishSectionTitle    = " 📦 Build Info published to Artifactory by this job"
+	SecuritySectionTitle        = " 🔍 Binary scans results by this job"
 )
 
 type MarkdownSection string
@@ -80,7 +85,6 @@ func (ga *GitHubActionSummaryImpl) loadPreviousObjectsAsBytes(fileName string) (
 	if err != nil {
 		return
 	}
-	// Read the existing data
 	return fileutils.ReadFile(filePath)
 }
 
@@ -111,24 +115,32 @@ func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 	defer func() {
 		err = cleanUp()
 	}()
-	if err = ga.writeTitleToMarkdown(); err != nil {
+	if err = ga.writeMarkdownHeaders(); err != nil {
 		return
 	}
 
-	if err = ga.writeProjectPackagesToMarkdown(); err != nil {
-		return
-	}
-
+	// Artifacts section
 	if err = ga.writeArtifactsUploadSection(); err != nil {
 		return
 	}
-
+	// Build Published section
 	if err = ga.writeBuildPublishSection(); err != nil {
 		return
 	}
 
 	// Security section
+	// TODO implement
 
+	return
+}
+
+func (ga *GitHubActionSummaryImpl) writeMarkdownHeaders() (err error) {
+	if err = ga.writeTitleToMarkdown(); err != nil {
+		return
+	}
+	if err = ga.writeProjectPackagesToMarkdown(); err != nil {
+		return
+	}
 	return
 }
 
@@ -143,7 +155,11 @@ func (ga *GitHubActionSummaryImpl) writeArtifactsUploadSection() error {
 		if err != nil {
 			return err
 		}
-		if _, err = ga.finalMarkdownFile.WriteString(uploadMarkdown); err != nil {
+		wrappedSectionMarkdown, err := wrapSectionMarkdown(uploadMarkdown, artifactsUploadSectionTitle)
+		if err != nil {
+			return err
+		}
+		if _, err = ga.finalMarkdownFile.WriteString(wrappedSectionMarkdown); err != nil {
 			return err
 		}
 	}
@@ -158,7 +174,11 @@ func (ga *GitHubActionSummaryImpl) writeBuildPublishSection() error {
 		if err != nil {
 			return err
 		}
-		_, err = ga.finalMarkdownFile.WriteString(buildPublishMarkdown)
+		wrappedSectionMarkdown, err := wrapSectionMarkdown(buildPublishMarkdown, buildPublishSectionTitle)
+		if err != nil {
+			return err
+		}
+		_, err = ga.finalMarkdownFile.WriteString(wrappedSectionMarkdown)
 		if err != nil {
 			return err
 		}
@@ -209,6 +229,23 @@ func (ga *GitHubActionSummaryImpl) writeStringToMarkdown(str string) error {
 func (ga *GitHubActionSummaryImpl) writeProjectPackagesToMarkdown() error {
 	projectPackagesUrl := fmt.Sprintf("%sui/packages?projectKey=%s", ga.platformUrl, ga.jfrogProjectKey)
 	return ga.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project %s packages](%s)\n\n", ga.jfrogProjectKey, projectPackagesUrl))
+}
+
+func wrapSectionMarkdown(inputMarkdown, collapseSectionTitle string) (string, error) {
+	var markdownBuilder strings.Builder
+	if _, err := markdownBuilder.WriteString("<details open>\n"); err != nil {
+		return "", err
+	}
+	if _, err := markdownBuilder.WriteString(fmt.Sprintf("<summary> %s </summary>\n\n\n\n", collapseSectionTitle)); err != nil {
+		return "", err
+	}
+	if _, err := markdownBuilder.WriteString(inputMarkdown); err != nil {
+		return "", err
+	}
+	if _, err := markdownBuilder.WriteString("</details>\n\n"); err != nil {
+		return "", err
+	}
+	return markdownBuilder.String(), nil
 }
 
 func initiateGithubSummary(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
@@ -280,7 +317,6 @@ func getBasePathByOs() (osBasePath string, err error) {
 	return
 }
 
-// Called after each record function to trigger the markdown generation.
 func triggerMarkdownGeneration(command MarkdownSection) (err error) {
 	if !IsGithubActions() {
 		return

@@ -14,15 +14,15 @@ type GithubSummaryBpImpl struct {
 }
 
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
-func (gh *GithubSummaryBpImpl) appendResultObject(output interface{}, previousObjects []byte) ([]byte, error) {
-	build, ok := output.(*buildInfo.BuildInfo)
+func (gh *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
+	build, ok := currentResult.(*buildInfo.BuildInfo)
 	if !ok {
-		return nil, fmt.Errorf("failed to cast output to buildInfo.BuildInfo")
+		return nil, fmt.Errorf("failed to cast currentResult to buildInfo.BuildInfo")
 	}
 	// Unmarshal the data into an array of build info objects
 	var builds []*buildInfo.BuildInfo
-	if len(previousObjects) > 0 {
-		err := json.Unmarshal(previousObjects, &builds)
+	if len(previousResults) > 0 {
+		err := json.Unmarshal(previousResults, &builds)
 		if err != nil {
 			return nil, err
 		}
@@ -41,16 +41,7 @@ func (gh *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown
 	// Generate a string that represents a Markdown table
 	var markdownBuilder strings.Builder
 	if len(gh.builds) > 0 {
-		if _, err = markdownBuilder.WriteString("<details open>\n"); err != nil {
-			return
-		}
-		if _, err = markdownBuilder.WriteString("<summary> 📦 Build Info published to Artifactory by this job </summary>\n\n\n\n"); err != nil {
-			return
-		}
 		if _, err = markdownBuilder.WriteString(gh.buildInfoTable()); err != nil {
-			return
-		}
-		if _, err = markdownBuilder.WriteString("\n</details>\n"); err != nil {
 			return
 		}
 	}

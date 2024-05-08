@@ -24,40 +24,30 @@ type ResultsWrapper struct {
 }
 
 func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
-
 	if err = ga.generateUploadedFilesTree(content); err != nil {
 		return "", fmt.Errorf("failed while creating file tree: %w", err)
 	}
 	var markdownBuilder strings.Builder
 	if ga.uploadTree.size > 0 {
-		if _, err = markdownBuilder.WriteString("<details open>\n"); err != nil {
-			return
-		}
-		if _, err = markdownBuilder.WriteString("<summary> 📁 Files uploaded to Artifactory by this job </summary>\n\n\n\n"); err != nil {
-			return
-		}
 		if _, err = markdownBuilder.WriteString("<pre>\n" + ga.uploadTree.String(true) + "</pre>\n\n"); err != nil {
-			return
-		}
-		if _, err = markdownBuilder.WriteString("</details>\n\n"); err != nil {
 			return
 		}
 	}
 	return markdownBuilder.String(), nil
 }
 
-func (ga *GithubSummaryRtUploadImpl) appendResultObject(output interface{}, previousObjectsBytes []byte) (data []byte, err error) {
-	currentResults, ok := output.([]byte)
+func (ga *GithubSummaryRtUploadImpl) appendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
+	currentResults, ok := currentResult.([]byte)
 	if !ok {
-		return nil, fmt.Errorf("failed to convert output to []byte")
+		return nil, fmt.Errorf("failed to convert currentResult to []byte")
 	}
 	currentUpload := ResultsWrapper{}
 	if err = json.Unmarshal(currentResults, &currentUpload); err != nil {
 		return
 	}
 
-	if len(previousObjectsBytes) > 0 {
-		err = json.Unmarshal(previousObjectsBytes, &ga.uploadedArtifacts)
+	if len(previousResults) > 0 {
+		err = json.Unmarshal(previousResults, &ga.uploadedArtifacts)
 		if err != nil {
 			return
 		}

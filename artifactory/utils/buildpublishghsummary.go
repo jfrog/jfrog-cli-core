@@ -14,7 +14,6 @@ type GithubSummaryBpImpl struct {
 
 func NewBuildPublishGithubSummary() *GitHubActionSummaryImpl {
 	return &GitHubActionSummaryImpl{userMethods: &GithubSummaryBpImpl{}}
-
 }
 
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation

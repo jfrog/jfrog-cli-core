@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils"
-	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -14,11 +13,10 @@ import (
 )
 
 func (ga *GitHubActionSummaryImpl) RecordCommandOutput(content any) (err error) {
-	if !isGitHubActionsRunner() {
+	if !IsGithubActions() {
 		return nil
 	}
-	fileName := ga.getDataFileName()
-	previousObjects, err := ga.loadPreviousObjectsAsBytes(fileName)
+	previousObjects, err := ga.loadPreviousObjectsAsBytes(ga.getDataFileName())
 	if err != nil {
 		return
 	}
@@ -48,14 +46,6 @@ func (ga *GitHubActionSummaryImpl) loadPreviousObjectsAsBytes(fileName string) (
 	return fileutils.ReadFile(filePath)
 }
 
-func (ga *GitHubActionSummaryImpl) convertContentToMarkdown() (markdown string, err error) {
-	data, err := ga.loadDataFileFromSystem()
-	if err != nil {
-		return
-	}
-	return ga.userMethods.convertContentToMarkdown(data)
-}
-
 func (ga *GitHubActionSummaryImpl) writeAggregatedDataToFile(objectAsBytes []byte, dataFileName string) (err error) {
 	// Marshal the updated array back into JSON
 	runnerHomeDir, err := getHomeDirByOs()
@@ -83,50 +73,38 @@ type GithubSummaryInterface interface {
 	getDataFileName() string
 }
 
-type UploadResult struct {
-	SourcePath string `json:"sourcePath"`
-	TargetPath string `json:"targetPath"`
-	RtUrl      string `json:"rtUrl"`
-}
-
-type ResultsWrapper struct {
-	Results []UploadResult `json:"results"`
-}
-
 type GitHubActionSummaryImpl struct {
-	userMethods            GithubSummaryInterface
-	homeDirPath            string    // Directory path for the GitHubActionSummaryImpl data
-	rawUploadArtifactsFile string    // File which contains all the results of the commands
-	platformUrl            string    // Platform URL from env,used to generate Markdown links.
-	jfrogProjectKey        string    // [Optional] JFROG_CLI_PROJECT env variable
-	uploadTree             *FileTree // Upload a tree object to generate markdown
-	finalMarkdownFile      *os.File  // Generated markdown file
+	userMethods       GithubSummaryInterface
+	homeDirPath       string   // Directory path for the GitHubActionSummaryImpl data
+	platformUrl       string   // Platform URL from env,used to generate Markdown links.
+	jfrogProjectKey   string   // [Optional] JFROG_CLI_PROJECT env variable
+	finalMarkdownFile *os.File // Generated markdown file
 }
 
 const (
-	githubActionsEnv          = "GITHUB_ACTIONS"
-	uploadedArtifactsFileName = "uploaded-artifacts-data.json"
-	summaryReadMeFileName     = "summary.md"
-	githubSummaryDirName      = "jfrog-github-summary"
-	jfrogHomeDir              = ".jfrog"
+	githubActionsEnv      = "GITHUB_ACTIONS"
+	summaryReadMeFileName = "summary.md"
+	githubSummaryDirName  = "jfrog-github-summary"
+	jfrogHomeDir          = ".jfrog"
+)
+
+type Command string
+
+const (
+	Upload       Command = "upload"
+	BuildPublish Command = "buildPublish"
+	Scan         Command = "scan"
 )
 
 // GenerateGitHubActionSummary called by the CLI, it will aggregate the markdown as if
 // this current command is that last command in the workflow.
-// TODO maybe change name
-func GenerateGitHubActionSummary(contentReader *content.ContentReader) (err error) {
-	if !isGitHubActionsRunner() {
+func GenerateGitHubActionSummary(command Command) (err error) {
+	if !IsGithubActions() {
 		return
 	}
-	gh, err := initiateGithubSummary()
+	gh, err := initiateGithubSummary(command)
 	if err != nil {
 		return
-	}
-	// If content reader is not nil, append the results to the data file.
-	if contentReader != nil {
-		if err = gh.generateUploadArtifactsTree(contentReader); err != nil {
-			return
-		}
 	}
 	return gh.generateMarkdown()
 }
@@ -146,24 +124,28 @@ func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 	if err = ga.writeProjectPackagesToMarkdown(); err != nil {
 		return
 	}
-	// Upload artifacts section
-	if err = ga.writeUploadedArtifactsToMarkdown(); err != nil {
-		return
-	}
-	// Build info section
-	if err = ga.buildInfoSection(); err != nil {
-		return
-	}
-	// Security section
-	return
-}
 
-func (ga *GitHubActionSummaryImpl) buildInfoSection() (err error) {
-	markdown, err := ga.convertContentToMarkdown()
+	// Upload Artifacts Section
+	uploadCommand := GithubSummaryRtUploadImpl{}
+	uploadedArtifactsData, err := ga.loadDataFileFromSystem(uploadCommand.getDataFileName())
 	if err != nil {
 		return
 	}
-	_, err = ga.finalMarkdownFile.WriteString(markdown)
+	uploadMarkdown, err := uploadCommand.convertContentToMarkdown(uploadedArtifactsData)
+	_, err = ga.finalMarkdownFile.WriteString(uploadMarkdown)
+
+	// Build Publish Section
+	buildPublishCommand := GithubSummaryBpImpl{}
+	buildPublishData, err := ga.loadDataFileFromSystem(buildPublishCommand.getDataFileName())
+	if err != nil {
+		return
+	}
+	buildPublishMarkdown, err := buildPublishCommand.convertContentToMarkdown(buildPublishData)
+	_, err = ga.finalMarkdownFile.WriteString(buildPublishMarkdown)
+
+	// Security section
+	// TODO implement here
+
 	return
 }
 
@@ -181,108 +163,9 @@ func (ga *GitHubActionSummaryImpl) writeTitleToMarkdown() (err error) {
 	return ga.writeStringToMarkdown("<p >\n  <h1> \n    <picture><img src=\"https://github.com/EyalDelarea/jfrog-cli-core/blob/github_job_summary/utils/assests/JFrogLogo.png?raw=true\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> JFrog Platform Job Summary \n     </h1> \n</p>  \n\n")
 }
 
-func (ga *GitHubActionSummaryImpl) writeUploadedArtifactsToMarkdown() (err error) {
-	if err = ga.generateUploadedFilesTree(); err != nil {
-		return fmt.Errorf("failed while creating file tree: %w", err)
-	}
-	if ga.uploadTree.size > 0 {
-		if err = ga.writeStringToMarkdown("<details open>\n"); err != nil {
-			return
-		}
-		if err = ga.writeStringToMarkdown("<summary> 📁 Files uploaded to Artifactory by this job </summary>\n\n\n\n"); err != nil {
-			return
-		}
-		if err = ga.writeStringToMarkdown("<pre>\n" + ga.uploadTree.String(true) + "</pre>\n\n"); err != nil {
-			return
-		}
-		if err = ga.writeStringToMarkdown("</details>\n\n"); err != nil {
-			return
-		}
-	}
-	return
-}
-
-func (ga *GitHubActionSummaryImpl) generateUploadArtifactsTree(contentReader *content.ContentReader) (err error) {
-	// Appends the current command upload results to the contentReader file.
-	log.Debug("append results to file")
-	if err = ga.appendCurrentCommandUploadResults(contentReader); err != nil {
-		return fmt.Errorf("failed while appending results: %s", err)
-	}
-	return
-}
-
-// Reads the result file and generates a file tree object.
-func (ga *GitHubActionSummaryImpl) generateUploadedFilesTree() (err error) {
-	object, err := ga.loadAndMarshalResultsFile()
-	if err != nil {
-		return
-	}
-	ga.uploadTree = NewFileTree()
-	for _, b := range object.Results {
-		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))
-	}
-	return
-}
-
 func (ga *GitHubActionSummaryImpl) buildUiUrl(targetPath string) string {
 	template := "%sui/repos/tree/General/%s/?projectKey=%s"
 	return fmt.Sprintf(template, ga.platformUrl, targetPath, ga.jfrogProjectKey)
-}
-
-func (ga *GitHubActionSummaryImpl) getUploadedArtifactsDataFilePath() string {
-	return path.Join(ga.homeDirPath, ga.rawUploadArtifactsFile)
-}
-
-// Appends current command results to the data file.
-func (ga *GitHubActionSummaryImpl) appendCurrentCommandUploadResults(contentReader *content.ContentReader) error {
-	// Read all the current command contentReader files.
-	var readContent []UploadResult
-	if contentReader != nil {
-		for _, file := range contentReader.GetFilesPaths() {
-			// Read source file
-			sourceBytes, err := os.ReadFile(file)
-			if err != nil {
-				return err
-			}
-			// Unmarshal source file content
-			var sourceWrapper ResultsWrapper
-			err = json.Unmarshal(sourceBytes, &sourceWrapper)
-			if err != nil {
-				return err
-			}
-			readContent = append(readContent, sourceWrapper.Results...)
-		}
-	}
-	targetWrapper, err := ga.loadAndMarshalResultsFile()
-	if err != nil {
-		return err
-	}
-	// Append source results to target results
-	targetWrapper.Results = append(targetWrapper.Results, readContent...)
-	// Write target results to target file
-	bytes, err := json.Marshal(targetWrapper)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(ga.getUploadedArtifactsDataFilePath(), bytes, 0644)
-}
-
-func (ga *GitHubActionSummaryImpl) loadAndMarshalResultsFile() (targetWrapper ResultsWrapper, err error) {
-	// Load target file
-	targetBytes, err := os.ReadFile(ga.getUploadedArtifactsDataFilePath())
-	if err != nil && !os.IsNotExist(err) {
-		log.Warn("data file not found ", ga.getUploadedArtifactsDataFilePath())
-		return ResultsWrapper{}, err
-	}
-	if len(targetBytes) == 0 {
-		log.Warn("empty data file: ", ga.getUploadedArtifactsDataFilePath())
-		return
-	}
-	// Unmarshal target file content, if it exists
-	if err = json.Unmarshal(targetBytes, &targetWrapper); err != nil {
-		return
-	}
-	return
 }
 
 func (ga *GitHubActionSummaryImpl) createTempFileIfNeeded(filePath string, content any) (err error) {
@@ -321,11 +204,8 @@ func (ga *GitHubActionSummaryImpl) ensureHomeDirExists() error {
 	return nil
 }
 
-func (ga *GitHubActionSummaryImpl) loadDataFileFromSystem() (data []byte, err error) {
-	// Read the content of the file
-	data, err = fileutils.ReadFile(ga.getDataFileName())
-	log.Debug("reading build info data: ", string(data))
-	return
+func (ga *GitHubActionSummaryImpl) loadDataFileFromSystem(fileName string) (data []byte, err error) {
+	return fileutils.ReadFile(filepath.Join(ga.homeDirPath, fileName))
 }
 
 func (ga *GitHubActionSummaryImpl) writeStringToMarkdown(str string) error {
@@ -342,37 +222,46 @@ func (ga *GitHubActionSummaryImpl) writeProjectPackagesToMarkdown() error {
 	return ga.writeStringToMarkdown(fmt.Sprintf("\n📦 [Project %s packages](%s)\n\n", ga.jfrogProjectKey, projectPackagesUrl))
 }
 
-func initiateGithubSummary() (gh *GitHubActionSummaryImpl, err error) {
-	gh, err = newGithubActionSummary()
+func initiateGithubSummary(command Command) (gh *GitHubActionSummaryImpl, err error) {
+	gh, err = newGithubActionSummary(command)
 	if err != nil {
 		return
 	}
 	if err = gh.ensureHomeDirExists(); err != nil {
 		return nil, err
 	}
-	if err = gh.createTempFileIfNeeded(gh.getUploadedArtifactsDataFilePath(), ResultsWrapper{Results: []UploadResult{}}); err != nil {
-		return nil, err
-	}
 	return
 }
 
-func newGithubActionSummary() (gh *GitHubActionSummaryImpl, err error) {
+func newGithubActionSummary(command Command) (gh *GitHubActionSummaryImpl, err error) {
 	homedir, err := getHomeDirByOs()
 	if err != nil {
 		return
 	}
 	gh = &GitHubActionSummaryImpl{
-		userMethods:            &GithubSummaryBpImpl{},
-		homeDirPath:            homedir,
-		rawUploadArtifactsFile: uploadedArtifactsFileName,
-		finalMarkdownFile:      nil,
-		platformUrl:            utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
-		jfrogProjectKey:        os.Getenv("JFROG_CLI_PROJECT"),
+		userMethods:       getCommandMethods(command),
+		homeDirPath:       homedir,
+		finalMarkdownFile: nil,
+		platformUrl:       utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
+		jfrogProjectKey:   os.Getenv("JFROG_CLI_PROJECT"),
 	}
 	return
 }
 
-func isGitHubActionsRunner() bool {
+func getCommandMethods(command Command) GithubSummaryInterface {
+	switch command {
+	case Upload:
+		return &GithubSummaryRtUploadImpl{}
+	case BuildPublish:
+		return &GithubSummaryBpImpl{}
+	//case Scan:
+	//	return &ScanSummary{}
+	default:
+		return nil
+	}
+}
+
+func IsGithubActions() bool {
 	return os.Getenv(githubActionsEnv) == "true"
 }
 

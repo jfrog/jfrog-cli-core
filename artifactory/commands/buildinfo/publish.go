@@ -29,11 +29,11 @@ type BuildPublishCommand struct {
 	config             *biconf.Configuration
 	detailedSummary    bool
 	summary            *clientutils.Sha256Summary
-	githubSummary      utils.GitHubActionSummaryImpl
+	githubSummary      *utils.GitHubActionSummaryImpl
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
-	return &BuildPublishCommand{githubSummary: *utils.NewBuildPublishGithubSummary()}
+	return &BuildPublishCommand{githubSummary: utils.NewBuildPublishGithubSummary()}
 }
 
 func (bpc *BuildPublishCommand) SetConfig(config *biconf.Configuration) *BuildPublishCommand {

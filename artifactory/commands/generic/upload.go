@@ -25,10 +25,11 @@ type UploadCommand struct {
 	uploadConfiguration *utils.UploadConfiguration
 	buildConfiguration  *build.BuildConfiguration
 	progress            ioUtils.ProgressMgr
+	githubSummary       *utils.GitHubActionSummaryImpl
 }
 
 func NewUploadCommand() *UploadCommand {
-	return &UploadCommand{GenericCommand: *NewGenericCommand()}
+	return &UploadCommand{GenericCommand: *NewGenericCommand(), githubSummary: utils.NewGithubSummaryRtUploadImpl()}
 }
 
 func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *UploadCommand {
@@ -180,14 +181,16 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 
 	// Build info
-	if !uc.DryRun() && toCollect {
+	if !uc.DryRun() && toCollect || utils.IsGithubActions() {
 		var buildArtifacts []buildInfo.Artifact
 		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 		if err != nil {
 			return
 		}
+		_ = uc.githubSummary.RecordCommandOutput(buildArtifacts)
 		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
+
 	return
 }
 

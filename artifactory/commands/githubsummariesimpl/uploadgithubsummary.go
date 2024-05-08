@@ -72,12 +72,12 @@ func (ga *GithubSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err
 	}
 	ga.uploadTree = utils.NewFileTree()
 	for _, b := range currentUpload.Results {
-		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))
+		ga.uploadTree.AddFile(b.TargetPath, ga.BuildUiUrl(b.TargetPath))
 	}
 	return
 }
 
-func (ga *GithubSummaryRtUploadImpl) buildUiUrl(targetPath string) string {
+func (ga *GithubSummaryRtUploadImpl) BuildUiUrl(targetPath string) string {
 	template := "%sui/repos/tree/General/%s/?projectKey=%s"
 	return fmt.Sprintf(template, ga.PlatformUrl, targetPath, ga.JfrogProjectKey)
 }

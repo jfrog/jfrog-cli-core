@@ -29,10 +29,11 @@ type BuildPublishCommand struct {
 	config             *biconf.Configuration
 	detailedSummary    bool
 	summary            *clientutils.Sha256Summary
+	githubSummary      utils.GitHubActionSummaryImpl
 }
 
 func NewBuildPublishCommand() *BuildPublishCommand {
-	return &BuildPublishCommand{}
+	return &BuildPublishCommand{githubSummary: *utils.NewBuildPublishGithubSummary()}
 }
 
 func (bpc *BuildPublishCommand) SetConfig(config *biconf.Configuration) *BuildPublishCommand {
@@ -141,7 +142,7 @@ func (bpc *BuildPublishCommand) Run() error {
 
 	// Save build info data to display in GitHub Job Summary if needed
 	buildInfo.BuildUrl = buildLink
-	if err = utils.GitHubJobSummariesCollectBuildInfoData(buildInfo); err != nil {
+	if err = bpc.githubSummary.RecordCommandOutput(buildInfo); err != nil {
 		log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
 	}
 

@@ -7,7 +7,7 @@ import (
 )
 
 func TestBuildUiUrl(t *testing.T) {
-	gh := &GitHubActionSummary{
+	gh := &GitHubActionSummaryImpl{
 		platformUrl:     "https://myplatform.com/",
 		jfrogProjectKey: "myProject",
 	}
@@ -15,7 +15,7 @@ func TestBuildUiUrl(t *testing.T) {
 	actual := gh.buildUiUrl("myPath")
 	assert.Equal(t, expected, actual)
 
-	gh = &GitHubActionSummary{
+	gh = &GitHubActionSummaryImpl{
 		platformUrl:     "https://myplatform.com/",
 		jfrogProjectKey: "",
 	}
@@ -25,7 +25,7 @@ func TestBuildUiUrl(t *testing.T) {
 }
 
 func TestBuildInfoTable(t *testing.T) {
-	gh := &GitHubActionSummary{
+	gh := &GitHubActionSummaryImpl{
 		platformUrl:     "https://myplatform.com/",
 		jfrogProjectKey: "",
 	}

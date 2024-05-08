@@ -1,0 +1,76 @@
+package utils
+
+import (
+	"encoding/json"
+	"fmt"
+	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"strings"
+)
+
+type GithubSummaryBpImpl struct {
+	builds []*buildInfo.BuildInfo
+}
+
+func NewBuildPublishGithubSummary() *GitHubActionSummaryImpl {
+	return &GitHubActionSummaryImpl{userMethods: &GithubSummaryBpImpl{}}
+
+}
+
+// Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
+func (gh *GithubSummaryBpImpl) handleSpecificObject(output interface{}, previousObjects []byte) ([]byte, error) {
+	build := output.(*buildInfo.BuildInfo)
+	// Unmarshal the data into an array of build info objects
+	var builds []*buildInfo.BuildInfo
+	if len(previousObjects) > 0 {
+		err := json.Unmarshal(previousObjects, &builds)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// Append the new build info object to the array
+	builds = append(builds, build)
+	return json.Marshal(builds)
+}
+
+func (gh *GithubSummaryBpImpl) convertContentToMarkdown(content []byte) (markdown string, err error) {
+	// Unmarshal the data into an array of build info objects
+	if err = json.Unmarshal(content, &gh.builds); err != nil {
+		log.Error("Failed to unmarshal data: ", err)
+		return
+	}
+	// Generate a string that represents a Markdown table
+	var markdownBuilder strings.Builder
+	if len(gh.builds) > 0 {
+		if _, err = markdownBuilder.WriteString("<details open>\n"); err != nil {
+			return
+		}
+		if _, err = markdownBuilder.WriteString("<summary> 📦 Build Info published to Artifactory by this job </summary>\n\n\n\n"); err != nil {
+			return
+		}
+		if _, err = markdownBuilder.WriteString(gh.buildInfoTable()); err != nil {
+			return
+		}
+		if _, err = markdownBuilder.WriteString("\n</details>\n"); err != nil {
+			return
+		}
+	}
+	return markdownBuilder.String(), nil
+
+}
+
+func (gh *GithubSummaryBpImpl) getDataFileName() string {
+	return "build-info-data-new.json"
+}
+
+func (gh *GithubSummaryBpImpl) buildInfoTable() string {
+	// Generate a string that represents a Markdown table
+	var tableBuilder strings.Builder
+	tableBuilder.WriteString("| 🔢 Build Info | 🕒 Timestamp | \n")
+	tableBuilder.WriteString("|---------|------------| \n")
+	for _, build := range gh.builds {
+		buildTime := parseBuildTime(build.Started)
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" / "+build.Number, build.BuildUrl, buildTime))
+	}
+	return tableBuilder.String()
+}

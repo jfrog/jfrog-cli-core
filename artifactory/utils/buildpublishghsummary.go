@@ -13,12 +13,8 @@ type GithubSummaryBpImpl struct {
 	builds []*buildInfo.BuildInfo
 }
 
-func NewBuildPublishGithubSummary() *GitHubActionSummaryImpl {
-	return &GitHubActionSummaryImpl{userMethods: &GithubSummaryBpImpl{}}
-}
-
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
-func (gh *GithubSummaryBpImpl) handleSpecificObject(output interface{}, previousObjects []byte) ([]byte, error) {
+func (gh *GithubSummaryBpImpl) appendResultObject(output interface{}, previousObjects []byte) ([]byte, error) {
 	build, ok := output.(*buildInfo.BuildInfo)
 	if !ok {
 		return nil, fmt.Errorf("failed to cast output to buildInfo.BuildInfo")
@@ -36,7 +32,7 @@ func (gh *GithubSummaryBpImpl) handleSpecificObject(output interface{}, previous
 	return json.Marshal(builds)
 }
 
-func (gh *GithubSummaryBpImpl) convertContentToMarkdown(content []byte) (markdown string, err error) {
+func (gh *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
 	// Unmarshal the data into an array of build info objects
 	if err = json.Unmarshal(content, &gh.builds); err != nil {
 		log.Error("Failed to unmarshal data: ", err)
@@ -60,10 +56,6 @@ func (gh *GithubSummaryBpImpl) convertContentToMarkdown(content []byte) (markdow
 	}
 	return markdownBuilder.String(), nil
 
-}
-
-func (gh *GithubSummaryBpImpl) getDataFileName() string {
-	return "build-info-data-new.json"
 }
 
 func (gh *GithubSummaryBpImpl) buildInfoTable() string {

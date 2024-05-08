@@ -10,12 +10,11 @@ import (
 	"path/filepath"
 )
 
-// GithubSummaryInterface The interface for the GitHub Summary implementation
-// Users that would like to implement their own GitHub Summary should implement this interface
 type GithubSummaryInterface interface {
-	convertContentToMarkdown(content []byte) (string, error)
-	handleSpecificObject(output interface{}, previousObjects []byte) ([]byte, error)
-	getDataFileName() string
+	// Accepts a result object, and append it to previous runs of the same objects
+	appendResultObject(output interface{}, previousObjects []byte) ([]byte, error)
+	// Renders an array of results objects into markdown.
+	renderContentToMarkdown(content []byte) (string, error)
 }
 
 type GitHubActionSummaryImpl struct {
@@ -41,26 +40,29 @@ const (
 	SecuritySection        MarkdownSection = "security"
 )
 
-func (ga *GitHubActionSummaryImpl) RecordCommandOutput(content any, section MarkdownSection) (err error) {
+func GithubSummaryRecordResult(content any, section MarkdownSection) (err error) {
 
 	if !IsGithubActions() {
 		return nil
 	}
-	// Make sure to init previous objects
-	_, _ = initiateGithubSummary(section)
 
-	previousObjects, err := ga.loadPreviousObjectsAsBytes(ga.getDataFileName())
+	ga, err := initiateGithubSummary(section)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to initiate github summary: %w", err)
 	}
 
-	dataAsBytes, err := ga.userMethods.handleSpecificObject(content, previousObjects)
+	previousObjects, err := ga.loadPreviousObjectsAsBytes(ga.getSectionFileName(section))
 	if err != nil {
-		return
+		return fmt.Errorf("failed to load previous objects: %w", err)
 	}
 
-	if err = ga.writeAggregatedDataToFile(dataAsBytes, ga.getDataFileName()); err != nil {
-		return
+	dataAsBytes, err := ga.userMethods.appendResultObject(content, previousObjects)
+	if err != nil {
+		return fmt.Errorf("failed to parase markdown section objects: %w", err)
+	}
+
+	if err = ga.writeAggregatedDataToFile(dataAsBytes, ga.getSectionFileName(section)); err != nil {
+		return fmt.Errorf("failed to write aggregated data to file: %w", err)
 	}
 	return triggerMarkdownGeneration(section)
 }
@@ -97,8 +99,8 @@ func (ga *GitHubActionSummaryImpl) writeAggregatedDataToFile(objectAsBytes []byt
 	return
 }
 
-func (ga *GitHubActionSummaryImpl) getDataFileName() string {
-	return path.Join(ga.homeDirPath, ga.userMethods.getDataFileName())
+func (ga *GitHubActionSummaryImpl) getSectionFileName(section MarkdownSection) string {
+	return string(section) + "-data.json"
 }
 
 func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
@@ -117,17 +119,42 @@ func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 		return
 	}
 
-	// Upload Artifacts Section
-	uploadCommand := GithubSummaryRtUploadImpl{}
-	uploadedArtifactsData := ga.loadDataFileFromSystem(uploadCommand.getDataFileName())
-	uploadMarkdown, err := uploadCommand.convertContentToMarkdown(uploadedArtifactsData)
-	_, err = ga.finalMarkdownFile.WriteString(uploadMarkdown)
+	if err = ga.writeArtifactsUploadSection(); err != nil {
+		return
+	}
 
-	// Build Publish Section
+	if err = ga.writeBuildPublishSection(); err != nil {
+		return
+	}
+
+	// Security section
+
+	return
+}
+
+func (ga *GitHubActionSummaryImpl) writeArtifactsUploadSection() error {
+	uploadCommand := GithubSummaryRtUploadImpl{
+		platformUrl:     ga.platformUrl,
+		jfrogProjectKey: ga.jfrogProjectKey,
+	}
+	uploadedArtifactsData := ga.loadDataFileFromSystem(ga.getSectionFileName(ArtifactsUploadSection))
+	if uploadedArtifactsData != nil {
+		uploadMarkdown, err := uploadCommand.renderContentToMarkdown(uploadedArtifactsData)
+		if err != nil {
+			return err
+		}
+		if _, err = ga.finalMarkdownFile.WriteString(uploadMarkdown); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ga *GitHubActionSummaryImpl) writeBuildPublishSection() error {
 	buildPublishCommand := GithubSummaryBpImpl{}
-	buildPublishData := ga.loadDataFileFromSystem(buildPublishCommand.getDataFileName())
+	buildPublishData := ga.loadDataFileFromSystem(ga.getSectionFileName(BuildPublishSection))
 	if buildPublishData != nil {
-		buildPublishMarkdown, err := buildPublishCommand.convertContentToMarkdown(buildPublishData)
+		buildPublishMarkdown, err := buildPublishCommand.renderContentToMarkdown(buildPublishData)
 		if err != nil {
 			return err
 		}
@@ -136,10 +163,7 @@ func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 			return err
 		}
 	}
-
-	// Security section
-
-	return
+	return nil
 }
 
 func (ga *GitHubActionSummaryImpl) createMarkdownFile() (cleanUp func() error, err error) {

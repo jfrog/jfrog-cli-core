@@ -3,8 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils"
-	"os"
 	"strings"
 )
 
@@ -25,14 +23,7 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewGithubSummaryRtUploadImpl() *GitHubActionSummaryImpl {
-	return &GitHubActionSummaryImpl{userMethods: &GithubSummaryRtUploadImpl{
-		platformUrl:     utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
-		jfrogProjectKey: os.Getenv("JFROG_CLI_PROJECT"),
-	}}
-}
-
-func (ga *GithubSummaryRtUploadImpl) convertContentToMarkdown(content []byte) (markdown string, err error) {
+func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
 
 	if err = ga.generateUploadedFilesTree(content); err != nil {
 		return "", fmt.Errorf("failed while creating file tree: %w", err)
@@ -55,7 +46,7 @@ func (ga *GithubSummaryRtUploadImpl) convertContentToMarkdown(content []byte) (m
 	return markdownBuilder.String(), nil
 }
 
-func (ga *GithubSummaryRtUploadImpl) handleSpecificObject(output interface{}, previousObjectsBytes []byte) (data []byte, err error) {
+func (ga *GithubSummaryRtUploadImpl) appendResultObject(output interface{}, previousObjectsBytes []byte) (data []byte, err error) {
 	currentResults, ok := output.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("failed to convert output to []byte")
@@ -76,10 +67,6 @@ func (ga *GithubSummaryRtUploadImpl) handleSpecificObject(output interface{}, pr
 
 	ga.uploadedArtifacts.Results = append(ga.uploadedArtifacts.Results, currentUpload.Results...)
 	return json.Marshal(ga.uploadedArtifacts)
-}
-
-func (ga *GithubSummaryRtUploadImpl) getDataFileName() string {
-	return "upload-data-info.json"
 }
 
 // Reads the result file and generates a file tree object.

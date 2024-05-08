@@ -26,11 +26,10 @@ type UploadCommand struct {
 	uploadConfiguration *utils.UploadConfiguration
 	buildConfiguration  *build.BuildConfiguration
 	progress            ioUtils.ProgressMgr
-	GithubSummary       *utils.GitHubActionSummaryImpl
 }
 
 func NewUploadCommand() *UploadCommand {
-	return &UploadCommand{GenericCommand: *NewGenericCommand(), GithubSummary: utils.NewGithubSummaryRtUploadImpl()}
+	return &UploadCommand{GenericCommand: *NewGenericCommand()}
 }
 
 func (uc *UploadCommand) SetBuildConfiguration(buildConfiguration *build.BuildConfiguration) *UploadCommand {
@@ -155,7 +154,7 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
-			_ = uc.GithubSummary.RecordCommandOutput(readDetailsFromReader(summary.TransferDetailsReader), utils.ArtifactsUploadSection)
+			_ = utils.GithubSummaryRecordResult(readDetailsFromReader(summary.TransferDetailsReader), utils.ArtifactsUploadSection)
 		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)

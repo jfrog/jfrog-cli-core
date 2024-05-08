@@ -43,9 +43,13 @@ const (
 )
 
 func (ga *GitHubActionSummaryImpl) RecordCommandOutput(content any, section MarkdownSection) (err error) {
+
 	if !IsGithubActions() {
 		return nil
 	}
+	// Make sure to init previous objects
+	_, _ = initiateGithubSummary(section)
+
 	previousObjects, err := ga.loadPreviousObjectsAsBytes(ga.getDataFileName())
 	if err != nil {
 		return

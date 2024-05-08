@@ -123,8 +123,13 @@ func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 	// Build Publish Section
 	buildPublishCommand := GithubSummaryBpImpl{}
 	buildPublishData := ga.loadDataFileFromSystem(buildPublishCommand.getDataFileName())
-	buildPublishMarkdown, err := buildPublishCommand.convertContentToMarkdown(buildPublishData)
-	_, err = ga.finalMarkdownFile.WriteString(buildPublishMarkdown)
+	if buildPublishData != nil {
+		buildPublishMarkdown, err := buildPublishCommand.convertContentToMarkdown(buildPublishData)
+		if err != nil {
+			return err
+		}
+		_, err = ga.finalMarkdownFile.WriteString(buildPublishMarkdown)
+	}
 
 	// Security section
 
@@ -143,11 +148,6 @@ func (ga *GitHubActionSummaryImpl) createMarkdownFile() (cleanUp func() error, e
 
 func (ga *GitHubActionSummaryImpl) writeTitleToMarkdown() (err error) {
 	return ga.writeStringToMarkdown("<p >\n  <h1> \n    <picture><img src=\"https://github.com/EyalDelarea/jfrog-cli-core/blob/github_job_summary/utils/assests/JFrogLogo.png?raw=true\" style=\"margin: 0 0 -10px 0\"width=\"65px\"></picture> JFrog Platform Job Summary \n     </h1> \n</p>  \n\n")
-}
-
-func (ga *GitHubActionSummaryImpl) buildUiUrl(targetPath string) string {
-	template := "%sui/repos/tree/General/%s/?projectKey=%s"
-	return fmt.Sprintf(template, ga.platformUrl, targetPath, ga.jfrogProjectKey)
 }
 
 func (ga *GitHubActionSummaryImpl) createTempFileIfNeeded(filePath string, content any) (err error) {

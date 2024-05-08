@@ -2,6 +2,7 @@ package generic
 
 import (
 	"errors"
+	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
@@ -154,6 +155,7 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
+			_ = uc.GithubSummary.RecordCommandOutput(readDetailsFromReader(summary.TransferDetailsReader), utils.ArtifactsUploadSection)
 		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
@@ -181,17 +183,32 @@ func (uc *UploadCommand) upload() (err error) {
 	}
 
 	// Build info
-	if !uc.DryRun() && toCollect || utils.IsGithubActions() {
+	if !uc.DryRun() && toCollect {
 		var buildArtifacts []buildInfo.Artifact
 		buildArtifacts, err = rtServicesUtils.ConvertArtifactsDetailsToBuildInfoArtifacts(artifactsDetailsReader)
 		if err != nil {
 			return
 		}
-		_ = uc.GithubSummary.RecordCommandOutput(buildArtifacts, utils.ArtifactsUploadSection)
 		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
 
 	return
+}
+
+func readDetailsFromReader(reader *content.ContentReader) []byte {
+	// Read all the current command contentReader files.
+	var readContent []byte
+	if reader != nil {
+		for _, file := range reader.GetFilesPaths() {
+			// Read source file
+			sourceBytes, err := os.ReadFile(file)
+			if err != nil {
+				return nil
+			}
+			readContent = append(readContent, sourceBytes...)
+		}
+	}
+	return readContent
 }
 
 func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, buildProps string, addVcsProps bool) (uploadParams services.UploadParams, err error) {

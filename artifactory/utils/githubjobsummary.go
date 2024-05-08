@@ -250,10 +250,6 @@ func getCommandMethods(section MarkdownSection) GithubSummaryInterface {
 	}
 }
 
-func IsGithubActions() bool {
-	return os.Getenv(githubActionsEnv) == "true"
-}
-
 func getHomeDirByOs() (homeDir string, err error) {
 	osBasePath, err := getBasePathByOs()
 	if err != nil {
@@ -294,4 +290,8 @@ func triggerMarkdownGeneration(command MarkdownSection) (err error) {
 		return
 	}
 	return gh.generateMarkdown()
+}
+
+func IsGithubActions() bool {
+	return os.Getenv(githubActionsEnv) == "true"
 }

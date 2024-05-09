@@ -136,7 +136,7 @@ func (ga *GitHubActionSummaryImpl) saveMarkdownToFileSystem(markdown string, sec
 	if err != nil {
 		return
 	}
-	if _, err = file.WriteString(fmt.Sprintf("\n<details open>\n\n<summary>  %s </summary>\n\n %s </details>\n", ga.GetSectionTitle(), markdown)); err != nil {
+	if _, err = file.WriteString(fmt.Sprintf("\n<details open>\n\n<summary>  %s </summary>\n\n %s \n\n</details>\n", ga.GetSectionTitle(), markdown)); err != nil {
 		return
 	}
 	return
@@ -178,7 +178,6 @@ func getHomeDirByOs() (homeDir string, err error) {
 		return
 	}
 	homeDir = filepath.Join(osBasePath, jfrogHomeDir, githubSummaryDirName)
-	log.Debug("home dir is:", homeDir)
 	return
 }
 

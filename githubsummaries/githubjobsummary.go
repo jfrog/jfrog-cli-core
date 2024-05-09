@@ -43,7 +43,15 @@ const (
 )
 
 func NewGitHubActionSummaryImpl(impl GithubSummaryInterface) *GitHubActionSummaryImpl {
-	return &GitHubActionSummaryImpl{GithubSummaryInterface: impl}
+	homedir, err := getHomeDirByOs()
+	if err != nil {
+		return nil
+	}
+	return &GitHubActionSummaryImpl{GithubSummaryInterface: impl,
+		homeDirPath:       homedir,
+		finalMarkdownFile: nil,
+		platformUrl:       utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
+		jfrogProjectKey:   os.Getenv("JFROG_CLI_BUILD_PROJECT")}
 }
 
 func (ga *GitHubActionSummaryImpl) RecordResult(content any, section MarkdownSection) (err error) {
@@ -145,17 +153,6 @@ func (ga *GitHubActionSummaryImpl) saveMarkdownToFileSystem(markdown string, sec
 	}
 	return
 }
-
-//func NewGithubSummaryImpl(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
-//	gh, err = initiateGithubSummary(section)
-//	if err != nil {
-//		return
-//	}
-//	if err = gh.ensureHomeDirExists(); err != nil {
-//		return nil, err
-//	}
-//	return
-//}
 
 func initiateGithubSummary(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
 	homedir, err := getHomeDirByOs()

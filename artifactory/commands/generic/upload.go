@@ -157,6 +157,7 @@ func (uc *UploadCommand) upload() (err error) {
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
 
+			// Save the upload result to job summary
 			commandSummary := jobsummaries.NewJobSummaryImpl(&githubsummariesimpl.GithubSummaryRtUploadImpl{})
 			if err = commandSummary.RecordResult(readDetailsFromReader(summary.TransferDetailsReader), jobsummaries.ArtifactsUploadSection); err != nil {
 				return err

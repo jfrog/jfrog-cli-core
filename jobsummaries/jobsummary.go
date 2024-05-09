@@ -2,6 +2,7 @@ package jobsummaries
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -12,6 +13,9 @@ import (
 
 type MarkdownSection string
 
+// Final markdown sections
+// These sections will be inserted into the final markdown file as collapsable sections
+// The cleanup function of the setup-cli will append all the sections into one markdown.
 const (
 	ArtifactsUploadSection MarkdownSection = "upload-data"
 	BuildPublishSection    MarkdownSection = "build-publish"
@@ -41,6 +45,7 @@ const (
 	githubActionsEnv  = "GITHUB_ACTIONS"
 	JobSummaryDirName = "jfrog-job-summary"
 	jfrogHomeDir      = ".jfrog"
+	platformUrlEnv    = "JF_URL"
 )
 
 func NewJobSummaryImpl(userImplementation JobSummaryInterface) *JobSummary {
@@ -55,10 +60,12 @@ func NewJobSummaryImpl(userImplementation JobSummaryInterface) *JobSummary {
 		JobSummaryInterface: userImplementation,
 		homeDirPath:         homedir,
 		finalMarkdownFile:   nil,
-		platformUrl:         utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
-		jfrogProjectKey:     os.Getenv("JFROG_CLI_BUILD_PROJECT")}
+		platformUrl:         utils.AddTrailingSlashIfNeeded(os.Getenv(platformUrlEnv)),
+		jfrogProjectKey:     os.Getenv(coreutils.Project)}
 }
 
+// RecordResult Records a singular result object of we want to display at the final markdown
+// This function will at every run generate an aggregated markdown file with all the previous results if exists.
 func (js *JobSummary) RecordResult(content any, section MarkdownSection) (err error) {
 
 	if !IsGithubActions() {
@@ -84,46 +91,36 @@ func (js *JobSummary) RecordResult(content any, section MarkdownSection) (err er
 		return fmt.Errorf("failed to render markdown :%w", err)
 	}
 
-	if err = js.saveMarkdownToFileSystem(markdown, section); err != nil {
+	if err = js.saveAggregatedMarkdown(markdown, section); err != nil {
 		return fmt.Errorf("failed to save markdown to file system")
 	}
-
 	return
 }
 
-func (js *JobSummary) loadPreviousObjectsAsBytes(fileName string) (data []byte, err error) {
-	filePath := path.Join(js.homeDirPath, fileName)
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
+func (js *JobSummary) loadPreviousObjectsAsBytes(fileName string) ([]byte, error) {
+	file, cleanUp, err := openFile(fileName)
 	defer func() {
-		err = file.Close()
+		err = cleanUp()
 	}()
 	if err != nil {
-		log.Error("failed to open file at: ", filePath, " error: ", err)
-		return
+		return nil, err
 	}
-	return fileutils.ReadFile(filePath)
+	return fileutils.ReadFile(file.Name())
 }
 
-func (js *JobSummary) writeAggregatedDataToFile(objectAsBytes []byte, dataFileName string) (err error) {
-	// Marshal the updated array back into JSON
-	runnerHomeDir, err := getHomeDirByOs()
+func (js *JobSummary) writeAggregatedDataToFile(objectAsBytes []byte, dataFileName string) error {
+	file, cleanUp, err := openFile(path.Join(js.homeDirPath, dataFileName))
 	if err != nil {
-		return
+		return err
 	}
-	filePath := path.Join(runnerHomeDir, dataFileName)
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
-		err = file.Close()
+		err = cleanUp()
 	}()
 	_, err = file.Write(objectAsBytes)
-	return
+	return err
 }
 
-func (js *JobSummary) getSectionFileName(section MarkdownSection) string {
-	return string(section) + "-data.json"
-}
-
-func (js *JobSummary) saveMarkdownToFileSystem(markdown string, section MarkdownSection) (err error) {
+func (js *JobSummary) saveAggregatedMarkdown(markdown string, section MarkdownSection) (err error) {
 	homedir, err := getHomeDirByOs()
 	if err != nil {
 		return
@@ -139,6 +136,10 @@ func (js *JobSummary) saveMarkdownToFileSystem(markdown string, section Markdown
 		return
 	}
 	return
+}
+
+func (js *JobSummary) getSectionFileName(section MarkdownSection) string {
+	return string(section) + "-data.json"
 }
 
 func ensureHomeDirExists(homeDir string) error {
@@ -178,6 +179,15 @@ func getHomeDirByOs() (homeDir string, err error) {
 	}
 	homeDir = filepath.Join(osBasePath, jfrogHomeDir, JobSummaryDirName)
 	return
+}
+
+func openFile(filePath string) (*os.File, func() error, error) {
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Error("failed to open file at: ", filePath, " error: ", err)
+		return nil, nil, err
+	}
+	return file, file.Close, nil
 }
 
 func IsGithubActions() bool {

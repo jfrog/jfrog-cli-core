@@ -90,16 +90,13 @@ func (ga *GitHubActionSummaryImpl) RecordResult(content any, section MarkdownSec
 }
 
 func (ga *GitHubActionSummaryImpl) loadPreviousObjectsAsBytes(fileName string) (data []byte, err error) {
-	runnerHomeDir, err := getHomeDirByOs()
-	if err != nil {
-		return
-	}
-	filePath := path.Join(runnerHomeDir, fileName)
+	filePath := path.Join(ga.homeDirPath, fileName)
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()
 	}()
 	if err != nil {
+		log.Error("failed to open file at: ", filePath, " error: ", err)
 		return
 	}
 	return fileutils.ReadFile(filePath)
@@ -154,23 +151,10 @@ func (ga *GitHubActionSummaryImpl) saveMarkdownToFileSystem(markdown string, sec
 	return
 }
 
-func initiateGithubSummary(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
-	homedir, err := getHomeDirByOs()
-	if err != nil {
-		return
-	}
-	gh = &GitHubActionSummaryImpl{
-		homeDirPath:       homedir,
-		finalMarkdownFile: nil,
-		platformUrl:       utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
-		jfrogProjectKey:   os.Getenv("JFROG_CLI_BUILD_PROJECT"),
-	}
-	return
-}
-
 func getHomeDirByOs() (homeDir string, err error) {
 	var osBasePath string
-	switch osString := os.Getenv("RUNNER_OS"); osString {
+	osString := os.Getenv("RUNNER_OS")
+	switch osString {
 	case "Windows":
 		osBasePath = os.Getenv("USERPROFILE")
 	case "Linux", "macOS":
@@ -191,6 +175,7 @@ func getHomeDirByOs() (homeDir string, err error) {
 		return
 	}
 	homeDir = filepath.Join(osBasePath, jfrogHomeDir, githubSummaryDirName)
+	log.Debug("home dir is:", homeDir)
 	return
 }
 

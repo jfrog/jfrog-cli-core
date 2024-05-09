@@ -547,6 +547,9 @@ func ShowConfig(serverName string) error {
 }
 
 func lockConfig() (unlockFunc func() error, err error) {
+	unlockFunc = func() error {
+		return nil
+	}
 	mutex.Lock()
 	defer func() {
 		mutex.Unlock()

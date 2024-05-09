@@ -47,6 +47,9 @@ func NewGitHubActionSummaryImpl(impl GithubSummaryInterface) *GitHubActionSummar
 	if err != nil {
 		return nil
 	}
+	if err = ensureHomeDirExists(homedir); err != nil {
+		return nil
+	}
 	return &GitHubActionSummaryImpl{GithubSummaryInterface: impl,
 		homeDirPath:       homedir,
 		finalMarkdownFile: nil,
@@ -121,18 +124,6 @@ func (ga *GitHubActionSummaryImpl) getSectionFileName(section MarkdownSection) s
 	return string(section) + "-data.json"
 }
 
-func (ga *GitHubActionSummaryImpl) ensureHomeDirExists() error {
-	if _, err := os.Stat(ga.homeDirPath); os.IsNotExist(err) {
-		err = os.MkdirAll(ga.homeDirPath, 0755)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (ga *GitHubActionSummaryImpl) saveMarkdownToFileSystem(markdown string, section MarkdownSection) (err error) {
 	homedir, err := getHomeDirByOs()
 	if err != nil {
@@ -149,6 +140,18 @@ func (ga *GitHubActionSummaryImpl) saveMarkdownToFileSystem(markdown string, sec
 		return
 	}
 	return
+}
+
+func ensureHomeDirExists(homeDir string) error {
+	if _, err := os.Stat(homeDir); os.IsNotExist(err) {
+		err = os.MkdirAll(homeDir, 0755)
+		if err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getHomeDirByOs() (homeDir string, err error) {

@@ -1,4 +1,4 @@
-package githubsummaries
+package jobsummaries
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"

@@ -14,6 +14,10 @@ type GithubSummaryRtUploadImpl struct {
 	JfrogProjectKey   string
 }
 
+func (ga *GithubSummaryRtUploadImpl) GetSectionTitle() string {
+	return "📁 Files uploaded to Artifactory by this job"
+}
+
 type UploadResult struct {
 	SourcePath string `json:"sourcePath"`
 	TargetPath string `json:"targetPath"`

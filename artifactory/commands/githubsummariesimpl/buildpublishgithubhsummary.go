@@ -13,6 +13,10 @@ type GithubSummaryBpImpl struct {
 	Builds []*buildInfo.BuildInfo
 }
 
+func (gh *GithubSummaryBpImpl) GetSectionTitle() string {
+	return "📦 Build Info published to Artifactory by this job"
+}
+
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
 func (gh *GithubSummaryBpImpl) AppendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
 	build, ok := currentResult.(*buildInfo.BuildInfo)

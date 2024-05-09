@@ -141,10 +141,9 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	// Save build info data to display in GitHub Job Summary if needed
-	buildInfo.BuildUrl = buildLink
-	if err = jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryBpImpl{}).RecordResult(buildInfo, jobsummaries.BuildPublishSection); err != nil {
-		log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
+	err = recordJobSummaryData(buildInfo, buildLink)
+	if err != nil {
+		return err
 	}
 
 	logMsg := "Build info successfully deployed."
@@ -236,4 +235,16 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 	}
 	latestBuildNumber++
 	return strconv.Itoa(latestBuildNumber), nil
+}
+
+func recordJobSummaryData(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
+	buildInfo.BuildUrl = buildLink
+	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryBpImpl{})
+	if err != nil || jobSummary == nil {
+		return
+	}
+	if err = jobSummary.RecordResult(buildInfo, jobsummaries.BuildPublishSection); err != nil {
+		return
+	}
+	return
 }

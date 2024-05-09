@@ -157,10 +157,8 @@ func (uc *UploadCommand) upload() (err error) {
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
 
-			// Save the upload result to job summary
-			commandSummary := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryRtUploadImpl{})
-			if err = commandSummary.RecordResult(readDetailsFromReader(summary.TransferDetailsReader), jobsummaries.ArtifactsUploadSection); err != nil {
-				return err
+			if err = recordUploadJobSummary(summary); err != nil {
+				return
 			}
 		}
 	} else {
@@ -280,6 +278,17 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		ExcludeProps(syncDeletesProp).
 		Recursive(true).
 		BuildSpec()
+}
+
+func recordUploadJobSummary(summary *rtServicesUtils.OperationSummary) (err error) {
+	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryRtUploadImpl{})
+	if err != nil || jobSummary == nil {
+		return
+	}
+	if err = jobSummary.RecordResult(readDetailsFromReader(summary.TransferDetailsReader), jobsummaries.ArtifactsUploadSection); err != nil {
+		return
+	}
+	return
 }
 
 // Reads transfer details from the reader and return the content as bytes for further processing

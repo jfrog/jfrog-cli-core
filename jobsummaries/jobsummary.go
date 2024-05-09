@@ -48,27 +48,29 @@ const (
 	platformUrlEnv    = "JF_URL"
 )
 
-func NewJobSummaryImpl(userImplementation JobSummaryInterface) *JobSummary {
-	homedir, err := getHomeDirByOs()
-	if err != nil {
-		return nil
+// NewJobSummaryImpl Attempt to create a new JobSummary object
+// If the runner is not supported JobSummary will return nil
+// If the runner does support and fails to initialize, an error will be returned.
+func NewJobSummaryImpl(userImplementation JobSummaryInterface) (js *JobSummary, err error) {
+	if !IsJobSummaryCISupportedRunner() {
+		return nil, nil
 	}
-	if err = ensureHomeDirExists(homedir); err != nil {
-		return nil
+	homedir, err := prepareFileSystem()
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare file system for job summaries, please check all the env vars are set correctly: %w", err)
 	}
 	return &JobSummary{
 		JobSummaryInterface: userImplementation,
 		homeDirPath:         homedir,
-		finalMarkdownFile:   nil,
 		platformUrl:         utils.AddTrailingSlashIfNeeded(os.Getenv(platformUrlEnv)),
-		jfrogProjectKey:     os.Getenv(coreutils.Project)}
+		jfrogProjectKey:     os.Getenv(coreutils.Project)}, nil
 }
 
 // RecordResult Records a singular result object of we want to display at the final markdown
 // This function will at every run generate an aggregated markdown file with all the previous results if exists.
 func (js *JobSummary) RecordResult(content any, section MarkdownSection) (err error) {
 
-	if !IsGithubActions() {
+	if !IsJobSummaryCISupportedRunner() {
 		return nil
 	}
 
@@ -121,11 +123,10 @@ func (js *JobSummary) writeAggregatedDataToFile(objectAsBytes []byte, dataFileNa
 }
 
 func (js *JobSummary) saveAggregatedMarkdown(markdown string, section MarkdownSection) (err error) {
-	homedir, err := getHomeDirByOs()
 	if err != nil {
 		return
 	}
-	file, err := os.OpenFile(path.Join(homedir, string(section)+".md"), os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(path.Join(js.homeDirPath, string(section)+".md"), os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()
 	}()
@@ -142,6 +143,17 @@ func (js *JobSummary) getSectionFileName(section MarkdownSection) string {
 	return string(section) + "-data.json"
 }
 
+func prepareFileSystem() (homeDir string, err error) {
+	homedir, err := getHomeDirPathByOs()
+	if err != nil {
+		return
+	}
+	if err = ensureHomeDirExists(homedir); err != nil {
+		return
+	}
+	return
+}
+
 func ensureHomeDirExists(homeDir string) error {
 	if _, err := os.Stat(homeDir); os.IsNotExist(err) {
 		err = os.MkdirAll(homeDir, 0755)
@@ -154,9 +166,12 @@ func ensureHomeDirExists(homeDir string) error {
 	return nil
 }
 
-func getHomeDirByOs() (homeDir string, err error) {
+func getHomeDirPathByOs() (homeDir string, err error) {
 	var osBasePath string
 	osString := os.Getenv("RUNNER_OS")
+	if osString == "" {
+		return "", fmt.Errorf("failed getting machine OS from RUNNER_OS env. Please set env RUNNER_OS & RUNNER_HOMEDIR to enable job summary")
+	}
 	switch osString {
 	case "Windows":
 		osBasePath = os.Getenv("USERPROFILE")
@@ -164,21 +179,13 @@ func getHomeDirByOs() (homeDir string, err error) {
 		osBasePath = os.Getenv("HOME")
 	case "self-hosted":
 		osBasePath = os.Getenv("RUNNER_HOMEDIR")
-		if osBasePath == "" {
-			log.Error("Home directory not found in the environment variable: RUNNER_HOMEDIR, please set it to enable GitHub Job Summary on a self hosted machine")
-			err = fmt.Errorf("home directory not found in the environment variable: RUNNER_HOMEDIR, please set it to enable GitHub Job Summary on a self hosted machine")
-			return
-		}
 	default:
-		log.Error("Unsupported OS: ", osString)
-		err = fmt.Errorf("unsupported OS: %s, supported OS's are: Windows,Linux,MacOS and self-hosted runners", osString)
-		return
+		return "", fmt.Errorf("unsupported job summary runner OS: %s, supported OS's are: Windows,Linux,MacOS and self-hosted runners", osString)
 	}
-	if err != nil {
-		return
+	if osBasePath == "" {
+		return "", fmt.Errorf("home directory not found in the environment variable. Please set it to according to your operating system enable job summary")
 	}
-	homeDir = filepath.Join(osBasePath, jfrogHomeDir, JobSummaryDirName)
-	return
+	return filepath.Join(osBasePath, jfrogHomeDir, JobSummaryDirName), nil
 }
 
 func openFile(filePath string) (*os.File, func() error, error) {
@@ -190,6 +197,7 @@ func openFile(filePath string) (*os.File, func() error, error) {
 	return file, file.Close, nil
 }
 
-func IsGithubActions() bool {
+// Check for supported CI runners, currently only GitHub Actions is supported.
+func IsJobSummaryCISupportedRunner() bool {
 	return os.Getenv(githubActionsEnv) == "true"
 }

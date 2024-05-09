@@ -1,4 +1,4 @@
-package githubsummariesimpl
+package jobsummariesimpl
 
 import (
 	"encoding/json"

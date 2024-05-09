@@ -2,7 +2,7 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/githubsummariesimpl"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/jobsummariesimpl"
 	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
 	"os"
 
@@ -158,7 +158,7 @@ func (uc *UploadCommand) upload() (err error) {
 			failCount = summary.TotalFailed
 
 			// Save the upload result to job summary
-			commandSummary := jobsummaries.NewJobSummaryImpl(&githubsummariesimpl.GithubSummaryRtUploadImpl{})
+			commandSummary := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryRtUploadImpl{})
 			if err = commandSummary.RecordResult(readDetailsFromReader(summary.TransferDetailsReader), jobsummaries.ArtifactsUploadSection); err != nil {
 				return err
 			}

@@ -3,7 +3,7 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/githubsummariesimpl"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/jobsummariesimpl"
 	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
 	"net/url"
 	"strconv"
@@ -143,7 +143,7 @@ func (bpc *BuildPublishCommand) Run() error {
 
 	// Save build info data to display in GitHub Job Summary if needed
 	buildInfo.BuildUrl = buildLink
-	if err = jobsummaries.NewJobSummaryImpl(&githubsummariesimpl.GithubSummaryBpImpl{}).RecordResult(buildInfo, jobsummaries.BuildPublishSection); err != nil {
+	if err = jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryBpImpl{}).RecordResult(buildInfo, jobsummaries.BuildPublishSection); err != nil {
 		log.Warn("failed to collect build info data for GitHub Job Summary: ", err)
 	}
 

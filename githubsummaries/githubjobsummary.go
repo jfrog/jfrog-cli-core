@@ -2,7 +2,6 @@ package githubsummaries
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/githubsummariesimpl"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -22,7 +21,7 @@ type GithubSummaryInterface interface {
 }
 
 type GitHubActionSummaryImpl struct {
-	userMethods       GithubSummaryInterface
+	GithubSummaryInterface
 	homeDirPath       string   // Directory path for the GitHubActionSummaryImpl data
 	platformUrl       string   // Platform URL from env,used to generate Markdown links.
 	jfrogProjectKey   string   // [Optional] JFROG_CLI_BUILD_PROJECT env variable
@@ -30,10 +29,9 @@ type GitHubActionSummaryImpl struct {
 }
 
 const (
-	githubActionsEnv            = "GITHUB_ACTIONS"
-	githubSummaryDirName        = "jfrog-github-summary"
-	jfrogHomeDir                = ".jfrog"
-	artifactsUploadSectionTitle = " 📁 Files uploaded to Artifactory by this job"
+	githubActionsEnv     = "GITHUB_ACTIONS"
+	githubSummaryDirName = "jfrog-github-summary"
+	jfrogHomeDir         = ".jfrog"
 )
 
 type MarkdownSection string
@@ -44,13 +42,16 @@ const (
 	SecuritySection        MarkdownSection = "security"
 )
 
-func GithubSummaryRecordResult(content any, section MarkdownSection) (err error) {
+func NewGitHubActionSummaryImpl(impl GithubSummaryInterface) *GitHubActionSummaryImpl {
+	return &GitHubActionSummaryImpl{GithubSummaryInterface: impl}
+}
+
+func (ga *GitHubActionSummaryImpl) RecordResult(content any, section MarkdownSection) (err error) {
 
 	if !IsGithubActions() {
 		return nil
 	}
 
-	ga, err := initiateGithubSummary(section)
 	if err != nil {
 		return fmt.Errorf("failed to initiate github summary: %w", err)
 	}
@@ -60,7 +61,7 @@ func GithubSummaryRecordResult(content any, section MarkdownSection) (err error)
 		return fmt.Errorf("failed to load previous objects: %w", err)
 	}
 
-	dataAsBytes, err := ga.userMethods.AppendResultObject(content, previousObjects)
+	dataAsBytes, err := ga.AppendResultObject(content, previousObjects)
 	if err != nil {
 		return fmt.Errorf("failed to parase markdown section objects: %w", err)
 	}
@@ -69,7 +70,7 @@ func GithubSummaryRecordResult(content any, section MarkdownSection) (err error)
 		return fmt.Errorf("failed to write aggregated data to file: %w", err)
 	}
 	var markdown string
-	if markdown, err = ga.userMethods.RenderContentToMarkdown(dataAsBytes); err != nil {
+	if markdown, err = ga.RenderContentToMarkdown(dataAsBytes); err != nil {
 		return fmt.Errorf("failed to render markdown :%w", err)
 	}
 
@@ -139,49 +140,35 @@ func (ga *GitHubActionSummaryImpl) saveMarkdownToFileSystem(markdown string, sec
 	if err != nil {
 		return
 	}
-	if _, err = file.WriteString(fmt.Sprintf("\n<details open>\n\n<summary>  %s </summary> %s </details>\n", ga.userMethods.GetSectionTitle(), markdown)); err != nil {
+	if _, err = file.WriteString(fmt.Sprintf("\n<details open>\n\n<summary>  %s </summary> %s </details>\n", ga.GetSectionTitle(), markdown)); err != nil {
 		return
 	}
 	return
 }
+
+//func NewGithubSummaryImpl(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
+//	gh, err = initiateGithubSummary(section)
+//	if err != nil {
+//		return
+//	}
+//	if err = gh.ensureHomeDirExists(); err != nil {
+//		return nil, err
+//	}
+//	return
+//}
 
 func initiateGithubSummary(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
-	gh, err = newGithubActionSummary(section)
-	if err != nil {
-		return
-	}
-	if err = gh.ensureHomeDirExists(); err != nil {
-		return nil, err
-	}
-	return
-}
-
-func newGithubActionSummary(section MarkdownSection) (gh *GitHubActionSummaryImpl, err error) {
 	homedir, err := getHomeDirByOs()
 	if err != nil {
 		return
 	}
 	gh = &GitHubActionSummaryImpl{
-		userMethods:       getCommandMethods(section),
 		homeDirPath:       homedir,
 		finalMarkdownFile: nil,
 		platformUrl:       utils.AddTrailingSlashIfNeeded(os.Getenv("JF_URL")),
-		jfrogProjectKey:   os.Getenv("JFROG_CLI_PROJECT"),
+		jfrogProjectKey:   os.Getenv("JFROG_CLI_BUILD_PROJECT"),
 	}
 	return
-}
-
-func getCommandMethods(section MarkdownSection) GithubSummaryInterface {
-	switch section {
-	case ArtifactsUploadSection:
-		return &githubsummariesimpl.GithubSummaryRtUploadImpl{}
-	case BuildPublishSection:
-		return &githubsummariesimpl.GithubSummaryBpImpl{}
-	// case Scan:
-	//	return &ScanSummary{}
-	default:
-		return nil
-	}
 }
 
 func getHomeDirByOs() (homeDir string, err error) {

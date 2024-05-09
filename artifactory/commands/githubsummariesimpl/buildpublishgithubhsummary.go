@@ -56,12 +56,13 @@ func (gh *GithubSummaryBpImpl) RenderContentToMarkdown(content []byte) (markdown
 func (gh *GithubSummaryBpImpl) BuildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("| 🔢 Build Info | 🕒 Timestamp | \n")
+	tableBuilder.WriteString("\n\n| 🔢 Build Info | 🕒 Timestamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range gh.Builds {
 		buildTime := ParseBuildTime(build.Started)
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" / "+build.Number, build.BuildUrl, buildTime))
 	}
+	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
 }
 

@@ -24,7 +24,7 @@ type GitHubActionSummaryImpl struct {
 	userMethods       GithubSummaryInterface
 	homeDirPath       string   // Directory path for the GitHubActionSummaryImpl data
 	platformUrl       string   // Platform URL from env,used to generate Markdown links.
-	jfrogProjectKey   string   // [Optional] JFROG_CLI_PROJECT env variable
+	jfrogProjectKey   string   // [Optional] JFROG_CLI_BUILD_PROJECT env variable
 	finalMarkdownFile *os.File // Generated markdown file
 }
 
@@ -70,7 +70,7 @@ func GithubSummaryRecordResult(content any, section MarkdownSection) (err error)
 	if err = ga.writeAggregatedDataToFile(dataAsBytes, ga.getSectionFileName(section)); err != nil {
 		return fmt.Errorf("failed to write aggregated data to file: %w", err)
 	}
-	return triggerMarkdownGeneration(section)
+	return
 }
 
 func (ga *GitHubActionSummaryImpl) loadPreviousObjectsAsBytes(fileName string) (data []byte, err error) {
@@ -108,6 +108,11 @@ func (ga *GitHubActionSummaryImpl) getSectionFileName(section MarkdownSection) s
 	return string(section) + "-data.json"
 }
 
+// TODO move to setup-cli
+// TODO remove github from any titles or names
+// Change interface
+// About project -> remove what i I did and ask about carmit if that's the place
+// JF SCAN - JF DOCKER SCAN - JF BUILD-SCAN
 func (ga *GitHubActionSummaryImpl) generateMarkdown() (err error) {
 	cleanUp, err := ga.createMarkdownFile()
 	if err != nil {

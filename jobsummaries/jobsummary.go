@@ -35,10 +35,9 @@ type JobSummaryInterface interface {
 
 type JobSummary struct {
 	JobSummaryInterface
-	finalMarkdownFile *os.File // Generated markdown file
-	homeDirPath       string   // Directory path for the JobSummary data
-	platformUrl       string   // Platform URL from env,used to generate Markdown links.
-	jfrogProjectKey   string   // [Optional] JFROG_CLI_BUILD_PROJECT env variable
+	homeDirPath     string // Directory path for the JobSummary data
+	platformUrl     string // Platform URL from env,used to generate Markdown links.
+	jfrogProjectKey string // [Optional] JFROG_CLI_BUILD_PROJECT env variable
 }
 
 const (
@@ -144,11 +143,11 @@ func (js *JobSummary) getSectionFileName(section MarkdownSection) string {
 }
 
 func prepareFileSystem() (homeDir string, err error) {
-	homedir, err := getHomeDirPathByOs()
+	homeDir, err = getHomeDirPathByOs()
 	if err != nil {
 		return
 	}
-	if err = ensureHomeDirExists(homedir); err != nil {
+	if err = ensureHomeDirExists(homeDir); err != nil {
 		return
 	}
 	return

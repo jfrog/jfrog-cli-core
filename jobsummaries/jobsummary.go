@@ -40,7 +40,7 @@ type JobSummaryInterface interface {
 	// RenderContentToMarkdown This function should render the content into a markdown string
 	// Notice your markdown will be inserted into collapsable sections in the final markdown file.
 	RenderContentToMarkdown(content []byte) (string, error)
-	// GetSectionTitle Set section title to inert as collapsable section title
+	// GetSectionTitle Will set the section title in the final markdown file.
 	GetSectionTitle() string
 }
 
@@ -153,7 +153,6 @@ func (js *JobSummary) getSectionFileName(section MarkdownSection) string {
 
 func prepareFileSystem() (homeDir string, err error) {
 	homeDir, err = getRunnerJobTempWorkdir()
-	log.Info("home dirs: ", homeDir)
 	if err != nil {
 		return
 	}

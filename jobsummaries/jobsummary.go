@@ -11,11 +11,20 @@ import (
 	"path/filepath"
 )
 
+// Understanding the functionality of JobSummary
+//
+// The JobSummary object's role is to accumulate and document data from various command executions.
+// It should save the command results in the filesystem, to allow recording of multiple commands executed by the job.
+//
+// Each time we record a new result, we need to append it to the previous results saved on the file system,
+// and generate a markdown from the entire data we collected so far.
+//
+// The final markdown file is assembled by the setup-cli cleanup function, assembling all the sections.
+
 type MarkdownSection string
 
 // Final markdown sections
 // These sections will be inserted into the final markdown file as collapsable sections
-// The cleanup function of the setup-cli will append all the sections into one markdown.
 const (
 	ArtifactsUploadSection MarkdownSection = "upload-data"
 	BuildPublishSection    MarkdownSection = "build-publish"
@@ -65,8 +74,7 @@ func NewJobSummaryImpl(userImplementation JobSummaryInterface) (js *JobSummary, 
 		jfrogProjectKey:     os.Getenv(coreutils.Project)}, nil
 }
 
-// RecordResult Records a singular result object of we want to display at the final markdown
-// This function will at every run generate an aggregated markdown file with all the previous results if exists.
+// RecordResult Appends the result to the file system and generates a section markdown file from the accumulated data.
 func (js *JobSummary) RecordResult(content any, section MarkdownSection) (err error) {
 
 	if !IsJobSummaryCISupportedRunner() {
@@ -92,7 +100,7 @@ func (js *JobSummary) RecordResult(content any, section MarkdownSection) (err er
 		return fmt.Errorf("failed to render markdown :%w", err)
 	}
 
-	if err = js.saveAggregatedMarkdown(markdown, section); err != nil {
+	if err = js.saveAggregatedSectionMarkdown(markdown, section); err != nil {
 		return fmt.Errorf("failed to save markdown to file system")
 	}
 	return
@@ -121,7 +129,7 @@ func (js *JobSummary) writeAggregatedDataToFile(objectAsBytes []byte, dataFileNa
 	return err
 }
 
-func (js *JobSummary) saveAggregatedMarkdown(markdown string, section MarkdownSection) (err error) {
+func (js *JobSummary) saveAggregatedSectionMarkdown(markdown string, section MarkdownSection) (err error) {
 	if err != nil {
 		return
 	}

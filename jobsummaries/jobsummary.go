@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 )
 
+// TODO warnning on masking URL.
+
 // Understanding the functionality of JobSummary
 //
 // The JobSummary object's role is to accumulate and document data from various command executions.
@@ -105,8 +107,8 @@ func (js *JobSummary) RecordResult(content any, section MarkdownSection) (err er
 	return
 }
 
-func (js *JobSummary) loadPreviousObjectsAsBytes(fileName string) ([]byte, error) {
-	file, cleanUp, err := openFile(fileName)
+func (js *JobSummary) loadPreviousObjectsAsBytes(previousObjectsPath string) ([]byte, error) {
+	file, cleanUp, err := openFile(path.Join(js.homeDirPath, previousObjectsPath))
 	defer func() {
 		err = cleanUp()
 	}()

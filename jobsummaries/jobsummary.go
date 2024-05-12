@@ -152,6 +152,7 @@ func (js *JobSummary) getSectionFileName(section MarkdownSection) string {
 
 func prepareFileSystem() (homeDir string, err error) {
 	homeDir, err = getHomeDirPathByOs()
+	log.Info("home dirs: ", homeDir)
 	if err != nil {
 		return
 	}
@@ -174,25 +175,26 @@ func ensureHomeDirExists(homeDir string) error {
 }
 
 func getHomeDirPathByOs() (homeDir string, err error) {
-	var osBasePath string
-	osString := os.Getenv("RUNNER_OS")
-	if osString == "" {
-		return "", fmt.Errorf("failed getting machine OS from RUNNER_OS env. Please set env RUNNER_OS & RUNNER_HOMEDIR to enable job summary")
-	}
-	switch osString {
-	case "Windows":
-		osBasePath = os.Getenv("USERPROFILE")
-	case "Linux", "macOS":
-		osBasePath = os.Getenv("HOME")
-	case "self-hosted":
-		osBasePath = os.Getenv("RUNNER_HOMEDIR")
-	default:
-		return "", fmt.Errorf("unsupported job summary runner OS: %s, supported OS's are: Windows,Linux,MacOS and self-hosted runners", osString)
-	}
-	if osBasePath == "" {
-		return "", fmt.Errorf("home directory not found in the environment variable. Please set it to according to your operating system enable job summary")
-	}
-	return filepath.Join(osBasePath, jfrogHomeDir, JobSummaryDirName), nil
+	//var osBasePath string
+	//osString := os.Getenv("RUNNER_OS")
+	//if osString == "" {
+	//	return "", fmt.Errorf("failed getting machine OS from RUNNER_OS env. Please set env RUNNER_OS & RUNNER_HOMEDIR to enable job summary")
+	//}
+	//switch osString {
+	//case "Windows":
+	//	osBasePath = os.Getenv("USERPROFILE")
+	//case "Linux", "macOS":
+	//	osBasePath = os.Getenv("HOME")
+	//case "self-hosted":
+	//	osBasePath = os.Getenv("RUNNER_HOMEDIR")
+	//default:
+	//	return "", fmt.Errorf("unsupported job summary runner OS: %s, supported OS's are: Windows,Linux,MacOS and self-hosted runners", osString)
+	//}
+	//if osBasePath == "" {
+	//	return "", fmt.Errorf("home directory not found in the environment variable. Please set it to according to your operating system enable job summary")
+	//}
+	runnerTemp := os.Getenv("RUNNER_TEMP")
+	return filepath.Join(runnerTemp, jfrogHomeDir, JobSummaryDirName), nil
 }
 
 func openFile(filePath string) (*os.File, func() error, error) {

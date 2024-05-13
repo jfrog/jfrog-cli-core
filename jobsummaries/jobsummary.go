@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 )
 
-// TODO warnning on masking URL.
-
 // Understanding the functionality of JobSummary
 //
 // The JobSummary object's role is to accumulate and document data from various command executions.
@@ -34,6 +32,14 @@ const (
 )
 
 type JobSummaryInterface interface {
+	// This function is responsible for generating a markdown representation of the command.
+	// If you want the output to incorporate data from previous command executions,
+	// you need to store this data in a location on the file system that won't be cleared between command executions.
+	// You can then use this stored data to generate the markdown.
+	//
+	// The setup-jfrog-cli uses the markdown file produced by this function to create a Job Summary.
+	// To ensure the Action can access the output file, you should create the file in the location specified by the
+	// JFROG_CLI_JOB_SUMMARY_HOME_DIR environment variable.
 	CreateSummaryMarkdown(content any, section MarkdownSection) error
 	// GetSectionTitle Will set the section title in the final markdown file.
 	GetSectionTitle() string
@@ -47,9 +53,11 @@ type JobSummary struct {
 }
 
 const (
-	githubActionsEnv  = "GITHUB_ACTIONS"
-	JobSummaryDirName = "jfrog-job-summary"
-	platformUrlEnv    = "JF_URL"
+	githubActionsEnv        = "GITHUB_ACTIONS"
+	JobSummaryDirName       = "jfrog-job-summary"
+	platformUrlEnv          = "JF_URL"
+	userJobSummariesHomeDir = "JFROG_CLI_JOB_SUMMARY_HOME_DIR"
+	defaultRunnerJobHomeDir = "RUNNER_TEMP"
 )
 
 // NewJobSummaryImpl Attempt to create a new JobSummary object
@@ -154,16 +162,11 @@ func ensureHomeDirExists(homeDir string) error {
 // The home dir should be scoped per job, to avoid multiple jobs running on the same
 // writing to the same files.
 func getJobSummariesHomeDirPath() (homeDir string, err error) {
-	userDefinedHomeDir := os.Getenv("JFROG_CLI_SUMMARY_MARKDOWN_OUTPUT_ROOT_PATH")
+	userDefinedHomeDir := os.Getenv(userJobSummariesHomeDir)
 	if userDefinedHomeDir != "" {
 		return filepath.Join(userDefinedHomeDir, JobSummaryDirName), nil
 	}
-	// Resolve to default runner temp dir
-	runnerJobTempDir := os.Getenv("RUNNER_TEMP")
-	if runnerJobTempDir == "" {
-		return "", fmt.Errorf("failed to get runner job's temp working dir from RUNNER_TEMP env variable")
-	}
-	return filepath.Join(runnerJobTempDir, JobSummaryDirName), nil
+	return "", fmt.Errorf("failed to get jobs summaries working dir path, please set JFROG_CLI_JOB_SUMMARY_HOME_DIR")
 }
 
 func openFile(filePath string) (*os.File, func() error, error) {

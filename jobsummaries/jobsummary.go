@@ -21,10 +21,10 @@ import (
 //
 // The final markdown file is assembled by the setup-cli cleanup function, assembling all the sections.
 
-type MarkdownSection string
-
 // Final markdown sections
 // These sections will be inserted into the final markdown file as collapsable sections
+type MarkdownSection string
+
 const (
 	ArtifactsUploadSection MarkdownSection = "upload-data"
 	BuildPublishSection    MarkdownSection = "build-publish"

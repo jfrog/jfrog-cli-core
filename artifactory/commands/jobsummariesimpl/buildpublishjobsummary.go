@@ -87,14 +87,14 @@ func (ga *GithubSummaryBpImpl) BuildInfoTable() string {
 	tableBuilder.WriteString("\n\n| 🔢 Build Info | 🕒 Timestamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range ga.Builds {
-		buildTime := ParseBuildTime(build.Started)
+		buildTime := parseBuildTime(build.Started)
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" / "+build.Number, build.BuildUrl, buildTime))
 	}
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
 }
 
-func ParseBuildTime(timestamp string) string {
+func parseBuildTime(timestamp string) string {
 	// Parse the timestamp string into a time.Time object
 	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timestamp)
 	if err != nil {

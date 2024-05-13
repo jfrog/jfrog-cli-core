@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
 	"strings"
 )
 
@@ -12,10 +13,6 @@ type GithubSummaryRtUploadImpl struct {
 	uploadedArtifacts ResultsWrapper
 	PlatformUrl       string
 	JfrogProjectKey   string
-}
-
-func (ga *GithubSummaryRtUploadImpl) GetSectionTitle() string {
-	return "📁 Files uploaded to Artifactory by this job"
 }
 
 type UploadResult struct {
@@ -28,7 +25,39 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func (ga *GithubSummaryRtUploadImpl) RenderContentToMarkdown(content []byte) (markdown string, err error) {
+// RecordResult Appends the result to the file system and generates a section markdown file from the accumulated data.
+func (ga *GithubSummaryRtUploadImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
+
+	previousObjects, err := jobsummaries.LoadFile(jobsummaries.GetSectionFileName(section))
+	if err != nil {
+		return fmt.Errorf("failed to load previous objects: %w", err)
+	}
+
+	dataAsBytes, err := ga.appendResultObject(content, previousObjects)
+	if err != nil {
+		return fmt.Errorf("failed to parase markdown section objects: %w", err)
+	}
+
+	if err = jobsummaries.WriteFile(dataAsBytes, jobsummaries.GetSectionFileName(section)); err != nil {
+		return fmt.Errorf("failed to write aggregated data to file: %w", err)
+	}
+
+	markdown, err := ga.renderContentToMarkdown(dataAsBytes)
+	if err != nil {
+		return fmt.Errorf("failed to render markdown :%w", err)
+	}
+
+	if err = jobsummaries.WriteMarkdownToFileSystem(markdown, ga.GetSectionTitle(), section); err != nil {
+		return fmt.Errorf("failed to save markdown to file system")
+	}
+	return
+}
+
+func (ga *GithubSummaryRtUploadImpl) GetSectionTitle() string {
+	return "📁 Files uploaded to Artifactory by this job"
+}
+
+func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
 	if err = ga.generateUploadedFilesTree(content); err != nil {
 		return "", fmt.Errorf("failed while creating file tree: %w", err)
 	}
@@ -41,7 +70,7 @@ func (ga *GithubSummaryRtUploadImpl) RenderContentToMarkdown(content []byte) (ma
 	return markdownBuilder.String(), nil
 }
 
-func (ga *GithubSummaryRtUploadImpl) AppendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
+func (ga *GithubSummaryRtUploadImpl) appendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
 	currentResults, ok := currentResult.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("failed to convert currentResult to []byte")

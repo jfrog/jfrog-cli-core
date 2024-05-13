@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 	"time"
@@ -13,12 +14,39 @@ type GithubSummaryBpImpl struct {
 	Builds []*buildInfo.BuildInfo
 }
 
-func (gh *GithubSummaryBpImpl) GetSectionTitle() string {
+func (ga *GithubSummaryBpImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
+
+	previousObjects, err := jobsummaries.LoadFile(jobsummaries.GetSectionFileName(section))
+	if err != nil {
+		return fmt.Errorf("failed to load previous objects: %w", err)
+	}
+
+	dataAsBytes, err := ga.appendResultObject(content, previousObjects)
+	if err != nil {
+		return fmt.Errorf("failed to parase markdown section objects: %w", err)
+	}
+
+	if err = jobsummaries.WriteFile(dataAsBytes, jobsummaries.GetSectionFileName(section)); err != nil {
+		return fmt.Errorf("failed to write aggregated data to file: %w", err)
+	}
+
+	markdown, err := ga.renderContentToMarkdown(dataAsBytes)
+	if err != nil {
+		return fmt.Errorf("failed to render markdown :%w", err)
+	}
+
+	if err = jobsummaries.WriteMarkdownToFileSystem(markdown, ga.GetSectionTitle(), section); err != nil {
+		return fmt.Errorf("failed to save markdown to file system")
+	}
+	return
+}
+
+func (ga *GithubSummaryBpImpl) GetSectionTitle() string {
 	return "📦 Build Info published to Artifactory by this job"
 }
 
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
-func (gh *GithubSummaryBpImpl) AppendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
+func (ga *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
 	build, ok := currentResult.(*buildInfo.BuildInfo)
 	if !ok {
 		return nil, fmt.Errorf("failed to cast currentResult to buildInfo.BuildInfo")
@@ -36,16 +64,16 @@ func (gh *GithubSummaryBpImpl) AppendResultObject(currentResult interface{}, pre
 	return json.Marshal(builds)
 }
 
-func (gh *GithubSummaryBpImpl) RenderContentToMarkdown(content []byte) (markdown string, err error) {
+func (ga *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
 	// Unmarshal the data into an array of build info objects
-	if err = json.Unmarshal(content, &gh.Builds); err != nil {
+	if err = json.Unmarshal(content, &ga.Builds); err != nil {
 		log.Error("Failed to unmarshal data: ", err)
 		return
 	}
 	// Generate a string that represents a Markdown table
 	var markdownBuilder strings.Builder
-	if len(gh.Builds) > 0 {
-		if _, err = markdownBuilder.WriteString(gh.BuildInfoTable()); err != nil {
+	if len(ga.Builds) > 0 {
+		if _, err = markdownBuilder.WriteString(ga.BuildInfoTable()); err != nil {
 			return
 		}
 	}
@@ -53,12 +81,12 @@ func (gh *GithubSummaryBpImpl) RenderContentToMarkdown(content []byte) (markdown
 
 }
 
-func (gh *GithubSummaryBpImpl) BuildInfoTable() string {
+func (ga *GithubSummaryBpImpl) BuildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString("\n\n| 🔢 Build Info | 🕒 Timestamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
-	for _, build := range gh.Builds {
+	for _, build := range ga.Builds {
 		buildTime := ParseBuildTime(build.Started)
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" / "+build.Number, build.BuildUrl, buildTime))
 	}

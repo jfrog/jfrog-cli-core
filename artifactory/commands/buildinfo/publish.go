@@ -243,7 +243,7 @@ func recordJobSummaryData(buildInfo *buildinfo.BuildInfo, buildLink string) (err
 	if err != nil || jobSummary == nil {
 		return
 	}
-	if err = jobSummary.RecordResult(buildInfo, jobsummaries.BuildPublishSection); err != nil {
+	if err = jobSummary.CreateSummaryMarkdown(buildInfo, jobsummaries.BuildPublishSection); err != nil {
 		return
 	}
 	return

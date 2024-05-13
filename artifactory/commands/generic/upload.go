@@ -285,7 +285,7 @@ func recordUploadJobSummary(summary *rtServicesUtils.OperationSummary) (err erro
 	if err != nil || jobSummary == nil {
 		return
 	}
-	if err = jobSummary.RecordResult(readDetailsFromReader(summary.TransferDetailsReader), jobsummaries.ArtifactsUploadSection); err != nil {
+	if err = jobSummary.CreateSummaryMarkdown(readDetailsFromReader(summary.TransferDetailsReader), jobsummaries.ArtifactsUploadSection); err != nil {
 		return
 	}
 	return

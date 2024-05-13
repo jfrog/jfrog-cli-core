@@ -34,12 +34,7 @@ const (
 )
 
 type JobSummaryInterface interface {
-	// AppendResultObject This function should accept a result object, and append it to previous runs of the same objects
-	// to allow data persistence between different commands executions.
-	AppendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error)
-	// RenderContentToMarkdown This function should render the content into a markdown string
-	// Notice your markdown will be inserted into collapsable sections in the final markdown file.
-	RenderContentToMarkdown(content []byte) (string, error)
+	CreateSummaryMarkdown(content any, section MarkdownSection) error
 	// GetSectionTitle Will set the section title in the final markdown file.
 	GetSectionTitle() string
 }
@@ -75,40 +70,13 @@ func NewJobSummaryImpl(userImplementation JobSummaryInterface) (js *JobSummary, 
 		jfrogProjectKey:     os.Getenv(coreutils.Project)}, nil
 }
 
-// RecordResult Appends the result to the file system and generates a section markdown file from the accumulated data.
-func (js *JobSummary) RecordResult(content any, section MarkdownSection) (err error) {
-
-	if !IsJobSummaryCISupportedRunner() {
-		return nil
-	}
-
-	previousObjects, err := js.loadPreviousObjectsAsBytes(js.getSectionFileName(section))
+// Loads a file as bytes array from the file system
+func LoadFile(previousObjectsPath string) ([]byte, error) {
+	homeDir, err := getJobSummariesHomeDirPath()
 	if err != nil {
-		return fmt.Errorf("failed to load previous objects: %w", err)
+		return nil, err
 	}
-
-	dataAsBytes, err := js.AppendResultObject(content, previousObjects)
-	if err != nil {
-		return fmt.Errorf("failed to parase markdown section objects: %w", err)
-	}
-
-	if err = js.writeAggregatedDataToFile(dataAsBytes, js.getSectionFileName(section)); err != nil {
-		return fmt.Errorf("failed to write aggregated data to file: %w", err)
-	}
-
-	markdown, err := js.RenderContentToMarkdown(dataAsBytes)
-	if err != nil {
-		return fmt.Errorf("failed to render markdown :%w", err)
-	}
-
-	if err = js.saveAggregatedSectionMarkdown(markdown, section); err != nil {
-		return fmt.Errorf("failed to save markdown to file system")
-	}
-	return
-}
-
-func (js *JobSummary) loadPreviousObjectsAsBytes(previousObjectsPath string) ([]byte, error) {
-	file, cleanUp, err := openFile(path.Join(js.homeDirPath, previousObjectsPath))
+	file, cleanUp, err := openFile(path.Join(homeDir, previousObjectsPath))
 	defer func() {
 		err = cleanUp()
 	}()
@@ -118,8 +86,12 @@ func (js *JobSummary) loadPreviousObjectsAsBytes(previousObjectsPath string) ([]
 	return fileutils.ReadFile(file.Name())
 }
 
-func (js *JobSummary) writeAggregatedDataToFile(objectAsBytes []byte, dataFileName string) error {
-	file, cleanUp, err := openFile(path.Join(js.homeDirPath, dataFileName))
+func WriteFile(objectAsBytes []byte, dataFileName string) error {
+	homeDir, err := getJobSummariesHomeDirPath()
+	if err != nil {
+		return err
+	}
+	file, cleanUp, err := openFile(path.Join(homeDir, dataFileName))
 	if err != nil {
 		return err
 	}
@@ -130,29 +102,34 @@ func (js *JobSummary) writeAggregatedDataToFile(objectAsBytes []byte, dataFileNa
 	return err
 }
 
-func (js *JobSummary) saveAggregatedSectionMarkdown(markdown string, section MarkdownSection) (err error) {
+func WriteMarkdownToFileSystem(markdown, sectionTitle string, section MarkdownSection) (err error) {
+	homedDir, err := getJobSummariesHomeDirPath()
 	if err != nil {
 		return
 	}
-	file, err := os.OpenFile(path.Join(js.homeDirPath, string(section)+".md"), os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(path.Join(homedDir, string(section)+".md"), os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()
 	}()
 	if err != nil {
 		return
 	}
-	if _, err = file.WriteString(fmt.Sprintf("\n<details open>\n\n<summary>  %s </summary><p></p> \n\n %s \n\n</details>\n", js.GetSectionTitle(), markdown)); err != nil {
+	if _, err = file.WriteString(fmt.Sprintf("\n<details open>\n\n<summary>  %s </summary><p></p> \n\n %s \n\n</details>\n", sectionTitle, markdown)); err != nil {
 		return
 	}
 	return
 }
 
-func (js *JobSummary) getSectionFileName(section MarkdownSection) string {
-	return string(section) + "-data.json"
+// Check for supported CI runners, currently only GitHub Actions is supported.
+func IsJobSummaryCISupportedRunner() bool {
+	return os.Getenv(githubActionsEnv) == "true"
 }
 
+func GetSectionFileName(section MarkdownSection) string {
+	return string(section) + "-data.json"
+}
 func prepareFileSystem() (homeDir string, err error) {
-	homeDir, err = getRunnerJobTempWorkdir()
+	homeDir, err = getJobSummariesHomeDirPath()
 	if err != nil {
 		return
 	}
@@ -175,8 +152,13 @@ func ensureHomeDirExists(homeDir string) error {
 }
 
 // The home dir should be scoped per job, to avoid multiple jobs running on the same
-// runner, causing unwanted results.
-func getRunnerJobTempWorkdir() (homeDir string, err error) {
+// writing to the same files.
+func getJobSummariesHomeDirPath() (homeDir string, err error) {
+	userDefinedHomeDir := os.Getenv("JFROG_CLI_SUMMARY_MARKDOWN_OUTPUT_ROOT_PATH")
+	if userDefinedHomeDir != "" {
+		return filepath.Join(userDefinedHomeDir, JobSummaryDirName), nil
+	}
+	// Resolve to default runner temp dir
 	runnerJobTempDir := os.Getenv("RUNNER_TEMP")
 	if runnerJobTempDir == "" {
 		return "", fmt.Errorf("failed to get runner job's temp working dir from RUNNER_TEMP env variable")
@@ -191,9 +173,4 @@ func openFile(filePath string) (*os.File, func() error, error) {
 		return nil, nil, err
 	}
 	return file, file.Close, nil
-}
-
-// Check for supported CI runners, currently only GitHub Actions is supported.
-func IsJobSummaryCISupportedRunner() bool {
-	return os.Getenv(githubActionsEnv) == "true"
 }

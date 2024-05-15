@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
-	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -68,21 +66,17 @@ func (ga *GithubSummaryRtUploadImpl) appendResultObject(currentResult interface{
 }
 
 func (ga *GithubSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err error) {
-	currentResults, ok := content.([]byte)
+	rawInput, ok := content.([]byte)
 	if !ok {
 		return fmt.Errorf("failed to convert content to []byte")
 	}
-	currentUpload := ResultsWrapper{}
-	if err = json.Unmarshal(currentResults, &currentUpload); err != nil {
+	uploadedFileResults := ResultsWrapper{}
+	if err = json.Unmarshal(rawInput, &uploadedFileResults); err != nil {
 		return
 	}
 
-	sort.Slice(currentUpload.Results, func(i, j int) bool {
-		return filepath.Base(currentUpload.Results[i].SourcePath) < filepath.Base(currentUpload.Results[j].SourcePath)
-	})
-
 	ga.uploadTree = utils.NewFileTree()
-	for _, b := range currentUpload.Results {
+	for _, b := range uploadedFileResults.Results {
 		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))
 	}
 	return

@@ -60,18 +60,18 @@ func TestUploadFilesMarkdown(t *testing.T) {
 	content := []byte(`{
     "results": [
         {
-            "sourcePath": "testdata/a/b/b2.in",
-            "targetPath": "project-testRepo/b2.in",
+            "sourcePath": "testdata/a/b/c.in",
+            "targetPath": "project-testRepo/c.in",
             "rtUrl": "https://platform.jfrog.io/artifactory/"
         },
         {
-            "sourcePath": "testdata/a/b/b3.in",
-            "targetPath": "project-testRepo/b3.in",
+            "sourcePath": "testdata/a/b/b.in",
+            "targetPath": "project-testRepo/b.in",
             "rtUrl": "https://platform.jfrog.io/artifactory/"
         },
         {
-            "sourcePath": "testdata/a/b/b1.in",
-            "targetPath": "project-testRepo/b1.in",
+            "sourcePath": "testdata/a/b/a.in",
+            "targetPath": "project-testRepo/a.in",
             "rtUrl": "https://platform.jfrog.io/artifactory/"
         }
     ]
@@ -82,9 +82,9 @@ func TestUploadFilesMarkdown(t *testing.T) {
 	expected := `
 <pre>
 📦 project-testRepo
-├── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/b1.in/?projectKey=myProject target="_blank">b1.in</a>
-├── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/b2.in/?projectKey=myProject target="_blank">b2.in</a>
-└── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/b3.in/?projectKey=myProject target="_blank">b3.in</a>
+├── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/a.in/?projectKey=myProject target="_blank">a.in</a>
+├── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/b.in/?projectKey=myProject target="_blank">b.in</a>
+└── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/c.in/?projectKey=myProject target="_blank">c.in</a>
 </pre>
 
 `

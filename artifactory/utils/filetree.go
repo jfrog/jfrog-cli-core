@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -90,7 +91,17 @@ func (dn *dirNode) strings() []string {
 		subDirIndex++
 	}
 	fileIndex := 0
-	for fileName := range dn.fileNames {
+
+	// Sort File names inside each sub dir
+	var fileNamesSorted []string
+	for k := range dn.fileNames {
+		fileNamesSorted = append(fileNamesSorted, k)
+	}
+	sort.Slice(fileNamesSorted, func(i, j int) bool {
+		return fileNamesSorted[i] < fileNamesSorted[j]
+	})
+
+	for _, fileName := range fileNamesSorted {
 		var filePrefix string
 		if fileIndex == len(dn.fileNames)-1 {
 			filePrefix = "└── 📄 "

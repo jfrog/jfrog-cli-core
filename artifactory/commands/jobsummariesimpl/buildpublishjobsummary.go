@@ -15,34 +15,7 @@ type GithubSummaryBpImpl struct {
 }
 
 func (ga *GithubSummaryBpImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
-
-	previousObjects, err := jobsummaries.LoadFile(jobsummaries.GetSectionFileName(section))
-	if err != nil {
-		return fmt.Errorf("failed to load previous objects: %w", err)
-	}
-
-	dataAsBytes, err := ga.appendResultObject(content, previousObjects)
-	if err != nil {
-		return fmt.Errorf("failed to parase markdown section objects: %w", err)
-	}
-
-	if err = jobsummaries.WriteFile(dataAsBytes, jobsummaries.GetSectionFileName(section)); err != nil {
-		return fmt.Errorf("failed to write aggregated data to file: %w", err)
-	}
-
-	markdown, err := ga.renderContentToMarkdown(dataAsBytes)
-	if err != nil {
-		return fmt.Errorf("failed to render markdown :%w", err)
-	}
-
-	if err = jobsummaries.WriteMarkdownToFileSystem(markdown, ga.GetSectionTitle(), section); err != nil {
-		return fmt.Errorf("failed to save markdown to file system")
-	}
-	return
-}
-
-func (ga *GithubSummaryBpImpl) GetSectionTitle() string {
-	return "📦 Build Info published to Artifactory by this job"
+	return jobsummaries.CreatSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
 }
 
 // Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
@@ -73,7 +46,7 @@ func (ga *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown
 	// Generate a string that represents a Markdown table
 	var markdownBuilder strings.Builder
 	if len(ga.Builds) > 0 {
-		if _, err = markdownBuilder.WriteString(ga.BuildInfoTable()); err != nil {
+		if _, err = markdownBuilder.WriteString(ga.buildInfoTable()); err != nil {
 			return
 		}
 	}
@@ -81,7 +54,7 @@ func (ga *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown
 
 }
 
-func (ga *GithubSummaryBpImpl) BuildInfoTable() string {
+func (ga *GithubSummaryBpImpl) buildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString("\n\n| 🔢 Build Info | 🕒 Timestamp | \n")

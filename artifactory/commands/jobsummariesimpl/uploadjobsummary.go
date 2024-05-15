@@ -25,36 +25,8 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-// RecordResult Appends the result to the file system and generates a section markdown file from the accumulated data.
 func (ga *GithubSummaryRtUploadImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
-
-	previousObjects, err := jobsummaries.LoadFile(jobsummaries.GetSectionFileName(section))
-	if err != nil {
-		return fmt.Errorf("failed to load previous objects: %w", err)
-	}
-
-	dataAsBytes, err := ga.appendResultObject(content, previousObjects)
-	if err != nil {
-		return fmt.Errorf("failed to parase markdown section objects: %w", err)
-	}
-
-	if err = jobsummaries.WriteFile(dataAsBytes, jobsummaries.GetSectionFileName(section)); err != nil {
-		return fmt.Errorf("failed to write aggregated data to file: %w", err)
-	}
-
-	markdown, err := ga.renderContentToMarkdown(dataAsBytes)
-	if err != nil {
-		return fmt.Errorf("failed to render markdown :%w", err)
-	}
-
-	if err = jobsummaries.WriteMarkdownToFileSystem(markdown, ga.GetSectionTitle(), section); err != nil {
-		return fmt.Errorf("failed to save markdown to file system")
-	}
-	return
-}
-
-func (ga *GithubSummaryRtUploadImpl) GetSectionTitle() string {
-	return "📁 Files uploaded to Artifactory by this job"
+	return jobsummaries.CreatSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
 }
 
 func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {

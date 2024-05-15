@@ -41,8 +41,6 @@ type JobSummaryInterface interface {
 	// To ensure the Action can access the output file, you should create the file in the location specified by the
 	// JFROG_CLI_JOB_SUMMARY_HOME_DIR environment variable.
 	CreateSummaryMarkdown(content any, section MarkdownSection) error
-	// Get the section title in the final markdown file.
-	GetSectionTitle() string
 }
 
 type JobSummary struct {
@@ -53,10 +51,10 @@ type JobSummary struct {
 }
 
 const (
-	githubActionsEnv       = "GITHUB_ACTIONS"
-	JobSummaryDirName      = "jfrog-job-summary"
-	platformUrlEnv         = "JF_URL"
-	jobSummariesDirPathEnv = "JFROG_CLI_JOB_SUMMARY_HOME_DIR"
+	githubActionsEnv  = "GITHUB_ACTIONS"
+	JobSummaryDirName = "jfrog-job-summary"
+	platformUrlEnv    = "JF_URL"
+	HomeDirPath       = "JFROG_CLI_JOB_SUMMARY_HOME_DIR"
 )
 
 // NewJobSummaryImpl Attempt to create a new JobSummary object
@@ -75,6 +73,32 @@ func NewJobSummaryImpl(userImplementation JobSummaryInterface) (js *JobSummary, 
 		homeDirPath:         homedir,
 		PlatformUrl:         utils.AddTrailingSlashIfNeeded(os.Getenv(platformUrlEnv)),
 		JFrogProjectKey:     os.Getenv(coreutils.Project)}, nil
+}
+
+func CreatSummaryMarkdownBaseImpl(content any, section MarkdownSection, appendObjectsFunc func(interface{}, []byte) ([]byte, error), generateMarkdownFunc func([]byte) (string, error)) (err error) {
+	previousObjects, err := LoadFile(GetSectionFileName(section))
+	if err != nil {
+		return fmt.Errorf("failed to load previous objects: %w", err)
+	}
+
+	dataAsBytes, err := appendObjectsFunc(content, previousObjects)
+	if err != nil {
+		return fmt.Errorf("failed to parase markdown section objects: %w", err)
+	}
+
+	if err = WriteFile(dataAsBytes, GetSectionFileName(section)); err != nil {
+		return fmt.Errorf("failed to write aggregated data to file: %w", err)
+	}
+
+	markdown, err := generateMarkdownFunc(dataAsBytes)
+	if err != nil {
+		return fmt.Errorf("failed to render markdown :%w", err)
+	}
+
+	if err = WriteMarkdownToFileSystem(markdown, section); err != nil {
+		return fmt.Errorf("failed to save markdown to file system")
+	}
+	return
 }
 
 // Loads a file as bytes array from the file system from the job summaries directory
@@ -110,7 +134,7 @@ func WriteFile(objectAsBytes []byte, dataFileName string) error {
 	return err
 }
 
-func WriteMarkdownToFileSystem(markdown, sectionTitle string, section MarkdownSection) (err error) {
+func WriteMarkdownToFileSystem(markdown string, section MarkdownSection) (err error) {
 	homedDir, err := GetJobSummariesHomeDirPath()
 	if err != nil {
 		return
@@ -122,7 +146,7 @@ func WriteMarkdownToFileSystem(markdown, sectionTitle string, section MarkdownSe
 	if err != nil {
 		return
 	}
-	if _, err = file.WriteString(fmt.Sprintf("\n<details open>\n\n<summary>  %s </summary><p></p> \n\n %s \n\n</details>\n", sectionTitle, markdown)); err != nil {
+	if _, err = file.WriteString(markdown); err != nil {
 		return
 	}
 	return
@@ -141,7 +165,7 @@ func GetSectionFileName(section MarkdownSection) string {
 // Notice that when you set the home directory to make sure it is scoped per job,
 // to avoid conflicts between different jobs.
 func GetJobSummariesHomeDirPath() (homeDir string, err error) {
-	userDefinedHomeDir := os.Getenv(jobSummariesDirPathEnv)
+	userDefinedHomeDir := os.Getenv(HomeDirPath)
 	if userDefinedHomeDir != "" {
 		return filepath.Join(userDefinedHomeDir, JobSummaryDirName), nil
 	}

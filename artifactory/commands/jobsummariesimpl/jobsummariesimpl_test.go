@@ -35,7 +35,7 @@ func TestBuildInfoTable(t *testing.T) {
 		},
 	}
 	expected := "\n\n| 🔢 Build Info | 🕒 Timestamp | \n|---------|------------| \n| [buildName / 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 12:47:20 |\n\n\n"
-	assert.Equal(t, expected, gh.BuildInfoTable())
+	assert.Equal(t, expected, gh.buildInfoTable())
 }
 
 func TestParseBuildTime(t *testing.T) {

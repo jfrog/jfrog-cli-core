@@ -2,6 +2,7 @@ package jobsummariesimpl
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -46,4 +47,46 @@ func TestParseBuildTime(t *testing.T) {
 	expected = "N/A"
 	actual = parseBuildTime("")
 	assert.Equal(t, expected, actual)
+}
+
+func TestUploadFilesMarkdown(t *testing.T) {
+	ga := &GithubSummaryRtUploadImpl{
+		uploadTree:        utils.NewFileTree(),
+		uploadedArtifacts: ResultsWrapper{},
+		PlatformUrl:       "https://myplatform.com/",
+		JfrogProjectKey:   "myProject",
+	}
+
+	content := []byte(`{
+    "results": [
+        {
+            "sourcePath": "testdata/a/b/b2.in",
+            "targetPath": "project-testRepo/b2.in",
+            "rtUrl": "https://platform.jfrog.io/artifactory/"
+        },
+        {
+            "sourcePath": "testdata/a/b/b3.in",
+            "targetPath": "project-testRepo/b3.in",
+            "rtUrl": "https://platform.jfrog.io/artifactory/"
+        },
+        {
+            "sourcePath": "testdata/a/b/b1.in",
+            "targetPath": "project-testRepo/b1.in",
+            "rtUrl": "https://platform.jfrog.io/artifactory/"
+        }
+    ]
+}`)
+
+	markdown, err := ga.renderContentToMarkdown(content)
+	assert.Nil(t, err)
+	expected := `
+<pre>
+📦 project-testRepo
+├── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/b1.in/?projectKey=myProject target="_blank">b1.in</a>
+├── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/b2.in/?projectKey=myProject target="_blank">b2.in</a>
+└── 📄 <a href=https://myplatform.com/ui/repos/tree/General/project-testRepo/b3.in/?projectKey=myProject target="_blank">b3.in</a>
+</pre>
+
+`
+	assert.Equal(t, expected, markdown)
 }

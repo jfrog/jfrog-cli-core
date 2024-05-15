@@ -18,7 +18,6 @@ func (ga *GithubSummaryBpImpl) CreateSummaryMarkdown(content any, section jobsum
 	return jobsummaries.CreatSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
 }
 
-// Implement this function to accept an object you'd like to save into the file system as an array form of the object to allow aggregation
 func (ga *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
 	build, ok := currentResult.(*buildInfo.BuildInfo)
 	if !ok {

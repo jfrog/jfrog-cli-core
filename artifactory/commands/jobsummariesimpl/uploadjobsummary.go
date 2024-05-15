@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
+	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -35,7 +37,7 @@ func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (ma
 	}
 	var markdownBuilder strings.Builder
 	if ga.uploadTree.String() != "" {
-		if _, err = markdownBuilder.WriteString("<pre>\n" + ga.uploadTree.String() + "</pre>\n\n"); err != nil {
+		if _, err = markdownBuilder.WriteString("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n"); err != nil {
 			return
 		}
 	}
@@ -65,7 +67,6 @@ func (ga *GithubSummaryRtUploadImpl) appendResultObject(currentResult interface{
 	return json.Marshal(ga.uploadedArtifacts)
 }
 
-// Reads the result file and generates a file tree object.
 func (ga *GithubSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err error) {
 	currentResults, ok := content.([]byte)
 	if !ok {
@@ -75,6 +76,11 @@ func (ga *GithubSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err
 	if err = json.Unmarshal(currentResults, &currentUpload); err != nil {
 		return
 	}
+
+	sort.Slice(currentUpload.Results, func(i, j int) bool {
+		return filepath.Base(currentUpload.Results[i].SourcePath) < filepath.Base(currentUpload.Results[j].SourcePath)
+	})
+
 	ga.uploadTree = utils.NewFileTree()
 	for _, b := range currentUpload.Results {
 		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))

@@ -62,8 +62,8 @@ func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (ma
 		return "", fmt.Errorf("failed while creating file tree: %w", err)
 	}
 	var markdownBuilder strings.Builder
-	if ga.uploadTree.String(false) != "" {
-		if _, err = markdownBuilder.WriteString("<pre>\n" + ga.uploadTree.String(true) + "</pre>\n\n"); err != nil {
+	if ga.uploadTree.String() != "" {
+		if _, err = markdownBuilder.WriteString("<pre>\n" + ga.uploadTree.String() + "</pre>\n\n"); err != nil {
 			return
 		}
 	}

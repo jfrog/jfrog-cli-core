@@ -75,8 +75,15 @@ func NewJobSummaryImpl(userImplementation JobSummaryInterface) (js *JobSummary, 
 		JFrogProjectKey:     os.Getenv(coreutils.Project)}, nil
 }
 
+// This function is designed to be used as a guide for implementing the JobSummaryInterface.
+//
+// The function takes four parameters:
+//   - content: the data that needs to be included in the markdown.
+//   - section: the MarkdownSection of the markdown that the content belongs to.
+//   - appendObjectsFunc: should handle how the new content is appended to the existing content, if it exists.
+//   - generateMarkdownFunc: handles how the data (the result of appendObjectsFunc) is converted into a markdown string.
 func CreatSummaryMarkdownBaseImpl(content any, section MarkdownSection, appendObjectsFunc func(interface{}, []byte) ([]byte, error), generateMarkdownFunc func([]byte) (string, error)) (err error) {
-	previousObjects, err := LoadFile(GetSectionFileName(section))
+	previousObjects, err := loadFile(getSectionDataFileName(section))
 	if err != nil {
 		return fmt.Errorf("failed to load previous objects: %w", err)
 	}
@@ -86,7 +93,7 @@ func CreatSummaryMarkdownBaseImpl(content any, section MarkdownSection, appendOb
 		return fmt.Errorf("failed to parase markdown section objects: %w", err)
 	}
 
-	if err = WriteFile(dataAsBytes, GetSectionFileName(section)); err != nil {
+	if err = writeFile(dataAsBytes, getSectionDataFileName(section)); err != nil {
 		return fmt.Errorf("failed to write aggregated data to file: %w", err)
 	}
 
@@ -95,14 +102,30 @@ func CreatSummaryMarkdownBaseImpl(content any, section MarkdownSection, appendOb
 		return fmt.Errorf("failed to render markdown :%w", err)
 	}
 
-	if err = WriteMarkdownToFileSystem(markdown, section); err != nil {
+	if err = writeMarkdownToFileSystem(markdown, section); err != nil {
 		return fmt.Errorf("failed to save markdown to file system")
 	}
 	return
 }
 
+// Returning the home directory path for the job summaries if set by the user
+// Notice that when you set the home directory to make sure it is scoped per job,
+// to avoid conflicts between different jobs.
+func GetJobSummariesHomeDirPath() (homeDir string, err error) {
+	userDefinedHomeDir := os.Getenv(HomeDirPath)
+	if userDefinedHomeDir != "" {
+		return filepath.Join(userDefinedHomeDir, JobSummaryDirName), nil
+	}
+	return "", fmt.Errorf("failed to get jobs summaries working dir path, please set JFROG_CLI_JOB_SUMMARY_HOME_DIR")
+}
+
+// Check for supported CI runners, currently only GitHub Actions is supported.
+func IsJobSummaryCISupportedRunner() bool {
+	return os.Getenv(githubActionsEnv) == "true"
+}
+
 // Loads a file as bytes array from the file system from the job summaries directory
-func LoadFile(fileName string) ([]byte, error) {
+func loadFile(fileName string) ([]byte, error) {
 	homeDir, err := GetJobSummariesHomeDirPath()
 	if err != nil {
 		return nil, err
@@ -118,7 +141,7 @@ func LoadFile(fileName string) ([]byte, error) {
 }
 
 // Write data to a file as byte array in the job summaries directory
-func WriteFile(objectAsBytes []byte, dataFileName string) error {
+func writeFile(objectAsBytes []byte, dataFileName string) error {
 	homeDir, err := GetJobSummariesHomeDirPath()
 	if err != nil {
 		return err
@@ -134,7 +157,7 @@ func WriteFile(objectAsBytes []byte, dataFileName string) error {
 	return err
 }
 
-func WriteMarkdownToFileSystem(markdown string, section MarkdownSection) (err error) {
+func writeMarkdownToFileSystem(markdown string, section MarkdownSection) (err error) {
 	homedDir, err := GetJobSummariesHomeDirPath()
 	if err != nil {
 		return
@@ -152,24 +175,8 @@ func WriteMarkdownToFileSystem(markdown string, section MarkdownSection) (err er
 	return
 }
 
-// Check for supported CI runners, currently only GitHub Actions is supported.
-func IsJobSummaryCISupportedRunner() bool {
-	return os.Getenv(githubActionsEnv) == "true"
-}
-
-func GetSectionFileName(section MarkdownSection) string {
+func getSectionDataFileName(section MarkdownSection) string {
 	return string(section) + "-data.json"
-}
-
-// Returning the home directory path for the job summaries if set by the user
-// Notice that when you set the home directory to make sure it is scoped per job,
-// to avoid conflicts between different jobs.
-func GetJobSummariesHomeDirPath() (homeDir string, err error) {
-	userDefinedHomeDir := os.Getenv(HomeDirPath)
-	if userDefinedHomeDir != "" {
-		return filepath.Join(userDefinedHomeDir, JobSummaryDirName), nil
-	}
-	return "", fmt.Errorf("failed to get jobs summaries working dir path, please set JFROG_CLI_JOB_SUMMARY_HOME_DIR")
 }
 
 func prepareFileSystem() (homeDir string, err error) {

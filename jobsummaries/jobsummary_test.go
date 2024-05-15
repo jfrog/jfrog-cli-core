@@ -21,6 +21,7 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 	}()
 	// Create the job summaries home directory
 	_, err = prepareFileSystem()
+	assert.NoError(t, err)
 
 	// Mock appendObjectsFunc
 	mockAppendObjectsFunc := func(content interface{}, previousObjects []byte) ([]byte, error) {

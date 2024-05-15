@@ -22,7 +22,7 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 	// Create the job summaries home directory
 	homedir, err := prepareFileSystem()
 	assert.NoError(t, err)
-	assert.Equal(t, homedir, path.Join(tempDir, "jfrog-job-summary"))
+	assert.Equal(t, homedir, path.Join(tempDir, JobSummaryDirName))
 
 	// Mock appendObjectsFunc
 	mockAppendObjectsFunc := func(content interface{}, previousObjects []byte) ([]byte, error) {
@@ -53,12 +53,14 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 }
 
 func TestGetJobSummariesHomeDirPath(t *testing.T) {
-	err := os.Setenv(HomeDirPathEnv, "/tmp")
+	basePath := "/tmp"
+	err := os.Setenv(HomeDirPathEnv, basePath)
 	defer func() {
 		assert.NoError(t, os.Unsetenv(HomeDirPathEnv))
 	}()
 	assert.NoError(t, err)
 	homeDir, err := GetJobSummariesHomeDirPath()
 	assert.NoError(t, err)
-	assert.Equal(t, "/tmp/jfrog-job-summary", homeDir)
+
+	assert.Equal(t, path.Join(basePath, JobSummaryDirName), homeDir)
 }

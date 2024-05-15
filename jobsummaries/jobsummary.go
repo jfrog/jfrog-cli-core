@@ -54,7 +54,7 @@ const (
 	githubActionsEnv  = "GITHUB_ACTIONS"
 	JobSummaryDirName = "jfrog-job-summary"
 	platformUrlEnv    = "JF_URL"
-	HomeDirPath       = "JFROG_CLI_JOB_SUMMARY_HOME_DIR"
+	HomeDirPathEnv    = "JFROG_CLI_JOB_SUMMARY_HOME_DIR"
 )
 
 // NewJobSummaryImpl Attempt to create a new JobSummary object
@@ -112,7 +112,7 @@ func CreatSummaryMarkdownBaseImpl(content any, section MarkdownSection, appendOb
 // Notice that when you set the home directory to make sure it is scoped per job,
 // to avoid conflicts between different jobs.
 func GetJobSummariesHomeDirPath() (homeDir string, err error) {
-	userDefinedHomeDir := os.Getenv(HomeDirPath)
+	userDefinedHomeDir := os.Getenv(HomeDirPathEnv)
 	if userDefinedHomeDir != "" {
 		return filepath.Join(userDefinedHomeDir, JobSummaryDirName), nil
 	}

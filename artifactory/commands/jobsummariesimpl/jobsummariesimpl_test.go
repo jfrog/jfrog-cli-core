@@ -50,13 +50,14 @@ func TestParseBuildTime(t *testing.T) {
 }
 
 func TestUploadFilesMarkdown(t *testing.T) {
+	// Init
 	ga := &GithubSummaryRtUploadImpl{
 		uploadTree:        utils.NewFileTree(),
 		uploadedArtifacts: ResultsWrapper{},
 		PlatformUrl:       "https://myplatform.com/",
 		JfrogProjectKey:   "myProject",
 	}
-
+	// Mock raw data input
 	content := []byte(`{
     "results": [
         {
@@ -77,8 +78,10 @@ func TestUploadFilesMarkdown(t *testing.T) {
     ]
 }`)
 
+	// Generate markdown from content
 	markdown, err := ga.renderContentToMarkdown(content)
 	assert.Nil(t, err)
+	// Verify markdown
 	expected := `
 <pre>
 📦 project-testRepo

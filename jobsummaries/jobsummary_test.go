@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -59,8 +60,10 @@ func TestGetJobSummariesHomeDirPath(t *testing.T) {
 		assert.NoError(t, os.Unsetenv(HomeDirPathEnv))
 	}()
 	assert.NoError(t, err)
+
 	homeDir, err := GetJobSummariesHomeDirPath()
 	assert.NoError(t, err)
 
-	assert.Equal(t, path.Join(basePath, JobSummaryDirName), homeDir)
+	expected := filepath.Join(basePath, JobSummaryDirName)
+	assert.Equal(t, expected, homeDir)
 }

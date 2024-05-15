@@ -239,7 +239,7 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 
 func recordJobSummaryData(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
 	buildInfo.BuildUrl = buildLink
-	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryBpImpl{})
+	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.JobSummaryBpImpl{})
 	if err != nil || jobSummary == nil {
 		return
 	}

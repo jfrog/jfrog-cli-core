@@ -2,8 +2,6 @@ package jobsummaries
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -45,15 +43,13 @@ type JobSummaryInterface interface {
 
 type JobSummary struct {
 	JobSummaryInterface
-	homeDirPath     string
-	PlatformUrl     string
-	JFrogProjectKey string
+	homeDirPath string
 }
 
 const (
 	githubActionsEnv  = "GITHUB_ACTIONS"
 	JobSummaryDirName = "jfrog-job-summary"
-	platformUrlEnv    = "JF_URL"
+	PlatformUrlEnv    = "JF_URL"
 	HomeDirPathEnv    = "JFROG_CLI_JOB_SUMMARY_HOME_DIR"
 )
 
@@ -71,8 +67,7 @@ func NewJobSummaryImpl(userImplementation JobSummaryInterface) (js *JobSummary, 
 	return &JobSummary{
 		JobSummaryInterface: userImplementation,
 		homeDirPath:         homedir,
-		PlatformUrl:         utils.AddTrailingSlashIfNeeded(os.Getenv(platformUrlEnv)),
-		JFrogProjectKey:     os.Getenv(coreutils.Project)}, nil
+	}, nil
 }
 
 // This function is designed to be used as a guide for implementing the JobSummaryInterface.

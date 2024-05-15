@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/jobsummariesimpl"
 	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
@@ -281,7 +282,10 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 }
 
 func recordUploadJobSummary(summary *rtServicesUtils.OperationSummary) (err error) {
-	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.GithubSummaryRtUploadImpl{})
+	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.JobSummaryRtUploadImpl{
+		PlatformUrl:     clientUtils.AddTrailingSlashIfNeeded(os.Getenv(jobsummaries.PlatformUrlEnv)),
+		JfrogProjectKey: os.Getenv(coreutils.Project),
+	})
 	if err != nil || jobSummary == nil {
 		return
 	}

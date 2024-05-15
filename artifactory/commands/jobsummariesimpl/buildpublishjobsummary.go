@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-type GithubSummaryBpImpl struct {
+type JobSummaryBpImpl struct {
 	Builds []*buildInfo.BuildInfo
 }
 
-func (ga *GithubSummaryBpImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
+func (ga *JobSummaryBpImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
 	return jobsummaries.CreateSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
 }
 
-func (ga *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
+func (ga *JobSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
 	build, ok := currentResult.(*buildInfo.BuildInfo)
 	if !ok {
 		return nil, fmt.Errorf("failed to cast currentResult to buildInfo.BuildInfo")
@@ -36,7 +36,7 @@ func (ga *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, pre
 	return json.Marshal(builds)
 }
 
-func (ga *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
+func (ga *JobSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
 	// Unmarshal the data into an array of build info objects
 	if err = json.Unmarshal(content, &ga.Builds); err != nil {
 		log.Error("Failed to unmarshal data: ", err)
@@ -53,10 +53,10 @@ func (ga *GithubSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown
 
 }
 
-func (ga *GithubSummaryBpImpl) buildInfoTable() string {
+func (ga *JobSummaryBpImpl) buildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n| 🔢 Build Info | 🕒 Timestamp | \n")
+	tableBuilder.WriteString("\n\n| 📦 Build Info | 🕒 Timestamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range ga.Builds {
 		buildTime := parseBuildTime(build.Started)

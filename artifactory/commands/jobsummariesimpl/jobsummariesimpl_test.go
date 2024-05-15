@@ -8,7 +8,7 @@ import (
 )
 
 func TestBuildUiUrl(t *testing.T) {
-	gh := &GithubSummaryRtUploadImpl{
+	gh := &JobSummaryRtUploadImpl{
 		PlatformUrl:     "https://myplatform.com/",
 		JfrogProjectKey: "myProject",
 	}
@@ -16,7 +16,7 @@ func TestBuildUiUrl(t *testing.T) {
 	actual := gh.buildUiUrl("myPath")
 	assert.Equal(t, expected, actual)
 
-	gh = &GithubSummaryRtUploadImpl{
+	gh = &JobSummaryRtUploadImpl{
 		PlatformUrl:     "https://myplatform.com/",
 		JfrogProjectKey: "",
 	}
@@ -26,7 +26,7 @@ func TestBuildUiUrl(t *testing.T) {
 }
 
 func TestBuildInfoTable(t *testing.T) {
-	gh := &GithubSummaryBpImpl{}
+	gh := &JobSummaryBpImpl{}
 	gh.Builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -51,7 +51,7 @@ func TestParseBuildTime(t *testing.T) {
 
 func TestUploadFilesMarkdown(t *testing.T) {
 	// Init
-	ga := &GithubSummaryRtUploadImpl{
+	ga := &JobSummaryRtUploadImpl{
 		uploadTree:        utils.NewFileTree(),
 		uploadedArtifacts: ResultsWrapper{},
 		PlatformUrl:       "https://myplatform.com/",

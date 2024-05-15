@@ -82,7 +82,7 @@ func NewJobSummaryImpl(userImplementation JobSummaryInterface) (js *JobSummary, 
 //   - section: the MarkdownSection of the markdown that the content belongs to.
 //   - appendObjectsFunc: should handle how the new content is appended to the existing content, if it exists.
 //   - generateMarkdownFunc: handles how the data (the result of appendObjectsFunc) is converted into a markdown string.
-func CreatSummaryMarkdownBaseImpl(content any, section MarkdownSection, appendObjectsFunc func(interface{}, []byte) ([]byte, error), generateMarkdownFunc func([]byte) (string, error)) (err error) {
+func CreateSummaryMarkdownBaseImpl(content any, section MarkdownSection, appendObjectsFunc func(interface{}, []byte) ([]byte, error), generateMarkdownFunc func([]byte) (string, error)) (err error) {
 	previousObjects, err := loadFile(getSectionDataFileName(section))
 	if err != nil {
 		return fmt.Errorf("failed to load previous objects: %w", err)

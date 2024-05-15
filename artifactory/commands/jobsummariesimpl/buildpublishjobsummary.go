@@ -15,7 +15,7 @@ type GithubSummaryBpImpl struct {
 }
 
 func (ga *GithubSummaryBpImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
-	return jobsummaries.CreatSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
+	return jobsummaries.CreateSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
 }
 
 func (ga *GithubSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {

@@ -36,8 +36,8 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 	testData := "testData"
 	testSection := MarkdownSection("testSection")
 
-	// Call CreatSummaryMarkdownBaseImpl
-	err = CreatSummaryMarkdownBaseImpl(testData, testSection, mockAppendObjectsFunc, mockGenerateMarkdownFunc)
+	// Call CreateSummaryMarkdownBaseImpl
+	err = CreateSummaryMarkdownBaseImpl(testData, testSection, mockAppendObjectsFunc, mockGenerateMarkdownFunc)
 	assert.NoError(t, err)
 
 	// Check if the data file was created and contains the expected data

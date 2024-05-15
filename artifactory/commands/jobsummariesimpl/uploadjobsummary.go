@@ -26,7 +26,7 @@ type ResultsWrapper struct {
 }
 
 func (ga *GithubSummaryRtUploadImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
-	return jobsummaries.CreatSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
+	return jobsummaries.CreateSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
 }
 
 func (ga *GithubSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {

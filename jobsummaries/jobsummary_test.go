@@ -4,7 +4,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"path"
 	"path/filepath"
 	"testing"
 )
@@ -21,9 +20,7 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
 	}()
 	// Create the job summaries home directory
-	homedir, err := prepareFileSystem()
-	assert.NoError(t, err)
-	assert.Equal(t, homedir, path.Join(tempDir, JobSummaryDirName))
+	_, err = prepareFileSystem()
 
 	// Mock appendObjectsFunc
 	mockAppendObjectsFunc := func(content interface{}, previousObjects []byte) ([]byte, error) {

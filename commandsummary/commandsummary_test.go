@@ -1,4 +1,4 @@
-package jobsummaries
+package commandsummary
 
 import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -12,10 +12,10 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 	// Prepare test env
 	tempDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	assert.NoError(t, os.Setenv(HomeDirPathEnv, tempDir))
+	assert.NoError(t, os.Setenv(OutputDir, tempDir))
 	assert.NoError(t, os.Setenv(githubActionsEnv, "true"))
 	defer func() {
-		assert.NoError(t, os.Unsetenv(HomeDirPathEnv))
+		assert.NoError(t, os.Unsetenv(OutputDir))
 		assert.NoError(t, os.Unsetenv(githubActionsEnv))
 		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
 	}()
@@ -53,13 +53,13 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 
 func TestGetJobSummariesHomeDirPath(t *testing.T) {
 	basePath := "/tmp"
-	err := os.Setenv(HomeDirPathEnv, basePath)
+	err := os.Setenv(OutputDir, basePath)
 	defer func() {
-		assert.NoError(t, os.Unsetenv(HomeDirPathEnv))
+		assert.NoError(t, os.Unsetenv(OutputDir))
 	}()
 	assert.NoError(t, err)
 
-	homeDir, err := GetJobSummariesHomeDirPath()
+	homeDir, err := getCommandSummariesBaseDirPath()
 	assert.NoError(t, err)
 
 	expected := filepath.Join(basePath, JobSummaryDirName)

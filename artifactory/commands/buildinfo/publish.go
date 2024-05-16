@@ -3,8 +3,8 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/jobsummariesimpl"
-	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 	"net/url"
 	"strconv"
 	"strings"
@@ -141,7 +141,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	err = recordJobSummaryData(buildInfo, buildLink)
+	err = recordCommandSummary(buildInfo, buildLink)
 	if err != nil {
 		return err
 	}
@@ -237,13 +237,13 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 	return strconv.Itoa(latestBuildNumber), nil
 }
 
-func recordJobSummaryData(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
+func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
 	buildInfo.BuildUrl = buildLink
-	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.JobSummaryBpImpl{})
-	if err != nil || jobSummary == nil {
+	buildInfoSummary, err := commandsummary.NewCommandSummary(commandssummaries.NewBuildInfoSummary())
+	if err != nil || buildInfoSummary == nil {
 		return
 	}
-	if err = jobSummary.CreateSummaryMarkdown(buildInfo, jobsummaries.BuildPublishSection); err != nil {
+	if err = buildInfoSummary.CreateMarkdown(buildInfo, "build-info"); err != nil {
 		return
 	}
 	return

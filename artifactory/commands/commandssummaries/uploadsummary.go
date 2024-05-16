@@ -1,14 +1,13 @@
-package jobsummariesimpl
+package commandssummaries
 
 import (
 	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
-	"strings"
+	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 )
 
-type JobSummaryRtUploadImpl struct {
+type UploadSummary struct {
 	uploadTree        *utils.FileTree // Upload a tree object to generate markdown
 	uploadedArtifacts ResultsWrapper
 	PlatformUrl       string
@@ -25,24 +24,25 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func (ga *JobSummaryRtUploadImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
-	return jobsummaries.CreateSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
+func (ga *UploadSummary) CreateMarkdown(content any, section string) (err error) {
+	return commandsummary.CreateSummaryMarkdownBaseImpl(content, section, ga.renderContentToMarkdown)
 }
 
-func (ga *JobSummaryRtUploadImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
-	if err = ga.generateUploadedFilesTree(content); err != nil {
-		return "", fmt.Errorf("failed while creating file tree: %w", err)
-	}
-	var markdownBuilder strings.Builder
-	if ga.uploadTree.String() != "" {
-		if _, err = markdownBuilder.WriteString("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n"); err != nil {
-			return
-		}
-	}
-	return markdownBuilder.String(), nil
+func (ga *UploadSummary) renderContentToMarkdown(filePaths []string) (markdown string, err error) {
+	//if err = ga.generateUploadedFilesTree(content); err != nil {
+	//	return "", fmt.Errorf("failed while creating file tree: %w", err)
+	//}
+	//var markdownBuilder strings.Builder
+	//if ga.uploadTree.String() != "" {
+	//	if _, err = markdownBuilder.WriteString("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n"); err != nil {
+	//		return
+	//	}
+	//}
+	//return markdownBuilder.String(), nil
+	return
 }
 
-func (ga *JobSummaryRtUploadImpl) appendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
+func (ga *UploadSummary) appendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
 	currentResults, ok := currentResult.([]byte)
 	if !ok {
 		return nil, fmt.Errorf("failed to convert currentResult to []byte")
@@ -65,7 +65,7 @@ func (ga *JobSummaryRtUploadImpl) appendResultObject(currentResult interface{}, 
 	return json.Marshal(ga.uploadedArtifacts)
 }
 
-func (ga *JobSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err error) {
+func (ga *UploadSummary) generateUploadedFilesTree(content any) (err error) {
 	rawInput, ok := content.([]byte)
 	if !ok {
 		return fmt.Errorf("failed to convert content to []byte")
@@ -82,7 +82,7 @@ func (ga *JobSummaryRtUploadImpl) generateUploadedFilesTree(content any) (err er
 	return
 }
 
-func (ga *JobSummaryRtUploadImpl) buildUiUrl(targetPath string) string {
+func (ga *UploadSummary) buildUiUrl(targetPath string) string {
 	template := "%sui/repos/tree/General/%s/?projectKey=%s"
 	return fmt.Sprintf(template, ga.PlatformUrl, targetPath, ga.JfrogProjectKey)
 }

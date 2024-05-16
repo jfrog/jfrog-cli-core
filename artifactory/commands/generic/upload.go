@@ -2,8 +2,8 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/jobsummariesimpl"
-	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 
@@ -158,7 +158,7 @@ func (uc *UploadCommand) upload() (err error) {
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
 
-			if err = recordUploadJobSummary(summary); err != nil {
+			if err = recordCommandSummary(summary); err != nil {
 				return
 			}
 		}
@@ -281,15 +281,15 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		BuildSpec()
 }
 
-func recordUploadJobSummary(summary *rtServicesUtils.OperationSummary) (err error) {
-	jobSummary, err := jobsummaries.NewJobSummaryImpl(&jobsummariesimpl.JobSummaryRtUploadImpl{
-		PlatformUrl:     clientUtils.AddTrailingSlashIfNeeded(os.Getenv(jobsummaries.PlatformUrlEnv)),
+func recordCommandSummary(summary *rtServicesUtils.OperationSummary) (err error) {
+	uploadSummary, err := commandsummary.NewCommandSummary(&commandssummaries.UploadSummary{
+		PlatformUrl:     clientUtils.AddTrailingSlashIfNeeded(os.Getenv(commandsummary.PlatformUrlEnv)),
 		JfrogProjectKey: os.Getenv(coreutils.Project),
 	})
-	if err != nil || jobSummary == nil {
+	if err != nil || uploadSummary == nil {
 		return
 	}
-	if err = jobSummary.CreateSummaryMarkdown(readDetailsFromReader(summary.TransferDetailsReader), jobsummaries.ArtifactsUploadSection); err != nil {
+	if err = uploadSummary.CreateMarkdown(readDetailsFromReader(summary.TransferDetailsReader), "upload"); err != nil {
 		return
 	}
 	return

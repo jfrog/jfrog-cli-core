@@ -1,47 +1,42 @@
-package jobsummariesimpl
+package commandssummaries
 
 import (
 	"encoding/json"
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/jobsummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 	"time"
 )
 
-type JobSummaryBpImpl struct {
+type BuildInfoSummary struct {
 	Builds []*buildInfo.BuildInfo
 }
 
-func (ga *JobSummaryBpImpl) CreateSummaryMarkdown(content any, section jobsummaries.MarkdownSection) (err error) {
-	return jobsummaries.CreateSummaryMarkdownBaseImpl(content, section, ga.appendResultObject, ga.renderContentToMarkdown)
+func NewBuildInfoSummary() *BuildInfoSummary {
+	return &BuildInfoSummary{make([]*buildInfo.BuildInfo, 0)}
 }
 
-func (ga *JobSummaryBpImpl) appendResultObject(currentResult interface{}, previousResults []byte) ([]byte, error) {
-	build, ok := currentResult.(*buildInfo.BuildInfo)
-	if !ok {
-		return nil, fmt.Errorf("failed to cast currentResult to buildInfo.BuildInfo")
-	}
-	// Unmarshal the data into an array of build info objects
-	var builds []*buildInfo.BuildInfo
-	if len(previousResults) > 0 {
-		err := json.Unmarshal(previousResults, &builds)
+func (ga *BuildInfoSummary) CreateMarkdown(commandSummary any, commandGroup string) (err error) {
+	return commandsummary.CreateSummaryMarkdownBaseImpl(commandSummary, commandGroup, ga.renderContentToMarkdown)
+}
+
+func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdown string, err error) {
+	for _, dataFile := range dataFiles {
+		data, err := fileutils.ReadFile(dataFile)
 		if err != nil {
-			return nil, err
+			return "", err
 		}
+		var current *buildInfo.BuildInfo
+		if err = json.Unmarshal(data, current); err != nil {
+			log.Error("Failed to unmarshal data: ", err)
+			return "", err
+		}
+		ga.Builds = append(ga.Builds, current)
 	}
-	// Append the new build info object to the array
-	builds = append(builds, build)
-	return json.Marshal(builds)
-}
 
-func (ga *JobSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown string, err error) {
-	// Unmarshal the data into an array of build info objects
-	if err = json.Unmarshal(content, &ga.Builds); err != nil {
-		log.Error("Failed to unmarshal data: ", err)
-		return
-	}
 	// Generate a string that represents a Markdown table
 	var markdownBuilder strings.Builder
 	if len(ga.Builds) > 0 {
@@ -53,7 +48,7 @@ func (ga *JobSummaryBpImpl) renderContentToMarkdown(content []byte) (markdown st
 
 }
 
-func (ga *JobSummaryBpImpl) buildInfoTable() string {
+func (ga *BuildInfoSummary) buildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString("\n\n| 📦 Build Info | 🕒 Timestamp | \n")

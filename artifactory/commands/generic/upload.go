@@ -285,21 +285,24 @@ func recordCommandSummary(summary *rtServicesUtils.OperationSummary) (err error)
 	if err != nil || uploadSummary == nil {
 		return
 	}
-	return uploadSummary.CreateMarkdown(readDetailsFromReader(summary.TransferDetailsReader))
+	data, err := readDetailsFromReader(summary.TransferDetailsReader)
+	if err != nil {
+		return
+	}
+	return uploadSummary.CreateMarkdown(data)
 }
 
 // Reads transfer details from the reader and return the content as bytes for further processing
-func readDetailsFromReader(reader *content.ContentReader) []byte {
-	var readContent []byte
+func readDetailsFromReader(reader *content.ContentReader) (readContent []byte, err error) {
 	if reader != nil {
 		for _, file := range reader.GetFilesPaths() {
 			// Read source file
 			sourceBytes, err := os.ReadFile(file)
 			if err != nil {
-				return nil
+				return
 			}
 			readContent = append(readContent, sourceBytes...)
 		}
 	}
-	return readContent
+	return
 }

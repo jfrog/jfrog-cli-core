@@ -173,3 +173,15 @@ func UnmarshalDataFiles(dataFiles []string, target interface{}) error {
 
 	return nil
 }
+
+func UnmarshalFromFilePath(dataFile string, target any) (err error) {
+	data, err := fileutils.ReadFile(dataFile)
+	if err != nil {
+		return
+	}
+	if err = json.Unmarshal(data, target); err != nil {
+		log.Error("Failed to unmarshal data: ", err)
+		return
+	}
+	return
+}

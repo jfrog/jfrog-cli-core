@@ -1,12 +1,9 @@
 package commandssummaries
 
 import (
-	"encoding/json"
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 	"time"
 )
@@ -24,17 +21,12 @@ func (ga *BuildInfoSummary) CreateMarkdown(commandSummary any) (err error) {
 }
 
 func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdown string, err error) {
-	for _, dataFile := range dataFiles {
-		data, err := fileutils.ReadFile(dataFile)
-		if err != nil {
-			return "", err
+	for _, path := range dataFiles {
+		var publishBuildInfo buildInfo.BuildInfo
+		if err = commandsummary.UnmarshalFromFilePath(path, &publishBuildInfo); err != nil {
+			return
 		}
-		var current *buildInfo.BuildInfo
-		if err = json.Unmarshal(data, &current); err != nil {
-			log.Error("Failed to unmarshal data: ", err)
-			return "", err
-		}
-		ga.Builds = append(ga.Builds, current)
+		ga.Builds = append(ga.Builds, &publishBuildInfo)
 	}
 
 	// Generate a string that represents a Markdown table

@@ -9,8 +9,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"reflect"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -105,7 +105,7 @@ func GetAllFilePaths(dirPath string) ([]string, error) {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() {
+		if !d.IsDir() && !strings.HasSuffix(d.Name(), ".md") {
 			filePaths = append(filePaths, path)
 		}
 		return nil
@@ -144,33 +144,6 @@ func createDirIfNotExists(homeDir string) error {
 	} else if err != nil {
 		return err
 	}
-	return nil
-}
-
-func UnmarshalDataFiles(dataFiles []string, target interface{}) error {
-	targetVal := reflect.ValueOf(target)
-	if targetVal.Kind() != reflect.Ptr || targetVal.Elem().Kind() != reflect.Slice {
-		return fmt.Errorf("target must be a pointer to a slice")
-	}
-	targetVal = targetVal.Elem()
-
-	for _, dataFile := range dataFiles {
-		data, err := fileutils.ReadFile(dataFile)
-		if err != nil {
-			return err
-		}
-
-		elemType := targetVal.Type().Elem()
-		elem := reflect.New(elemType)
-
-		if err = json.Unmarshal(data, elem.Interface()); err != nil {
-			log.Error("Failed to unmarshal data: ", err)
-			return err
-		}
-
-		targetVal.Set(reflect.Append(targetVal, elem.Elem()))
-	}
-
 	return nil
 }
 

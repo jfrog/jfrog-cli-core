@@ -5,43 +5,35 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
+type mockCommandSummary struct {
+	CommandSummaryInterface
+}
+
+type BasicStruct struct {
+	Field1 string
+	Field2 int
+}
+
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+	return "mockMarkdown", nil
+}
+
 func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
-	// Prepare test env
-	tempDir, err := fileutils.CreateTempDir()
+	cs, cleanUp, err := prepareTest(t)
 	defer func() {
-		err = fileutils.RemoveTempDir(tempDir)
+		cleanUp(t)
 	}()
 	assert.NoError(t, err)
-	assert.NoError(t, os.Setenv(OutputDirPathEnv, tempDir))
-	defer func() {
-		assert.NoError(t, os.Unsetenv(OutputDirPathEnv))
-		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
-	}()
-	// Create the job summaries home directory
-	err = prepareFileSystem()
+
+	// Call GenerateMarkdownFromFiles
+	err = cs.CreateMarkdown("someData")
 	assert.NoError(t, err)
-
-	// Mock generateMarkdownFunc
-	mockGenerateMarkdownFunc := func(filePaths []string) (string, error) {
-		return "mockMarkdown", nil
-	}
-
-	subDirName := "testCommand"
-	// Call CreateMarkdown
-	err = CreateMarkdown("someData", subDirName, mockGenerateMarkdownFunc)
-	assert.NoError(t, err)
-
-	// Verify that a directory subDirName exists
-	testDir := filepath.Join(getOutputDirPath(), subDirName)
-	_, err = os.Stat(testDir)
-	assert.NoError(t, err, "Directory 'test' does not exist")
 
 	// Verify that the directory contains two files
-	files, err := os.ReadDir(testDir)
+	files, err := os.ReadDir(cs.summaryOutputPath)
 	assert.NoError(t, err, "Failed to read directory 'test'")
 	assert.Equal(t, 2, len(files), "Directory 'test' does not contain exactly two files")
 
@@ -54,33 +46,14 @@ func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
 		}
 	}
 	assert.True(t, containsMarkdown, "File 'markdown.md' does not exist in the sub directory")
-
 }
 
-func TestGetJobSummariesHomeDirPath(t *testing.T) {
-	basePath := "/tmp"
-	err := os.Setenv(OutputDirPathEnv, basePath)
+func TestDataPersistence(t *testing.T) {
+	cs, cleanUp, err := prepareTest(t)
 	defer func() {
-		assert.NoError(t, os.Unsetenv(OutputDirPathEnv))
+		cleanUp(t)
 	}()
 	assert.NoError(t, err)
-
-	expected := filepath.Join(basePath, OutputDirName)
-	assert.Equal(t, expected, getOutputDirPath())
-}
-
-// Tests the saves & loading different types of objects.
-func TestDataHandle(t *testing.T) {
-	// Prepare test environment
-	tempDir, err := fileutils.CreateTempDir()
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
-	}()
-	assert.NoError(t, os.Setenv(OutputDirPathEnv, tempDir))
-	defer func() {
-		assert.NoError(t, os.Unsetenv(OutputDirPathEnv))
-	}()
 
 	// Define test cases
 	testCases := []struct {
@@ -112,25 +85,20 @@ func TestDataHandle(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Save data to file
-			err = saveDataToFileSystem(tc.originalData, tc.dirName)
+			err = cs.saveDataToFileSystem(tc.originalData)
 			assert.NoError(t, err)
 
-			// Load data from file
-			files, err := os.ReadDir(filepath.Join(getOutputDirPath(), tc.dirName))
+			// Verify file has been saved
+			dataFiles, err := cs.getAllDataFilesPaths()
 			assert.NoError(t, err)
-			assert.NotEqual(t, 0, len(files))
+			assert.NotEqual(t, 0, len(dataFiles))
 
-			loadedData, err := unmarshalData(tc.originalData, filepath.Join(getOutputDirPath(), tc.dirName, files[0].Name()))
+			// Verify that data has not been corrupted
+			loadedData, err := unmarshalData(tc.originalData, dataFiles[0])
 			assert.NoError(t, err)
 			assert.Equal(t, tc.originalData, loadedData)
 		})
 	}
-}
-
-// Define a basic struct
-type BasicStruct struct {
-	Field1 string
-	Field2 int
 }
 
 func unmarshalData(expected interface{}, filePath string) (interface{}, error) {
@@ -154,4 +122,21 @@ func unmarshalData(expected interface{}, filePath string) (interface{}, error) {
 	default:
 		return nil, fmt.Errorf("unsupported data type: %T", expected)
 	}
+}
+
+func prepareTest(t *testing.T) (cs *CommandSummary, cleanUp func(t2 *testing.T), err error) {
+	// Prepare test env
+	tempDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	// Set env
+	assert.NoError(t, os.Setenv(OutputDirPathEnv, tempDir))
+	// Create the job summaries home directory
+	cs, err = New(&mockCommandSummary{}, "testsCommands")
+	assert.NoError(t, err)
+
+	cleanUp = func(t2 *testing.T) {
+		assert.NoError(t2, os.Unsetenv(OutputDirPathEnv))
+		assert.NoError(t2, fileutils.RemoveTempDir(tempDir))
+	}
+	return
 }

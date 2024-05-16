@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"os"
 )
 
 type UploadSummary struct {
@@ -23,18 +26,21 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func (ga *UploadSummary) CreateMarkdown(data any) (err error) {
-	return commandsummary.CreateMarkdown(data, "upload", ga.renderContentToMarkdown)
+func NewUploadSummary() *UploadSummary {
+	return &UploadSummary{
+		PlatformUrl:     clientUtils.AddTrailingSlashIfNeeded(os.Getenv(commandsummary.PlatformUrlEnv)),
+		JfrogProjectKey: os.Getenv(coreutils.Project),
+	}
 }
 
-func (ga *UploadSummary) renderContentToMarkdown(filePaths []string) (markdown string, err error) {
-	if err = ga.loadResults(filePaths); err != nil {
+func (ga *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+	if err = ga.loadResults(dataFilePaths); err != nil {
 		return
 	}
 	// Builds the file tree from the loaded results
 	ga.generateFileTree()
 	// Wrap the file tree in a <pre> tag to preserve spaces
-	markdown = fmt.Sprintf("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n")
+	finalMarkdown = fmt.Sprintf("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n")
 	return
 }
 

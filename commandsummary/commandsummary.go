@@ -14,12 +14,7 @@ import (
 )
 
 type CommandSummaryInterface interface {
-	CreateMarkdown(content any) error
-}
-
-type CommandSummary struct {
-	CommandSummaryInterface
-	outputDirPath string
+	GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error)
 }
 
 const (
@@ -28,36 +23,22 @@ const (
 	OutputDirPathEnv = "JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR"
 )
 
-func NewCommandSummary(userImplementation CommandSummaryInterface) (js *CommandSummary, err error) {
+type CommandSummary struct {
+	CommandSummaryInterface
+	summaryOutputPath string
+	commandsName      string
+}
+
+func New(userImplementation CommandSummaryInterface, commandsName string) (cs *CommandSummary, err error) {
 	if !ArePrerequisitesMet() {
 		return nil, nil
 	}
-	if err = prepareFileSystem(); err != nil {
-		return
-	}
-	return &CommandSummary{
+	cs = &CommandSummary{
 		CommandSummaryInterface: userImplementation,
-		outputDirPath:           getOutputDirPath(),
-	}, nil
-}
-
-// This function stores the current data on the file system.
-// It then invokes the generateMarkdown function on all existing data files.
-// Finally, it saves the generated markdown file to the file system.
-func CreateMarkdown(data any, subDir string, generateMarkdownFunc func(dataFilePaths []string) (finalMarkdown string, mkError error)) (err error) {
-	if err = saveDataToFileSystem(data, subDir); err != nil {
+		commandsName:            commandsName,
+	}
+	if err = cs.prepareFileSystem(); err != nil {
 		return
-	}
-	dataFilesPaths, err := GetAllDataFilesPaths(path.Join(getOutputDirPath(), subDir))
-	if err != nil {
-		return fmt.Errorf("failed to load data files from direcoty %s, with error:%w ", subDir, err)
-	}
-	markdown, err := generateMarkdownFunc(dataFilesPaths)
-	if err != nil {
-		return fmt.Errorf("failed to render markdown :%w", err)
-	}
-	if err = saveMarkdownToFileSystem(markdown, subDir); err != nil {
-		return fmt.Errorf("failed to save markdown to file system")
 	}
 	return
 }
@@ -79,8 +60,29 @@ func ArePrerequisitesMet() bool {
 	return homeDirPath != ""
 }
 
-func GetAllDataFilesPaths(dirPath string) ([]string, error) {
-	entries, err := os.ReadDir(dirPath)
+// This function stores the current data on the file system.
+// It then invokes the GenerateMarkdownFromFiles function on all existing data files.
+// Finally, it saves the generated markdown file to the file system.
+func (cs *CommandSummary) CreateMarkdown(data any) (err error) {
+	if err = cs.saveDataToFileSystem(data); err != nil {
+		return
+	}
+	dataFilesPaths, err := cs.getAllDataFilesPaths()
+	if err != nil {
+		return fmt.Errorf("failed to load data files from direcoty %s, with error:%w ", cs.commandsName, err)
+	}
+	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths)
+	if err != nil {
+		return fmt.Errorf("failed to render markdown :%w", err)
+	}
+	if err = cs.saveMarkdownToFileSystem(markdown); err != nil {
+		return fmt.Errorf("failed to save markdown to file system")
+	}
+	return
+}
+
+func (cs *CommandSummary) getAllDataFilesPaths() ([]string, error) {
+	entries, err := os.ReadDir(cs.summaryOutputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -88,14 +90,14 @@ func GetAllDataFilesPaths(dirPath string) ([]string, error) {
 	var filePaths []string
 	for _, entry := range entries {
 		if !entry.IsDir() && !strings.HasSuffix(entry.Name(), ".md") {
-			filePaths = append(filePaths, path.Join(dirPath, entry.Name()))
+			filePaths = append(filePaths, path.Join(cs.summaryOutputPath, entry.Name()))
 		}
 	}
 	return filePaths, nil
 }
 
-func saveMarkdownToFileSystem(markdown string, subDir string) (err error) {
-	file, err := os.OpenFile(path.Join(getOutputDirPath(), subDir, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
+func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) {
+	file, err := os.OpenFile(path.Join(cs.summaryOutputPath, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()
 	}()
@@ -109,16 +111,10 @@ func saveMarkdownToFileSystem(markdown string, subDir string) (err error) {
 }
 
 // Saves the given data into a file in the specified directory.
-func saveDataToFileSystem(data interface{}, dirName string) error {
-
-	dataFilePath := path.Join(getOutputDirPath(), dirName)
-
-	if err := createDirIfNotExists(dataFilePath); err != nil {
-		return err
-	}
+func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
 
 	// Create a random file name in the data file path.
-	fd, err := os.CreateTemp(dataFilePath, generateRandomFileName(dirName))
+	fd, err := os.CreateTemp(cs.summaryOutputPath, generateRandomFileName())
 	if err != nil {
 		return err
 	}
@@ -151,19 +147,21 @@ func convertDataToBytes(data interface{}) ([]byte, error) {
 	}
 }
 
-func generateRandomFileName(dirName string) string {
+func generateRandomFileName() string {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	return dirName + "-" + timestamp + "-"
+	return "data-" + timestamp + "-"
 }
 
-// We know OutputDirPathEnv is defined as we checked it in ArePrerequisitesMet
-func getOutputDirPath() (homeDir string) {
-	return filepath.Join(os.Getenv(OutputDirPathEnv), OutputDirName)
-}
-
-func prepareFileSystem() (err error) {
-	outputPath := getOutputDirPath()
-	return createDirIfNotExists(outputPath)
+func (cs *CommandSummary) prepareFileSystem() (err error) {
+	summaryBaseDirPath := filepath.Join(os.Getenv(OutputDirPathEnv), OutputDirName)
+	if err = createDirIfNotExists(summaryBaseDirPath); err != nil {
+		return
+	}
+	cs.summaryOutputPath = filepath.Join(summaryBaseDirPath, cs.commandsName)
+	if err = createDirIfNotExists(cs.summaryOutputPath); err != nil {
+		return
+	}
+	return
 }
 
 func createDirIfNotExists(homeDir string) error {

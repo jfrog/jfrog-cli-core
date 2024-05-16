@@ -4,7 +4,6 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
@@ -282,17 +281,11 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 }
 
 func recordCommandSummary(summary *rtServicesUtils.OperationSummary) (err error) {
-	uploadSummary, err := commandsummary.NewCommandSummary(&commandssummaries.UploadSummary{
-		PlatformUrl:     clientUtils.AddTrailingSlashIfNeeded(os.Getenv(commandsummary.PlatformUrlEnv)),
-		JfrogProjectKey: os.Getenv(coreutils.Project),
-	})
+	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(), "upload")
 	if err != nil || uploadSummary == nil {
 		return
 	}
-	if err = uploadSummary.CreateMarkdown(readDetailsFromReader(summary.TransferDetailsReader)); err != nil {
-		return
-	}
-	return
+	return uploadSummary.CreateMarkdown(readDetailsFromReader(summary.TransferDetailsReader))
 }
 
 // Reads transfer details from the reader and return the content as bytes for further processing

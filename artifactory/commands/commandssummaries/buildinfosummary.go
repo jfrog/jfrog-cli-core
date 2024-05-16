@@ -12,17 +12,12 @@ type BuildInfoSummary struct {
 	Builds []*buildInfo.BuildInfo
 }
 
-func NewBuildInfoSummary() *BuildInfoSummary {
+func NewBuildInfo() *BuildInfoSummary {
 	return &BuildInfoSummary{make([]*buildInfo.BuildInfo, 0)}
 }
 
-func (ga *BuildInfoSummary) CreateMarkdown(commandSummary any) (err error) {
-	return commandsummary.CreateMarkdown(commandSummary, "build-info", ga.renderContentToMarkdown)
-}
-
-func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdown string, err error) {
-	// Loads all the recorded results from the given file paths.
-	for _, path := range dataFiles {
+func (ga *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+	for _, path := range dataFilePaths {
 		var publishBuildInfo buildInfo.BuildInfo
 		if err = commandsummary.UnmarshalFromFilePath(path, &publishBuildInfo); err != nil {
 			return
@@ -31,7 +26,7 @@ func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdow
 	}
 
 	if len(ga.Builds) > 0 {
-		markdown = ga.buildInfoTable()
+		finalMarkdown = ga.buildInfoTable()
 	}
 	return
 }

@@ -1,7 +1,6 @@
 package commandssummaries
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
@@ -24,62 +23,27 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func (ga *UploadSummary) CreateMarkdown(content any) (err error) {
-	return commandsummary.CreateMarkdown(content, "upload", ga.renderContentToMarkdown)
+func (ga *UploadSummary) CreateMarkdown(data any) (err error) {
+	return commandsummary.CreateMarkdown(data, "upload", ga.renderContentToMarkdown)
 }
 
 func (ga *UploadSummary) renderContentToMarkdown(filePaths []string) (markdown string, err error) {
-
-	//if err = ga.generateUploadedFilesTree(content); err != nil {
-	//	return "", fmt.Errorf("failed while creating file tree: %w", err)
-	//}
-	//var markdownBuilder strings.Builder
-	//if ga.uploadTree.String() != "" {
-	//	if _, err = markdownBuilder.WriteString("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n"); err != nil {
-	//		return
-	//	}
-	//}
-	//return markdownBuilder.String(), nil
-	return
-}
-
-func (ga *UploadSummary) appendResultObject(currentResult interface{}, previousResults []byte) (data []byte, err error) {
-	currentResults, ok := currentResult.([]byte)
-	if !ok {
-		return nil, fmt.Errorf("failed to convert currentResult to []byte")
-	}
-	currentUpload := ResultsWrapper{}
-	if err = json.Unmarshal(currentResults, &currentUpload); err != nil {
-		return
-	}
-
-	if len(previousResults) > 0 {
-		err = json.Unmarshal(previousResults, &ga.uploadedArtifacts)
-		if err != nil {
+	// Aggregate upload results
+	ga.uploadedArtifacts = ResultsWrapper{}
+	for _, path := range filePaths {
+		var uploadResult ResultsWrapper
+		if err = commandsummary.UnmarshalFromFilePath(path, &uploadResult); err != nil {
 			return
 		}
-	} else {
-		ga.uploadedArtifacts = ResultsWrapper{}
+		ga.uploadedArtifacts.Results = append(ga.uploadedArtifacts.Results, uploadResult.Results...)
 	}
-
-	ga.uploadedArtifacts.Results = append(ga.uploadedArtifacts.Results, currentUpload.Results...)
-	return json.Marshal(ga.uploadedArtifacts)
-}
-
-func (ga *UploadSummary) generateUploadedFilesTree(content any) (err error) {
-	rawInput, ok := content.([]byte)
-	if !ok {
-		return fmt.Errorf("failed to convert content to []byte")
-	}
-	uploadedFileResults := ResultsWrapper{}
-	if err = json.Unmarshal(rawInput, &uploadedFileResults); err != nil {
-		return
-	}
-
+	// Generate the file tree
 	ga.uploadTree = utils.NewFileTree()
-	for _, b := range uploadedFileResults.Results {
+	for _, b := range ga.uploadedArtifacts.Results {
 		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))
 	}
+	// Wrap markdown
+	markdown = fmt.Sprintf("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n")
 	return
 }
 

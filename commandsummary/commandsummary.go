@@ -84,9 +84,15 @@ func saveDataFile(data any, dirName string) (err error) {
 	defer func() {
 		err = fd.Close()
 	}()
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		return
+	var bytes []byte
+	switch v := data.(type) {
+	case []byte:
+		bytes = v
+	default:
+		bytes, err = json.Marshal(data)
+		if err != nil {
+			return
+		}
 	}
 	if _, err = fd.Write(bytes); err != nil {
 		return

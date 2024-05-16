@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -42,11 +41,14 @@ func NewCommandSummary(userImplementation CommandSummaryInterface) (js *CommandS
 	}, nil
 }
 
+// This function stores the current data on the file system.
+// It then invokes the generateMarkdown function on all existing data files.
+// Finally, it saves the generated markdown file to the file system.
 func CreateMarkdown(data any, subDir string, generateMarkdownFunc func(dataFilePaths []string) (finalMarkdown string, mkError error)) (err error) {
-	if err = saveDataFile(data, subDir); err != nil {
+	if err = saveDataToFileSystem(data, subDir); err != nil {
 		return
 	}
-	dataFilesPaths, err := getDataFilesPaths(subDir)
+	dataFilesPaths, err := GetAllDataFilesPaths(path.Join(getOutputDirPath(), subDir))
 	if err != nil {
 		return fmt.Errorf("failed to load data files from direcoty %s, with error:%w ", subDir, err)
 	}
@@ -54,13 +56,45 @@ func CreateMarkdown(data any, subDir string, generateMarkdownFunc func(dataFileP
 	if err != nil {
 		return fmt.Errorf("failed to render markdown :%w", err)
 	}
-	if err = saveMarkdownFile(markdown, subDir); err != nil {
+	if err = saveMarkdownToFileSystem(markdown, subDir); err != nil {
 		return fmt.Errorf("failed to save markdown to file system")
 	}
 	return
 }
 
-func saveMarkdownFile(markdown string, subDir string) (err error) {
+func UnmarshalFromFilePath(dataFile string, target any) (err error) {
+	data, err := fileutils.ReadFile(dataFile)
+	if err != nil {
+		return
+	}
+	if err = json.Unmarshal(data, target); err != nil {
+		log.Error("Failed to unmarshal data: ", err)
+		return
+	}
+	return
+}
+
+func ArePrerequisitesMet() bool {
+	homeDirPath := os.Getenv(OutputDirPathEnv)
+	return homeDirPath != ""
+}
+
+func GetAllDataFilesPaths(dirPath string) ([]string, error) {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+	// Exclude markdown files
+	var filePaths []string
+	for _, entry := range entries {
+		if !entry.IsDir() && !strings.HasSuffix(entry.Name(), ".md") {
+			filePaths = append(filePaths, path.Join(dirPath, entry.Name()))
+		}
+	}
+	return filePaths, nil
+}
+
+func saveMarkdownToFileSystem(markdown string, subDir string) (err error) {
 	file, err := os.OpenFile(path.Join(getOutputDirPath(), subDir, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()
@@ -74,41 +108,57 @@ func saveMarkdownFile(markdown string, subDir string) (err error) {
 	return
 }
 
-func saveDataFile(data any, dirName string) (err error) {
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+// Saves the given data into a file in the specified directory.
+func saveDataToFileSystem(data interface{}, dirName string) error {
+
 	dataFilePath := path.Join(getOutputDirPath(), dirName)
-	if err = createDirIfNotExists(dataFilePath); err != nil {
-		return
+
+	if err := createDirIfNotExists(dataFilePath); err != nil {
+		return err
 	}
-	fd, err := os.CreateTemp(dataFilePath, dirName+"-"+timestamp+"-")
+
+	// Create a random file name in the data file path.
+	fd, err := os.CreateTemp(dataFilePath, generateRandomFileName(dirName))
+	if err != nil {
+		return err
+	}
 	defer func() {
 		err = fd.Close()
 	}()
-	var bytes []byte
+
+	// Convert the data into bytes.
+	bytes, err := convertDataToBytes(data)
+	if err != nil {
+		return err
+	}
+
+	// Write the bytes to the file.
+	if _, err = fd.Write(bytes); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Converts the given data into a byte array.
+// Handle specific conversion cases
+func convertDataToBytes(data interface{}) ([]byte, error) {
 	switch v := data.(type) {
 	case []byte:
-		bytes = v
+		return v, nil
 	default:
-		bytes, err = json.Marshal(data)
-		if err != nil {
-			return
-		}
+		return json.Marshal(data)
 	}
-	if _, err = fd.Write(bytes); err != nil {
-		return
-	}
-	return
 }
 
-func getDataFilesPaths(subDir string) (filePaths []string, err error) {
-	subDirFullPath := path.Join(getOutputDirPath(), subDir)
-	return GetAllFilePaths(subDirFullPath)
+func generateRandomFileName(dirName string) string {
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	return dirName + "-" + timestamp + "-"
 }
 
+// We know OutputDirPathEnv is defined as we checked it in ArePrerequisitesMet
 func getOutputDirPath() (homeDir string) {
-	// We know OutputDirPathEnv is defined as we checked it in ArePrerequisitesMet
-	userDefinedHomeDir := os.Getenv(OutputDirPathEnv)
-	return filepath.Join(userDefinedHomeDir, OutputDirName)
+	return filepath.Join(os.Getenv(OutputDirPathEnv), OutputDirName)
 }
 
 func prepareFileSystem() (err error) {
@@ -126,41 +176,4 @@ func createDirIfNotExists(homeDir string) error {
 		return err
 	}
 	return nil
-}
-
-func UnmarshalFromFilePath(dataFile string, target any) (err error) {
-	data, err := fileutils.ReadFile(dataFile)
-	if err != nil {
-		return
-	}
-	if err = json.Unmarshal(data, target); err != nil {
-		log.Error("Failed to unmarshal data: ", err)
-		return
-	}
-	return
-}
-
-func ArePrerequisitesMet() bool {
-	homeDirPath := os.Getenv(OutputDirPathEnv)
-	if homeDirPath == "" {
-		return false
-	}
-	return true
-}
-
-func GetAllFilePaths(dirPath string) ([]string, error) {
-	var filePaths []string
-	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && !strings.HasSuffix(d.Name(), ".md") {
-			filePaths = append(filePaths, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return filePaths, nil
 }

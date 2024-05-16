@@ -21,6 +21,7 @@ func (ga *BuildInfoSummary) CreateMarkdown(commandSummary any) (err error) {
 }
 
 func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdown string, err error) {
+	// Loads all the recorded results from the given file paths.
 	for _, path := range dataFiles {
 		var publishBuildInfo buildInfo.BuildInfo
 		if err = commandsummary.UnmarshalFromFilePath(path, &publishBuildInfo); err != nil {
@@ -29,21 +30,16 @@ func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdow
 		ga.Builds = append(ga.Builds, &publishBuildInfo)
 	}
 
-	// Generate a string that represents a Markdown table
-	var markdownBuilder strings.Builder
 	if len(ga.Builds) > 0 {
-		if _, err = markdownBuilder.WriteString(ga.buildInfoTable()); err != nil {
-			return
-		}
+		markdown = ga.buildInfoTable()
 	}
-	return markdownBuilder.String(), nil
-
+	return
 }
 
 func (ga *BuildInfoSummary) buildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n| 📦 Build Info | 🕒 Timestamp | \n")
+	tableBuilder.WriteString("\n\n| 📦 Build Info | 🕒 Time Stamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range ga.Builds {
 		buildTime := parseBuildTime(build.Started)
@@ -60,5 +56,5 @@ func parseBuildTime(timestamp string) string {
 		return "N/A"
 	}
 	// Format the time in a more human-readable format and save it in a variable
-	return t.Format("Jan 2, 2006 15:04:05")
+	return t.Format("Jan 2, 2006 | 15:04:05")
 }

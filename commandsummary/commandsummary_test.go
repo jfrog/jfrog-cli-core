@@ -12,10 +12,10 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 	// Prepare test env
 	tempDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
-	assert.NoError(t, os.Setenv(OutputDir, tempDir))
+	assert.NoError(t, os.Setenv(OutputDirPathEnv, tempDir))
 	assert.NoError(t, os.Setenv(githubActionsEnv, "true"))
 	defer func() {
-		assert.NoError(t, os.Unsetenv(OutputDir))
+		assert.NoError(t, os.Unsetenv(OutputDirPathEnv))
 		assert.NoError(t, os.Unsetenv(githubActionsEnv))
 		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
 	}()
@@ -53,15 +53,15 @@ func TestCreatSummaryMarkdownBaseImpl(t *testing.T) {
 
 func TestGetJobSummariesHomeDirPath(t *testing.T) {
 	basePath := "/tmp"
-	err := os.Setenv(OutputDir, basePath)
+	err := os.Setenv(OutputDirPathEnv, basePath)
 	defer func() {
-		assert.NoError(t, os.Unsetenv(OutputDir))
+		assert.NoError(t, os.Unsetenv(OutputDirPathEnv))
 	}()
 	assert.NoError(t, err)
 
-	homeDir, err := getCommandSummariesBaseDirPath()
+	homeDir, err := getOutputDirPath()
 	assert.NoError(t, err)
 
-	expected := filepath.Join(basePath, JobSummaryDirName)
+	expected := filepath.Join(basePath, OutputDirName)
 	assert.Equal(t, expected, homeDir)
 }

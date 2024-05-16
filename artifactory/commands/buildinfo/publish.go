@@ -243,7 +243,7 @@ func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink string) (err
 	if err != nil || buildInfoSummary == nil {
 		return
 	}
-	if err = buildInfoSummary.CreateMarkdown(buildInfo, "build-info"); err != nil {
+	if err = buildInfoSummary.CreateMarkdown(buildInfo); err != nil {
 		return
 	}
 	return

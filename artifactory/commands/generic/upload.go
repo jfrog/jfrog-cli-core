@@ -289,7 +289,7 @@ func recordCommandSummary(summary *rtServicesUtils.OperationSummary) (err error)
 	if err != nil || uploadSummary == nil {
 		return
 	}
-	if err = uploadSummary.CreateMarkdown(readDetailsFromReader(summary.TransferDetailsReader), "upload"); err != nil {
+	if err = uploadSummary.CreateMarkdown(readDetailsFromReader(summary.TransferDetailsReader)); err != nil {
 		return
 	}
 	return

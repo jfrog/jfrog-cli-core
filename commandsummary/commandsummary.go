@@ -3,41 +3,42 @@ package commandsummary
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"time"
 )
 
 type CommandSummaryInterface interface {
-	CreateMarkdown(content any, commandGroup string) error
+	CreateMarkdown(content any) error
 }
 
 type CommandSummary struct {
 	CommandSummaryInterface
-	homeDirPath string
+	outputDirPath string
 }
 
 const (
-	githubActionsEnv  = "GITHUB_ACTIONS"
-	JobSummaryDirName = "jfrog-job-summary"
-	PlatformUrlEnv    = "JF_URL"
-	OutputDir         = "JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR"
+	PlatformUrlEnv   = "JF_URL"
+	OutputDirName    = "jfrog-command-summary"
+	OutputDirPathEnv = "JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR"
 )
 
 func NewCommandSummary(userImplementation CommandSummaryInterface) (js *CommandSummary, err error) {
-	if !IsJobSummaryCISupportedRunner() {
+	if !ArePrerequisitesMet() {
 		return nil, nil
 	}
-	homedir, err := prepareFileSystem()
-	if err != nil {
-		return nil, fmt.Errorf("failed to prepare file system for job summaries, please check all the env vars are set correctly: %w", err)
+	if err = prepareFileSystem(); err != nil {
+		return
 	}
 	return &CommandSummary{
 		CommandSummaryInterface: userImplementation,
-		homeDirPath:             homedir,
+		outputDirPath:           getOutputDirPath(),
 	}, nil
 }
 
@@ -47,24 +48,20 @@ func CreateMarkdown(data any, subDir string, generateMarkdownFunc func(dataFileP
 	}
 	dataFilesPaths, err := getDataFilesPaths(subDir)
 	if err != nil {
-		return
+		return fmt.Errorf("failed to load data files from direcoty %s, with error:%w ", subDir, err)
 	}
 	markdown, err := generateMarkdownFunc(dataFilesPaths)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown :%w", err)
 	}
-	if err = saveFinalMarkdown(markdown, subDir); err != nil {
+	if err = saveMarkdownFile(markdown, subDir); err != nil {
 		return fmt.Errorf("failed to save markdown to file system")
 	}
 	return
 }
 
-func saveFinalMarkdown(markdown string, subDir string) (err error) {
-	baseDir, err := getCommandSummariesBaseDirPath()
-	if err != nil {
-		return
-	}
-	file, err := os.OpenFile(path.Join(baseDir, subDir, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
+func saveMarkdownFile(markdown string, subDir string) (err error) {
+	file, err := os.OpenFile(path.Join(getOutputDirPath(), subDir, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
 		err = file.Close()
 	}()
@@ -78,16 +75,12 @@ func saveFinalMarkdown(markdown string, subDir string) (err error) {
 }
 
 func saveDataFile(data any, dirName string) (err error) {
-	baseDir, err := getCommandSummariesBaseDirPath()
-	if err != nil {
-		return
-	}
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	saveTo := path.Join(baseDir, dirName)
-	if err = createDirIfNotExists(saveTo); err != nil {
+	dataFilePath := path.Join(getOutputDirPath(), dirName)
+	if err = createDirIfNotExists(dataFilePath); err != nil {
 		return
 	}
-	fd, err := os.CreateTemp(saveTo, dirName+"-"+timestamp+"-")
+	fd, err := os.CreateTemp(dataFilePath, dirName+"-"+timestamp+"-")
 	defer func() {
 		err = fd.Close()
 	}()
@@ -102,11 +95,7 @@ func saveDataFile(data any, dirName string) (err error) {
 }
 
 func getDataFilesPaths(subDir string) (filePaths []string, err error) {
-	baseDir, err := getCommandSummariesBaseDirPath()
-	if err != nil {
-		return
-	}
-	subDirFullPath := path.Join(baseDir, subDir)
+	subDirFullPath := path.Join(getOutputDirPath(), subDir)
 	return GetAllFilePaths(subDirFullPath)
 }
 
@@ -127,31 +116,23 @@ func GetAllFilePaths(dirPath string) ([]string, error) {
 	return filePaths, nil
 }
 
-// Returning the home directory path for the job summaries if set by the user
-// Notice that when you set the home directory to make sure it is scoped per job,
-// to avoid conflicts between different jobs.
-func getCommandSummariesBaseDirPath() (homeDir string, err error) {
-	userDefinedHomeDir := os.Getenv(OutputDir)
-	if userDefinedHomeDir != "" {
-		return filepath.Join(userDefinedHomeDir, JobSummaryDirName), nil
-	}
-	return "", fmt.Errorf("failed to get jobs summaries working dir path, please set %s enviorment variable ", OutputDir)
+func getOutputDirPath() (homeDir string) {
+	// We know OutputDirPathEnv is defined as we checked it in ArePrerequisitesMet
+	userDefinedHomeDir := os.Getenv(OutputDirPathEnv)
+	return filepath.Join(userDefinedHomeDir, OutputDirName)
 }
 
-// Check for supported CI runners, currently only GitHub Actions is supported.
-func IsJobSummaryCISupportedRunner() bool {
-	return os.Getenv(githubActionsEnv) == "true"
+func ArePrerequisitesMet() bool {
+	homeDirPath := os.Getenv(OutputDirPathEnv)
+	if homeDirPath == "" {
+		return false
+	}
+	return true
 }
 
-func prepareFileSystem() (homeDir string, err error) {
-	homeDir, err = getCommandSummariesBaseDirPath()
-	if err != nil {
-		return
-	}
-	if err = createDirIfNotExists(homeDir); err != nil {
-		return
-	}
-	return
+func prepareFileSystem() (err error) {
+	outputPath := getOutputDirPath()
+	return createDirIfNotExists(outputPath)
 }
 
 func createDirIfNotExists(homeDir string) error {
@@ -163,5 +144,32 @@ func createDirIfNotExists(homeDir string) error {
 	} else if err != nil {
 		return err
 	}
+	return nil
+}
+
+func UnmarshalDataFiles(dataFiles []string, target interface{}) error {
+	targetVal := reflect.ValueOf(target)
+	if targetVal.Kind() != reflect.Ptr || targetVal.Elem().Kind() != reflect.Slice {
+		return fmt.Errorf("target must be a pointer to a slice")
+	}
+	targetVal = targetVal.Elem()
+
+	for _, dataFile := range dataFiles {
+		data, err := fileutils.ReadFile(dataFile)
+		if err != nil {
+			return err
+		}
+
+		elemType := targetVal.Type().Elem()
+		elem := reflect.New(elemType)
+
+		if err = json.Unmarshal(data, elem.Interface()); err != nil {
+			log.Error("Failed to unmarshal data: ", err)
+			return err
+		}
+
+		targetVal.Set(reflect.Append(targetVal, elem.Elem()))
+	}
+
 	return nil
 }

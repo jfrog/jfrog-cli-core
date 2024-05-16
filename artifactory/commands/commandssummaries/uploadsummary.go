@@ -24,11 +24,12 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func (ga *UploadSummary) CreateMarkdown(content any, commandName string) (err error) {
-	return commandsummary.CreateMarkdown(content, commandName, ga.renderContentToMarkdown)
+func (ga *UploadSummary) CreateMarkdown(content any) (err error) {
+	return commandsummary.CreateMarkdown(content, "upload", ga.renderContentToMarkdown)
 }
 
 func (ga *UploadSummary) renderContentToMarkdown(filePaths []string) (markdown string, err error) {
+
 	//if err = ga.generateUploadedFilesTree(content); err != nil {
 	//	return "", fmt.Errorf("failed while creating file tree: %w", err)
 	//}

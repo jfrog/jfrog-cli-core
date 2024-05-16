@@ -19,8 +19,8 @@ func NewBuildInfoSummary() *BuildInfoSummary {
 	return &BuildInfoSummary{make([]*buildInfo.BuildInfo, 0)}
 }
 
-func (ga *BuildInfoSummary) CreateMarkdown(commandSummary any, commandGroup string) (err error) {
-	return commandsummary.CreateMarkdown(commandSummary, commandGroup, ga.renderContentToMarkdown)
+func (ga *BuildInfoSummary) CreateMarkdown(commandSummary any) (err error) {
+	return commandsummary.CreateMarkdown(commandSummary, "build-info", ga.renderContentToMarkdown)
 }
 
 func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdown string, err error) {

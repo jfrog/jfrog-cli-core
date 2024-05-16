@@ -105,35 +105,10 @@ func getDataFilesPaths(subDir string) (filePaths []string, err error) {
 	return GetAllFilePaths(subDirFullPath)
 }
 
-func GetAllFilePaths(dirPath string) ([]string, error) {
-	var filePaths []string
-	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && !strings.HasSuffix(d.Name(), ".md") {
-			filePaths = append(filePaths, path)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return filePaths, nil
-}
-
 func getOutputDirPath() (homeDir string) {
 	// We know OutputDirPathEnv is defined as we checked it in ArePrerequisitesMet
 	userDefinedHomeDir := os.Getenv(OutputDirPathEnv)
 	return filepath.Join(userDefinedHomeDir, OutputDirName)
-}
-
-func ArePrerequisitesMet() bool {
-	homeDirPath := os.Getenv(OutputDirPathEnv)
-	if homeDirPath == "" {
-		return false
-	}
-	return true
 }
 
 func prepareFileSystem() (err error) {
@@ -163,4 +138,29 @@ func UnmarshalFromFilePath(dataFile string, target any) (err error) {
 		return
 	}
 	return
+}
+
+func ArePrerequisitesMet() bool {
+	homeDirPath := os.Getenv(OutputDirPathEnv)
+	if homeDirPath == "" {
+		return false
+	}
+	return true
+}
+
+func GetAllFilePaths(dirPath string) ([]string, error) {
+	var filePaths []string
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && !strings.HasSuffix(d.Name(), ".md") {
+			filePaths = append(filePaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return filePaths, nil
 }

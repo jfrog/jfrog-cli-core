@@ -299,7 +299,7 @@ func readDetailsFromReader(reader *content.ContentReader) (readContent []byte, e
 			// Read source file
 			sourceBytes, err := os.ReadFile(file)
 			if err != nil {
-				return
+				return nil, err
 			}
 			readContent = append(readContent, sourceBytes...)
 		}

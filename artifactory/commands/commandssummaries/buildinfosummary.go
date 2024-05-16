@@ -20,7 +20,7 @@ func NewBuildInfoSummary() *BuildInfoSummary {
 }
 
 func (ga *BuildInfoSummary) CreateMarkdown(commandSummary any, commandGroup string) (err error) {
-	return commandsummary.CreateSummaryMarkdownBaseImpl(commandSummary, commandGroup, ga.renderContentToMarkdown)
+	return commandsummary.CreateMarkdown(commandSummary, commandGroup, ga.renderContentToMarkdown)
 }
 
 func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdown string, err error) {
@@ -30,7 +30,7 @@ func (ga *BuildInfoSummary) renderContentToMarkdown(dataFiles []string) (markdow
 			return "", err
 		}
 		var current *buildInfo.BuildInfo
-		if err = json.Unmarshal(data, current); err != nil {
+		if err = json.Unmarshal(data, &current); err != nil {
 			log.Error("Failed to unmarshal data: ", err)
 			return "", err
 		}

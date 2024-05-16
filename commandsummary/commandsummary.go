@@ -1,12 +1,14 @@
 package commandsummary
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
+	"time"
 )
 
 type CommandSummaryInterface interface {
@@ -39,31 +41,90 @@ func NewCommandSummary(userImplementation CommandSummaryInterface) (js *CommandS
 	}, nil
 }
 
-func CreateSummaryMarkdownBaseImpl(data any, dirName string, generateMarkdownFunc func(dataFilePaths []string) (finalMarkdown string, mkError error)) (err error) {
-	if err = saveDataFile(data, dirName); err != nil {
+func CreateMarkdown(data any, subDir string, generateMarkdownFunc func(dataFilePaths []string) (finalMarkdown string, mkError error)) (err error) {
+	if err = saveDataFile(data, subDir); err != nil {
 		return
 	}
-	markdown, err := generateMarkdownFunc(getDataFilesPaths())
+	dataFilesPaths, err := getDataFilesPaths(subDir)
+	if err != nil {
+		return
+	}
+	markdown, err := generateMarkdownFunc(dataFilesPaths)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown :%w", err)
 	}
-	if err = saveFinalMarkdown(markdown, dirName); err != nil {
+	if err = saveFinalMarkdown(markdown, subDir); err != nil {
 		return fmt.Errorf("failed to save markdown to file system")
 	}
 	return
 }
 
-func saveFinalMarkdown(markdown string, name string) error {
-	return nil
+func saveFinalMarkdown(markdown string, subDir string) (err error) {
+	baseDir, err := getCommandSummariesBaseDirPath()
+	if err != nil {
+		return
+	}
+	file, err := os.OpenFile(path.Join(baseDir, subDir, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
+	defer func() {
+		err = file.Close()
+	}()
+	if err != nil {
+		return
+	}
+	if _, err = file.WriteString(markdown); err != nil {
+		return
+	}
+	return
 }
 
-func saveDataFile(data any, dirName string) error {
-	getCommandSummariesBaseDirPath()
-	return nil
+func saveDataFile(data any, dirName string) (err error) {
+	baseDir, err := getCommandSummariesBaseDirPath()
+	if err != nil {
+		return
+	}
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	saveTo := path.Join(baseDir, dirName)
+	if err = createDirIfNotExists(saveTo); err != nil {
+		return
+	}
+	fd, err := os.CreateTemp(saveTo, dirName+"-"+timestamp+"-")
+	defer func() {
+		err = fd.Close()
+	}()
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+	if _, err = fd.Write(bytes); err != nil {
+		return
+	}
+	return
 }
 
-func getDataFilesPaths() []string {
-	return []string{}
+func getDataFilesPaths(subDir string) (filePaths []string, err error) {
+	baseDir, err := getCommandSummariesBaseDirPath()
+	if err != nil {
+		return
+	}
+	subDirFullPath := path.Join(baseDir, subDir)
+	return GetAllFilePaths(subDirFullPath)
+}
+
+func GetAllFilePaths(dirPath string) ([]string, error) {
+	var filePaths []string
+	err := filepath.WalkDir(dirPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			filePaths = append(filePaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return filePaths, nil
 }
 
 // Returning the home directory path for the job summaries if set by the user
@@ -81,61 +142,6 @@ func getCommandSummariesBaseDirPath() (homeDir string, err error) {
 func IsJobSummaryCISupportedRunner() bool {
 	return os.Getenv(githubActionsEnv) == "true"
 }
-
-// Loads a file as bytes array from the file system from the job summaries directory
-func loadFile(fileName string) ([]byte, error) {
-	homeDir, err := getCommandSummariesBaseDirPath()
-	if err != nil {
-		return nil, err
-	}
-	file, cleanUp, err := openFile(path.Join(homeDir, fileName))
-	defer func() {
-		err = cleanUp()
-	}()
-	if err != nil {
-		return nil, err
-	}
-	return fileutils.ReadFile(file.Name())
-}
-
-// Write data to a file as byte array in the job summaries directory
-func writeFile(objectAsBytes []byte, dataFileName string) error {
-	homeDir, err := getCommandSummariesBaseDirPath()
-	if err != nil {
-		return err
-	}
-	file, cleanUp, err := openFile(path.Join(homeDir, dataFileName))
-	defer func() {
-		err = cleanUp()
-	}()
-	if err != nil {
-		return err
-	}
-	_, err = file.Write(objectAsBytes)
-	return err
-}
-
-//func writeMarkdownToFileSystem(markdown string, section MarkdownSection) (err error) {
-//	homedDir, err := getCommandSummariesBaseDirPath()
-//	if err != nil {
-//		return
-//	}
-//	file, err := os.OpenFile(path.Join(homedDir, string(section)+".md"), os.O_CREATE|os.O_WRONLY, 0644)
-//	defer func() {
-//		err = file.Close()
-//	}()
-//	if err != nil {
-//		return
-//	}
-//	if _, err = file.WriteString(markdown); err != nil {
-//		return
-//	}
-//	return
-//}
-//
-//func getSectionDataFileName(section MarkdownSection) string {
-//	return string(section) + "-data.json"
-//}
 
 func prepareFileSystem() (homeDir string, err error) {
 	homeDir, err = getCommandSummariesBaseDirPath()
@@ -158,13 +164,4 @@ func createDirIfNotExists(homeDir string) error {
 		return err
 	}
 	return nil
-}
-
-func openFile(filePath string) (*os.File, func() error, error) {
-	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Error("failed to open file at: ", filePath, " error: ", err)
-		return nil, nil, err
-	}
-	return file, file.Close, nil
 }

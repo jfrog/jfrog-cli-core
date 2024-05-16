@@ -24,8 +24,8 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func (ga *UploadSummary) CreateMarkdown(content any, section string) (err error) {
-	return commandsummary.CreateSummaryMarkdownBaseImpl(content, section, ga.renderContentToMarkdown)
+func (ga *UploadSummary) CreateMarkdown(content any, commandName string) (err error) {
+	return commandsummary.CreateMarkdown(content, commandName, ga.renderContentToMarkdown)
 }
 
 func (ga *UploadSummary) renderContentToMarkdown(filePaths []string) (markdown string, err error) {

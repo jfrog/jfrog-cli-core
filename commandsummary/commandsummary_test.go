@@ -96,7 +96,7 @@ func TestDataPersistence(t *testing.T) {
 			// Verify that data has not been corrupted
 			loadedData, err := unmarshalData(tc.originalData, dataFiles[0])
 			assert.NoError(t, err)
-			assert.Equal(t, tc.originalData, loadedData)
+			assert.EqualExportedValues(t, tc.originalData, loadedData)
 		})
 	}
 }

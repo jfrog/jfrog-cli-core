@@ -17,6 +17,7 @@ func NewBuildInfo() *BuildInfoSummary {
 }
 
 func (ga *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+	// Aggregate all the build info files into a slice
 	for _, path := range dataFilePaths {
 		var publishBuildInfo buildInfo.BuildInfo
 		if err = commandsummary.UnmarshalFromFilePath(path, &publishBuildInfo); err != nil {

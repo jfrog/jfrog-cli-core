@@ -3,6 +3,7 @@ package commandsummary
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
@@ -38,11 +39,17 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 		commandsName:            commandsName,
 	}
 	if err = cs.prepareFileSystem(); err != nil {
-		return
+		return nil, errorutils.CheckError(err)
 	}
 	return
 }
 
+func ArePrerequisitesMet() bool {
+	homeDirPath := os.Getenv(OutputDirPathEnv)
+	return homeDirPath != ""
+}
+
+// Helper function to unmarshal data from a file path into the target object.
 func UnmarshalFromFilePath(dataFile string, target any) (err error) {
 	data, err := fileutils.ReadFile(dataFile)
 	if err != nil {
@@ -53,11 +60,6 @@ func UnmarshalFromFilePath(dataFile string, target any) (err error) {
 		return
 	}
 	return
-}
-
-func ArePrerequisitesMet() bool {
-	homeDirPath := os.Getenv(OutputDirPathEnv)
-	return homeDirPath != ""
 }
 
 // This function stores the current data on the file system.

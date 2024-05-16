@@ -37,10 +37,8 @@ func (ga *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (fina
 	if err = ga.loadResults(dataFilePaths); err != nil {
 		return
 	}
-	// Builds the file tree from the loaded results
-	ga.generateFileTree()
-	// Wrap the file tree in a <pre> tag to preserve spaces
-	finalMarkdown = fmt.Sprintf("\n<pre>\n" + ga.uploadTree.String() + "</pre>\n\n")
+	// Wrap the markdown in a <pre> tags to preserve spaces
+	finalMarkdown = fmt.Sprintf("\n<pre>\n" + ga.generateFileTreeMarkdown() + "</pre>\n\n")
 	return
 }
 
@@ -57,11 +55,12 @@ func (ga *UploadSummary) loadResults(filePaths []string) error {
 	return nil
 }
 
-func (ga *UploadSummary) generateFileTree() {
+func (ga *UploadSummary) generateFileTreeMarkdown() string {
 	ga.uploadTree = utils.NewFileTree()
 	for _, b := range ga.uploadedArtifacts.Results {
 		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))
 	}
+	return ga.uploadTree.String()
 }
 
 func (ga *UploadSummary) buildUiUrl(targetPath string) string {

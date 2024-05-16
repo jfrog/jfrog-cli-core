@@ -141,8 +141,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	err = recordCommandSummary(buildInfo, buildLink)
-	if err != nil {
+	if err = recordCommandSummary(buildInfo, buildLink); err != nil {
 		return err
 	}
 

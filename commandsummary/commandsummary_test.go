@@ -49,12 +49,6 @@ func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
 }
 
 func TestDataPersistence(t *testing.T) {
-	cs, cleanUp, err := prepareTest(t)
-	defer func() {
-		cleanUp(t)
-	}()
-	assert.NoError(t, err)
-
 	// Define test cases
 	testCases := []struct {
 		name         string
@@ -84,6 +78,13 @@ func TestDataPersistence(t *testing.T) {
 	// Run test cases
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			// Prepare a new CommandSummary for each test case
+			cs, cleanUp, err := prepareTest(t)
+			defer func() {
+				cleanUp(t)
+			}()
+			assert.NoError(t, err)
+
 			// Save data to file
 			err = cs.saveDataToFileSystem(tc.originalData)
 			assert.NoError(t, err)
@@ -96,7 +97,7 @@ func TestDataPersistence(t *testing.T) {
 			// Verify that data has not been corrupted
 			loadedData, err := unmarshalData(tc.originalData, dataFiles[0])
 			assert.NoError(t, err)
-			assert.EqualExportedValues(t, tc.originalData, loadedData)
+			assert.EqualValues(t, tc.originalData, loadedData)
 		})
 	}
 }

@@ -35,11 +35,11 @@ func (ga *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (f
 func (ga *BuildInfoSummary) buildInfoTable() string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n| 📦 Build Info | 🕒 Time Stamp | \n")
+	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range ga.Builds {
 		buildTime := parseBuildTime(build.Started)
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" / "+build.Number, build.BuildUrl, buildTime))
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
 	}
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()

@@ -104,9 +104,9 @@ func (dn *dirNode) strings() []string {
 	for _, fileName := range fileNamesSorted {
 		var filePrefix string
 		if fileIndex == len(dn.fileNames)-1 {
-			filePrefix = "└── 📄 "
+			filePrefix = "└── "
 		} else {
-			filePrefix = "├── 📄 "
+			filePrefix = "├── "
 			fileIndex++
 		}
 
@@ -114,7 +114,7 @@ func (dn *dirNode) strings() []string {
 		if dn.fileNames[fileName] != "" {
 			fullFileName = fmt.Sprintf("%s<a href=%s target=\"_blank\">%s</a>", filePrefix, dn.fileNames[fileName], fileName)
 		} else {
-			fullFileName = filePrefix + fileName
+			fullFileName = filePrefix + "📄 " + fileName
 		}
 		strs = append(strs, fullFileName)
 	}

@@ -45,24 +45,6 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 	return
 }
 
-func ArePrerequisitesMet() bool {
-	homeDirPath := os.Getenv(OutputDirPathEnv)
-	return homeDirPath != ""
-}
-
-// Helper function to unmarshal data from a file path into the target object.
-func UnmarshalFromFilePath(dataFile string, target any) (err error) {
-	data, err := fileutils.ReadFile(dataFile)
-	if err != nil {
-		return
-	}
-	if err = json.Unmarshal(data, target); err != nil {
-		log.Error("Failed to unmarshal data: ", err)
-		return
-	}
-	return
-}
-
 // This function stores the current data on the file system.
 // It then invokes the GenerateMarkdownFromFiles function on all existing data files.
 // Finally, it saves the generated markdown file to the file system.
@@ -139,6 +121,36 @@ func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
 	return nil
 }
 
+func (cs *CommandSummary) prepareFileSystem() (err error) {
+	summaryBaseDirPath := filepath.Join(os.Getenv(OutputDirPathEnv), OutputDirName)
+	if err = createDirIfNotExists(summaryBaseDirPath); err != nil {
+		return
+	}
+	cs.summaryOutputPath = filepath.Join(summaryBaseDirPath, cs.commandsName)
+	if err = createDirIfNotExists(cs.summaryOutputPath); err != nil {
+		return
+	}
+	return
+}
+
+func ArePrerequisitesMet() bool {
+	homeDirPath := os.Getenv(OutputDirPathEnv)
+	return homeDirPath != ""
+}
+
+// Helper function to unmarshal data from a file path into the target object.
+func UnmarshalFromFilePath(dataFile string, target any) (err error) {
+	data, err := fileutils.ReadFile(dataFile)
+	if err != nil {
+		return
+	}
+	if err = json.Unmarshal(data, target); err != nil {
+		log.Error("Failed to unmarshal data: ", err)
+		return
+	}
+	return
+}
+
 // Converts the given data into a byte array.
 // Handle specific conversion cases
 func convertDataToBytes(data interface{}) ([]byte, error) {
@@ -153,18 +165,6 @@ func convertDataToBytes(data interface{}) ([]byte, error) {
 func generateRandomFileName() string {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	return "data-" + timestamp + "-"
-}
-
-func (cs *CommandSummary) prepareFileSystem() (err error) {
-	summaryBaseDirPath := filepath.Join(os.Getenv(OutputDirPathEnv), OutputDirName)
-	if err = createDirIfNotExists(summaryBaseDirPath); err != nil {
-		return
-	}
-	cs.summaryOutputPath = filepath.Join(summaryBaseDirPath, cs.commandsName)
-	if err = createDirIfNotExists(cs.summaryOutputPath); err != nil {
-		return
-	}
-	return
 }
 
 func createDirIfNotExists(homeDir string) error {

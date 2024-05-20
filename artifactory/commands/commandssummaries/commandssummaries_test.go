@@ -39,7 +39,7 @@ func TestBuildInfoTable(t *testing.T) {
 }
 
 func TestParseBuildTime(t *testing.T) {
-	expected := "Jan 2, 2006 | 15:04:05"
+	expected := "Jan 2, 2006 , 15:04:05"
 	actual := parseBuildTime("2006-01-02T15:04:05.000-0700")
 	assert.Equal(t, expected, actual)
 

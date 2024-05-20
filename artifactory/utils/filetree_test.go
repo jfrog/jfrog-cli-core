@@ -78,16 +78,10 @@ func TestFileTreeSort(t *testing.T) {
 }
 
 func TestFileTreeWithUrls(t *testing.T) {
-	copyMaxFilesInTree := maxFilesInTree
-	defer func() {
-		maxFilesInTree = copyMaxFilesInTree
-	}()
-	maxFilesInTree = 1
-
 	fileTree := NewFileTree()
 	// Add a new file and check String()
 	fileTree.AddFile("repoName/path/to/first/artifact", "http://myJFrogPlatform/customLink/first/artifact")
-	result, excpected := fileTree.String(), "📦 repoName\n└── 📁 path\n    └── 📁 to\n        └── 📁 first\n            └── <a href=http://myJFrogPlatform/customLink/first/artifact target=\"_blank\">artifact</a>\n\n"
-	assert.Equal(t, excpected, result)
+	result, expected := fileTree.String(), "📦 repoName\n└── 📁 path\n    └── 📁 to\n        └── 📁 first\n            └── <a href=http://myJFrogPlatform/customLink/first/artifact target=\"_blank\">artifact</a>\n\n"
+	assert.Equal(t, expected, result)
 
 }

@@ -2,6 +2,7 @@ package commandsummary
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -101,7 +102,7 @@ func (cs *CommandSummary) getAllDataFilesPaths() ([]string, error) {
 func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) {
 	file, err := os.OpenFile(path.Join(cs.summaryOutputPath, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
 	defer func() {
-		err = file.Close()
+		err = errors.Join(err, file.Close())
 	}()
 	if err != nil {
 		return
@@ -121,7 +122,7 @@ func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
 		return err
 	}
 	defer func() {
-		err = fd.Close()
+		err = errors.Join(err, fd.Close())
 	}()
 
 	// Convert the data into bytes.

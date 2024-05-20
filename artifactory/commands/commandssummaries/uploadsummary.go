@@ -38,7 +38,7 @@ func (ga *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (fina
 		return
 	}
 	// Wrap the markdown in a <pre> tags to preserve spaces
-	finalMarkdown = fmt.Sprintf("\n<pre>\n" + ga.generateFileTreeMarkdown() + "</pre>\n\n")
+	finalMarkdown = fmt.Sprintf("\n<pre>\n\n\n" + ga.generateFileTreeMarkdown() + "</pre>\n\n")
 	return
 }
 

@@ -118,7 +118,9 @@ func (dc *DotnetCommand) Exec() (err error) {
 		return err
 	}
 	defer func() {
-		err = errors.Join(err, callbackFunc())
+		if callbackFunc != nil {
+			err = errors.Join(err, callbackFunc())
+		}
 	}()
 	if err = buildInfoModule.CalcDependencies(); err != nil {
 		if dc.isDotnetTestCommand() {

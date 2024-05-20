@@ -52,5 +52,5 @@ func parseBuildTime(timestamp string) string {
 		return "N/A"
 	}
 	// Format the time in a more human-readable format and save it in a variable
-	return t.Format("Jan 2, 2006 | 15:04:05")
+	return t.Format("Jan 2, 2006 , 15:04:05")
 }

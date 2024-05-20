@@ -16,7 +16,7 @@ func TestFileTree(t *testing.T) {
 	fileTree := NewFileTree()
 	// Add a new file and check String()
 	fileTree.AddFile("repoName/path/to/first/artifact", "")
-	result, excpected := fileTree.String(), "📦 repoName\n└── 📁 path\n    └── 📁 to\n        └── 📁 first\n            └── 📄 artifact\n"
+	result, excpected := fileTree.String(), "📦 repoName\n└── 📁 path\n    └── 📁 to\n        └── 📁 first\n            └── 📄 artifact\n\n"
 	assert.Equal(t, excpected, result)
 
 	// If maxFileInTree has exceeded, Check String() returns an empty string
@@ -38,7 +38,7 @@ func TestFileTreeSort(t *testing.T) {
 				"repoName/path/to/fileA",
 				"repoName/path/to/fileB",
 			},
-			expected: "📦 repoName\n└── 📁 path\n    └── 📁 to\n        ├── 📄 fileA\n        ├── 📄 fileB\n        └── 📄 fileC\n",
+			expected: "📦 repoName\n└── 📁 path\n    └── 📁 to\n        ├── 📄 fileA\n        ├── 📄 fileB\n        └── 📄 fileC\n\n",
 		},
 		{
 			name: "Test Case 2",
@@ -47,7 +47,7 @@ func TestFileTreeSort(t *testing.T) {
 				"repoName/path/to/file1",
 				"repoName/path/to/file2",
 			},
-			expected: "📦 repoName\n└── 📁 path\n    └── 📁 to\n        ├── 📄 file1\n        ├── 📄 file2\n        └── 📄 file3\n",
+			expected: "📦 repoName\n└── 📁 path\n    └── 📁 to\n        ├── 📄 file1\n        ├── 📄 file2\n        └── 📄 file3\n\n",
 		},
 		{
 			name: "Test Case 3",
@@ -56,7 +56,7 @@ func TestFileTreeSort(t *testing.T) {
 				"repoName/path/to/fileX",
 				"repoName/path/to/fileY",
 			},
-			expected: "📦 repoName\n└── 📁 path\n    └── 📁 to\n        ├── 📄 fileX\n        ├── 📄 fileY\n        └── 📄 fileZ\n",
+			expected: "📦 repoName\n└── 📁 path\n    └── 📁 to\n        ├── 📄 fileX\n        ├── 📄 fileY\n        └── 📄 fileZ\n\n",
 		},
 	}
 
@@ -87,7 +87,7 @@ func TestFileTreeWithUrls(t *testing.T) {
 	fileTree := NewFileTree()
 	// Add a new file and check String()
 	fileTree.AddFile("repoName/path/to/first/artifact", "http://myJFrogPlatform/customLink/first/artifact")
-	result, excpected := fileTree.String(), "📦 repoName\n└── 📁 path\n    └── 📁 to\n        └── 📁 first\n            └── <a href=http://myJFrogPlatform/customLink/first/artifact target=\"_blank\">artifact</a>\n"
+	result, excpected := fileTree.String(), "📦 repoName\n└── 📁 path\n    └── 📁 to\n        └── 📁 first\n            └── <a href=http://myJFrogPlatform/customLink/first/artifact target=\"_blank\">artifact</a>\n\n"
 	assert.Equal(t, excpected, result)
 
 }

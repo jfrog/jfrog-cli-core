@@ -43,7 +43,7 @@ func (ft *FileTree) String() string {
 	}
 	treeStr := ""
 	for _, repo := range ft.repos {
-		treeStr += strings.Join(repo.strings(), "\n") + "\n"
+		treeStr += strings.Join(repo.strings(), "\n") + "\n\n"
 	}
 	return treeStr
 }

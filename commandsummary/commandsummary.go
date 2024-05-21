@@ -29,13 +29,14 @@ type CommandSummary struct {
 	commandsName      string
 }
 
+// Create a new instance of CommandSummary.
+// Notice to check if the command should record the summary before calling this function.
+// You can do this by calling the helper function ShouldRecordSummary.
 func New(userImplementation CommandSummaryInterface, commandsName string) (cs *CommandSummary, err error) {
-	if !ArePrerequisitesMet() {
-		return nil, nil
-	}
 	cs = &CommandSummary{
 		CommandSummaryInterface: userImplementation,
 		commandsName:            commandsName,
+		summaryOutputPath:       os.Getenv(OutputDirPathEnv),
 	}
 	err = cs.prepareFileSystem()
 	return
@@ -44,7 +45,7 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 // This function stores the current data on the file system.
 // It then invokes the GenerateMarkdownFromFiles function on all existing data files.
 // Finally, it saves the generated markdown file to the file system.
-func (cs *CommandSummary) CreateMarkdown(data any) (err error) {
+func (cs *CommandSummary) Record(data any) (err error) {
 	if err = cs.saveDataToFileSystem(data); err != nil {
 		return
 	}
@@ -116,21 +117,27 @@ func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
 	return nil
 }
 
+// This function creates the base dir for the command summary inside
+// the path the user has provided, userPath/OutputDirName.
+// Then it creates a specific directory for the command, path/OutputDirName/commandsName.
+// And set the summaryOutputPath to the specific command directory.
 func (cs *CommandSummary) prepareFileSystem() (err error) {
-	summaryBaseDirPath := filepath.Join(os.Getenv(OutputDirPathEnv), OutputDirName)
+	summaryBaseDirPath := filepath.Join(cs.summaryOutputPath, OutputDirName)
 	if err = createDirIfNotExists(summaryBaseDirPath); err != nil {
 		return errorutils.CheckError(err)
 	}
-	cs.summaryOutputPath = filepath.Join(summaryBaseDirPath, cs.commandsName)
-	if err = createDirIfNotExists(cs.summaryOutputPath); err != nil {
+	specificCommandOutputPath := filepath.Join(summaryBaseDirPath, cs.commandsName)
+	if err = createDirIfNotExists(specificCommandOutputPath); err != nil {
 		return errorutils.CheckError(err)
 	}
+	// Sets the specific command output path
+	cs.summaryOutputPath = specificCommandOutputPath
 	return
 }
 
-func ArePrerequisitesMet() bool {
-	homeDirPath := os.Getenv(OutputDirPathEnv)
-	return homeDirPath != ""
+// If the output dir path is not defined, the command summary should not be recorded.
+func ShouldRecordSummary() bool {
+	return os.Getenv(OutputDirPathEnv) != ""
 }
 
 // Helper function to unmarshal data from a file path into the target object.

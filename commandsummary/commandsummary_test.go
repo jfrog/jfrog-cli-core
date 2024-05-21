@@ -29,7 +29,7 @@ func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
 	}()
 
 	// Call GenerateMarkdownFromFiles
-	err := cs.CreateMarkdown("someData")
+	err := cs.Record("someData")
 	assert.NoError(t, err)
 
 	// Verify that the directory contains two files

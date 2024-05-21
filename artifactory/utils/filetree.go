@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/maps"
 	"sort"
 	"strings"
 )
@@ -95,15 +96,10 @@ func (dn *dirNode) strings() []string {
 	fileIndex := 0
 
 	// Sort File names inside each sub dir
-	var fileNamesSorted []string
-	for fileName := range dn.fileNames {
-		fileNamesSorted = append(fileNamesSorted, fileName)
-	}
-	sort.Slice(fileNamesSorted, func(i, j int) bool {
-		return fileNamesSorted[i] < fileNamesSorted[j]
-	})
+	sortedFileNames := maps.Keys(dn.fileNames)
+	sort.Slice(sortedFileNames, func(i, j int) bool { return sortedFileNames[i] < sortedFileNames[j] })
 
-	for _, fileName := range fileNamesSorted {
+	for _, fileNameKey := range sortedFileNames {
 		var filePrefix string
 		if fileIndex == len(dn.fileNames)-1 {
 			filePrefix = "└── "
@@ -113,10 +109,10 @@ func (dn *dirNode) strings() []string {
 		}
 
 		var fullFileName string
-		if dn.fileNames[fileName] != "" {
-			fullFileName = fmt.Sprintf("%s<a href=%s target=\"_blank\">%s</a>", filePrefix, dn.fileNames[fileName], fileName)
+		if dn.fileNames[fileNameKey] != "" {
+			fullFileName = fmt.Sprintf("%s<a href=%s target=\"_blank\">%s</a>", filePrefix, dn.fileNames[fileNameKey], fileNameKey)
 		} else {
-			fullFileName = filePrefix + "📄 " + fileName
+			fullFileName = filePrefix + "📄 " + fileNameKey
 		}
 		repoAsString = append(repoAsString, fullFileName)
 	}

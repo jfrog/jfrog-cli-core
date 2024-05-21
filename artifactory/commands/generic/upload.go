@@ -157,7 +157,7 @@ func (uc *UploadCommand) upload() (err error) {
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
 
-			if err = recordCommandSummary(summary); err != nil {
+			if err = recordCommandSummary(summary, serverDetails.Url, uc.buildConfiguration.GetProject()); err != nil {
 				return
 			}
 		}
@@ -280,16 +280,19 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		BuildSpec()
 }
 
-func recordCommandSummary(summary *rtServicesUtils.OperationSummary) (err error) {
-	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(), "upload")
-	if err != nil || uploadSummary == nil {
+func recordCommandSummary(summary *rtServicesUtils.OperationSummary, platformUrl, projectKey string) (err error) {
+	if !commandsummary.ShouldRecordSummary() {
+		return
+	}
+	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(platformUrl, projectKey), "upload")
+	if err != nil {
 		return
 	}
 	data, err := readDetailsFromReader(summary.TransferDetailsReader)
 	if err != nil {
 		return
 	}
-	return uploadSummary.CreateMarkdown(data)
+	return uploadSummary.Record(data)
 }
 
 // Reads transfer details from the reader and return the content as bytes for further processing

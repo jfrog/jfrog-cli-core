@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
-	"os"
 )
 
 type UploadSummary struct {
@@ -26,10 +23,10 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary() *UploadSummary {
+func NewUploadSummary(platformUrl, projectKey string) *UploadSummary {
 	return &UploadSummary{
-		PlatformUrl:     clientUtils.AddTrailingSlashIfNeeded(os.Getenv(commandsummary.PlatformUrlEnv)),
-		JfrogProjectKey: os.Getenv(coreutils.Project),
+		PlatformUrl:     platformUrl,
+		JfrogProjectKey: projectKey,
 	}
 }
 

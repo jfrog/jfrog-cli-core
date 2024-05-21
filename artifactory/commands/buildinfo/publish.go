@@ -237,10 +237,13 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 }
 
 func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
-	buildInfo.BuildUrl = buildLink
-	buildInfoSummary, err := commandsummary.New(commandssummaries.NewBuildInfo(), "build-info")
-	if err != nil || buildInfoSummary == nil {
+	if !commandsummary.ShouldRecordSummary() {
 		return
 	}
-	return buildInfoSummary.CreateMarkdown(buildInfo)
+	buildInfo.BuildUrl = buildLink
+	buildInfoSummary, err := commandsummary.New(commandssummaries.NewBuildInfo(), "build-info")
+	if err != nil {
+		return
+	}
+	return buildInfoSummary.Record(buildInfo)
 }

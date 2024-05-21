@@ -23,7 +23,7 @@ func NewFileTree() *FileTree {
 
 // Path - file structure path to artifact
 // UploadedFileUrl - URL to the uploaded file in Artifactory,
-// If not provided, the file name will be displayed without a link.
+// if UploadedFileUrl not provided, the file name will be displayed without a link.
 func (ft *FileTree) AddFile(path, uploadedFileUrl string) {
 	if ft.size >= maxFilesInTree {
 		log.Info("Exceeded maximum number of files in tree")

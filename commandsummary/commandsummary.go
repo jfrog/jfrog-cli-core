@@ -33,10 +33,14 @@ type CommandSummary struct {
 // Notice to check if the command should record the summary before calling this function.
 // You can do this by calling the helper function ShouldRecordSummary.
 func New(userImplementation CommandSummaryInterface, commandsName string) (cs *CommandSummary, err error) {
+	outputDir := os.Getenv(OutputDirPathEnv)
+	if outputDir == "" {
+		return nil, fmt.Errorf("output dir path is not defined,please set the JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR environment variable")
+	}
 	cs = &CommandSummary{
 		CommandSummaryInterface: userImplementation,
 		commandsName:            commandsName,
-		summaryOutputPath:       os.Getenv(OutputDirPathEnv),
+		summaryOutputPath:       outputDir,
 	}
 	err = cs.prepareFileSystem()
 	return
@@ -58,7 +62,7 @@ func (cs *CommandSummary) Record(data any) (err error) {
 		return fmt.Errorf("failed to render markdown: %w", err)
 	}
 	if err = cs.saveMarkdownToFileSystem(markdown); err != nil {
-		return fmt.Errorf("failed to save markdown to file system")
+		return fmt.Errorf("failed to save markdown to file system: %w", err)
 	}
 	return
 }

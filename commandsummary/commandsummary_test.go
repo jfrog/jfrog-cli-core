@@ -22,6 +22,12 @@ func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(dataFilePaths []string)
 	return "mockMarkdown", nil
 }
 
+// Without output dir env, New should return an error.
+func TestInitWithoutOutputDir(t *testing.T) {
+	_, err := New(&mockCommandSummary{}, "testsCommands")
+	assert.Error(t, err)
+}
+
 func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
 	cs, cleanUp := prepareTest(t)
 	defer func() {

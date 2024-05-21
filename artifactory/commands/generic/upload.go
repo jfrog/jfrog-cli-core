@@ -294,15 +294,16 @@ func recordCommandSummary(summary *rtServicesUtils.OperationSummary) (err error)
 
 // Reads transfer details from the reader and return the content as bytes for further processing
 func readDetailsFromReader(reader *content.ContentReader) (readContent []byte, err error) {
-	if reader != nil {
-		for _, file := range reader.GetFilesPaths() {
-			// Read source file
-			sourceBytes, err := os.ReadFile(file)
-			if err != nil {
-				return nil, err
-			}
-			readContent = append(readContent, sourceBytes...)
+	if reader == nil {
+		return
+	}
+	for _, file := range reader.GetFilesPaths() {
+		// Read source file
+		sourceBytes, err := os.ReadFile(file)
+		if err != nil {
+			return nil, err
 		}
+		readContent = append(readContent, sourceBytes...)
 	}
 	return
 }

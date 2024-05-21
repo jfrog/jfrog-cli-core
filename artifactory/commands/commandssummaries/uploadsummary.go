@@ -10,7 +10,7 @@ import (
 )
 
 type UploadSummary struct {
-	uploadTree        *utils.FileTree // Upload a tree object to generate markdown
+	uploadTree        *utils.FileTree
 	uploadedArtifacts ResultsWrapper
 	PlatformUrl       string
 	JfrogProjectKey   string
@@ -33,37 +33,37 @@ func NewUploadSummary() *UploadSummary {
 	}
 }
 
-func (ga *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
-	if err = ga.loadResults(dataFilePaths); err != nil {
+func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
+	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}
 	// Wrap the markdown in a <pre> tags to preserve spaces
-	finalMarkdown = fmt.Sprintf("\n<pre>\n\n\n" + ga.generateFileTreeMarkdown() + "</pre>\n\n")
+	markdown = fmt.Sprintf("\n<pre>\n\n\n" + us.generateFileTreeMarkdown() + "</pre>\n\n")
 	return
 }
 
 // Loads all the recorded results from the given file paths.
-func (ga *UploadSummary) loadResults(filePaths []string) error {
-	ga.uploadedArtifacts = ResultsWrapper{}
+func (us *UploadSummary) loadResults(filePaths []string) error {
+	us.uploadedArtifacts = ResultsWrapper{}
 	for _, path := range filePaths {
 		var uploadResult ResultsWrapper
 		if err := commandsummary.UnmarshalFromFilePath(path, &uploadResult); err != nil {
 			return err
 		}
-		ga.uploadedArtifacts.Results = append(ga.uploadedArtifacts.Results, uploadResult.Results...)
+		us.uploadedArtifacts.Results = append(us.uploadedArtifacts.Results, uploadResult.Results...)
 	}
 	return nil
 }
 
-func (ga *UploadSummary) generateFileTreeMarkdown() string {
-	ga.uploadTree = utils.NewFileTree()
-	for _, b := range ga.uploadedArtifacts.Results {
-		ga.uploadTree.AddFile(b.TargetPath, ga.buildUiUrl(b.TargetPath))
+func (us *UploadSummary) generateFileTreeMarkdown() string {
+	us.uploadTree = utils.NewFileTree()
+	for _, uploadResult := range us.uploadedArtifacts.Results {
+		us.uploadTree.AddFile(uploadResult.TargetPath, us.buildUiUrl(uploadResult.TargetPath))
 	}
-	return ga.uploadTree.String()
+	return us.uploadTree.String()
 }
 
-func (ga *UploadSummary) buildUiUrl(targetPath string) string {
+func (us *UploadSummary) buildUiUrl(targetPath string) string {
 	template := "%sui/repos/tree/General/%s/?projectKey=%s"
-	return fmt.Sprintf(template, ga.PlatformUrl, targetPath, ga.JfrogProjectKey)
+	return fmt.Sprintf(template, us.PlatformUrl, targetPath, us.JfrogProjectKey)
 }

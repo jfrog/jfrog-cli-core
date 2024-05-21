@@ -8,36 +8,37 @@ import (
 	"time"
 )
 
-type BuildInfoSummary struct {
-	Builds []*buildInfo.BuildInfo
-}
+const timeFormat = "Jan 2, 2006 , 15:04:05"
+
+type BuildInfoSummary struct{}
 
 func NewBuildInfo() *BuildInfoSummary {
-	return &BuildInfoSummary{make([]*buildInfo.BuildInfo, 0)}
+	return &BuildInfoSummary{}
 }
 
-func (ga *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
 	// Aggregate all the build info files into a slice
+	var builds []*buildInfo.BuildInfo
 	for _, path := range dataFilePaths {
 		var publishBuildInfo buildInfo.BuildInfo
 		if err = commandsummary.UnmarshalFromFilePath(path, &publishBuildInfo); err != nil {
 			return
 		}
-		ga.Builds = append(ga.Builds, &publishBuildInfo)
+		builds = append(builds, &publishBuildInfo)
 	}
 
-	if len(ga.Builds) > 0 {
-		finalMarkdown = ga.buildInfoTable()
+	if len(builds) > 0 {
+		finalMarkdown = bis.buildInfoTable(builds)
 	}
 	return
 }
 
-func (ga *BuildInfoSummary) buildInfoTable() string {
+func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
-	for _, build := range ga.Builds {
+	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
 	}
@@ -47,10 +48,10 @@ func (ga *BuildInfoSummary) buildInfoTable() string {
 
 func parseBuildTime(timestamp string) string {
 	// Parse the timestamp string into a time.Time object
-	t, err := time.Parse("2006-01-02T15:04:05.000-0700", timestamp)
+	buildInfoTime, err := time.Parse(buildInfo.TimeFormat, timestamp)
 	if err != nil {
 		return "N/A"
 	}
 	// Format the time in a more human-readable format and save it in a variable
-	return t.Format("Jan 2, 2006 , 15:04:05")
+	return buildInfoTime.Format(timeFormat)
 }

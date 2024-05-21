@@ -6,27 +6,9 @@ import (
 	"testing"
 )
 
-func TestBuildUiUrl(t *testing.T) {
-	gh := &UploadSummary{
-		PlatformUrl:     "https://myplatform.com/",
-		JfrogProjectKey: "myProject",
-	}
-	expected := "https://myplatform.com/ui/repos/tree/General/myPath/?projectKey=myProject"
-	actual := gh.buildUiUrl("myPath")
-	assert.Equal(t, expected, actual)
-
-	gh = &UploadSummary{
-		PlatformUrl:     "https://myplatform.com/",
-		JfrogProjectKey: "",
-	}
-	expected = "https://myplatform.com/ui/repos/tree/General/myPath/?projectKey="
-	actual = gh.buildUiUrl("myPath")
-	assert.Equal(t, expected, actual)
-}
-
 func TestBuildInfoTable(t *testing.T) {
 	gh := &BuildInfoSummary{}
-	gh.Builds = []*buildinfo.BuildInfo{
+	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
 			Number:   "123",
@@ -35,14 +17,15 @@ func TestBuildInfoTable(t *testing.T) {
 		},
 	}
 	expected := "\n\n|  Build Info |  Time Stamp | \n|---------|------------| \n| [buildName 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 , 12:47:20 |\n\n\n"
-	assert.Equal(t, expected, gh.buildInfoTable())
+	assert.Equal(t, expected, gh.buildInfoTable(builds))
 }
 
 func TestParseBuildTime(t *testing.T) {
-	expected := "Jan 2, 2006 , 15:04:05"
+	// Test format
 	actual := parseBuildTime("2006-01-02T15:04:05.000-0700")
+	expected := "Jan 2, 2006 , 15:04:05"
 	assert.Equal(t, expected, actual)
-
+	// Test invalid format
 	expected = "N/A"
 	actual = parseBuildTime("")
 	assert.Equal(t, expected, actual)

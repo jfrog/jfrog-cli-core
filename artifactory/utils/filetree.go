@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"sort"
 	"strings"
 )
@@ -24,6 +25,7 @@ func NewFileTree() *FileTree {
 // If not provided, the file name will be displayed without a link.
 func (ft *FileTree) AddFile(path, uploadedFileUrl string) {
 	if ft.size >= maxFilesInTree {
+		log.Info("Exceeded maximum number of files in tree")
 		ft.exceedsMax = true
 		return
 	}
@@ -71,7 +73,7 @@ func (dn *dirNode) addArtifact(pathInDir []string, artifactUrl string) bool {
 }
 
 func (dn *dirNode) strings() []string {
-	strs := []string{dn.prefix + dn.name}
+	repoAsString := []string{dn.prefix + dn.name}
 	subDirIndex := 0
 	for subDirName := range dn.subDirNodes {
 		var subDirPrefix string
@@ -84,9 +86,9 @@ func (dn *dirNode) strings() []string {
 			innerStrPrefix = "│   "
 		}
 		subDirStrs := dn.subDirNodes[subDirName].strings()
-		strs = append(strs, subDirPrefix+subDirStrs[0])
+		repoAsString = append(repoAsString, subDirPrefix+subDirStrs[0])
 		for subDirStrIndex := 1; subDirStrIndex < len(subDirStrs); subDirStrIndex++ {
-			strs = append(strs, innerStrPrefix+subDirStrs[subDirStrIndex])
+			repoAsString = append(repoAsString, innerStrPrefix+subDirStrs[subDirStrIndex])
 		}
 		subDirIndex++
 	}
@@ -94,8 +96,8 @@ func (dn *dirNode) strings() []string {
 
 	// Sort File names inside each sub dir
 	var fileNamesSorted []string
-	for k := range dn.fileNames {
-		fileNamesSorted = append(fileNamesSorted, k)
+	for fileName := range dn.fileNames {
+		fileNamesSorted = append(fileNamesSorted, fileName)
 	}
 	sort.Slice(fileNamesSorted, func(i, j int) bool {
 		return fileNamesSorted[i] < fileNamesSorted[j]
@@ -116,7 +118,7 @@ func (dn *dirNode) strings() []string {
 		} else {
 			fullFileName = filePrefix + "📄 " + fileName
 		}
-		strs = append(strs, fullFileName)
+		repoAsString = append(repoAsString, fullFileName)
 	}
-	return strs
+	return repoAsString
 }

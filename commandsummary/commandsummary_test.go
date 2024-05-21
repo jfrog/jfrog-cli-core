@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"path"
 	"testing"
 )
 
@@ -22,14 +23,13 @@ func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(dataFilePaths []string)
 }
 
 func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
-	cs, cleanUp, err := prepareTest(t)
+	cs, cleanUp := prepareTest(t)
 	defer func() {
-		cleanUp(t)
+		cleanUp()
 	}()
-	assert.NoError(t, err)
 
 	// Call GenerateMarkdownFromFiles
-	err = cs.CreateMarkdown("someData")
+	err := cs.CreateMarkdown("someData")
 	assert.NoError(t, err)
 
 	// Verify that the directory contains two files
@@ -37,15 +37,8 @@ func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
 	assert.NoError(t, err, "Failed to read directory 'test'")
 	assert.Equal(t, 2, len(files), "Directory 'test' does not contain exactly two files")
 
-	// Verify that one of the files is named "markdown.md"
-	var containsMarkdown bool
-	for _, file := range files {
-		if file.Name() == "markdown.md" {
-			containsMarkdown = true
-			break
-		}
-	}
-	assert.True(t, containsMarkdown, "File 'markdown.md' does not exist in the sub directory")
+	// Verify a markdown file has been created
+	assert.FileExists(t, path.Join(cs.summaryOutputPath, "markdown.md"))
 }
 
 func TestDataPersistence(t *testing.T) {
@@ -79,14 +72,12 @@ func TestDataPersistence(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Prepare a new CommandSummary for each test case
-			cs, cleanUp, err := prepareTest(t)
+			cs, cleanUp := prepareTest(t)
 			defer func() {
-				cleanUp(t)
+				cleanUp()
 			}()
-			assert.NoError(t, err)
-
 			// Save data to file
-			err = cs.saveDataToFileSystem(tc.originalData)
+			err := cs.saveDataToFileSystem(tc.originalData)
 			assert.NoError(t, err)
 
 			// Verify file has been saved
@@ -125,7 +116,7 @@ func unmarshalData(expected interface{}, filePath string) (interface{}, error) {
 	}
 }
 
-func prepareTest(t *testing.T) (cs *CommandSummary, cleanUp func(t2 *testing.T), err error) {
+func prepareTest(t *testing.T) (cs *CommandSummary, cleanUp func()) {
 	// Prepare test env
 	tempDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
@@ -135,9 +126,9 @@ func prepareTest(t *testing.T) (cs *CommandSummary, cleanUp func(t2 *testing.T),
 	cs, err = New(&mockCommandSummary{}, "testsCommands")
 	assert.NoError(t, err)
 
-	cleanUp = func(t2 *testing.T) {
-		assert.NoError(t2, os.Unsetenv(OutputDirPathEnv))
-		assert.NoError(t2, fileutils.RemoveTempDir(tempDir))
+	cleanUp = func() {
+		assert.NoError(t, os.Unsetenv(OutputDirPathEnv))
+		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
 	}
 	return
 }

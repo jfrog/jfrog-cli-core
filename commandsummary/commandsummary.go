@@ -10,9 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 )
 
 type CommandSummaryInterface interface {
@@ -39,9 +37,7 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 		CommandSummaryInterface: userImplementation,
 		commandsName:            commandsName,
 	}
-	if err = cs.prepareFileSystem(); err != nil {
-		return nil, errorutils.CheckError(err)
-	}
+	err = cs.prepareFileSystem()
 	return
 }
 
@@ -54,11 +50,11 @@ func (cs *CommandSummary) CreateMarkdown(data any) (err error) {
 	}
 	dataFilesPaths, err := cs.getAllDataFilesPaths()
 	if err != nil {
-		return fmt.Errorf("failed to load data files from direcoty %s, with error:%w ", cs.commandsName, err)
+		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)
 	}
 	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths)
 	if err != nil {
-		return fmt.Errorf("failed to render markdown :%w", err)
+		return fmt.Errorf("failed to render markdown: %w", err)
 	}
 	if err = cs.saveMarkdownToFileSystem(markdown); err != nil {
 		return fmt.Errorf("failed to save markdown to file system")
@@ -69,7 +65,7 @@ func (cs *CommandSummary) CreateMarkdown(data any) (err error) {
 func (cs *CommandSummary) getAllDataFilesPaths() ([]string, error) {
 	entries, err := os.ReadDir(cs.summaryOutputPath)
 	if err != nil {
-		return nil, err
+		return nil, errorutils.CheckError(err)
 	}
 	// Exclude markdown files
 	var filePaths []string
@@ -87,21 +83,20 @@ func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) 
 		err = errors.Join(err, file.Close())
 	}()
 	if err != nil {
-		return
+		return errorutils.CheckError(err)
 	}
 	if _, err = file.WriteString(markdown); err != nil {
-		return
+		return errorutils.CheckError(err)
 	}
 	return
 }
 
 // Saves the given data into a file in the specified directory.
 func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
-
 	// Create a random file name in the data file path.
-	fd, err := os.CreateTemp(cs.summaryOutputPath, generateRandomFileName())
+	fd, err := os.CreateTemp(cs.summaryOutputPath, "data-*")
 	if err != nil {
-		return err
+		return errorutils.CheckError(err)
 	}
 	defer func() {
 		err = errors.Join(err, fd.Close())
@@ -110,12 +105,12 @@ func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
 	// Convert the data into bytes.
 	bytes, err := convertDataToBytes(data)
 	if err != nil {
-		return err
+		return errorutils.CheckError(err)
 	}
 
 	// Write the bytes to the file.
 	if _, err = fd.Write(bytes); err != nil {
-		return err
+		return errorutils.CheckError(err)
 	}
 
 	return nil
@@ -124,11 +119,11 @@ func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
 func (cs *CommandSummary) prepareFileSystem() (err error) {
 	summaryBaseDirPath := filepath.Join(os.Getenv(OutputDirPathEnv), OutputDirName)
 	if err = createDirIfNotExists(summaryBaseDirPath); err != nil {
-		return
+		return errorutils.CheckError(err)
 	}
 	cs.summaryOutputPath = filepath.Join(summaryBaseDirPath, cs.commandsName)
 	if err = createDirIfNotExists(cs.summaryOutputPath); err != nil {
-		return
+		return errorutils.CheckError(err)
 	}
 	return
 }
@@ -146,7 +141,7 @@ func UnmarshalFromFilePath(dataFile string, target any) (err error) {
 	}
 	if err = json.Unmarshal(data, target); err != nil {
 		log.Error("Failed to unmarshal data: ", err)
-		return
+		return errorutils.CheckError(err)
 	}
 	return
 }
@@ -162,19 +157,6 @@ func convertDataToBytes(data interface{}) ([]byte, error) {
 	}
 }
 
-func generateRandomFileName() string {
-	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-	return "data-" + timestamp + "-"
-}
-
 func createDirIfNotExists(homeDir string) error {
-	if _, err := os.Stat(homeDir); os.IsNotExist(err) {
-		err = os.MkdirAll(homeDir, 0755)
-		if err != nil {
-			return err
-		}
-	} else if err != nil {
-		return err
-	}
-	return nil
+	return errorutils.CheckError(os.MkdirAll(homeDir, 0755))
 }

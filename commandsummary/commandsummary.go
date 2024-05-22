@@ -88,7 +88,7 @@ func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) 
 		return errorutils.CheckError(err)
 	}
 	defer func() {
-		err = errors.Join(err, file.Close())
+		err = errors.Join(err, errorutils.CheckError(file.Close()))
 	}()
 	if _, err = file.WriteString(markdown); err != nil {
 		return errorutils.CheckError(err)

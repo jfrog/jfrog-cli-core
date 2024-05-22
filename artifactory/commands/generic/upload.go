@@ -2,6 +2,9 @@ package generic
 
 import (
 	"errors"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
@@ -153,6 +156,10 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
+
+			if err = recordCommandSummary(summary, serverDetails.Url, uc.buildConfiguration); err != nil {
+				return
+			}
 		}
 	} else {
 		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
@@ -188,6 +195,7 @@ func (uc *UploadCommand) upload() (err error) {
 		}
 		return build.PopulateBuildArtifactsAsPartials(buildArtifacts, uc.buildConfiguration, buildInfo.Generic)
 	}
+
 	return
 }
 
@@ -270,4 +278,40 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		ExcludeProps(syncDeletesProp).
 		Recursive(true).
 		BuildSpec()
+}
+
+func recordCommandSummary(summary *rtServicesUtils.OperationSummary, platformUrl string, buildConfig *build.BuildConfiguration) (err error) {
+	if !commandsummary.ShouldRecordSummary() {
+		return
+	}
+	// Get project key if exists
+	var projectKey string
+	if buildConfig != nil {
+		projectKey = buildConfig.GetProject()
+	}
+	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(platformUrl, projectKey), "upload")
+	if err != nil {
+		return
+	}
+	data, err := readDetailsFromReader(summary.TransferDetailsReader)
+	if err != nil {
+		return
+	}
+	return uploadSummary.Record(data)
+}
+
+// Reads transfer details from the reader and return the content as bytes for further processing
+func readDetailsFromReader(reader *content.ContentReader) (readContent []byte, err error) {
+	if reader == nil {
+		return
+	}
+	for _, file := range reader.GetFilesPaths() {
+		// Read source file
+		sourceBytes, err := os.ReadFile(file)
+		if err != nil {
+			return nil, errorutils.CheckError(err)
+		}
+		readContent = append(readContent, sourceBytes...)
+	}
+	return
 }

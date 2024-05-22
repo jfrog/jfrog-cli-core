@@ -3,6 +3,8 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
+	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 	"net/url"
 	"strconv"
 	"strings"
@@ -139,6 +141,10 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
+	if err = recordCommandSummary(buildInfo, buildLink); err != nil {
+		return err
+	}
+
 	logMsg := "Build info successfully deployed."
 	if bpc.IsDetailedSummary() {
 		log.Info(logMsg + " Browse it in Artifactory under " + buildLink)
@@ -228,4 +234,16 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 	}
 	latestBuildNumber++
 	return strconv.Itoa(latestBuildNumber), nil
+}
+
+func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
+	if !commandsummary.ShouldRecordSummary() {
+		return
+	}
+	buildInfo.BuildUrl = buildLink
+	buildInfoSummary, err := commandsummary.New(commandssummaries.NewBuildInfo(), "build-info")
+	if err != nil {
+		return
+	}
+	return buildInfoSummary.Record(buildInfo)
 }

@@ -2,6 +2,7 @@ package commandsummary
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -127,13 +128,13 @@ func prepareTest(t *testing.T) (cs *CommandSummary, cleanUp func()) {
 	tempDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
 	// Set env
-	assert.NoError(t, os.Setenv(OutputDirPathEnv, tempDir))
+	assert.NoError(t, os.Setenv(coreutils.OutputDirPathEnv, tempDir))
 	// Create the job summaries home directory
 	cs, err = New(&mockCommandSummary{}, "testsCommands")
 	assert.NoError(t, err)
 
 	cleanUp = func() {
-		assert.NoError(t, os.Unsetenv(OutputDirPathEnv))
+		assert.NoError(t, os.Unsetenv(coreutils.OutputDirPathEnv))
 		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
 	}
 	return

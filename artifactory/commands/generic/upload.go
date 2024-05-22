@@ -157,7 +157,7 @@ func (uc *UploadCommand) upload() (err error) {
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
 
-			if err = recordCommandSummary(summary, serverDetails.Url, uc.buildConfiguration.GetProject()); err != nil {
+			if err = recordCommandSummary(summary, serverDetails.Url, uc.buildConfiguration); err != nil {
 				return
 			}
 		}
@@ -280,9 +280,14 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		BuildSpec()
 }
 
-func recordCommandSummary(summary *rtServicesUtils.OperationSummary, platformUrl, projectKey string) (err error) {
+func recordCommandSummary(summary *rtServicesUtils.OperationSummary, platformUrl string, buildConfig *build.BuildConfiguration) (err error) {
 	if !commandsummary.ShouldRecordSummary() {
 		return
+	}
+	// Get project key if exists
+	var projectKey string
+	if buildConfig != nil {
+		projectKey = buildConfig.GetProject()
 	}
 	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(platformUrl, projectKey), "upload")
 	if err != nil {

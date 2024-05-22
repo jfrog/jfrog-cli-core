@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path"
 	"path/filepath"
@@ -18,9 +18,9 @@ type CommandSummaryInterface interface {
 }
 
 const (
-	PlatformUrlEnv   = "JF_URL"
-	OutputDirName    = "jfrog-command-summary"
-	OutputDirPathEnv = "JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR"
+	// The name of the directory where all the commands summaries will be stored.
+	// Inside this directory, each command will have its own directory.
+	OutputDirName = "jfrog-command-summary"
 )
 
 type CommandSummary struct {
@@ -33,7 +33,7 @@ type CommandSummary struct {
 // Notice to check if the command should record the summary before calling this function.
 // You can do this by calling the helper function ShouldRecordSummary.
 func New(userImplementation CommandSummaryInterface, commandsName string) (cs *CommandSummary, err error) {
-	outputDir := os.Getenv(OutputDirPathEnv)
+	outputDir := os.Getenv(coreutils.OutputDirPathEnv)
 	if outputDir == "" {
 		return nil, fmt.Errorf("output dir path is not defined,please set the JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR environment variable")
 	}
@@ -84,12 +84,12 @@ func (cs *CommandSummary) getAllDataFilesPaths() ([]string, error) {
 
 func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) {
 	file, err := os.OpenFile(path.Join(cs.summaryOutputPath, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
-	defer func() {
-		err = errors.Join(err, file.Close())
-	}()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
+	defer func() {
+		err = errors.Join(err, file.Close())
+	}()
 	if _, err = file.WriteString(markdown); err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -128,11 +128,11 @@ func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
 func (cs *CommandSummary) prepareFileSystem() (err error) {
 	summaryBaseDirPath := filepath.Join(cs.summaryOutputPath, OutputDirName)
 	if err = createDirIfNotExists(summaryBaseDirPath); err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
 	specificCommandOutputPath := filepath.Join(summaryBaseDirPath, cs.commandsName)
 	if err = createDirIfNotExists(specificCommandOutputPath); err != nil {
-		return errorutils.CheckError(err)
+		return err
 	}
 	// Sets the specific command output path
 	cs.summaryOutputPath = specificCommandOutputPath
@@ -141,7 +141,7 @@ func (cs *CommandSummary) prepareFileSystem() (err error) {
 
 // If the output dir path is not defined, the command summary should not be recorded.
 func ShouldRecordSummary() bool {
-	return os.Getenv(OutputDirPathEnv) != ""
+	return os.Getenv(coreutils.OutputDirPathEnv) != ""
 }
 
 // Helper function to unmarshal data from a file path into the target object.
@@ -151,7 +151,6 @@ func UnmarshalFromFilePath(dataFile string, target any) (err error) {
 		return
 	}
 	if err = json.Unmarshal(data, target); err != nil {
-		log.Error("Failed to unmarshal data: ", err)
 		return errorutils.CheckError(err)
 	}
 	return

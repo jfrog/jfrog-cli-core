@@ -304,7 +304,7 @@ func readDetailsFromReader(reader *content.ContentReader) (readContent []byte, e
 		// Read source file
 		sourceBytes, err := os.ReadFile(file)
 		if err != nil {
-			return nil, err
+			return nil, errorutils.CheckError(err)
 		}
 		readContent = append(readContent, sourceBytes...)
 	}

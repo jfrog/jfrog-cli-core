@@ -83,8 +83,8 @@ func GetModuleName(projectDir string) (string, error) {
 	return path, nil
 }
 
-func GetDependenciesList(projectDir string) (map[string]bool, error) {
-	deps, err := utils.GetDependenciesList(projectDir, log.Logger)
+func GetDependenciesList(projectDir string, errorFunc utils.HandleErrorFunc) (map[string]bool, error) {
+	deps, err := utils.GetDependenciesList(projectDir, log.Logger, errorFunc)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}
@@ -99,17 +99,17 @@ func GetDependenciesGraph(projectDir string) (map[string][]string, error) {
 	return deps, nil
 }
 
-func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string) (string, error) {
+func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, isCurationCmd bool) (string, error) {
 	authServerDetails, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return "", err
 	}
-	return getArtifactoryApiUrl(repo, authServerDetails)
+	return getArtifactoryApiUrl(repo, authServerDetails, isCurationCmd)
 }
 
 // Gets the URL of the specified repository Go API in Artifactory.
 // The URL contains credentials (username and access token or password).
-func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string, error) {
+func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, isCurationCmd bool) (string, error) {
 	rtUrl, err := url.Parse(details.GetUrl())
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -128,6 +128,9 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string,
 	}
 	if password != "" {
 		rtUrl.User = url.UserPassword(username, password)
+	}
+	if isCurationCmd {
+		rtUrl.Path += "api/curation/audit/"
 	}
 	rtUrl.Path += "api/go/" + repoName
 	return rtUrl.String(), nil

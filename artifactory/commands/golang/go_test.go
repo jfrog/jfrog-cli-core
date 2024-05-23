@@ -60,7 +60,7 @@ func TestSetArtifactoryAsResolutionServer(t *testing.T) {
 	cleanup := testsutils.SetEnvWithCallbackAndAssert(t, "GOPROXY", "")
 	defer cleanup()
 
-	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo))
+	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, false))
 
 	serverUrlWithoutHttp := strings.TrimPrefix(server.ArtifactoryUrl, "http://")
 	expectedGoProxy := fmt.Sprintf("http://%s:%s@%sapi/go/%s|direct", server.User, server.Password, serverUrlWithoutHttp, repo)

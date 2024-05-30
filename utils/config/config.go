@@ -12,6 +12,7 @@ import (
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
+	evidenceAuth "github.com/jfrog/jfrog-client-go/evidence/auth"
 	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
@@ -578,6 +579,7 @@ type ServerDetails struct {
 	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
 	AccessUrl                       string `json:"accessUrl,omitempty"`
 	LifecycleUrl                    string `json:"-"`
+	EvidenceUrl                     string `json:"-"`
 	User                            string `json:"user,omitempty"`
 	Password                        string `json:"password,omitempty"`
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
@@ -668,6 +670,10 @@ func (serverDetails *ServerDetails) GetLifecycleUrl() string {
 	return serverDetails.LifecycleUrl
 }
 
+func (serverDetails *ServerDetails) GetEvidenceUrl() string {
+	return serverDetails.EvidenceUrl
+}
+
 func (serverDetails *ServerDetails) GetUser() string {
 	return serverDetails.User
 }
@@ -739,6 +745,12 @@ func (serverDetails *ServerDetails) CreateLifecycleAuthConfig() (auth.ServiceDet
 	lcAuth := lifecycleAuth.NewLifecycleDetails()
 	lcAuth.SetUrl(serverDetails.LifecycleUrl)
 	return serverDetails.createAuthConfig(lcAuth)
+}
+
+func (serverDetails *ServerDetails) CreateEvidenceAuthConfig() (auth.ServiceDetails, error) {
+	evdAuth := evidenceAuth.NewEvidenceDetails()
+	evdAuth.SetUrl(serverDetails.EvidenceUrl)
+	return serverDetails.createAuthConfig(evdAuth)
 }
 
 func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {

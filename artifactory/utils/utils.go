@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	ioutils "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-client-go/evidence"
 	"io"
 	"net/http"
 	"net/url"
@@ -212,6 +213,27 @@ func CreateLifecycleServiceManager(serviceDetails *config.ServerDetails, isDryRu
 		return nil, err
 	}
 	return lifecycle.New(serviceConfig)
+}
+
+func CreateEvidenceServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*evidence.EvidenceServicesManager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	evdAuth, err := serviceDetails.CreateEvidenceAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(evdAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serviceDetails.InsecureTls).
+		SetDryRun(isDryRun).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return evidence.New(serviceConfig)
 }
 
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.

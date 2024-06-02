@@ -210,6 +210,8 @@ func getUploadParams(f *spec.File, configuration *utils.UploadConfiguration, bui
 	uploadParams.MinSplitSize = configuration.MinSplitSizeMB * rtServicesUtils.SizeMiB
 	uploadParams.SplitCount = configuration.SplitCount
 	uploadParams.ChunkSize = configuration.ChunkSizeMB * rtServicesUtils.SizeMiB
+	uploadParams.MaxSize = configuration.MaxSize
+	uploadParams.MinSize = configuration.MinSize
 	uploadParams.AddVcsProps = addVcsProps
 	uploadParams.BuildProps = buildProps
 	uploadParams.Archive = f.Archive

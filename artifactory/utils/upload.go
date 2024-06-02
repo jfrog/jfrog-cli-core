@@ -23,6 +23,8 @@ type UploadConfiguration struct {
 	SplitCount            int
 	MinSplitSizeMB        int64
 	ChunkSizeMB           int64
+	MaxSize               int64
+	MinSize               int64
 }
 
 func GetMinChecksumDeploySize() (int64, error) {

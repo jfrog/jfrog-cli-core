@@ -55,7 +55,7 @@ func ScanPasswordFromConsole(message string) (string, error) {
 }
 
 func ScanFromConsole(caption string, scanInto *string, defaultValue string) {
-	caption = coreutils.PrintLink(caption)
+	//caption = coreutils.PrintLink(caption)
 	if defaultValue != "" {
 		caption = caption + " [" + defaultValue + "]"
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/jfrog/gofrog/datastructures"
@@ -39,6 +40,13 @@ const (
 
 const Pypi = "pypi"
 
+var (
+	poetryRegex = regexp.MustCompile(`(?ms)^\[tool\.poetry\]`)
+	hatchRegex  = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"hatchling".*]`)
+	flitRegex   = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"flit_core[^\]]*.*]`)
+	pdmRegex    = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"pdm-pep517".*]`)
+)
+
 type TechData struct {
 	// The name of the package type used in this technology.
 	packageType string
@@ -65,7 +73,7 @@ type TechData struct {
 	packageInstallationCommand string
 }
 
-type ContentValidator func(content string) bool
+type ContentValidator func(content []byte) bool
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
@@ -114,7 +122,7 @@ var technologiesData = map[Technology]TechData{
 	},
 	Pip: {
 		packageType:            Pypi,
-		indicators:             map[string]ContentValidator{"pyproject.toml": contentContains("pip"), "setup.py": nil, "requirements.txt": nil},
+		indicators:             map[string]ContentValidator{"pyproject.toml": pyprojectTomlIndicatorContent(Pip), "setup.py": nil, "requirements.txt": nil},
 		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "poetry.lock"},
 		applicabilityScannable: true,
@@ -129,7 +137,7 @@ var technologiesData = map[Technology]TechData{
 	},
 	Poetry: {
 		packageType:                Pypi,
-		indicators:                 map[string]ContentValidator{"pyproject.toml": contentContains("poetry"), "poetry.lock": nil},
+		indicators:                 map[string]ContentValidator{"pyproject.toml": pyprojectTomlIndicatorContent(Poetry), "poetry.lock": nil},
 		packageDescriptors:         []string{"pyproject.toml"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
@@ -158,9 +166,16 @@ var technologiesData = map[Technology]TechData{
 	},
 }
 
-func contentContains(search string) ContentValidator {
-	return func(content string) bool {
-		return strings.Contains(content, search)
+func pyprojectTomlIndicatorContent(tech Technology) ContentValidator {
+	return func(content []byte) bool {
+		if poetryRegex.Match(content) {
+			return tech == Poetry
+		}
+		if hatchRegex.Match(content) || flitRegex.Match(content) || pdmRegex.Match(content) {
+			// Not supported yet
+			return false
+		}
+		return tech == Pip
 	}
 }
 
@@ -317,6 +332,7 @@ func isRequestedDescriptor(path string, requestedDescriptors []string) bool {
 }
 
 func isIndicator(path string, techData TechData) (bool, error) {
+	// TODO: also include requestedDescriptors
 	for suffix, validator := range techData.indicators {
 		if strings.HasSuffix(path, suffix) {
 			return checkPotentialIndicator(path, validator)
@@ -334,7 +350,7 @@ func checkPotentialIndicator(path string, validator ContentValidator) (isIndicat
 	if err != nil {
 		return
 	}
-	return validator(string(data)), nil
+	return validator(data), nil
 }
 
 func isExclude(path string, techData TechData) bool {

@@ -77,6 +77,7 @@ type TechData struct {
 	packageInstallationCommand string
 }
 
+// Given a file content, returns true if the content is an indicator of the technology.
 type ContentValidator func(content []byte) bool
 
 var technologiesData = map[Technology]TechData{
@@ -179,6 +180,7 @@ func pyProjectTomlIndicatorContent(tech Technology) ContentValidator {
 			// Not supported yet
 			return false
 		}
+		// Default to Pip
 		return tech == Pip
 	}
 }
@@ -336,7 +338,6 @@ func isRequestedDescriptor(path string, requestedDescriptors []string) bool {
 }
 
 func isIndicator(path string, techData TechData) (bool, error) {
-	// TODO: also include requestedDescriptors
 	for suffix, validator := range techData.indicators {
 		if strings.HasSuffix(path, suffix) {
 			return checkPotentialIndicator(path, validator)

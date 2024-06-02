@@ -1,10 +1,12 @@
 package coreutils
 
 import (
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/maps"
 )
@@ -167,6 +169,8 @@ func TestMapFilesToRelevantWorkingDirectories(t *testing.T) {
 }
 
 func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
+	projectDir, callback := createTempDirWithPyProjectToml(t, Poetry)
+	defer callback()
 	noRequestSpecialDescriptors := map[Technology][]string{}
 	noRequestTech := []Technology{}
 	tests := []struct {
@@ -195,6 +199,7 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 				"dir":                           {filepath.Join("dir", "package.json"), filepath.Join("dir", "package-lock.json"), filepath.Join("dir", "build.gradle.kts"), filepath.Join("dir", "project.sln")},
 				"directory":                     {filepath.Join("directory", "npm-shrinkwrap.json")},
 				"dir3":                          {filepath.Join("dir3", "package.json"), filepath.Join("dir3", ".yarn")},
+				projectDir:                      {filepath.Join(projectDir, "pyproject.toml")},
 				filepath.Join("dir3", "dir"):    {filepath.Join("dir3", "dir", "package.json"), filepath.Join("dir3", "dir", "pnpm-lock.yaml")},
 				filepath.Join("dir", "dir2"):    {filepath.Join("dir", "dir2", "go.mod")},
 				filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
@@ -222,6 +227,7 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 					filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
 					filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
 				},
+				Poetry: {projectDir: {filepath.Join(projectDir, "pyproject.toml")}},
 				Pipenv: {filepath.Join("users", "test", "package"): {filepath.Join("users", "test", "package", "Pipfile")}},
 				Gradle: {
 					"dir": {filepath.Join("dir", "build.gradle.kts")},
@@ -367,7 +373,38 @@ func TestCleanSubDirectories(t *testing.T) {
 	}
 }
 
+func createTempDirWithPyProjectToml(t *testing.T, tech Technology) (tmpDir string, callback func()) {
+	tmpDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err, "Couldn't create temp dir")
+	callback = func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tmpDir), "Couldn't remove temp dir")
+	}
+	content := ""
+	// create the content of the file
+	switch tech {
+	case Poetry:
+		content = "[tool.poetry]\nname = \"test\"\nversion = \"0.1.0\"\n\n[tool.poetry.dependencies]\npython = \"^3.8\"\nnumpy = \"^1.19.0\""
+	case Pip:
+		// setuptools
+		content = "[build-system]\nbuild-backend = \"setuptools.build_meta\"\nrequires = [\"setuptools\", \"wheel\"]\n\n[project]\ndynamic = [\"dependencies\"]\nname = \"pip-test\"\nversion = \"1.0.0\""
+	default:
+		assert.Fail(t, "unsupported technology")
+	}
+	// create the file
+	out, err := os.Create(filepath.Join(tmpDir, "pyproject.toml"))
+	defer func() {
+		assert.NoError(t, out.Close())
+	}()
+	assert.NoError(t, err)
+	// write the content to the file
+	_, err = out.Write([]byte(content))
+	assert.NoError(t, err)
+	return
+}
+
 func TestGetTechInformationFromWorkingDir(t *testing.T) {
+	projectDir, callback := createTempDirWithPyProjectToml(t, Pip)
+	defer callback()
 	workingDirectoryToIndicators := map[string][]string{
 		"folder":                        {filepath.Join("folder", "pom.xml")},
 		filepath.Join("folder", "sub1"): {filepath.Join("folder", "sub1", "pom.xml")},
@@ -375,6 +412,7 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 		"dir":                           {filepath.Join("dir", "package.json"), filepath.Join("dir", "package-lock.json"), filepath.Join("dir", "build.gradle.kts"), filepath.Join("dir", "project.sln"), filepath.Join("dir", "blabla.txt")},
 		"directory":                     {filepath.Join("directory", "npm-shrinkwrap.json")},
 		"dir3":                          {filepath.Join("dir3", "package.json"), filepath.Join("dir3", ".yarn")},
+		projectDir:                      {filepath.Join(projectDir, "pyproject.toml")},
 		filepath.Join("dir3", "dir"):    {filepath.Join("dir3", "dir", "package.json"), filepath.Join("dir3", "dir", "pnpm-lock.yaml")},
 		filepath.Join("dir", "dir2"):    {filepath.Join("dir", "dir2", "go.mod")},
 		filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
@@ -440,6 +478,7 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 			expected: map[string][]string{
 				filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
 				filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
+				projectDir: {filepath.Join(projectDir, "pyproject.toml")},
 			},
 		},
 		{
@@ -451,9 +490,6 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 				filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
 				filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
 			},
-		},
-		{
-			name: "poetryTest",
 		},
 		{
 			name:                 "pipenvTest",

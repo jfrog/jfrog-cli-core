@@ -29,7 +29,8 @@ func TestDetectTechnologiesByFilePaths(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			detectedTech := detectTechnologiesByFilePaths(test.paths, false)
+			detectedTech, err := detectTechnologiesByFilePaths(test.paths, false)
+			assert.NoError(t, err)
 			assert.True(t, reflect.DeepEqual(test.expected, detectedTech), "expected: %s, actual: %s", test.expected, detectedTech)
 		})
 	}
@@ -145,7 +146,8 @@ func TestMapFilesToRelevantWorkingDirectories(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			detectedWd, detectedExcluded := mapFilesToRelevantWorkingDirectories(test.paths, test.requestedDescriptors)
+			detectedWd, detectedExcluded, err := mapFilesToRelevantWorkingDirectories(test.paths, test.requestedDescriptors)
+			assert.NoError(t, err)
 			// Assert working directories
 			expectedKeys := maps.Keys(test.expectedWorkingDir)
 			actualKeys := maps.Keys(detectedWd)
@@ -233,7 +235,8 @@ func TestMapWorkingDirectoriesToTechnologies(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			detectedTech := mapWorkingDirectoriesToTechnologies(test.workingDirectoryToIndicators, test.excludedTechAtWorkingDir, test.requestedTechs, test.requestedDescriptors)
+			detectedTech, err := mapWorkingDirectoriesToTechnologies(test.workingDirectoryToIndicators, test.excludedTechAtWorkingDir, test.requestedTechs, test.requestedDescriptors)
+			assert.NoError(t, err)
 			expectedKeys := maps.Keys(test.expected)
 			detectedKeys := maps.Keys(detectedTech)
 			assert.ElementsMatch(t, expectedKeys, detectedKeys, "expected: %s, actual: %s", expectedKeys, detectedKeys)
@@ -450,6 +453,9 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 			},
 		},
 		{
+			name: "poetryTest",
+		},
+		{
 			name:                 "pipenvTest",
 			tech:                 Pipenv,
 			requestedDescriptors: map[Technology][]string{},
@@ -480,7 +486,8 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			techInformation := getTechInformationFromWorkingDir(test.tech, workingDirectoryToIndicators, excludedTechAtWorkingDir, test.requestedDescriptors)
+			techInformation, err := getTechInformationFromWorkingDir(test.tech, workingDirectoryToIndicators, excludedTechAtWorkingDir, test.requestedDescriptors)
+			assert.NoError(t, err)
 			expectedKeys := maps.Keys(test.expected)
 			actualKeys := maps.Keys(techInformation)
 			assert.ElementsMatch(t, expectedKeys, actualKeys, "expected: %s, actual: %s", expectedKeys, actualKeys)

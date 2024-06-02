@@ -1,6 +1,7 @@
 package coreutils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -489,6 +490,7 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 				"dir": {filepath.Join("dir", "blabla.txt")},
 				filepath.Join("users_dir", "test", "package"):  {filepath.Join("users_dir", "test", "package", "setup.py")},
 				filepath.Join("users_dir", "test", "package2"): {filepath.Join("users_dir", "test", "package2", "requirements.txt")},
+				projectDir: {filepath.Join(projectDir, "pyproject.toml")},
 			},
 		},
 		{
@@ -526,9 +528,9 @@ func TestGetTechInformationFromWorkingDir(t *testing.T) {
 			assert.NoError(t, err)
 			expectedKeys := maps.Keys(test.expected)
 			actualKeys := maps.Keys(techInformation)
-			assert.ElementsMatch(t, expectedKeys, actualKeys, "expected: %s, actual: %s", expectedKeys, actualKeys)
+			assert.ElementsMatch(t, expectedKeys, actualKeys, fmt.Sprintf("expected: %v, actual: %v", expectedKeys, actualKeys))
 			for key, value := range test.expected {
-				assert.ElementsMatch(t, value, techInformation[key], "expected: %s, actual: %s", value, techInformation[key])
+				assert.ElementsMatch(t, value, techInformation[key], fmt.Sprintf("expected: %v, actual: %v", value, techInformation[key]))
 			}
 		})
 	}

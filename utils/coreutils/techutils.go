@@ -128,7 +128,7 @@ var technologiesData = map[Technology]TechData{
 	Pip: {
 		packageType:            Pypi,
 		indicators:             map[string]ContentValidator{"pyproject.toml": pyProjectTomlIndicatorContent(Pip), "setup.py": nil, "requirements.txt": nil},
-		packageDescriptors:     []string{"setup.py", "requirements.txt"},
+		packageDescriptors:     []string{"setup.py", "requirements.txt", "pyproject.toml"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "poetry.lock"},
 		applicabilityScannable: true,
 	},
@@ -181,7 +181,7 @@ func pyProjectTomlIndicatorContent(tech Technology) ContentValidator {
 			return false
 		}
 		// Default to Pip
-		return tech == Pip
+		return true
 	}
 }
 

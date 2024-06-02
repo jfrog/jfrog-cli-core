@@ -41,10 +41,14 @@ const (
 const Pypi = "pypi"
 
 var (
-	poetryRegex = regexp.MustCompile(`(?ms)^\[tool\.poetry\]`)
-	hatchRegex  = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"hatchling".*]`)
-	flitRegex   = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"flit_core[^\]]*.*]`)
-	pdmRegex    = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"pdm-pep517".*]`)
+	// [tool.poetry] section
+	pyProjectTomlPoetryRegex = regexp.MustCompile(`(?ms)^\[tool\.poetry\]`)
+	// `hatchling` in the [build-system] section
+	pyProjectTomlHatchRegex = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"hatchling".*]`)
+	// `flit_core` in the [build-system] section
+	pyProjectTomlFlitRegex = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"flit_core[^\]]*.*]`)
+	// `pdm-pep517` in the [build-system] section
+	pyProjectTomlPdmRegex = regexp.MustCompile(`(?ms)^\[build-system\].*requires\s*=\s*\[.*"pdm-pep517".*]`)
 )
 
 type TechData struct {
@@ -122,7 +126,7 @@ var technologiesData = map[Technology]TechData{
 	},
 	Pip: {
 		packageType:            Pypi,
-		indicators:             map[string]ContentValidator{"pyproject.toml": pyprojectTomlIndicatorContent(Pip), "setup.py": nil, "requirements.txt": nil},
+		indicators:             map[string]ContentValidator{"pyproject.toml": pyProjectTomlIndicatorContent(Pip), "setup.py": nil, "requirements.txt": nil},
 		packageDescriptors:     []string{"setup.py", "requirements.txt"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "poetry.lock"},
 		applicabilityScannable: true,
@@ -137,7 +141,7 @@ var technologiesData = map[Technology]TechData{
 	},
 	Poetry: {
 		packageType:                Pypi,
-		indicators:                 map[string]ContentValidator{"pyproject.toml": pyprojectTomlIndicatorContent(Poetry), "poetry.lock": nil},
+		indicators:                 map[string]ContentValidator{"pyproject.toml": pyProjectTomlIndicatorContent(Poetry), "poetry.lock": nil},
 		packageDescriptors:         []string{"pyproject.toml"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
@@ -166,12 +170,12 @@ var technologiesData = map[Technology]TechData{
 	},
 }
 
-func pyprojectTomlIndicatorContent(tech Technology) ContentValidator {
+func pyProjectTomlIndicatorContent(tech Technology) ContentValidator {
 	return func(content []byte) bool {
-		if poetryRegex.Match(content) {
+		if pyProjectTomlPoetryRegex.Match(content) {
 			return tech == Poetry
 		}
-		if hatchRegex.Match(content) || flitRegex.Match(content) || pdmRegex.Match(content) {
+		if pyProjectTomlHatchRegex.Match(content) || pyProjectTomlFlitRegex.Match(content) || pyProjectTomlPdmRegex.Match(content) {
 			// Not supported yet
 			return false
 		}

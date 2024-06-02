@@ -13,7 +13,7 @@ func TestGetArtifactoryRemoteRepoUrl(t *testing.T) {
 		AccessToken:    "eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA",
 	}
 	repoName := "test-repo"
-	repoUrl, err := GetArtifactoryRemoteRepoUrl(server, repoName, false)
+	repoUrl, err := GetArtifactoryRemoteRepoUrl(server, repoName, GoProxyUrlParams{})
 	assert.NoError(t, err)
 	assert.Equal(t, "https://test:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@server.com/artifactory/api/go/test-repo", repoUrl)
 }
@@ -25,7 +25,7 @@ func TestGetArtifactoryApiUrl(t *testing.T) {
 	// Test username and password
 	details.SetUser("frog")
 	details.SetPassword("passfrog")
-	url, err := getArtifactoryApiUrl("test-repo", details, false)
+	url, err := getArtifactoryApiUrl("test-repo", details, GoProxyUrlParams{})
 	assert.NoError(t, err)
 	assert.Equal(t, "https://frog:passfrog@test.com/artifactory/api/go/test-repo", url)
 
@@ -33,7 +33,7 @@ func TestGetArtifactoryApiUrl(t *testing.T) {
 	// Set fake access token with username "test"
 	details.SetUser("")
 	details.SetAccessToken("eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA")
-	url, err = getArtifactoryApiUrl("test-repo", details, false)
+	url, err = getArtifactoryApiUrl("test-repo", details, GoProxyUrlParams{})
 	assert.NoError(t, err)
 	assert.Equal(t, "https://test:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@test.com/artifactory/api/go/test-repo", url)
 
@@ -42,7 +42,7 @@ func TestGetArtifactoryApiUrl(t *testing.T) {
 	// Expect username to be "frog"
 	details.SetUser("frog")
 	details.SetAccessToken("eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA")
-	url, err = getArtifactoryApiUrl("test-repo", details, false)
+	url, err = getArtifactoryApiUrl("test-repo", details, GoProxyUrlParams{})
 	assert.NoError(t, err)
 	assert.Equal(t, "https://frog:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@test.com/artifactory/api/go/test-repo", url)
 }

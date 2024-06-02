@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/url"
 	"os/exec"
+	"strings"
 )
 
 type GoCmdConfig struct {
@@ -99,17 +100,41 @@ func GetDependenciesGraph(projectDir string) (map[string][]string, error) {
 	return deps, nil
 }
 
-func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, isCurationCmd bool) (string, error) {
+type GoProxyUrlParams struct {
+	// Fallback to retrieve the modules directly from the source if
+	// the module failed to be retrieved from the proxy.
+	IsDirect bool
+	// The path between baseUrl to go repo standard path
+	EndpointPrefix string
+}
+
+func (gdu *GoProxyUrlParams) BuildUrl(url *url.URL, repoName string) string {
+	if gdu.EndpointPrefix != "" {
+		url.Path += gdu.EndpointPrefix
+	}
+	url.Path += "api/go/" + repoName
+
+	return url.String()
+}
+
+func (gdu *GoProxyUrlParams) AddDirect(url string) string {
+	if gdu.IsDirect && !strings.HasSuffix(url, "|direct") {
+		return url + "|direct"
+	}
+	return url
+}
+
+func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, goProxyUrl GoProxyUrlParams) (string, error) {
 	authServerDetails, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return "", err
 	}
-	return getArtifactoryApiUrl(repo, authServerDetails, isCurationCmd)
+	return getArtifactoryApiUrl(repo, authServerDetails, goProxyUrl)
 }
 
 // Gets the URL of the specified repository Go API in Artifactory.
 // The URL contains credentials (username and access token or password).
-func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, isCurationCmd bool) (string, error) {
+func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, goProxyUrl GoProxyUrlParams) (string, error) {
 	rtUrl, err := url.Parse(details.GetUrl())
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -129,9 +154,6 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, isCurati
 	if password != "" {
 		rtUrl.User = url.UserPassword(username, password)
 	}
-	if isCurationCmd {
-		rtUrl.Path += "api/curation/audit/"
-	}
-	rtUrl.Path += "api/go/" + repoName
-	return rtUrl.String(), nil
+
+	return goProxyUrl.BuildUrl(rtUrl, repoName), nil
 }

@@ -153,7 +153,7 @@ func (gc *GoCommand) run() (err error) {
 	if err != nil {
 		return
 	}
-	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo(), false)
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo(), goutils.GoProxyUrlParams{IsDirect: true})
 	if err != nil {
 		return
 	}
@@ -330,22 +330,20 @@ func buildPackageVersionRequest(name, branchName string) string {
 	return path.Join(packageVersionRequest, "latest.info")
 }
 
-func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, isCurationCmd bool) (err error) {
-	err = setGoProxy(serverDetails, depsRepo, isCurationCmd)
+func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, goProxyUrl goutils.GoProxyUrlParams) (err error) {
+	err = setGoProxy(serverDetails, depsRepo, goProxyUrl)
 	if err != nil {
 		err = fmt.Errorf("failed while setting Artifactory as a dependencies resolution registry: %s", err.Error())
 	}
 	return
 }
 
-func setGoProxy(server *config.ServerDetails, remoteGoRepo string, isCurationCmd bool) error {
-	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo, isCurationCmd)
+func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyUrl goutils.GoProxyUrlParams) error {
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyUrl)
 	if err != nil {
 		return err
 	}
-	if !isCurationCmd {
-		repoUrl += "|direct"
-	}
+	repoUrl = goProxyUrl.AddDirect(repoUrl)
 	return os.Setenv("GOPROXY", repoUrl)
 }
 

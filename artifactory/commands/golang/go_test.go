@@ -3,6 +3,7 @@ package golang
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
@@ -60,9 +61,16 @@ func TestSetArtifactoryAsResolutionServer(t *testing.T) {
 	cleanup := testsutils.SetEnvWithCallbackAndAssert(t, "GOPROXY", "")
 	defer cleanup()
 
-	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, false))
+	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, goutils.GoProxyUrlParams{IsDirect: true}))
 
 	serverUrlWithoutHttp := strings.TrimPrefix(server.ArtifactoryUrl, "http://")
 	expectedGoProxy := fmt.Sprintf("http://%s:%s@%sapi/go/%s|direct", server.User, server.Password, serverUrlWithoutHttp, repo)
+	assert.Equal(t, expectedGoProxy, os.Getenv("GOPROXY"))
+
+	// check with endpoint prefix
+	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, goutils.GoProxyUrlParams{IsDirect: true, EndpointPrefix: coreutils.CurationPassThroughApi}))
+
+	serverUrlWithoutHttp = strings.TrimPrefix(server.ArtifactoryUrl, "http://")
+	expectedGoProxy = fmt.Sprintf("http://%s:%s@%sapi/curation/audit/api/go/%s|direct", server.User, server.Password, serverUrlWithoutHttp, repo)
 	assert.Equal(t, expectedGoProxy, os.Getenv("GOPROXY"))
 }

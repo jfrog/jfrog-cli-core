@@ -338,12 +338,12 @@ func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsR
 	return
 }
 
-func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyUrl goutils.GoProxyUrlParams) error {
-	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyUrl)
+func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyParams goutils.GoProxyUrlParams) error {
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyParams)
 	if err != nil {
 		return err
 	}
-	repoUrl = goProxyUrl.AddDirect(repoUrl)
+	repoUrl = goProxyParams.AddDirect(repoUrl)
 	return os.Setenv("GOPROXY", repoUrl)
 }
 

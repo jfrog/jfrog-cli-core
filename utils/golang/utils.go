@@ -124,17 +124,17 @@ func (gdu *GoProxyUrlParams) AddDirect(url string) string {
 	return url
 }
 
-func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, goProxyUrl GoProxyUrlParams) (string, error) {
+func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, goProxyParams GoProxyUrlParams) (string, error) {
 	authServerDetails, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return "", err
 	}
-	return getArtifactoryApiUrl(repo, authServerDetails, goProxyUrl)
+	return getArtifactoryApiUrl(repo, authServerDetails, goProxyParams)
 }
 
 // Gets the URL of the specified repository Go API in Artifactory.
 // The URL contains credentials (username and access token or password).
-func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, goProxyUrl GoProxyUrlParams) (string, error) {
+func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, goProxyParams GoProxyUrlParams) (string, error) {
 	rtUrl, err := url.Parse(details.GetUrl())
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -155,5 +155,5 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, goProxyU
 		rtUrl.User = url.UserPassword(username, password)
 	}
 
-	return goProxyUrl.BuildUrl(rtUrl, repoName), nil
+	return goProxyParams.BuildUrl(rtUrl, repoName), nil
 }

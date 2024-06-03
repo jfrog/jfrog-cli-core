@@ -56,8 +56,9 @@ type TechData struct {
 	packageType string
 	// Suffixes of file/directory names that indicate if a project uses this technology.
 	// The name of at least one of the files/directories in the project's directory must end with one of these suffixes.
+	indicators []string
 	// If suffix provides a content validator and the file/directory name matches, the content of the file will be validated to check if it is the indicator first.
-	indicators map[string]ContentValidator
+	validators map[string]ContentValidator
 	// Suffixes of file/directory names that indicate if a project does not use this technology.
 	// The names of all the files/directories in the project's directory must NOT end with any of these suffixes.
 	exclude []string
@@ -82,20 +83,20 @@ type ContentValidator func(content []byte) bool
 
 var technologiesData = map[Technology]TechData{
 	Maven: {
-		indicators:             map[string]ContentValidator{"pom.xml": nil},
+		indicators:             []string{"pom.xml"},
 		ciSetupSupport:         true,
 		packageDescriptors:     []string{"pom.xml"},
 		execCommand:            "mvn",
 		applicabilityScannable: true,
 	},
 	Gradle: {
-		indicators:             map[string]ContentValidator{"build.gradle": nil, "build.gradle.kts": nil},
+		indicators:             []string{"build.gradle", "build.gradle.kts"},
 		ciSetupSupport:         true,
 		packageDescriptors:     []string{"build.gradle", "build.gradle.kts"},
 		applicabilityScannable: true,
 	},
 	Npm: {
-		indicators:                 map[string]ContentValidator{"package.json": nil, "package-lock.json": nil, "npm-shrinkwrap.json": nil},
+		indicators:                 []string{"package.json", "package-lock.json", "npm-shrinkwrap.json"},
 		exclude:                    []string{"pnpm-lock.yaml", ".yarnrc.yml", "yarn.lock", ".yarn"},
 		ciSetupSupport:             true,
 		packageDescriptors:         []string{"package.json"},
@@ -105,7 +106,7 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Pnpm: {
-		indicators:                 map[string]ContentValidator{"pnpm-lock.yaml": nil},
+		indicators:                 []string{"pnpm-lock.yaml"},
 		exclude:                    []string{".yarnrc.yml", "yarn.lock", ".yarn"},
 		packageDescriptors:         []string{"package.json"},
 		packageVersionOperator:     "@",
@@ -113,28 +114,29 @@ var technologiesData = map[Technology]TechData{
 		applicabilityScannable:     true,
 	},
 	Yarn: {
-		indicators:             map[string]ContentValidator{".yarnrc.yml": nil, "yarn.lock": nil, ".yarn": nil, ".yarnrc": nil},
+		indicators:             []string{".yarnrc.yml", "yarn.lock", ".yarn", ".yarnrc"},
 		exclude:                []string{"pnpm-lock.yaml"},
 		packageDescriptors:     []string{"package.json"},
 		packageVersionOperator: "@",
 		applicabilityScannable: true,
 	},
 	Go: {
-		indicators:                 map[string]ContentValidator{"go.mod": nil},
+		indicators:                 []string{"go.mod"},
 		packageDescriptors:         []string{"go.mod"},
 		packageVersionOperator:     "@v",
 		packageInstallationCommand: "get",
 	},
 	Pip: {
 		packageType:            Pypi,
-		indicators:             map[string]ContentValidator{"pyproject.toml": pyProjectTomlIndicatorContent(Pip), "setup.py": nil, "requirements.txt": nil},
+		indicators:             []string{"pyproject.toml", "setup.py", "requirements.txt"},
+		validators:             map[string]ContentValidator{"pyproject.toml": pyProjectTomlIndicatorContent(Pip)},
 		packageDescriptors:     []string{"setup.py", "requirements.txt", "pyproject.toml"},
 		exclude:                []string{"Pipfile", "Pipfile.lock", "poetry.lock"},
 		applicabilityScannable: true,
 	},
 	Pipenv: {
 		packageType:                Pypi,
-		indicators:                 map[string]ContentValidator{"Pipfile": nil, "Pipfile.lock": nil},
+		indicators:                 []string{"Pipfile", "Pipfile.lock"},
 		packageDescriptors:         []string{"Pipfile"},
 		packageVersionOperator:     "==",
 		packageInstallationCommand: "install",
@@ -142,14 +144,15 @@ var technologiesData = map[Technology]TechData{
 	},
 	Poetry: {
 		packageType:                Pypi,
-		indicators:                 map[string]ContentValidator{"pyproject.toml": pyProjectTomlIndicatorContent(Poetry), "poetry.lock": nil},
+		indicators:                 []string{"pyproject.toml", "poetry.lock"},
+		validators:                 map[string]ContentValidator{"pyproject.toml": pyProjectTomlIndicatorContent(Poetry)},
 		packageDescriptors:         []string{"pyproject.toml"},
 		packageInstallationCommand: "add",
 		packageVersionOperator:     "==",
 		applicabilityScannable:     true,
 	},
 	Nuget: {
-		indicators:         map[string]ContentValidator{".sln": nil, ".csproj": nil},
+		indicators:         []string{".sln", ".csproj"},
 		packageDescriptors: []string{".sln", ".csproj"},
 		formal:             "NuGet",
 		// .NET CLI is used for NuGet projects
@@ -159,7 +162,7 @@ var technologiesData = map[Technology]TechData{
 		packageVersionOperator: " -v ",
 	},
 	Dotnet: {
-		indicators:         map[string]ContentValidator{".sln": nil, ".csproj": nil},
+		indicators:         []string{".sln", ".csproj"},
 		packageDescriptors: []string{".sln", ".csproj"},
 		formal:             ".NET",
 	},
@@ -338,9 +341,9 @@ func isRequestedDescriptor(path string, requestedDescriptors []string) bool {
 }
 
 func isIndicator(path string, techData TechData) (bool, error) {
-	for suffix, validator := range techData.indicators {
+	for _, suffix := range techData.indicators {
 		if strings.HasSuffix(path, suffix) {
-			return checkPotentialIndicator(path, validator)
+			return checkPotentialIndicator(path, techData.validators[suffix])
 		}
 	}
 	return false, nil

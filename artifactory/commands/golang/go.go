@@ -330,8 +330,8 @@ func buildPackageVersionRequest(name, branchName string) string {
 	return path.Join(packageVersionRequest, "latest.info")
 }
 
-func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, goProxyUrl goutils.GoProxyUrlParams) (err error) {
-	err = setGoProxy(serverDetails, depsRepo, goProxyUrl)
+func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, goProxyParams goutils.GoProxyUrlParams) (err error) {
+	err = setGoProxy(serverDetails, depsRepo, goProxyParams)
 	if err != nil {
 		err = fmt.Errorf("failed while setting Artifactory as a dependencies resolution registry: %s", err.Error())
 	}
@@ -343,8 +343,7 @@ func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyParams
 	if err != nil {
 		return err
 	}
-	repoUrl = goProxyParams.AddDirect(repoUrl)
-	return os.Setenv("GOPROXY", repoUrl)
+	return os.Setenv("GOPROXY", goProxyParams.AddDirect(repoUrl))
 }
 
 func SetGoModCache(cacheFolder string) error {

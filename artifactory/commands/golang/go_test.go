@@ -61,14 +61,16 @@ func TestSetArtifactoryAsResolutionServer(t *testing.T) {
 	cleanup := testsutils.SetEnvWithCallbackAndAssert(t, "GOPROXY", "")
 	defer cleanup()
 
-	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, goutils.GoProxyUrlParams{IsDirect: true}))
+	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, goutils.GoProxyUrlParams{Direct: true}))
 
 	serverUrlWithoutHttp := strings.TrimPrefix(server.ArtifactoryUrl, "http://")
 	expectedGoProxy := fmt.Sprintf("http://%s:%s@%sapi/go/%s|direct", server.User, server.Password, serverUrlWithoutHttp, repo)
 	assert.Equal(t, expectedGoProxy, os.Getenv("GOPROXY"))
 
-	// check with endpoint prefix
-	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, goutils.GoProxyUrlParams{IsDirect: true, EndpointPrefix: coreutils.CurationPassThroughApi}))
+	// Verify that the EndpointPrefix value is correctly added to the GOPROXY.
+	// In this test case, the endpoint prefix is set to api/curation/audit/.
+	// This parameter allows downloading dependencies from a custom API instead of the default one.
+	assert.NoError(t, SetArtifactoryAsResolutionServer(server, repo, goutils.GoProxyUrlParams{Direct: true, EndpointPrefix: coreutils.CurationPassThroughApi}))
 
 	serverUrlWithoutHttp = strings.TrimPrefix(server.ArtifactoryUrl, "http://")
 	expectedGoProxy = fmt.Sprintf("http://%s:%s@%sapi/curation/audit/api/go/%s|direct", server.User, server.Password, serverUrlWithoutHttp, repo)

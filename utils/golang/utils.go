@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/url"
 	"os/exec"
+	"path"
 	"strings"
 )
 
@@ -103,22 +104,22 @@ func GetDependenciesGraph(projectDir string) (map[string][]string, error) {
 type GoProxyUrlParams struct {
 	// Fallback to retrieve the modules directly from the source if
 	// the module failed to be retrieved from the proxy.
-	IsDirect bool
-	// The path between baseUrl to go repo standard path
+	// add |direct to the end of the url.
+	// example: https://gocenter.io|direct
+	Direct bool
+	// The path from baseUrl to the standard Go repository path
+	// URL structure: <baseUrl>/<EndpointPrefix>/api/go/<repoName>
 	EndpointPrefix string
 }
 
 func (gdu *GoProxyUrlParams) BuildUrl(url *url.URL, repoName string) string {
-	if gdu.EndpointPrefix != "" {
-		url.Path += gdu.EndpointPrefix
-	}
-	url.Path += "api/go/" + repoName
+	url.Path = path.Join(url.Path, gdu.EndpointPrefix, "api/go/", repoName)
 
-	return url.String()
+	return gdu.addDirect(url.String())
 }
 
-func (gdu *GoProxyUrlParams) AddDirect(url string) string {
-	if gdu.IsDirect && !strings.HasSuffix(url, "|direct") {
+func (gdu *GoProxyUrlParams) addDirect(url string) string {
+	if gdu.Direct && !strings.HasSuffix(url, "|direct") {
 		return url + "|direct"
 	}
 	return url

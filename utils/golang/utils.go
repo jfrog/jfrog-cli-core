@@ -85,22 +85,6 @@ func GetModuleName(projectDir string) (string, error) {
 	return path, nil
 }
 
-func GetDependenciesList(projectDir string, errorFunc utils.HandleErrorFunc) (map[string]bool, error) {
-	deps, err := utils.GetDependenciesList(projectDir, log.Logger, errorFunc)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return deps, nil
-}
-
-func GetDependenciesGraph(projectDir string) (map[string][]string, error) {
-	deps, err := utils.GetDependenciesGraph(projectDir, log.Logger)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return deps, nil
-}
-
 type GoProxyUrlParams struct {
 	// Fallback to retrieve the modules directly from the source if
 	// the module failed to be retrieved from the proxy.

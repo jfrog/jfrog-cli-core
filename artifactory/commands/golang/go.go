@@ -153,14 +153,12 @@ func (gc *GoCommand) run() (err error) {
 	if err != nil {
 		return
 	}
-	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo())
+	// If noFallback=false, missing packages will be fetched directly from VCS
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo(), goutils.GoProxyUrlParams{Direct: !gc.noFallback})
 	if err != nil {
 		return
 	}
-	// If noFallback=false, missing packages will be fetched directly from VCS
-	if !gc.noFallback {
-		repoUrl += "|direct"
-	}
+
 	err = biutils.RunGo(gc.goArg, repoUrl)
 	if errorutils.CheckError(err) != nil {
 		err = coreutils.ConvertExitCodeError(err)
@@ -330,19 +328,21 @@ func buildPackageVersionRequest(name, branchName string) string {
 	return path.Join(packageVersionRequest, "latest.info")
 }
 
-func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string) (err error) {
-	err = setGoProxy(serverDetails, depsRepo)
-	if err != nil {
+func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, goProxyParams goutils.GoProxyUrlParams) (err error) {
+	if err = setGoProxy(serverDetails, depsRepo, goProxyParams); err != nil {
 		err = fmt.Errorf("failed while setting Artifactory as a dependencies resolution registry: %s", err.Error())
 	}
 	return
 }
 
-func setGoProxy(server *config.ServerDetails, remoteGoRepo string) error {
-	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo)
+func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyParams goutils.GoProxyUrlParams) error {
+	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyParams)
 	if err != nil {
 		return err
 	}
-	repoUrl += "|direct"
 	return os.Setenv("GOPROXY", repoUrl)
+}
+
+func SetGoModCache(cacheFolder string) error {
+	return os.Setenv("GOMODCACHE", cacheFolder)
 }

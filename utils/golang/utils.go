@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/url"
 	"os/exec"
+	"path"
+	"strings"
 )
 
 type GoCmdConfig struct {
@@ -83,33 +85,41 @@ func GetModuleName(projectDir string) (string, error) {
 	return path, nil
 }
 
-func GetDependenciesList(projectDir string) (map[string]bool, error) {
-	deps, err := utils.GetDependenciesList(projectDir, log.Logger)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return deps, nil
+type GoProxyUrlParams struct {
+	// Fallback to retrieve the modules directly from the source if
+	// the module failed to be retrieved from the proxy.
+	// add |direct to the end of the url.
+	// example: https://gocenter.io|direct
+	Direct bool
+	// The path from baseUrl to the standard Go repository path
+	// URL structure: <baseUrl>/<EndpointPrefix>/api/go/<repoName>
+	EndpointPrefix string
 }
 
-func GetDependenciesGraph(projectDir string) (map[string][]string, error) {
-	deps, err := utils.GetDependenciesGraph(projectDir, log.Logger)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
-	}
-	return deps, nil
+func (gdu *GoProxyUrlParams) BuildUrl(url *url.URL, repoName string) string {
+	url.Path = path.Join(url.Path, gdu.EndpointPrefix, "api/go/", repoName)
+
+	return gdu.addDirect(url.String())
 }
 
-func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string) (string, error) {
+func (gdu *GoProxyUrlParams) addDirect(url string) string {
+	if gdu.Direct && !strings.HasSuffix(url, "|direct") {
+		return url + "|direct"
+	}
+	return url
+}
+
+func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, goProxyParams GoProxyUrlParams) (string, error) {
 	authServerDetails, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return "", err
 	}
-	return getArtifactoryApiUrl(repo, authServerDetails)
+	return getArtifactoryApiUrl(repo, authServerDetails, goProxyParams)
 }
 
 // Gets the URL of the specified repository Go API in Artifactory.
 // The URL contains credentials (username and access token or password).
-func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string, error) {
+func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, goProxyParams GoProxyUrlParams) (string, error) {
 	rtUrl, err := url.Parse(details.GetUrl())
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -129,6 +139,6 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails) (string,
 	if password != "" {
 		rtUrl.User = url.UserPassword(username, password)
 	}
-	rtUrl.Path += "api/go/" + repoName
-	return rtUrl.String(), nil
+
+	return goProxyParams.BuildUrl(rtUrl, repoName), nil
 }

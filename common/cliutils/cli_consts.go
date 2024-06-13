@@ -1,13 +1,12 @@
 package cliutils
 
-import ()
-
 type CommandDomain string
 
 const (
 	Rt       CommandDomain = "rt"
 	Ds       CommandDomain = "ds"
 	Xr       CommandDomain = "xr"
+	Sbom     CommandDomain = "sbom"
 	Platform CommandDomain = "platform"
 )
 

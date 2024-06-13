@@ -72,7 +72,7 @@ func createServerDetailsFromFlags(c *components.Context, domain cliUtils.Command
 	switch domain {
 	case cliUtils.Rt:
 		details.ArtifactoryUrl = details.Url
-	case cliUtils.Xr:
+	case cliUtils.Xr, cliUtils.Sbom:
 		details.XrayUrl = details.Url
 	case cliUtils.Ds:
 		details.DistributionUrl = details.Url

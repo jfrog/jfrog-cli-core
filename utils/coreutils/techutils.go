@@ -224,7 +224,7 @@ func detectedTechnologiesListInPath(path string, recursive bool) (technologies [
 // If requestedTechs is empty, all technologies will be checked.
 // If excludePathPattern is not empty, files/directories that match the wildcard pattern will be excluded from the search.
 func DetectTechnologiesDescriptors(path string, recursive bool, requestedTechs []string, requestedDescriptors map[Technology][]string, excludePathPattern string) (technologiesDetected map[Technology]map[string][]string, err error) {
-	filesList, err := fspatterns.ListFiles(path, recursive, false, true, true, excludePathPattern)
+	filesList, err := fspatterns.ListFilesFilterPattern(path, recursive, false, true, true, excludePathPattern)
 	if err != nil {
 		return
 	}

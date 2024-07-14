@@ -116,9 +116,14 @@ func getMergingProgress(useSpinner bool) mpb.BarFillerBuilder {
 
 func buildProgressDescription(label, path string, terminalWidth, extraCharsLen int) string {
 	separator := " | "
+
+	if label != "" {
+		label += separator
+	}
+
 	// Max line length after decreasing bar width (*2 in case unicode chars with double width are used) and the extra chars
 	descMaxLength := terminalWidth - (progressbar.ProgressBarWidth*2 + extraCharsLen)
-	return buildDescByLimits(descMaxLength, " "+label+separator, shortenUrl(path), separator)
+	return buildDescByLimits(descMaxLength, " "+label, shortenUrl(path), separator)
 }
 
 func shortenUrl(path string) string {

@@ -245,3 +245,36 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	assert.Equal(t, buildName, buildNameFile)
 	assert.Equal(t, buildNumber, artclientutils.LatestBuildNumberKey)
 }
+
+func TestBuildConfiguration_ResolveModuleName(t *testing.T) {
+	testCases := []struct {
+		name   string
+		module string
+	}{
+		{
+			name:   "Module is set",
+			module: "custom-module",
+		},
+		{
+			name:   "Module not set, GetWd succeeds",
+			module: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			bc := BuildConfiguration{module: tc.module}
+			// Execute
+			result := bc.ResolveBaseModuleName()
+			// Assert
+			if tc.module == "" {
+				wd, err := os.Getwd()
+				assert.NoError(t, err)
+				assert.Equal(t, filepath.Base(wd), result)
+			} else {
+				assert.Equal(t, tc.module, result)
+			}
+		})
+	}
+}

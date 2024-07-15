@@ -205,7 +205,6 @@ func (npc *NpmPublishCommand) Run() (err error) {
 		return errorutils.CheckError(err)
 	}
 	npmModule.SetName(npc.buildConfiguration.ResolveBaseModuleName())
-
 	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
 	if err != nil {
 		return err

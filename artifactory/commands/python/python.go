@@ -59,7 +59,6 @@ func (pc *PythonCommand) Run() (err error) {
 			return
 		}
 		pythonModule.SetName(buildConfiguration.ResolveBaseModuleName())
-
 		var localDependenciesPath string
 		localDependenciesPath, err = config.GetJfrogDependenciesPath()
 		if err != nil {

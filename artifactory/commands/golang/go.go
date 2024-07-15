@@ -198,7 +198,6 @@ func (gc *GoCommand) run() (err error) {
 			return
 		}
 		goModule.SetName(gc.buildConfiguration.ResolveBaseModuleName())
-
 		err = errorutils.CheckError(goModule.CalcDependencies())
 	}
 

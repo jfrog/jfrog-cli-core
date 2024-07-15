@@ -2,8 +2,10 @@ package npm
 
 import (
 	"fmt"
+	"github.com/jfrog/build-info-go/build"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
+	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
@@ -136,4 +138,62 @@ func TestSetArtifactoryAsResolutionServer(t *testing.T) {
 	}()
 
 	assert.FileExists(t, filepath.Join(tmpDir, ".npmrc"))
+}
+
+func TestResolveModuleName(t *testing.T) {
+	testCases := []struct {
+		name string
+		// Module which is set inside the package.json or as a parameter to the CLI command
+		moduleFromConfig   string
+		workingDirectory   string
+		expectedModuleName string
+	}{
+		{
+			name:               "Module name provided in config",
+			moduleFromConfig:   "custom-module",
+			workingDirectory:   "/path/to/project",
+			expectedModuleName: "custom-module",
+		},
+		{
+			name:               "Module name derived from working directory",
+			moduleFromConfig:   "",
+			workingDirectory:   "/path/to/project/my-module",
+			expectedModuleName: "my-module",
+		},
+		{
+			name:               "Working directory is root",
+			moduleFromConfig:   "",
+			workingDirectory:   "/",
+			expectedModuleName: "/",
+		},
+		{
+			name:               "Module name with special characters",
+			moduleFromConfig:   "module@1.0.0",
+			workingDirectory:   "/path/to/project",
+			expectedModuleName: "module@1.0.0",
+		},
+		{
+			name:               "Working directory ends with slash",
+			moduleFromConfig:   "",
+			workingDirectory:   "/path/to/project/my-module/",
+			expectedModuleName: "my-module",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			nc := setupNpmCommand(tc.moduleFromConfig, tc.workingDirectory)
+			actualModuleName := nc.resolveModuleName()
+			assert.Equal(t, tc.expectedModuleName, actualModuleName)
+		})
+	}
+}
+
+func setupNpmCommand(moduleFromConfig, workingDirectory string) *NpmCommand {
+	nc := NewNpmCommand("Test", true)
+	nc.buildConfiguration = &buildUtils.BuildConfiguration{}
+	nc.buildConfiguration.SetModule(moduleFromConfig)
+	nc.buildInfoModule = &build.NpmModule{}
+	nc.workingDirectory = workingDirectory
+	return nc
 }

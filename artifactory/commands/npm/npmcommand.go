@@ -19,7 +19,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -339,7 +338,7 @@ func (nc *NpmCommand) prepareBuildInfoModule() error {
 		return errorutils.CheckError(err)
 	}
 	nc.buildInfoModule.SetCollectBuildInfo(nc.collectBuildInfo)
-	nc.buildInfoModule.SetName(nc.resolveModuleName())
+	nc.buildInfoModule.SetName(nc.buildConfiguration.GetModule())
 	return nil
 }
 
@@ -399,15 +398,6 @@ func filterFlags(splitArgs []string) []string {
 
 func (nc *NpmCommand) GetRepo() string {
 	return nc.repo
-}
-
-// Resolves to the base directory name if a module name is not provided in package.json or CLI command.
-func (nc *NpmCommand) resolveModuleName() string {
-	moduleName := nc.buildConfiguration.GetModule()
-	if moduleName == "" {
-		moduleName = path.Base(nc.workingDirectory)
-	}
-	return moduleName
 }
 
 // Creates an .npmrc file in the project's directory in order to configure the provided Artifactory server as a resolution server

@@ -204,9 +204,8 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if npc.buildConfiguration.GetModule() != "" {
-		npmModule.SetName(npc.buildConfiguration.GetModule())
-	}
+	npmModule.SetName(npc.buildConfiguration.GetModule())
+
 	buildArtifacts, err := specutils.ConvertArtifactsDetailsToBuildInfoArtifacts(npc.artifactsDetailsReader)
 	if err != nil {
 		return err

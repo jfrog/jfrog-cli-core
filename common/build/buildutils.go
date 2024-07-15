@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -400,8 +401,19 @@ func (bc *BuildConfiguration) GetProject() string {
 	return bc.project
 }
 
+// GetModule returns the module name.
+// If the module name is not specified, it falls back to the current working directory name.
+// If the working directory cannot be retrieved, it defaults to "module".
+// Module name is mandatory to publish build info.
 func (bc *BuildConfiguration) GetModule() string {
-	return bc.module
+	if bc.module != "" {
+		return bc.module
+	}
+	wd, err := os.Getwd()
+	if err == nil {
+		return path.Base(wd)
+	}
+	return "module"
 }
 
 // Validates:

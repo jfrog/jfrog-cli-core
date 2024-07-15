@@ -256,7 +256,7 @@ func TestBuildConfiguration_ResolveModuleName(t *testing.T) {
 			module: "custom-module",
 		},
 		{
-			name:   "Module not set, GetWd succeeds",
+			name:   "Module not set, fallback to base directory name",
 			module: "",
 		},
 	}

@@ -39,7 +39,7 @@ jobs:
           dotnet-version: '6.x'
 
       - name: Setup Go with cache
-        uses: jfrog/.github/.github/actions/install-go-with-cache
+        uses: jfrog/.github/.github/actions/install-go-with-cache@main
 
       - name: Tests
         run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0 -race

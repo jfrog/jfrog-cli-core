@@ -38,7 +38,7 @@ jobs:
         with:
           dotnet-version: '6.x'
 
-      - uses: jfrog/jfrog-cli/.github/common-steps/install-go-with-cache
+      - uses: jfrog/.github/.github/actions/install-go-with-cache
 
       - name: Tests
         run: go test -v github.com/jfrog/jfrog-cli-core/v2/tests -timeout 0 -race

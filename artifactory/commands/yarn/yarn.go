@@ -32,6 +32,7 @@ const (
 	//#nosec G101
 	yarnNpmRegistryServerEnv = "YARN_NPM_REGISTRY_SERVER"
 	yarnNpmAuthIndent        = "YARN_NPM_AUTH_IDENT"
+	yarnNpmAuthToken         = "YARN_NPM_AUTH_TOKEN"
 	yarnNpmAlwaysAuth        = "YARN_NPM_ALWAYS_AUTH"
 )
 
@@ -40,6 +41,7 @@ type YarnCommand struct {
 	workingDirectory   string
 	registry           string
 	npmAuthIdent       string
+	npmAuthToken       string
 	repo               string
 	collectBuildInfo   bool
 	configFilePath     string
@@ -102,7 +104,7 @@ func (yc *YarnCommand) Run() (err error) {
 	if err != nil {
 		return errors.Join(err, restoreYarnrcFunc())
 	}
-	backupEnvMap, err := ModifyYarnConfigurations(yc.executablePath, yc.registry, yc.npmAuthIdent)
+	backupEnvMap, err := ModifyYarnConfigurations(yc.executablePath, yc.registry, yc.npmAuthIdent, yc.npmAuthToken)
 	if err != nil {
 		return errors.Join(err, restoreYarnrcFunc())
 	}
@@ -207,7 +209,7 @@ func (yc *YarnCommand) preparePrerequisites() error {
 		yc.buildInfoModule.SetName(yc.buildConfiguration.GetModule())
 	}
 
-	yc.registry, yc.npmAuthIdent, err = GetYarnAuthDetails(yc.serverDetails, yc.repo)
+	yc.registry, yc.npmAuthIdent, yc.npmAuthToken, err = GetYarnAuthDetails(yc.serverDetails, yc.repo)
 	return err
 }
 
@@ -245,21 +247,18 @@ func (yc *YarnCommand) setYarnExecutable() error {
 	return nil
 }
 
-func GetYarnAuthDetails(server *config.ServerDetails, repo string) (string, string, error) {
+func GetYarnAuthDetails(server *config.ServerDetails, repo string) (registry, npmAuthIdent, npmAuthToken string, err error) {
 	authRtDetails, err := setArtifactoryAuth(server)
 	if err != nil {
-		return "", "", err
+		return
 	}
 	var npmAuthOutput string
-	npmAuthOutput, registry, err := commandUtils.GetArtifactoryNpmRepoDetails(repo, &authRtDetails)
+	npmAuthOutput, registry, err = commandUtils.GetArtifactoryNpmRepoDetails(repo, authRtDetails, false)
 	if err != nil {
-		return "", "", err
+		return
 	}
-	npmAuthIdent, err := extractAuthIdentFromNpmAuth(npmAuthOutput)
-	if err != nil {
-		return "", "", err
-	}
-	return registry, npmAuthIdent, nil
+	npmAuthIdent, npmAuthToken, err = extractAuthValFromNpmAuth(npmAuthOutput)
+	return
 }
 
 func setArtifactoryAuth(server *config.ServerDetails) (auth.ServiceDetails, error) {
@@ -296,10 +295,11 @@ func restoreEnvironmentVariables(envVarsBackup map[string]*string) error {
 	return nil
 }
 
-func ModifyYarnConfigurations(execPath, registry, npmAuthIdent string) (map[string]*string, error) {
+func ModifyYarnConfigurations(execPath, registry, npmAuthIdent, npmAuthToken string) (map[string]*string, error) {
 	envVarsUpdated := map[string]string{
 		yarnNpmRegistryServerEnv: registry,
 		yarnNpmAuthIndent:        npmAuthIdent,
+		yarnNpmAuthToken:         npmAuthToken,
 		yarnNpmAlwaysAuth:        "true",
 	}
 	envVarsBackup := make(map[string]*string)
@@ -311,10 +311,10 @@ func ModifyYarnConfigurations(execPath, registry, npmAuthIdent string) (map[stri
 		envVarsBackup[key] = &oldVal
 	}
 	// Update scoped registries (these cannot be set in environment variables)
-	return envVarsBackup, errorutils.CheckError(updateScopeRegistries(execPath, registry, npmAuthIdent))
+	return envVarsBackup, errorutils.CheckError(updateScopeRegistries(execPath, registry, npmAuthIdent, npmAuthToken))
 }
 
-func updateScopeRegistries(execPath, registry, npmAuthIdent string) error {
+func updateScopeRegistries(execPath, registry, npmAuthIdent, npmAuthToken string) error {
 	npmScopesStr, err := yarn.ConfigGet(NpmScopesConfigName, execPath, true)
 	if err != nil {
 		return err
@@ -324,7 +324,7 @@ func updateScopeRegistries(execPath, registry, npmAuthIdent string) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	artifactoryScope := yarnNpmScope{NpmAlwaysAuth: true, NpmAuthIdent: npmAuthIdent, NpmRegistryServer: registry}
+	artifactoryScope := yarnNpmScope{NpmAlwaysAuth: true, NpmAuthIdent: npmAuthIdent, NpmAuthToken: npmAuthToken, NpmRegistryServer: registry}
 	for scopeName := range npmScopesMap {
 		npmScopesMap[scopeName] = artifactoryScope
 	}
@@ -338,6 +338,7 @@ func updateScopeRegistries(execPath, registry, npmAuthIdent string) error {
 type yarnNpmScope struct {
 	NpmAlwaysAuth     bool   `json:"npmAlwaysAuth,omitempty"`
 	NpmAuthIdent      string `json:"npmAuthIdent,omitempty"`
+	NpmAuthToken      string `json:"npmAuthToken,omitempty"`
 	NpmRegistryServer string `json:"npmRegistryServer,omitempty"`
 }
 
@@ -346,23 +347,31 @@ func backupAndSetEnvironmentVariable(key, value string) (string, error) {
 	return oldVal, errorutils.CheckError(os.Setenv(key, value))
 }
 
-// npmAuth we get back from Artifactory includes several fields, but we need only the field '_auth'
-func extractAuthIdentFromNpmAuth(npmAuth string) (string, error) {
-	authIdentFieldName := "_auth"
+// npmAuth includes several fields, but we need only the field '_auth' or '_authToken'
+func extractAuthValFromNpmAuth(npmAuth string) (authIndent, authToken string, err error) {
 	scanner := bufio.NewScanner(strings.NewReader(npmAuth))
 
 	for scanner.Scan() {
 		currLine := scanner.Text()
-		if !strings.HasPrefix(currLine, authIdentFieldName) {
+		if !strings.HasPrefix(currLine, commandUtils.NpmConfigAuthKey) {
 			continue
 		}
 
 		lineParts := strings.SplitN(currLine, "=", 2)
 		if len(lineParts) < 2 {
-			return "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
+			return "", "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
 		}
-		return strings.TrimSpace(lineParts[1]), nil
+		authVal := strings.TrimSpace(lineParts[1])
+
+		switch strings.TrimSpace(lineParts[0]) {
+		case commandUtils.NpmConfigAuthKey:
+			return authVal, "", nil
+		case commandUtils.NpmConfigAuthTokenKey:
+			return "", authVal, nil
+		default:
+			return "", "", errorutils.CheckErrorf("unexpected auth key found in npm auth")
+		}
 	}
 
-	return "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
+	return "", "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
 }

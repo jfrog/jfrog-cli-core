@@ -5,12 +5,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 )
 
-const (
-	npmConfigAuthEnv       = "npm_config_%s:_auth"
-	npmVersionForLegacyEnv = "9.3.1"
-	npmLegacyConfigAuthEnv = "npm_config__auth"
-)
-
 type CommonArgs struct {
 	repo               string
 	buildConfiguration *build.BuildConfiguration

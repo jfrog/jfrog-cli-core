@@ -4,6 +4,7 @@ import (
 	"fmt"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
@@ -61,32 +62,55 @@ func TestPrepareConfigData(t *testing.T) {
 	}
 
 	// Assert that NPM_CONFIG__AUTH environment variable was set
-	assert.Equal(t, authToken, os.Getenv(fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry")))
-	testsUtils.UnSetEnvAndAssert(t, fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry"))
+	assert.Equal(t, authToken, os.Getenv(fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry", utils.NpmConfigAuthKey)))
+	testsUtils.UnSetEnvAndAssert(t, fmt.Sprintf(npmConfigAuthEnv, "//goodRegistry", utils.NpmConfigAuthKey))
 }
 
 func TestSetNpmConfigAuthEnv(t *testing.T) {
 	testCases := []struct {
 		name        string
 		npmCm       *NpmCommand
+		authKey     string
 		value       string
 		expectedEnv string
 	}{
 		{
 			name: "set scoped registry auth env",
 			npmCm: &NpmCommand{
-				npmVersion: version.NewVersion("9.3.1"),
+				npmVersion: version.NewVersion("8.17.1"),
 				registry:   "https://registry.example.com",
 			},
+			authKey:     utils.NpmConfigAuthKey,
 			value:       "some_auth_token",
 			expectedEnv: "npm_config_//registry.example.com:_auth",
 		},
 		{
-			name: "set legacy auth env",
+			name: "set scoped registry authToken env",
 			npmCm: &NpmCommand{
-				npmVersion: version.NewVersion("8.19.3"),
+				npmVersion: version.NewVersion("8.17.1"),
 				registry:   "https://registry.example.com",
 			},
+			authKey:     utils.NpmConfigAuthTokenKey,
+			value:       "some_auth_token",
+			expectedEnv: "npm_config_//registry.example.com:_authToken",
+		},
+		{
+			name: "set legacy auth env",
+			npmCm: &NpmCommand{
+				npmVersion: version.NewVersion("8.16.3"),
+				registry:   "https://registry.example.com",
+			},
+			authKey:     utils.NpmConfigAuthKey,
+			value:       "some_auth_token",
+			expectedEnv: "npm_config__auth",
+		},
+		{
+			name: "set legacy auth env even though authToken is passed",
+			npmCm: &NpmCommand{
+				npmVersion: version.NewVersion("8.16.3"),
+				registry:   "https://registry.example.com",
+			},
+			authKey:     utils.NpmConfigAuthTokenKey,
 			value:       "some_auth_token",
 			expectedEnv: "npm_config__auth",
 		},
@@ -94,7 +118,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.npmCm.setNpmConfigAuthEnv(tc.value)
+			err := tc.npmCm.setNpmConfigAuthEnv(tc.value, tc.authKey)
 			assert.NoError(t, err)
 			envValue := os.Getenv(tc.expectedEnv)
 			assert.Equal(t, tc.value, envValue)

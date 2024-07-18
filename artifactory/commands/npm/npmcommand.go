@@ -28,6 +28,13 @@ const (
 	npmrcFileName          = ".npmrc"
 	npmrcBackupFileName    = "jfrog.npmrc.backup"
 	minSupportedNpmVersion = "5.4.0"
+
+	// Scoped authentication env var that sets the _auth or _authToken npm config variables.
+	npmConfigAuthEnv = "npm_config_%s:%s"
+	// Support for setting config variables using environment variables was fixed in https://github.com/npm/config/pull/74.
+	npmVersionSupportingAuthEnv = "8.17.0"
+	// Legacy un-scoped auth env vars doesn't support access tokens (with _authToken suffix).
+	npmLegacyConfigAuthEnv = "npm_config__auth"
 )
 
 type NpmCommand struct {
@@ -165,12 +172,16 @@ func (nc *NpmCommand) PreparePrerequisites(repo string) error {
 		return err
 	}
 
-	nc.npmAuth, nc.registry, err = commandUtils.GetArtifactoryNpmRepoDetails(repo, &nc.authArtDetails)
-	if err != nil {
+	if err = nc.setNpmAuthRegistry(repo); err != nil {
 		return err
 	}
 
 	return nc.setRestoreNpmrcFunc()
+}
+
+func (nc *NpmCommand) setNpmAuthRegistry(repo string) (err error) {
+	nc.npmAuth, nc.registry, err = commandUtils.GetArtifactoryNpmRepoDetails(repo, nc.authArtDetails, !nc.isNpmVersionSupportsScopedAuthEnv())
+	return
 }
 
 func (nc *NpmCommand) setRestoreNpmrcFunc() error {
@@ -222,8 +233,8 @@ func (nc *NpmCommand) processConfigLine(configLine string) (filteredLine string,
 		return
 	}
 	value := strings.TrimSpace(splitOption[1])
-	if key == "_auth" {
-		return "", nc.setNpmConfigAuthEnv(value)
+	if key == commandUtils.NpmConfigAuthKey || key == commandUtils.NpmConfigAuthTokenKey {
+		return "", nc.setNpmConfigAuthEnv(value, key)
 	}
 	if strings.HasPrefix(value, "[") && strings.HasSuffix(value, "]") {
 		return addArrayConfigs(key, value), nil
@@ -232,18 +243,22 @@ func (nc *NpmCommand) processConfigLine(configLine string) (filteredLine string,
 	return fmt.Sprintf("%s\n", configLine), err
 }
 
-func (nc *NpmCommand) setNpmConfigAuthEnv(value string) error {
-	// Check if the npm version is bigger or equal to 9.3.1
-	if nc.npmVersion.Compare(npmVersionForLegacyEnv) <= 0 {
+func (nc *NpmCommand) setNpmConfigAuthEnv(value, authKey string) error {
+	// Check if the npm version supports scoped auth env vars.
+	if nc.isNpmVersionSupportsScopedAuthEnv() {
 		// Get registry name without the protocol name but including the '//'
 		registryWithoutProtocolName := nc.registry[strings.Index(nc.registry, "://")+1:]
 		// Set "npm_config_//<registry-url>:_auth" environment variable to allow authentication with Artifactory
-		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName)
+		scopedRegistryEnv := fmt.Sprintf(npmConfigAuthEnv, registryWithoutProtocolName, authKey)
 		return os.Setenv(scopedRegistryEnv, value)
 	}
 	// Set "npm_config__auth" environment variable to allow authentication with Artifactory when running post-install scripts on subdirectories.
-	// For Legacy NPM version < 9.3.1
+	// For older versions, use un-scoped auth env vars.
 	return os.Setenv(npmLegacyConfigAuthEnv, value)
+}
+
+func (nc *NpmCommand) isNpmVersionSupportsScopedAuthEnv() bool {
+	return nc.npmVersion.Compare(npmVersionSupportingAuthEnv) <= 0
 }
 
 func (nc *NpmCommand) prepareConfigData(data []byte) ([]byte, error) {

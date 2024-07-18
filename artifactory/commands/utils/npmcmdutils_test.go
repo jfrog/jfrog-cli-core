@@ -29,7 +29,6 @@ func TestGetRegistry(t *testing.T) {
 
 type dummyArtifactoryServiceDetails struct {
 	auth.CommonConfigFields
-	version string
 }
 
 func (det *dummyArtifactoryServiceDetails) GetVersion() (string, error) {

@@ -2,14 +2,16 @@ package utils
 
 import (
 	"errors"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/pkg/browser"
-	"time"
 )
 
 func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenParams, err error) {
@@ -32,7 +34,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 				"Don't worry! You can use the \"jf c add\" command to authenticate with the JFrog Platform using other methods"))
 		return
 	}
-	log.Info("After logging in via your web browser, please enter the code if prompted: " + uuidStr[len(uuidStr)-4:])
+	log.Info("After logging in via your web browser, please enter the code if prompted: " + coreutils.PrintBoldTitle(uuidStr[len(uuidStr)-4:]))
 	if err = browser.OpenURL(clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrog-CLI&jfClientCode=1"); err != nil {
 		return
 	}

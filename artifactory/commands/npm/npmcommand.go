@@ -52,8 +52,9 @@ type NpmCommand struct {
 
 func NewNpmCommand(cmdName string, collectBuildInfo bool) *NpmCommand {
 	return &NpmCommand{
-		cmdName:          cmdName,
-		collectBuildInfo: collectBuildInfo,
+		cmdName:             cmdName,
+		collectBuildInfo:    collectBuildInfo,
+		internalCommandName: "rt_npm_" + cmdName,
 	}
 }
 

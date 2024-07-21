@@ -166,7 +166,7 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 	case project.Gradle:
 		return configFile.configGradle()
 	case project.Terraform:
-		return configFile.setResolver(false)
+		return configFile.setDeployer(false)
 	}
 	return
 }

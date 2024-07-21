@@ -58,9 +58,10 @@ func (pc *PythonCommand) Run() (err error) {
 		if err != nil {
 			return
 		}
-		moduleName, err := buildConfiguration.ResolveBaseModuleName()
+		var moduleName string
+		moduleName, err = buildConfiguration.ResolveBaseModuleName()
 		if errorutils.CheckError(err) != nil {
-			return err
+			return
 		}
 		pythonModule.SetName(moduleName)
 		var localDependenciesPath string

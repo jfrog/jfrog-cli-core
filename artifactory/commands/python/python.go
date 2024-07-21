@@ -60,7 +60,7 @@ func (pc *PythonCommand) Run() (err error) {
 		}
 		moduleName, err := buildConfiguration.ResolveBaseModuleName()
 		if errorutils.CheckError(err) != nil {
-			return
+			return err
 		}
 		pythonModule.SetName(moduleName)
 		var localDependenciesPath string

@@ -197,7 +197,12 @@ func (gc *GoCommand) run() (err error) {
 		if errorutils.CheckError(err) != nil {
 			return
 		}
-		goModule.SetName(gc.buildConfiguration.ResolveBaseModuleName())
+		moduleName, err := gc.buildConfiguration.ResolveBaseModuleName()
+		if errorutils.CheckError(err) != nil {
+			return
+		}
+		goModule.SetName(moduleName)
+
 		err = errorutils.CheckError(goModule.CalcDependencies())
 	}
 

@@ -128,7 +128,11 @@ func (gpc *GoPublishCommand) Run() error {
 		if err != nil {
 			return errorutils.CheckError(err)
 		}
-		goModule.SetName(gpc.buildConfiguration.ResolveBaseModuleName())
+		moduleName, err := gpc.buildConfiguration.ResolveBaseModuleName()
+		if errorutils.CheckError(err) != nil {
+			return err
+		}
+		goModule.SetName(moduleName)
 		err = goModule.AddArtifacts(artifacts...)
 		if err != nil {
 			return errorutils.CheckError(err)

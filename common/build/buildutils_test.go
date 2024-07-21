@@ -266,7 +266,8 @@ func TestBuildConfiguration_ResolveModuleName(t *testing.T) {
 			// Setup
 			bc := BuildConfiguration{module: tc.module}
 			// Execute
-			result := bc.ResolveBaseModuleName()
+			result, err := bc.ResolveBaseModuleName()
+			assert.NoError(t, err)
 			// Assert
 			if tc.module == "" {
 				wd, err := os.Getwd()

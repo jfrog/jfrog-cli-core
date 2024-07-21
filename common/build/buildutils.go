@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -465,15 +466,16 @@ func (bc *BuildConfiguration) IsLoadedFromConfigFile() bool {
 // If the module name is not specified, it falls back to the current working directory name.
 // If the working directory cannot be retrieved, it defaults to "module".
 // Module name is mandatory to publish build info.
-func (bc *BuildConfiguration) ResolveBaseModuleName() string {
+func (bc *BuildConfiguration) ResolveBaseModuleName() (moduleName string, err error) {
 	if bc.module != "" {
-		return bc.module
+		moduleName = bc.module
+		return
 	}
 	wd, err := os.Getwd()
-	if err == nil {
-		return filepath.Base(wd)
+	if err != nil {
+		return
 	}
-	return "module"
+	return path.Base(wd), nil
 }
 
 func PopulateBuildArtifactsAsPartials(buildArtifacts []buildInfo.Artifact, buildConfiguration *BuildConfiguration, moduleType buildInfo.ModuleType) error {

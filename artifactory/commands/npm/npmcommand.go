@@ -30,9 +30,8 @@ const (
 	minSupportedNpmVersion = "5.4.0"
 
 	// Scoped authentication env var that sets the _auth or _authToken npm config variables.
-	npmConfigAuthEnv = "npm_config_%s:%s"
-	// Support for setting config variables using environment variables was fixed in https://github.com/npm/config/pull/74.
-	npmVersionSupportingAuthEnv = "8.17.0"
+	npmConfigAuthEnv                  = "npm_config_%s:%s"
+	npmVersionSupportingScopedAuthEnv = "9.3.1"
 	// Legacy un-scoped auth env vars doesn't support access tokens (with _authToken suffix).
 	npmLegacyConfigAuthEnv = "npm_config__auth"
 )
@@ -258,7 +257,7 @@ func (nc *NpmCommand) setNpmConfigAuthEnv(value, authKey string) error {
 }
 
 func (nc *NpmCommand) isNpmVersionSupportsScopedAuthEnv() bool {
-	return nc.npmVersion.Compare(npmVersionSupportingAuthEnv) <= 0
+	return nc.npmVersion.Compare(npmVersionSupportingScopedAuthEnv) <= 0
 }
 
 func (nc *NpmCommand) prepareConfigData(data []byte) ([]byte, error) {

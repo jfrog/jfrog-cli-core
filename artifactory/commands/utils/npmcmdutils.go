@@ -2,10 +2,8 @@ package utils
 
 import (
 	"fmt"
-	"net/http"
-	"strings"
-
 	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
+	"net/http"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
@@ -95,11 +93,7 @@ func getNpmAuthFromArtifactory(artDetails auth.ServiceDetails) (npmAuth string, 
 }
 
 func getNpmRepositoryUrl(repo, url string) string {
-	if !strings.HasSuffix(url, "/") {
-		url += "/"
-	}
-	url += "api/npm/" + repo
-	return url
+	return clientutils.AddTrailingSlashIfNeeded(url) + "api/npm/" + repo
 }
 
 // Remove all the none npm CLI flags from args.

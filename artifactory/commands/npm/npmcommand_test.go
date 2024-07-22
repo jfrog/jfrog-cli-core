@@ -77,7 +77,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 		{
 			name: "set scoped registry auth env",
 			npmCm: &NpmCommand{
-				npmVersion: version.NewVersion("8.17.1"),
+				npmVersion: version.NewVersion("9.3.2"),
 				registry:   "https://registry.example.com",
 			},
 			authKey:     utils.NpmConfigAuthKey,
@@ -87,7 +87,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 		{
 			name: "set scoped registry authToken env",
 			npmCm: &NpmCommand{
-				npmVersion: version.NewVersion("8.17.1"),
+				npmVersion: version.NewVersion("9.3.2"),
 				registry:   "https://registry.example.com",
 			},
 			authKey:     utils.NpmConfigAuthTokenKey,

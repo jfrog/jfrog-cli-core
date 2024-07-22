@@ -8,8 +8,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"github.com/vbauerster/mpb/v7"
-	"github.com/vbauerster/mpb/v7/decor"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 	"golang.org/x/term"
 	golangLog "log"
 	"math"
@@ -24,13 +24,6 @@ const (
 	ProgressBarWidth     = 20
 	longProgressBarWidth = 100
 	ProgressRefreshRate  = 200 * time.Millisecond
-)
-
-type Color int64
-
-const (
-	WHITE Color = iota
-	GREEN       = 1
 )
 
 var terminalWidth int
@@ -177,7 +170,7 @@ func (bm *ProgressBarMng) NewUpdatableHeadlineBarWithSpinner(updateFn func() str
 }
 
 func (bm *ProgressBarMng) NewHeadlineBar(msg string) *mpb.Bar {
-	return bm.container.Add(1,
+	return bm.container.MustAdd(1,
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
@@ -254,7 +247,7 @@ func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denomina
 // Initializing a counter progress bar
 func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err error), headLine string, counterDescription decor.Decorator) *TasksProgressBar {
 	pb := &TasksProgressBar{}
-	pb.bar = bm.container.Add(0,
+	pb.bar = bm.container.MustAdd(0,
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
@@ -276,7 +269,7 @@ func (bm *ProgressBarMng) newCounterProgressBar(getVal func() (value int, err er
 // Initializing a progress bar that shows Done status
 func (bm *ProgressBarMng) newDoneTasksProgressBar() *TasksProgressBar {
 	pb := &TasksProgressBar{}
-	pb.bar = bm.container.Add(1,
+	pb.bar = bm.container.MustAdd(1,
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(
@@ -288,7 +281,7 @@ func (bm *ProgressBarMng) newDoneTasksProgressBar() *TasksProgressBar {
 
 func (bm *ProgressBarMng) NewStringProgressBar(headline string, updateFn func() string) *TasksProgressBar {
 	pb := &TasksProgressBar{}
-	pb.bar = bm.container.Add(1,
+	pb.bar = bm.container.MustAdd(1,
 		nil,
 		mpb.BarRemoveOnComplete(),
 		mpb.PrependDecorators(

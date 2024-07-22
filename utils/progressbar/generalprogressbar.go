@@ -1,7 +1,7 @@
 package progressbar
 
 import (
-	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v8"
 	"sync/atomic"
 )
 

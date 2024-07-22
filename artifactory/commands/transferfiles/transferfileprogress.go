@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"github.com/vbauerster/mpb/v8"
 	"time"
 
 	"github.com/gookit/color"
@@ -9,7 +10,6 @@ import (
 	coreLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/vbauerster/mpb/v7"
 )
 
 const phase1HeadLine = "Phase 1: Transferring all files in the repository"

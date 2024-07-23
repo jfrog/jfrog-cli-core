@@ -88,7 +88,8 @@ func (p *filesProgressBarManager) NewProgressReader(total int64, label, path str
 }
 
 // Initializes a new progress bar, that replaces the progress bar with the given replacedBarId
-func (p *filesProgressBarManager) SetMergingState(replacedBarId int, useSpinner bool) (bar ioUtils.Progress) { // Write Lock when appending a new bar to the slice
+func (p *filesProgressBarManager) SetMergingState(replacedBarId int, useSpinner bool) (bar ioUtils.Progress) {
+	// Write Lock when appending a new bar to the slice
 	p.barsRWMutex.Lock()
 	defer p.barsRWMutex.Unlock()
 	replacedBar := p.bars[replacedBarId-1].getProgressBarUnit()
@@ -97,7 +98,7 @@ func (p *filesProgressBarManager) SetMergingState(replacedBarId int, useSpinner 
 		getMergingProgress(useSpinner),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(buildProgressDescription("  Merging  ", replacedBar.description, progressbar.GetTerminalWidth(), 0)),
+			decor.Name(buildProgressDescription("  Merging  ", replacedBar.description, progressbar.GetTerminalWidth(), 17)),
 		),
 	)
 	// Bar replacement is a simple spinner and thus does not implement any read functionality

@@ -262,7 +262,7 @@ func (p *filesProgressBarManager) newGeneralProgressBar() {
 		progressbar.GeneralBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(" Tasks: "),
+			decor.Name(" Total Tasks: "),
 			decor.CountersNoUnit("%d/%d"),
 		),
 	)

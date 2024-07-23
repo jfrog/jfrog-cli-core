@@ -84,7 +84,7 @@ func TestBuildInfoModules(t *testing.T) {
 			},
 		},
 	}
-	expected := "\n\n # Modules Published \n\n\n ### `python-example-not-ignored` \n\n\n <pre>📦 python-example-not-ignored\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/dist/jfrog_python_example-1.0-py3-none-any.whl target=\"_blank\">jfrog_python_example-1.0-py3-none-any.whl</a>\n\n</pre>\n ### `npm-example:0.0.3` \n\n\n <pre>📦 npm-example:0.0.3\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>\n ### `npm-example-no-link:0.0.4` \n\n\n <pre>📦 npm-example-no-link:0.0.4\n└── 📄 npm-example-0.0.3.tgz\n\n</pre>"
+	expected := "\n\n ### Published Modules  \n\n\n ### `python-example-not-ignored` \n\n\n <pre>📦 python-example-not-ignored\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/dist/jfrog_python_example-1.0-py3-none-any.whl target=\"_blank\">jfrog_python_example-1.0-py3-none-any.whl</a>\n\n</pre>\n ### `npm-example:0.0.3` \n\n\n <pre>📦 npm-example:0.0.3\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>\n ### `npm-example-no-link:0.0.4` \n\n\n <pre>📦 npm-example-no-link:0.0.4\n└── 📄 npm-example-0.0.3.tgz\n\n</pre>"
 	assert.Equal(t, expected, gh.buildInfoModules(builds))
 }
 

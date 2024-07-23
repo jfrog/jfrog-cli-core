@@ -57,7 +57,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n # Modules Published \n\n")
+	markdownBuilder.WriteString("\n\n ### Published Modules  \n\n")
 	for _, build := range builds {
 		for _, module := range build.Modules {
 			if module.Type == "generic" {

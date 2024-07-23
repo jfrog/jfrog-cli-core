@@ -54,7 +54,7 @@ func TestBuildInfoModules(t *testing.T) {
 			},
 		},
 	}
-	expected := "\n\n # Modules Published \n\n\n ### `python-example` \n\n\n <pre>📦 python-example\n└── <a href=dist/jfrog_python_example-1.0-py3-none-any.whl target=\"_blank\">jfrog_python_example-1.0-py3-none-any.whl</a>\n\n</pre>\n ### `npm-example:0.0.3` \n\n\n <pre>📦 npm-example:0.0.3\n└── <a href=npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>"
+	expected := "\n\n # Modules Published \n\n\n ### `python-example` \n\n\n <pre>📦 python-example\n└── <a href=dist/jfrog_python_example-1.0-py3-none-any.whl target=\"_blank\">jfrog_python_example-1.0-py3-none-any.whl</a>\n\n</pre>\n ### `npm-example:0.0.3` \n\n\n <pre>📦 npm-example:0.0.3\n└── <a href=https://ecosysjfrog.jfrog.io/ui/repos/tree/General/robi-npm-local/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>"
 	assert.Equal(t, expected, gh.buildInfoModules(builds))
 }
 

@@ -5,16 +5,24 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	path2 "path"
 	"strings"
 	"time"
 )
 
 const timeFormat = "Jan 2, 2006 , 15:04:05"
 
-type BuildInfoSummary struct{}
+const UiPath = "/ui/repos/tree/General"
 
-func NewBuildInfo() *BuildInfoSummary {
-	return &BuildInfoSummary{}
+type BuildInfoSummary struct {
+	// Used to generate artifact links
+	serverUrl string
+}
+
+func NewBuildInfo(serverUrl string) *BuildInfoSummary {
+	return &BuildInfoSummary{
+		serverUrl: serverUrl,
+	}
 }
 
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
@@ -59,7 +67,7 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 			for _, artifact := range module.Artifacts {
 				path := module.Id + "/" + artifact.Name
 				print(path)
-				artifactsTree.AddFile(path, artifact.Path)
+				artifactsTree.AddFile(path, path2.Join(bis.serverUrl, UiPath, artifact.Path))
 			}
 			markdownBuilder.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
 		}

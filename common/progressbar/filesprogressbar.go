@@ -70,7 +70,7 @@ func (p *filesProgressBarManager) NewProgressReader(total int64, label, path str
 	defer p.barsRWMutex.Unlock()
 	p.barsWg.Add(1)
 	newBar := p.container.New(total,
-		mpb.BarStyle().Lbound("|").Filler("🟩").Tip("🟩").Padding("⬛").Refiller("").Rbound("|"),
+		progressbar.SingleTaskBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			// Extra chars length is the max length of the KibiByteCounter
@@ -111,7 +111,7 @@ func getMergingProgress(useSpinner bool) mpb.BarFillerBuilder {
 	if useSpinner {
 		return mpb.SpinnerStyle(createSpinnerFramesArray()...).PositionLeft()
 	}
-	return mpb.BarStyle().Lbound("|").Filler("🟩").Tip("🟩").Padding("⬛").Refiller("").Rbound("|")
+	return progressbar.SingleTaskBarStyle()
 }
 
 func buildProgressDescription(label, path string, terminalWidth, extraCharsLen int) string {
@@ -183,9 +183,10 @@ func createSpinnerFramesArray() []string {
 // The progress component's Abort method has no effect if bar has already completed, so can always be safely called anyway
 func (p *filesProgressBarManager) RemoveProgress(id int) {
 	p.barsRWMutex.RLock()
+	bar := p.bars[id-1]
+	p.barsRWMutex.RUnlock()
 	defer p.barsWg.Done()
-	defer p.barsRWMutex.RUnlock()
-	p.bars[id-1].Abort()
+	bar.Abort()
 }
 
 // Increases general progress bar by 1
@@ -258,7 +259,7 @@ func InitFilesProgressBarIfPossible(showLogFilePath bool) (ioUtils.ProgressMgr, 
 func (p *filesProgressBarManager) newGeneralProgressBar() {
 	p.barsWg.Add(1)
 	p.generalProgressBar = p.container.New(p.tasksCount,
-		mpb.BarStyle().Lbound("|").Filler("⬜").Tip("⬜").Padding("⬛").Refiller("").Rbound("|"),
+		progressbar.GeneralBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" Tasks: "),

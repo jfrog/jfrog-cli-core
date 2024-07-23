@@ -78,10 +78,8 @@ func (bm *ProgressBarMng) newDoubleHeadLineProgressBar(headline, val1HeadLine, v
 // Initialize a progress bar that can show the status of two different values
 func (bm *ProgressBarMng) newDoubleValueProgressBar(getVal func() (firstNumerator, firstDenominator, secondNumerator, secondDenominator *int64, err error), firstValueLine, secondValueLine string) *TasksProgressBar {
 	pb := TasksProgressBar{}
-	windows := coreutils.IsWindows()
-	padding, filler := paddingAndFiller(windows)
 	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Tip(filler).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
+		SingleTaskBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+firstValueLine+": "),
@@ -118,7 +116,7 @@ func (bm *ProgressBarMng) newHeadlineTaskProgressBar(getVal func() (numerator, d
 }
 
 // Initialize a regular tasks progress bar, with a headline above it
-func (bm *ProgressBarMng) NewTasksWithHeadlineProgressBar(totalTasks int64, headline string, spinner bool, windows bool, taskType string) *TasksWithHeadlineProg {
+func (bm *ProgressBarMng) NewTasksWithHeadlineProgressBar(totalTasks int64, headline string, spinner bool, taskType string) *TasksWithHeadlineProg {
 	bm.barsWg.Add(1)
 	prog := TasksWithHeadlineProg{}
 	if spinner {
@@ -130,7 +128,7 @@ func (bm *ProgressBarMng) NewTasksWithHeadlineProgressBar(totalTasks int64, head
 	if totalTasks == 0 {
 		prog.tasksProgressBar = bm.newDoneTasksProgressBar()
 	} else {
-		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, windows, taskType)
+		prog.tasksProgressBar = bm.NewTasksProgressBar(totalTasks, taskType)
 	}
 	prog.emptyLine = bm.NewHeadlineBar("")
 	return &prog
@@ -207,14 +205,13 @@ func (bm *ProgressBarMng) DoneTask(prog *TasksWithHeadlineProg) {
 	prog.tasksProgressBar.bar.IncrBy(int(diff))
 }
 
-func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, taskType string) *TasksProgressBar {
-	padding, filler := paddingAndFiller(windows)
+func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, taskType string) *TasksProgressBar {
 	pb := &TasksProgressBar{}
 	if taskType == "" {
 		taskType = "Tasks"
 	}
 	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Tip(filler).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
+		SingleTaskBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+taskType+": "),
@@ -226,11 +223,10 @@ func (bm *ProgressBarMng) NewTasksProgressBar(totalTasks int64, windows bool, ta
 }
 
 func (bm *ProgressBarMng) newTasksProgressBar(getVal func() (numerator, denominator *int64), headLine string) *TasksProgressBar {
-	padding, filler := paddingAndFiller(coreutils.IsWindows())
 	pb := &TasksProgressBar{}
 	numerator, denominator := getVal()
 	pb.bar = bm.container.New(0,
-		mpb.BarStyle().Lbound("|").Tip(filler).Padding(padding).Filler(filler).Refiller("").Rbound("|"),
+		SingleTaskBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(" "+headLine+": "),
@@ -305,14 +301,26 @@ func (bm *ProgressBarMng) GetLogFile() *os.File {
 	return bm.logFile
 }
 
-func paddingAndFiller(windows bool) (padding, filler string) {
-	padding = ".."
-	filler = "●"
-	if !windows {
-		padding = "⬛"
-		filler = "🟩"
+func SingleTaskBarStyle() mpb.BarStyleComposer {
+	return barStyle(false)
+}
+
+func GeneralBarStyle() mpb.BarStyleComposer {
+	return barStyle(true)
+}
+
+func barStyle(isGeneral bool) mpb.BarStyleComposer {
+	padding := ".."
+	filler := "●"
+	if !coreutils.IsWindows() {
+		padding = "  "
+		if isGeneral {
+			filler = "🟦"
+		} else {
+			filler = "🟩"
+		}
 	}
-	return padding, filler
+	return mpb.BarStyle().Lbound("").Filler(filler).Tip(filler).Padding(padding).Refiller("").Rbound("")
 }
 
 // The ShouldInitProgressBar func is used to determine whether the progress bar should be displayed.

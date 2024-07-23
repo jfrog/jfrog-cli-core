@@ -3,6 +3,7 @@ package build
 import (
 	biutils "github.com/jfrog/build-info-go/utils"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -272,7 +273,7 @@ func TestBuildConfiguration_ResolveModuleName(t *testing.T) {
 			if tc.module == "" {
 				wd, err := os.Getwd()
 				assert.NoError(t, err)
-				assert.Equal(t, filepath.Base(wd), result)
+				assert.Equal(t, path.Base(wd), result)
 			} else {
 				assert.Equal(t, tc.module, result)
 			}

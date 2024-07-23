@@ -95,24 +95,18 @@ func (p *filesProgressBarManager) SetMergingState(replacedBarId int, useSpinner 
 	replacedBar := p.bars[replacedBarId-1].getProgressBarUnit()
 	p.bars[replacedBarId-1].Abort()
 	newBar := p.container.New(100,
-		getMergingProgress(useSpinner),
+		progressbar.SingleTaskBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			decor.Name(buildProgressDescription("  Merging  ", replacedBar.description, progressbar.GetTerminalWidth(), 17)),
 		),
 	)
+	newBar.Increment()
 	// Bar replacement is a simple spinner and thus does not implement any read functionality
 	unit := &progressBarUnit{bar: newBar, description: replacedBar.description}
 	progressBar := SimpleProgressBar{progressBarUnit: unit, Id: replacedBarId}
 	p.bars[replacedBarId-1] = &progressBar
 	return &progressBar
-}
-
-func getMergingProgress(useSpinner bool) mpb.BarFillerBuilder {
-	if useSpinner {
-		return mpb.SpinnerStyle(createSpinnerFramesArray()...).PositionLeft()
-	}
-	return progressbar.SingleTaskBarStyle()
 }
 
 func buildProgressDescription(label, path string, terminalWidth, extraCharsLen int) string {
@@ -166,17 +160,6 @@ func incrBarFromChannel(unit *progressBarUnit) {
 	for n := range unit.incrChannel {
 		unit.bar.IncrBy(n)
 	}
-}
-
-func createSpinnerFramesArray() []string {
-	black := "⬛"
-	green := "🟩"
-	spinnerFramesArray := make([]string, progressbar.ProgressBarWidth)
-	for i := 1; i < progressbar.ProgressBarWidth-1; i++ {
-		cur := "|" + strings.Repeat(black, i-1) + green + strings.Repeat(black, progressbar.ProgressBarWidth-2-i) + "|"
-		spinnerFramesArray[i] = cur
-	}
-	return spinnerFramesArray
 }
 
 // Aborts a progress bar.

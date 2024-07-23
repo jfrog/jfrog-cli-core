@@ -45,6 +45,7 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
+	tableBuilder.WriteString("\n\n ### Published Builds  \n\n")
 	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | \n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {

@@ -16,50 +16,42 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-	expected := "\n\n|  Build Info |  Time Stamp | \n|---------|------------| \n| [buildName 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 , 12:47:20 |\n\n\n"
+	expected := "\n\n ### Published Builds  \n\n\n\n|  Build Info |  Time Stamp | \n|---------|------------| \n| [buildName 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 , 12:47:20 |\n\n\n"
 	assert.Equal(t, expected, gh.buildInfoTable(builds))
 }
 
-func TestBuildInfoModules(t *testing.T) {
-	gh := &BuildInfoSummary{
-		serverUrl: "https://myJFrogPlatform.io/",
-	}
-	var builds = []*buildinfo.BuildInfo{
+// Validates a generic modules DOES NOT appear in the published modules
+// This to avoid duplication with uploaded artifacts summary.
+// Notice that python modules will be ignored, as they are labeled as generic.
+func TestBuildInfoModules_GenericModuleIgnored(t *testing.T) {
+	gh := &BuildInfoSummary{serverUrl: "https://myJFrogPlatform.io/"}
+	builds := []*buildinfo.BuildInfo{
 		{
-			Name:     "buildName",
-			Number:   "123",
-			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 			Modules: []buildinfo.Module{
 				{
-					Id:         "python-example-ignored",
-					Type:       "generic",
-					Properties: nil,
+					Type: "generic",
+					Id:   "generic-module",
 					Artifacts: []buildinfo.Artifact{
-						{
-							Name:         "jfrog_python_example-1.0-py3-none-any.whl",
-							Path:         "dist/jfrog_python_example-1.0-py3-none-any.whl",
-							OriginalRepo: "origin-repo",
-							// This should be ignored from modules
-							Type: "generic",
-						},
+						{Name: "generic-artifact-1.0.0.txt"},
 					},
 				},
+			},
+		},
+	}
+	expected := "\n\n ### Published Modules  \n\n"
+	actual := gh.buildInfoModules(builds)
+	assert.Equal(t, expected, actual)
+}
+
+// Validate an npm module is valid with a link
+func TestBuildInfoModules_NonGenericModuleIncluded(t *testing.T) {
+	gh := &BuildInfoSummary{serverUrl: "https://myJFrogPlatform.io/"}
+	builds := []*buildinfo.BuildInfo{
+		{
+			Modules: []buildinfo.Module{
 				{
-					Properties: nil,
-					Id:         "python-example-not-ignored",
-					Artifacts: []buildinfo.Artifact{
-						{
-							Name:         "jfrog_python_example-1.0-py3-none-any.whl",
-							Path:         "dist/jfrog_python_example-1.0-py3-none-any.whl",
-							OriginalRepo: "origin-repo",
-						},
-					},
-				},
-				{
-					Type:       "npm",
-					Properties: nil,
-					Id:         "npm-example:0.0.3",
+					Type: "npm",
+					Id:   "non-generic-module",
 					Artifacts: []buildinfo.Artifact{
 						{
 							Name:         "npm-example-0.0.3.tgz",
@@ -68,24 +60,62 @@ func TestBuildInfoModules(t *testing.T) {
 						},
 					},
 				},
+			},
+		},
+	}
+	expected := "\n\n ### Published Modules  \n\n\n ### `non-generic-module` \n\n\n <pre>📦 non-generic-module\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>"
+	actual := gh.buildInfoModules(builds)
+	assert.Equal(t, expected, actual)
+}
+
+// Validates that non-supported package managers, which don't have an original repo key yet,
+// do not show links as they are not supported.
+func TestBuildInfoModules_DontShowLinkIfOriginalRepoNotProvided(t *testing.T) {
+	gh := &BuildInfoSummary{serverUrl: "https://myJFrogPlatform.io/"}
+	builds := []*buildinfo.BuildInfo{
+		{
+			Modules: []buildinfo.Module{
 				{
-					Type:       "npm-without-link",
-					Properties: nil,
-					Id:         "npm-example-no-link:0.0.4",
+					Type: "docker",
+					Id:   "i-dont-have-repo-key-yet",
 					Artifacts: []buildinfo.Artifact{
 						{
-							Name: "npm-example-0.0.3.tgz",
-							Path: "npm-example/-/npm-example-no-link:0.0.4.tgz",
-							// Test where no repo is provided, no link should be outputted.
-							OriginalRepo: "",
+							Name: "artifact-1.0.0.tar.gz",
+							Path: "a/b/artifact-1.0.0.tar.gz",
 						},
 					},
 				},
 			},
 		},
 	}
-	expected := "\n\n ### Published Modules  \n\n\n ### `python-example-not-ignored` \n\n\n <pre>📦 python-example-not-ignored\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/dist/jfrog_python_example-1.0-py3-none-any.whl target=\"_blank\">jfrog_python_example-1.0-py3-none-any.whl</a>\n\n</pre>\n ### `npm-example:0.0.3` \n\n\n <pre>📦 npm-example:0.0.3\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>\n ### `npm-example-no-link:0.0.4` \n\n\n <pre>📦 npm-example-no-link:0.0.4\n└── 📄 npm-example-0.0.3.tgz\n\n</pre>"
-	assert.Equal(t, expected, gh.buildInfoModules(builds))
+	expected := "\n\n ### Published Modules  \n\n\n ### `i-dont-have-repo-key-yet` \n\n\n <pre>📦 i-dont-have-repo-key-yet\n└── 📄 artifact-1.0.0.tar.gz\n\n</pre>"
+	actual := gh.buildInfoModules(builds)
+	assert.Equal(t, expected, actual)
+}
+
+// Validate an npm module is valid with a valid link
+func TestBuildInfoModules_NpmModuleWithLink(t *testing.T) {
+	gh := &BuildInfoSummary{serverUrl: "https://myJFrogPlatform.io/"}
+	builds := []*buildinfo.BuildInfo{
+		{
+			Modules: []buildinfo.Module{
+				{
+					Type: "npm",
+					Id:   "npm-module-with-link",
+					Artifacts: []buildinfo.Artifact{
+						{
+							Name:         "npm-link-example-0.0.3.tgz",
+							Path:         "npm-link-example/-/npm-example-0.0.3.tgz",
+							OriginalRepo: "origin-repo",
+						},
+					},
+				},
+			},
+		},
+	}
+	expected := "\n\n ### Published Modules  \n\n\n ### `npm-module-with-link` \n\n\n <pre>📦 npm-module-with-link\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-link-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-link-example-0.0.3.tgz</a>\n\n</pre>"
+	actual := gh.buildInfoModules(builds)
+	assert.Equal(t, expected, actual)
 }
 
 func TestParseBuildTime(t *testing.T) {

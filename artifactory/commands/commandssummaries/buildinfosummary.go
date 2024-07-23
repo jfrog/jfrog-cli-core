@@ -9,9 +9,10 @@ import (
 	"time"
 )
 
-const timeFormat = "Jan 2, 2006 , 15:04:05"
-
-const UiFormat = "%s/ui/repos/tree/General/%s"
+const (
+	timeFormat = "Jan 2, 2006 , 15:04:05"
+	UiFormat   = "%sui/repos/tree/General/%s/%s"
+)
 
 type BuildInfoSummary struct {
 	// Used to generate artifact links
@@ -55,24 +56,19 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 }
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
-
 	var markdownBuilder strings.Builder
 	markdownBuilder.WriteString("\n\n # Modules Published \n\n")
-	// Populate the FileTree with artifacts
 	for _, build := range builds {
 		for _, module := range build.Modules {
-			markdownBuilder.WriteString(fmt.Sprintf("\n ### `%s` \n", module.Id))
-			artifactsTree := utils.NewFileTree()
-			for _, artifact := range module.Artifacts {
-				artifactPath := module.Id + "/" + artifact.Name
-				artifactFullPath := fmt.Sprintf(UiFormat, bis.serverUrl, artifactPath)
-				artifactsTree.AddFile(artifactPath, artifactFullPath)
+			if module.Type == "generic" {
+				continue // Skip generic modules to avoid overlaps
 			}
-			markdownBuilder.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
+			markdownBuilder.WriteString(bis.generateModuleMarkdown(module))
 		}
 	}
 	return markdownBuilder.String()
 }
+
 func parseBuildTime(timestamp string) string {
 	// Parse the timestamp string into a time.Time object
 	buildInfoTime, err := time.Parse(buildInfo.TimeFormat, timestamp)
@@ -81,4 +77,24 @@ func parseBuildTime(timestamp string) string {
 	}
 	// Format the time in a more human-readable format and save it in a variable
 	return buildInfoTime.Format(timeFormat)
+}
+
+func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) string {
+	var moduleMarkdown strings.Builder
+	moduleMarkdown.WriteString(fmt.Sprintf("\n ### `%s` \n", module.Id))
+	artifactsTree := utils.NewFileTree()
+	for _, artifact := range module.Artifacts {
+		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
+		artifactTreePath := module.Id + "/" + artifact.Name
+		artifactsTree.AddFile(artifactTreePath, artifactUrlInArtifactory)
+	}
+	moduleMarkdown.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
+	return moduleMarkdown.String()
+}
+
+func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) string {
+	if artifact.OriginalRepo != "" {
+		return fmt.Sprintf(UiFormat, bis.serverUrl, artifact.OriginalRepo, artifact.Path)
+	}
+	return ""
 }

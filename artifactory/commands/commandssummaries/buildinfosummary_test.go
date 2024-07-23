@@ -22,7 +22,7 @@ func TestBuildInfoTable(t *testing.T) {
 
 func TestBuildInfoModules(t *testing.T) {
 	gh := &BuildInfoSummary{
-		serverUrl: "https://myJFrogPlatform.io",
+		serverUrl: "https://myJFrogPlatform.io/",
 	}
 	var builds = []*buildinfo.BuildInfo{
 		{
@@ -32,13 +32,27 @@ func TestBuildInfoModules(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 			Modules: []buildinfo.Module{
 				{
+					Id:         "python-example-ignored",
 					Type:       "generic",
 					Properties: nil,
-					Id:         "python-example",
 					Artifacts: []buildinfo.Artifact{
 						{
-							Name: "jfrog_python_example-1.0-py3-none-any.whl",
-							Path: "dist/jfrog_python_example-1.0-py3-none-any.whl",
+							Name:         "jfrog_python_example-1.0-py3-none-any.whl",
+							Path:         "dist/jfrog_python_example-1.0-py3-none-any.whl",
+							OriginalRepo: "origin-repo",
+							// This should be ignored from modules
+							Type: "generic",
+						},
+					},
+				},
+				{
+					Properties: nil,
+					Id:         "python-example-not-ignored",
+					Artifacts: []buildinfo.Artifact{
+						{
+							Name:         "jfrog_python_example-1.0-py3-none-any.whl",
+							Path:         "dist/jfrog_python_example-1.0-py3-none-any.whl",
+							OriginalRepo: "origin-repo",
 						},
 					},
 				},
@@ -48,15 +62,29 @@ func TestBuildInfoModules(t *testing.T) {
 					Id:         "npm-example:0.0.3",
 					Artifacts: []buildinfo.Artifact{
 						{
+							Name:         "npm-example-0.0.3.tgz",
+							Path:         "npm-example/-/npm-example-0.0.3.tgz",
+							OriginalRepo: "origin-repo",
+						},
+					},
+				},
+				{
+					Type:       "npm-without-link",
+					Properties: nil,
+					Id:         "npm-example-no-link:0.0.4",
+					Artifacts: []buildinfo.Artifact{
+						{
 							Name: "npm-example-0.0.3.tgz",
-							Path: "npm-example/test-repo/npm-example-0.0.3.tgz",
+							Path: "npm-example/-/npm-example-no-link:0.0.4.tgz",
+							// Test where no repo is provided, no link should be outputted.
+							OriginalRepo: "",
 						},
 					},
 				},
 			},
 		},
 	}
-	expected := "\n\n # Modules Published \n\n\n ### `python-example` \n\n\n <pre>📦 python-example\n└── <a href=dist/jfrog_python_example-1.0-py3-none-any.whl target=\"_blank\">jfrog_python_example-1.0-py3-none-any.whl</a>\n\n</pre>\n ### `npm-example:0.0.3` \n\n\n <pre>📦 npm-example:0.0.3\n└── <a href=https://ecosysjfrog.jfrog.io/ui/repos/tree/General/robi-npm-local/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>"
+	expected := "\n\n # Modules Published \n\n\n ### `python-example-not-ignored` \n\n\n <pre>📦 python-example-not-ignored\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/dist/jfrog_python_example-1.0-py3-none-any.whl target=\"_blank\">jfrog_python_example-1.0-py3-none-any.whl</a>\n\n</pre>\n ### `npm-example:0.0.3` \n\n\n <pre>📦 npm-example:0.0.3\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>\n ### `npm-example-no-link:0.0.4` \n\n\n <pre>📦 npm-example-no-link:0.0.4\n└── 📄 npm-example-0.0.3.tgz\n\n</pre>"
 	assert.Equal(t, expected, gh.buildInfoModules(builds))
 }
 

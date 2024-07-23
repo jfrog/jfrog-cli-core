@@ -312,7 +312,9 @@ func GeneralBarStyle() mpb.BarStyleComposer {
 func barStyle(isGeneral bool) mpb.BarStyleComposer {
 	padding := ".."
 	filler := "●"
+	bound := "|"
 	if !coreutils.IsWindows() {
+		bound = ""
 		padding = "  "
 		if isGeneral {
 			filler = "🟦"
@@ -320,7 +322,7 @@ func barStyle(isGeneral bool) mpb.BarStyleComposer {
 			filler = "🟩"
 		}
 	}
-	return mpb.BarStyle().Lbound("").Filler(filler).Tip(filler).Padding(padding).Refiller("").Rbound("")
+	return mpb.BarStyle().Lbound(bound).Filler(filler).Tip(filler).Padding(padding).Refiller("").Rbound(bound)
 }
 
 // The ShouldInitProgressBar func is used to determine whether the progress bar should be displayed.

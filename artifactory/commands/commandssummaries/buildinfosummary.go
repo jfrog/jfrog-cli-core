@@ -3,6 +3,7 @@ package commandssummaries
 import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 	"strings"
 	"time"
@@ -28,7 +29,7 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 	}
 
 	if len(builds) > 0 {
-		finalMarkdown = bis.buildInfoTable(builds)
+		finalMarkdown = bis.buildInfoTable(builds) + bis.buildInfoModules(builds)
 	}
 	return
 }
@@ -46,6 +47,25 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	return tableBuilder.String()
 }
 
+func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
+
+	var markdownBuilder strings.Builder
+	markdownBuilder.WriteString("\n\n # Modules Published \n\n")
+	// Populate the FileTree with artifacts
+	for _, build := range builds {
+		for _, module := range build.Modules {
+			markdownBuilder.WriteString(fmt.Sprintf("\n ### `%s` \n", module.Id))
+			artifactsTree := utils.NewFileTree()
+			for _, artifact := range module.Artifacts {
+				path := module.Id + "/" + artifact.Name
+				print(path)
+				artifactsTree.AddFile(path, artifact.Path)
+			}
+			markdownBuilder.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
+		}
+	}
+	return markdownBuilder.String()
+}
 func parseBuildTime(timestamp string) string {
 	// Parse the timestamp string into a time.Time object
 	buildInfoTime, err := time.Parse(buildInfo.TimeFormat, timestamp)

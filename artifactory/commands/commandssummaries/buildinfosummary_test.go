@@ -21,7 +21,9 @@ func TestBuildInfoTable(t *testing.T) {
 }
 
 func TestBuildInfoModules(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	gh := &BuildInfoSummary{
+		serverUrl: "https://myJFrogPlatform.io",
+	}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -47,7 +49,7 @@ func TestBuildInfoModules(t *testing.T) {
 					Artifacts: []buildinfo.Artifact{
 						{
 							Name: "npm-example-0.0.3.tgz",
-							Path: "npm-example/-/npm-example-0.0.3.tgz",
+							Path: "npm-example/test-repo/npm-example-0.0.3.tgz",
 						},
 					},
 				},

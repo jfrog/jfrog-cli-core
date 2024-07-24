@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/gofrog/version"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -32,19 +33,20 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		return nil, nil, errorutils.CheckError(err)
 	}
 
-	collectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
-	modContent, modArtifact, err := readModFile(packageVersion, projectPath, collectBuildInfo)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	// Read module name
 	moduleName, err := goutils.GetModuleName(projectPath)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	filePathInRepo := path.Join(moduleName, "@v", packageVersion)
+
 	log.Info("Publishing", moduleName, "to", targetRepo)
+	collectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
+	modContent, modArtifact, err := readModFile(packageVersion, projectPath, targetRepo, filePathInRepo+".mod", collectBuildInfo)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	props, err := build.CreateBuildProperties(buildName, buildNumber, projectKey)
 	if err != nil {
@@ -69,7 +71,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 	params.ModuleId = moduleName
 	params.ModContent = modContent
 	params.ModPath = filepath.Join(projectPath, "go.mod")
-	params.ZipPath, zipArtifact, err = archive(moduleName, packageVersion, projectPath, tempDirPath, excludedPatterns)
+	params.ZipPath, zipArtifact, err = archive(moduleName, packageVersion, projectPath, targetRepo, tempDirPath, excludedPatterns)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,7 +97,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		}()
 		if collectBuildInfo {
 			var infoArtifact *buildinfo.Artifact
-			infoArtifact, err = createInfoFileArtifact(pathToInfo, packageVersion)
+			infoArtifact, err = createInfoFileArtifact(pathToInfo, packageVersion, targetRepo, filePathInRepo+".info")
 			if err != nil {
 				return nil, nil, err
 			}
@@ -138,7 +140,7 @@ func createInfoFile(packageVersion string) (path string, err error) {
 
 // Read go.mod file.
 // Pass createArtifact = true to create an Artifact for build-info.
-func readModFile(version, projectPath string, createArtifact bool) ([]byte, *buildinfo.Artifact, error) {
+func readModFile(version, projectPath, targetRepo, relPathInRepo string, createArtifact bool) ([]byte, *buildinfo.Artifact, error) {
 	modFilePath := filepath.Join(projectPath, "go.mod")
 	modFileExists, _ := fileutils.IsFileExists(modFilePath, true)
 	if !modFileExists {
@@ -166,14 +168,14 @@ func readModFile(version, projectPath string, createArtifact bool) ([]byte, *bui
 	}
 
 	// Add mod file as artifact
-	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod"}
+	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod", OriginalRepo: targetRepo, Path: relPathInRepo}
 	artifact.Checksum = buildinfo.Checksum{Sha1: checksums[biutils.SHA1], Md5: checksums[biutils.MD5]}
 	return content, artifact, nil
 }
 
 // Archive the go project.
 // Returns the path of the temp archived project file.
-func archive(moduleName, version, projectPath, tempDir string, excludedPatterns []string) (name string, zipArtifact *buildinfo.Artifact, err error) {
+func archive(moduleName, version, projectPath, targetRepo, tempDir string, excludedPatterns []string) (name string, zipArtifact *buildinfo.Artifact, err error) {
 	openedFile := false
 	tempFile, err := os.CreateTemp(tempDir, "project.zip")
 	if err != nil {
@@ -216,19 +218,19 @@ func archive(moduleName, version, projectPath, tempDir string, excludedPatterns 
 		return "", nil, err
 	}
 
-	zipArtifact = &buildinfo.Artifact{Name: version + ".zip", Type: "zip"}
+	zipArtifact = &buildinfo.Artifact{Name: version + ".zip", Type: "zip", OriginalRepo: targetRepo, Path: path.Join(moduleName, "@v", version+".zip")}
 	zipArtifact.Checksum = buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
 	return tempFile.Name(), zipArtifact, nil
 }
 
 // Add the info file also as an artifact to be part of the build info.
-func createInfoFileArtifact(infoFilePath, packageVersion string) (*buildinfo.Artifact, error) {
+func createInfoFileArtifact(infoFilePath, packageVersion, targetRepo, relPathInRepo string) (*buildinfo.Artifact, error) {
 	fileDetails, err := fileutils.GetFileDetails(infoFilePath, true)
 	if err != nil {
 		return nil, err
 	}
 
-	artifact := &buildinfo.Artifact{Name: packageVersion + ".info", Type: "info"}
+	artifact := &buildinfo.Artifact{Name: packageVersion + ".info", Type: "info", OriginalRepo: targetRepo, Path: relPathInRepo}
 	artifact.Checksum = buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
 	return artifact, nil
 }

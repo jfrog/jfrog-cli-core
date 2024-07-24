@@ -12,17 +12,17 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.9
-	github.com/jfrog/build-info-go v1.9.29
+	github.com/jfrog/build-info-go v1.9.30
 	github.com/jfrog/gofrog v1.7.4
-	github.com/jfrog/jfrog-client-go v1.42.0
+	github.com/jfrog/jfrog-client-go v1.43.0
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
-	github.com/vbauerster/mpb/v8 v8.7.4
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
+	github.com/vbauerster/mpb/v7 v7.5.3
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
 	golang.org/x/mod v0.19.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/term v0.22.0
@@ -32,8 +32,8 @@ require (
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/BurntSushi/toml v1.3.2 // indirect
-	github.com/CycloneDX/cyclonedx-go v0.8.0 // indirect
+	github.com/BurntSushi/toml v1.4.0 // indirect
+	github.com/CycloneDX/cyclonedx-go v0.9.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ProtonMail/go-crypto v1.0.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
@@ -96,8 +96,8 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
+// replace github.com/jfrog/jfrog-client-go => github.com/eyalbe4/jfrog-client-go v1.28.1-0.20240723132744-93aab0ffffb1
 
-// replace github.com/jfrog/build-info-go => github.com/asafambar/build-info-go v1.8.9-0.20240530151827-93c25df23371
+// replace github.com/jfrog/build-info-go => github.com/eyalbe4/build-info-go v1.8.9-0.20240723132035-980d2c84b738
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.3.3-0.20231223133729-ef57bd08cedc

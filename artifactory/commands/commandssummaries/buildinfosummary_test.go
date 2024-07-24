@@ -63,7 +63,31 @@ func TestBuildInfoModules_NonGenericModuleIncluded(t *testing.T) {
 			},
 		},
 	}
-	expected := "\n\n ### Published Modules  \n\n\n ### `non-generic-module` \n\n\n <pre>📦 non-generic-module\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>"
+	expected := "\n\n ### Published Modules  \n\n\n ### `non-generic-module` \n\n\n <pre>📦 origin-repo\n└── 📁 non-generic-module\n    └── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-example-0.0.3.tgz</a>\n\n</pre>"
+	actual := gh.buildInfoModules(builds)
+	assert.Equal(t, expected, actual)
+}
+
+// Validates the output of an unsupported package manager with the original repo field.
+func TestBuildInfoModules_NonGenericModuleUnsupported(t *testing.T) {
+	gh := &BuildInfoSummary{serverUrl: "https://myJFrogPlatform.io/"}
+	builds := []*buildinfo.BuildInfo{
+		{
+			Modules: []buildinfo.Module{
+				{
+					Type: "not-generic",
+					Id:   "non-generic-module-unsupported",
+					Artifacts: []buildinfo.Artifact{
+						{
+							Name: "not-generic-example-0.0.3.tgz",
+							Path: "not-generic-example/not-generic-example-0.0.3.tgz",
+						},
+					},
+				},
+			},
+		},
+	}
+	expected := "\n\n ### Published Modules  \n\n\n ### `non-generic-module-unsupported` \n\n\n <pre>📦  \n└── 📁 non-generic-module-unsupported\n    └── 📄 not-generic-example-0.0.3.tgz\n\n</pre>"
 	actual := gh.buildInfoModules(builds)
 	assert.Equal(t, expected, actual)
 }
@@ -88,7 +112,7 @@ func TestBuildInfoModules_DontShowLinkIfOriginalRepoNotProvided(t *testing.T) {
 			},
 		},
 	}
-	expected := "\n\n ### Published Modules  \n\n\n ### `i-dont-have-repo-key-yet` \n\n\n <pre>📦 i-dont-have-repo-key-yet\n└── 📄 artifact-1.0.0.tar.gz\n\n</pre>"
+	expected := "\n\n ### Published Modules  \n\n\n ### `i-dont-have-repo-key-yet` \n\n\n <pre>📦  \n└── 📁 i-dont-have-repo-key-yet\n    └── 📄 artifact-1.0.0.tar.gz\n\n</pre>"
 	actual := gh.buildInfoModules(builds)
 	assert.Equal(t, expected, actual)
 }
@@ -113,7 +137,7 @@ func TestBuildInfoModules_NpmModuleWithLink(t *testing.T) {
 			},
 		},
 	}
-	expected := "\n\n ### Published Modules  \n\n\n ### `npm-module-with-link` \n\n\n <pre>📦 npm-module-with-link\n└── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-link-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-link-example-0.0.3.tgz</a>\n\n</pre>"
+	expected := "\n\n ### Published Modules  \n\n\n ### `npm-module-with-link` \n\n\n <pre>📦 origin-repo\n└── 📁 npm-module-with-link\n    └── <a href=https://myJFrogPlatform.io/ui/repos/tree/General/origin-repo/npm-link-example/-/npm-example-0.0.3.tgz target=\"_blank\">npm-link-example-0.0.3.tgz</a>\n\n</pre>"
 	actual := gh.buildInfoModules(builds)
 	assert.Equal(t, expected, actual)
 }

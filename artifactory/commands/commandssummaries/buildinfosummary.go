@@ -5,6 +5,7 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"path"
 	"strings"
 	"time"
 )
@@ -86,7 +87,11 @@ func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) str
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
-		artifactTreePath := module.Id + "/" + artifact.Name
+		if artifact.OriginalRepo == "" {
+			// Placeholder to show in the tree that the artifact is not in a repo
+			artifact.OriginalRepo = " "
+		}
+		artifactTreePath := path.Join(artifact.OriginalRepo, module.Id, artifact.Name)
 		artifactsTree.AddFile(artifactTreePath, artifactUrlInArtifactory)
 	}
 	moduleMarkdown.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")

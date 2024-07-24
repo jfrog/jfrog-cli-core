@@ -12,7 +12,6 @@ import (
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -82,7 +81,7 @@ func (lpc *LongPropertyCheck) ExecuteCheck(args precheckrunner.RunArguments) (pa
 	// Handle progress display
 	var progress *progressbar.TasksProgressBar
 	if args.ProgressMng != nil {
-		progress = args.ProgressMng.NewTasksProgressBar(0, coreutils.IsWindows(), "long property")
+		progress = args.ProgressMng.NewTasksProgressBar(0, "long property")
 		defer progress.GetBar().Abort(true)
 	}
 	// Create consumer routine to collect the files from the search tasks

@@ -1,6 +1,7 @@
 package transferfiles
 
 import (
+	"github.com/vbauerster/mpb/v8"
 	"time"
 
 	"github.com/gookit/color"
@@ -9,7 +10,6 @@ import (
 	coreLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/vbauerster/mpb/v7"
 )
 
 const phase1HeadLine = "Phase 1: Transferring all files in the repository"
@@ -185,7 +185,7 @@ func (t *TransferProgressMng) DonePhase(id int) error {
 
 func (t *TransferProgressMng) AddPhase1(skip bool) {
 	if skip {
-		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProgressBar(0, phase1HeadLine, false, t.windows, ""))
+		t.phases = append(t.phases, t.barsMng.NewTasksWithHeadlineProgressBar(0, phase1HeadLine, false, ""))
 	} else {
 		bar2 := t.transferMng.NewPhase1ProgressBar()
 		t.phases = append(t.phases, bar2)

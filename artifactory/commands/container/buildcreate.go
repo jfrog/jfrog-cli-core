@@ -50,7 +50,7 @@ func (bdc *BuildDockerCreateCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := build.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
+	if err = build.SaveBuildGeneralDetails(buildName, buildNumber, project); err != nil {
 		return err
 	}
 	builder, err := container.NewRemoteAgentBuildInfoBuilder(bdc.image, repo, buildName, buildNumber, project, serviceManager, bdc.manifestSha256)

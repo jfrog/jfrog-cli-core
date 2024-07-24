@@ -12,9 +12,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.9
-	github.com/jfrog/build-info-go v1.9.29
+	github.com/jfrog/build-info-go v1.9.30
 	github.com/jfrog/gofrog v1.7.4
-	github.com/jfrog/jfrog-client-go v1.42.0
+	github.com/jfrog/jfrog-client-go v1.43.0
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c

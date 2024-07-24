@@ -39,9 +39,8 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 		return nil, nil, err
 	}
 
-	filePathInRepo := path.Join(moduleName, "@v", packageVersion)
-
 	log.Info("Publishing", moduleName, "to", targetRepo)
+	filePathInRepo := path.Join(moduleName, "@v", packageVersion)
 	collectBuildInfo := len(buildName) > 0 && len(buildNumber) > 0
 	modContent, modArtifact, err := readModFile(packageVersion, projectPath, targetRepo, filePathInRepo+".mod", collectBuildInfo)
 	if err != nil {

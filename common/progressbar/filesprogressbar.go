@@ -52,7 +52,6 @@ type progressBar interface {
 }
 
 func (p *filesProgressBarManager) InitProgressReaders() {
-	p.newHeadlineBar(" Working")
 	p.tasksCount = 0
 	p.newGeneralProgressBar()
 }

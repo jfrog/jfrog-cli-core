@@ -3,7 +3,6 @@ package mvn
 import (
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path/filepath"
 	"testing"
 
@@ -42,14 +41,12 @@ func TestUpdateBuildInfoArtifactsWithTargetRepo(t *testing.T) {
 	assert.Len(t, firstModule.Artifacts, 0)
 	excludedArtifacts := firstModule.ExcludedArtifacts
 	assert.Len(t, excludedArtifacts, 2)
-	log.Info(excludedArtifacts)
 	assert.Equal(t, "snapshots", excludedArtifacts[0].OriginalRepo)
 	assert.Equal(t, "snapshots", excludedArtifacts[1].OriginalRepo)
 
 	secondModule := modules[1]
 	assert.Len(t, secondModule.ExcludedArtifacts, 0)
 	artifacts := secondModule.Artifacts
-	log.Info(artifacts)
 	assert.Len(t, artifacts, 2)
 	assert.Equal(t, "releases", artifacts[0].OriginalRepo)
 	assert.Equal(t, "releases", artifacts[1].OriginalRepo)

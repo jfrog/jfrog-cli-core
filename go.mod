@@ -12,16 +12,16 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.9
-	github.com/jfrog/build-info-go v1.9.29
+	github.com/jfrog/build-info-go v1.9.30
 	github.com/jfrog/gofrog v1.7.4
-	github.com/jfrog/jfrog-client-go v1.42.0
+	github.com/jfrog/jfrog-client-go v1.43.0
 	github.com/magiconair/properties v1.8.7
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
-	github.com/vbauerster/mpb/v7 v7.5.3
+	github.com/vbauerster/mpb/v8 v8.7.4
 	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
 	golang.org/x/mod v0.19.0
 	golang.org/x/sync v0.7.0

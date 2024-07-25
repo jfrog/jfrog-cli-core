@@ -17,8 +17,8 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 
-	"github.com/vbauerster/mpb/v7"
-	"github.com/vbauerster/mpb/v7/decor"
+	"github.com/vbauerster/mpb/v8"
+	"github.com/vbauerster/mpb/v8/decor"
 )
 
 type filesProgressBarManager struct {
@@ -70,7 +70,7 @@ func (p *filesProgressBarManager) NewProgressReader(total int64, label, path str
 	defer p.barsRWMutex.Unlock()
 	p.barsWg.Add(1)
 	newBar := p.container.New(total,
-		mpb.BarStyle().Lbound("|").Filler("🟩").Tip("🟩").Padding("⬛").Refiller("").Rbound("|"),
+		progressbar.SingleTaskBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
 			// Extra chars length is the max length of the KibiByteCounter
@@ -88,30 +88,25 @@ func (p *filesProgressBarManager) NewProgressReader(total int64, label, path str
 }
 
 // Initializes a new progress bar, that replaces the progress bar with the given replacedBarId
-func (p *filesProgressBarManager) SetMergingState(replacedBarId int, useSpinner bool) (bar ioUtils.Progress) { // Write Lock when appending a new bar to the slice
+func (p *filesProgressBarManager) SetMergingState(replacedBarId int, useSpinner bool) (bar ioUtils.Progress) {
+	// Write Lock when appending a new bar to the slice
 	p.barsRWMutex.Lock()
 	defer p.barsRWMutex.Unlock()
 	replacedBar := p.bars[replacedBarId-1].getProgressBarUnit()
 	p.bars[replacedBarId-1].Abort()
 	newBar := p.container.New(100,
-		getMergingProgress(useSpinner),
+		progressbar.SingleTaskBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(buildProgressDescription("  Merging  ", replacedBar.description, progressbar.GetTerminalWidth(), 0)),
+			decor.Name(buildProgressDescription("  Merging  ", replacedBar.description, progressbar.GetTerminalWidth(), 17)),
 		),
 	)
+	newBar.Increment()
 	// Bar replacement is a simple spinner and thus does not implement any read functionality
 	unit := &progressBarUnit{bar: newBar, description: replacedBar.description}
 	progressBar := SimpleProgressBar{progressBarUnit: unit, Id: replacedBarId}
 	p.bars[replacedBarId-1] = &progressBar
 	return &progressBar
-}
-
-func getMergingProgress(useSpinner bool) mpb.BarFillerBuilder {
-	if useSpinner {
-		return mpb.SpinnerStyle(createSpinnerFramesArray()...).PositionLeft()
-	}
-	return mpb.BarStyle().Lbound("|").Filler("🟩").Tip("🟩").Padding("⬛").Refiller("").Rbound("|")
 }
 
 func buildProgressDescription(label, path string, terminalWidth, extraCharsLen int) string {
@@ -167,25 +162,15 @@ func incrBarFromChannel(unit *progressBarUnit) {
 	}
 }
 
-func createSpinnerFramesArray() []string {
-	black := "⬛"
-	green := "🟩"
-	spinnerFramesArray := make([]string, progressbar.ProgressBarWidth)
-	for i := 1; i < progressbar.ProgressBarWidth-1; i++ {
-		cur := "|" + strings.Repeat(black, i-1) + green + strings.Repeat(black, progressbar.ProgressBarWidth-2-i) + "|"
-		spinnerFramesArray[i] = cur
-	}
-	return spinnerFramesArray
-}
-
 // Aborts a progress bar.
 // Should be called even if bar completed successfully.
 // The progress component's Abort method has no effect if bar has already completed, so can always be safely called anyway
 func (p *filesProgressBarManager) RemoveProgress(id int) {
 	p.barsRWMutex.RLock()
+	bar := p.bars[id-1]
+	p.barsRWMutex.RUnlock()
 	defer p.barsWg.Done()
-	defer p.barsRWMutex.RUnlock()
-	p.bars[id-1].Abort()
+	bar.Abort()
 }
 
 // Increases general progress bar by 1
@@ -258,10 +243,10 @@ func InitFilesProgressBarIfPossible(showLogFilePath bool) (ioUtils.ProgressMgr, 
 func (p *filesProgressBarManager) newGeneralProgressBar() {
 	p.barsWg.Add(1)
 	p.generalProgressBar = p.container.New(p.tasksCount,
-		mpb.BarStyle().Lbound("|").Filler("⬜").Tip("⬜").Padding("⬛").Refiller("").Rbound("|"),
+		progressbar.GeneralBarStyle(),
 		mpb.BarRemoveOnComplete(),
 		mpb.AppendDecorators(
-			decor.Name(" Tasks: "),
+			decor.Name(" Total tasks: "),
 			decor.CountersNoUnit("%d/%d"),
 		),
 	)

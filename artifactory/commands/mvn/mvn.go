@@ -153,7 +153,7 @@ func (mc *MvnCommand) Run() error {
 	}
 
 	if err = mc.updateBuildInfoArtifactsWithTargetRepo(vConfig, build.CreateBuildInfoService()); err != nil {
-		return nil
+		return err
 	}
 
 	if mc.buildArtifactsDetailsFile == "" {

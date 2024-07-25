@@ -209,7 +209,7 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 		return
 	}
 	downParams.Symlink = configuration.Symlink
-	downParams.MinSplitSize = configuration.MinSplitSize
+	downParams.MinSplitSizeKb = configuration.MinSplitSizeKb
 	downParams.SplitCount = configuration.SplitCount
 	downParams.SkipChecksum = configuration.SkipChecksum
 

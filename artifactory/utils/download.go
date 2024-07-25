@@ -13,7 +13,7 @@ func CreateDownloadServiceManager(artDetails *config.ServerDetails, threads, htt
 type DownloadConfiguration struct {
 	Threads         int
 	SplitCount      int
-	MinSplitSize    int64
+	MinSplitSizeKb  int64
 	Symlink         bool
 	ValidateSymlink bool
 	SkipChecksum    bool

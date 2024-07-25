@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-// #nosec G101 -- Dummy token for tests.
+// #nosec G101 - Dummy token for tests.
 const authToken = "YWRtaW46QVBCN1ZkZFMzN3NCakJiaHRGZThVb0JlZzFl"
 
 func TestPrepareConfigData(t *testing.T) {

@@ -31,7 +31,7 @@ func CreateEmbeddedApp(name string, commands []Command, namespaces ...Namespace)
 type Namespace struct {
 	Name        string
 	Description string
-	Hidden 		bool
+	Hidden      bool
 	Category    string
 	Commands    []Command
 }

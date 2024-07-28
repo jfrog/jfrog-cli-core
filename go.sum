@@ -10,8 +10,8 @@ github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migc
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
 github.com/ProtonMail/go-crypto v1.0.0 h1:LRuvITjQWX+WIfr930YHG2HNfjR1uOfyf5vE0kC2U78=
 github.com/ProtonMail/go-crypto v1.0.0/go.mod h1:EjAoLdwvbIOoOQr3ihjnSoLZRtE8azugULFRteWMNc0=
-github.com/RobiNino/build-info-go v1.0.1-0.20240723103322-50a393657f06 h1:6ISlVsUZw8Mfqh353/O1gew1yPil0SWxR0u3xozxGN0=
-github.com/RobiNino/build-info-go v1.0.1-0.20240723103322-50a393657f06/go.mod h1:EruGjHPKelWgQzTPyWzF+xuoo2iWzAPNzk5l+Pa50Ho=
+github.com/RobiNino/build-info-go v1.0.1-0.20240728170455-fcf789b79c22 h1:iUv7rWtpg+kbDAsBx81T/9z5S6UoulOffX3yXYEXiak=
+github.com/RobiNino/build-info-go v1.0.1-0.20240728170455-fcf789b79c22/go.mod h1:fxSfpp+kQ8qln/0y7pgV3tg2exWe5OM1np5FF2LlSDg=
 github.com/VividCortex/ewma v1.2.0 h1:f58SaIzcDXrSy3kWaHNvuJgJ3Nmz59Zji6XoJR/q1ow=
 github.com/VividCortex/ewma v1.2.0/go.mod h1:nz4BbCtbLyFDeC9SUHbtcT5644juEuWfUAUnGx7j5l4=
 github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d h1:licZJFw2RwpHMqeKTCYkitsPqHNxTmd4SNR5r94FGM8=

@@ -92,11 +92,11 @@ func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) str
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
-		if artifact.OriginalRepo == "" {
+		if artifact.OriginalDeploymentRepo == "" {
 			// Placeholder needed to build an artifact tree when repo is missing.
-			artifact.OriginalRepo = " "
+			artifact.OriginalDeploymentRepo = " "
 		}
-		artifactTreePath := path.Join(artifact.OriginalRepo, artifact.Path)
+		artifactTreePath := path.Join(artifact.OriginalDeploymentRepo, artifact.Path)
 		artifactsTree.AddFile(artifactTreePath, artifactUrlInArtifactory)
 	}
 	moduleMarkdown.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
@@ -104,8 +104,8 @@ func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) str
 }
 
 func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) string {
-	if strings.TrimSpace(artifact.OriginalRepo) == "" {
+	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalRepo, artifact.Path), bis.projectKey, bis.majorVersion)
+	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.projectKey, bis.majorVersion)
 }

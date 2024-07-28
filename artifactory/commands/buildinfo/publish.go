@@ -131,7 +131,12 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	buildLink, err := bpc.constructBuildInfoUiUrl(servicesManager, buildInfo.Started)
+	majorVersion, err := utils.GetRtMajorVersion(servicesManager)
+	if err != nil {
+		return err
+	}
+
+	buildLink, err := bpc.constructBuildInfoUiUrl(majorVersion, buildInfo.Started)
 	if err != nil {
 		return err
 	}
@@ -141,7 +146,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	if err = recordCommandSummary(buildInfo, buildLink); err != nil {
+	if err = recordCommandSummary(buildInfo, buildLink, bpc.serverDetails.Url, bpc.buildConfiguration.GetProject(), majorVersion); err != nil {
 		return err
 	}
 
@@ -165,17 +170,8 @@ func logJsonOutput(buildInfoUiUrl string) error {
 	return nil
 }
 
-func (bpc *BuildPublishCommand) constructBuildInfoUiUrl(servicesManager artifactory.ArtifactoryServicesManager, buildInfoStarted string) (string, error) {
+func (bpc *BuildPublishCommand) constructBuildInfoUiUrl(majorVersion int, buildInfoStarted string) (string, error) {
 	buildTime, err := time.Parse(buildinfo.TimeFormat, buildInfoStarted)
-	if errorutils.CheckError(err) != nil {
-		return "", err
-	}
-	artVersion, err := servicesManager.GetVersion()
-	if err != nil {
-		return "", err
-	}
-	artVersionSlice := strings.Split(artVersion, ".")
-	majorVersion, err := strconv.Atoi(artVersionSlice[0])
 	if errorutils.CheckError(err) != nil {
 		return "", err
 	}
@@ -236,12 +232,12 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 	return strconv.Itoa(latestBuildNumber), nil
 }
 
-func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
+func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink, serverUrl, projectKey string, majorVersion int) (err error) {
 	if !commandsummary.ShouldRecordSummary() {
 		return
 	}
 	buildInfo.BuildUrl = buildLink
-	buildInfoSummary, err := commandsummary.New(commandssummaries.NewBuildInfo(), "build-info")
+	buildInfoSummary, err := commandsummary.New(commandssummaries.NewBuildInfo(serverUrl, projectKey, majorVersion), "build-info")
 	if err != nil {
 		return
 	}

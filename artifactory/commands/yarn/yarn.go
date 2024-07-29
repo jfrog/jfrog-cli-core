@@ -33,8 +33,8 @@ const (
 	yarnNpmRegistryServerEnv = "YARN_NPM_REGISTRY_SERVER"
 	yarnNpmAuthIndent        = "YARN_NPM_AUTH_IDENT"
 	// #nosec G101
-	yarnNpmAuthToken         = "YARN_NPM_AUTH_TOKEN"
-	yarnNpmAlwaysAuth        = "YARN_NPM_ALWAYS_AUTH"
+	yarnNpmAuthToken  = "YARN_NPM_AUTH_TOKEN"
+	yarnNpmAlwaysAuth = "YARN_NPM_ALWAYS_AUTH"
 )
 
 type YarnCommand struct {

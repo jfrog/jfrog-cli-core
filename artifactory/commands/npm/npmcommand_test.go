@@ -77,8 +77,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 		{
 			name: "set scoped registry auth env",
 			npmCm: &NpmCommand{
-				npmVersion: version.NewVersion("9.3.2"),
-				registry:   "https://registry.example.com",
+				npmVersion: version.NewVersion("9.3.1"),
 			},
 			authKey:     utils.NpmConfigAuthKey,
 			value:       "some_auth_token",
@@ -87,8 +86,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 		{
 			name: "set scoped registry authToken env",
 			npmCm: &NpmCommand{
-				npmVersion: version.NewVersion("9.3.2"),
-				registry:   "https://registry.example.com",
+				npmVersion: version.NewVersion("9.3.1"),
 			},
 			authKey:     utils.NpmConfigAuthTokenKey,
 			value:       "some_auth_token",
@@ -98,7 +96,6 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 			name: "set legacy auth env",
 			npmCm: &NpmCommand{
 				npmVersion: version.NewVersion("8.16.3"),
-				registry:   "https://registry.example.com",
 			},
 			authKey:     utils.NpmConfigAuthKey,
 			value:       "some_auth_token",
@@ -108,7 +105,6 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 			name: "set legacy auth env even though authToken is passed",
 			npmCm: &NpmCommand{
 				npmVersion: version.NewVersion("8.16.3"),
-				registry:   "https://registry.example.com",
 			},
 			authKey:     utils.NpmConfigAuthTokenKey,
 			value:       "some_auth_token",
@@ -118,6 +114,7 @@ func TestSetNpmConfigAuthEnv(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			tc.npmCm.registry = "https://registry.example.com"
 			err := tc.npmCm.setNpmConfigAuthEnv(tc.value, tc.authKey)
 			assert.NoError(t, err)
 			envValue := os.Getenv(tc.expectedEnv)

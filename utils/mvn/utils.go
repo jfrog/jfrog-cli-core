@@ -121,8 +121,8 @@ func RunMvn(mu *MvnUtils) error {
 	return nil
 }
 
-// GetBuildInfoFilePath returns the path of the generated build info file
-// This internal temporary file stores build-info details and is populated by the Maven extractor after CalcDependencies() is called
+// GetBuildInfoFilePath returns the path to the temporary build info file
+// This file stores build-info details and is populated by the Maven extractor after CalcDependencies() is called
 func (mu *MvnUtils) GetBuildInfoFilePath() string {
 	return mu.buildInfoFilePath
 }

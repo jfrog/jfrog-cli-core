@@ -125,22 +125,22 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 // Return - manifest artifacts as buildinfo.Artifact struct.
 func getManifestArtifact(manifest *utils.ResultItem) (artifact buildinfo.Artifact) {
 	return buildinfo.Artifact{
-		Name:         "manifest.json",
-		Type:         "json",
-		Checksum:     buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5},
-		Path:         path.Join(manifest.Path, manifest.Name),
-		OriginalRepo: manifest.Repo,
+		Name:                   "manifest.json",
+		Type:                   "json",
+		Checksum:               buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5},
+		Path:                   path.Join(manifest.Path, manifest.Name),
+		OriginalDeploymentRepo: manifest.Repo,
 	}
 }
 
 // Return - fat manifest artifacts as buildinfo.Artifact struct.
 func getFatManifestArtifact(fatManifest *utils.ResultItem) (artifact buildinfo.Artifact) {
 	return buildinfo.Artifact{
-		Name:         "list.manifest.json",
-		Type:         "json",
-		Checksum:     buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5},
-		Path:         path.Join(fatManifest.Path, fatManifest.Name),
-		OriginalRepo: fatManifest.Repo,
+		Name:                   "list.manifest.json",
+		Type:                   "json",
+		Checksum:               buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5},
+		Path:                   path.Join(fatManifest.Path, fatManifest.Name),
+		OriginalDeploymentRepo: fatManifest.Repo,
 	}
 }
 

@@ -139,7 +139,7 @@ func createInfoFile(packageVersion string) (path string, err error) {
 
 // Read go.mod file.
 // Pass createArtifact = true to create an Artifact for build-info.
-func readModFile(version, projectPath, targetRepo, relPathInRepo string, createArtifact bool) ([]byte, *buildinfo.Artifact, error) {
+func readModFile(version, projectPath, deploymentRepo, relPathInRepo string, createArtifact bool) ([]byte, *buildinfo.Artifact, error) {
 	modFilePath := filepath.Join(projectPath, "go.mod")
 	modFileExists, _ := fileutils.IsFileExists(modFilePath, true)
 	if !modFileExists {
@@ -167,14 +167,14 @@ func readModFile(version, projectPath, targetRepo, relPathInRepo string, createA
 	}
 
 	// Add mod file as artifact
-	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod", OriginalRepo: targetRepo, Path: relPathInRepo}
+	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod", OriginalDeploymentRepo: deploymentRepo, Path: relPathInRepo}
 	artifact.Checksum = buildinfo.Checksum{Sha1: checksums[biutils.SHA1], Md5: checksums[biutils.MD5]}
 	return content, artifact, nil
 }
 
 // Archive the go project.
 // Returns the path of the temp archived project file.
-func archive(moduleName, version, projectPath, targetRepo, tempDir string, excludedPatterns []string) (name string, zipArtifact *buildinfo.Artifact, err error) {
+func archive(moduleName, version, projectPath, deploymentRepo, tempDir string, excludedPatterns []string) (name string, zipArtifact *buildinfo.Artifact, err error) {
 	openedFile := false
 	tempFile, err := os.CreateTemp(tempDir, "project.zip")
 	if err != nil {
@@ -217,7 +217,7 @@ func archive(moduleName, version, projectPath, targetRepo, tempDir string, exclu
 		return "", nil, err
 	}
 
-	zipArtifact = &buildinfo.Artifact{Name: version + ".zip", Type: "zip", OriginalRepo: targetRepo, Path: path.Join(moduleName, "@v", version+".zip")}
+	zipArtifact = &buildinfo.Artifact{Name: version + ".zip", Type: "zip", OriginalDeploymentRepo: deploymentRepo, Path: path.Join(moduleName, "@v", version+".zip")}
 	zipArtifact.Checksum = buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
 	return tempFile.Name(), zipArtifact, nil
 }
@@ -229,7 +229,7 @@ func createInfoFileArtifact(infoFilePath, packageVersion, targetRepo, relPathInR
 		return nil, err
 	}
 
-	artifact := &buildinfo.Artifact{Name: packageVersion + ".info", Type: "info", OriginalRepo: targetRepo, Path: relPathInRepo}
+	artifact := &buildinfo.Artifact{Name: packageVersion + ".info", Type: "info", OriginalDeploymentRepo: targetRepo, Path: relPathInRepo}
 	artifact.Checksum = buildinfo.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
 	return artifact, nil
 }

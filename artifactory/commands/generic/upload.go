@@ -73,6 +73,7 @@ func (uc *UploadCommand) Run() error {
 func (uc *UploadCommand) upload() (err error) {
 	// Init progress bar if needed
 	if uc.progress != nil {
+		uc.progress.SetHeadlineMsg("Uploading")
 		uc.progress.InitProgressReaders()
 	}
 	// In case of sync-delete get the user to confirm first, and save the operation timestamp.

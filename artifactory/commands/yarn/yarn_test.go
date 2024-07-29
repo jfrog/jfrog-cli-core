@@ -55,18 +55,21 @@ func TestSetAndRestoreEnvironmentVariables(t *testing.T) {
 	assert.False(t, exist)
 }
 
-func TestExtractAuthIdentFromNpmAuth(t *testing.T) {
+func TestExtractAuthValuesFromNpmAuth(t *testing.T) {
 	testCases := []struct {
-		responseFromArtifactory string
-		expectedExtractedAuth   string
+		responseFromArtifactory     string
+		expectedExtractedAuthIndent string
+		expectedExtractedAuthToken  string
 	}{
-		{"_auth = Z290Y2hhISB5b3UgcmVhbGx5IHRoaW5rIGkgd291bGQgcHV0IHJlYWwgY3JlZGVudGlhbHMgaGVyZT8=\nalways-auth = true\nemail = notexist@mail.com\n", "Z290Y2hhISB5b3UgcmVhbGx5IHRoaW5rIGkgd291bGQgcHV0IHJlYWwgY3JlZGVudGlhbHMgaGVyZT8="},
-		{"always-auth=true\nemail=notexist@mail.com\n_auth=TGVhcCBhbmQgdGhlIHJlc3Qgd2lsbCBmb2xsb3c=\n", "TGVhcCBhbmQgdGhlIHJlc3Qgd2lsbCBmb2xsb3c="},
+		{"_auth = Z290Y2hhISB5b3UgcmVhbGx5IHRoaW5rIGkgd291bGQgcHV0IHJlYWwgY3JlZGVudGlhbHMgaGVyZT8=\nalways-auth = true\nemail = notexist@mail.com\n", "Z290Y2hhISB5b3UgcmVhbGx5IHRoaW5rIGkgd291bGQgcHV0IHJlYWwgY3JlZGVudGlhbHMgaGVyZT8=", ""},
+		{"always-auth=true\nemail=notexist@mail.com\n_auth=TGVhcCBhbmQgdGhlIHJlc3Qgd2lsbCBmb2xsb3c=\n", "TGVhcCBhbmQgdGhlIHJlc3Qgd2lsbCBmb2xsb3c=", ""},
+		{"_authToken = ThisIsNotARealToken\nalways-auth = true\nemail = notexist@mail.com\n", "", "ThisIsNotARealToken"},
 	}
 
 	for _, testCase := range testCases {
-		actualExtractedAuth, err := extractAuthIdentFromNpmAuth(testCase.responseFromArtifactory)
+		actualExtractedAuthIndent, actualExtractedAuthToken, err := extractAuthValFromNpmAuth(testCase.responseFromArtifactory)
 		assert.NoError(t, err)
-		assert.Equal(t, testCase.expectedExtractedAuth, actualExtractedAuth)
+		assert.Equal(t, testCase.expectedExtractedAuthIndent, actualExtractedAuthIndent)
+		assert.Equal(t, testCase.expectedExtractedAuthToken, actualExtractedAuthToken)
 	}
 }

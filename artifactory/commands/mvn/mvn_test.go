@@ -1,8 +1,11 @@
 package mvn
 
 import (
+	"encoding/json"
+	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -16,23 +19,24 @@ func TestUpdateBuildInfoArtifactsWithTargetRepo(t *testing.T) {
 	vConfig.Set(build.DeployerPrefix+build.ReleaseRepo, "releases")
 
 	tempDir := t.TempDir()
-	assert.NoError(t, io.CopyDir(filepath.Join("testdata", "build_info_without_targetrepo"), tempDir, true, nil))
+	assert.NoError(t, io.CopyDir(filepath.Join("testdata", "buildinfo_files"), tempDir, true, nil))
 
-	buildInfoService := build.CreateBuildInfoService()
-	buildInfoService.SetTempDirPath(tempDir)
 	buildName := "buildName"
 	buildNumber := "1"
 	mc := MvnCommand{
 		configuration: build.NewBuildConfiguration(buildName, buildNumber, "", ""),
 	}
 
-	err := mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, buildInfoService)
+	buildInfoFilePath := filepath.Join(tempDir, "buildinfo1")
+
+	err := mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, buildInfoFilePath)
 	assert.NoError(t, err)
 
-	mvnBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, "")
+	buildInfoContent, err := os.ReadFile(buildInfoFilePath)
 	assert.NoError(t, err)
-	buildInfo, err := mvnBuild.ToBuildInfo()
-	assert.NoError(t, err)
+
+	var buildInfo entities.BuildInfo
+	assert.NoError(t, json.Unmarshal(buildInfoContent, &buildInfo))
 
 	assert.Len(t, buildInfo.Modules, 2)
 	modules := buildInfo.Modules

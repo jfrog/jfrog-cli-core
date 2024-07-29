@@ -1,7 +1,8 @@
 package mvn
 
 import (
-	biservice "github.com/jfrog/build-info-go/build"
+	"encoding/json"
+	"fmt"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -15,6 +16,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
+	"os"
 	"strings"
 )
 
@@ -152,7 +154,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, build.CreateBuildInfoService()); err != nil {
+	if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mvnParams.GetBuildInfoFilePath()); err != nil {
 		return err
 	}
 
@@ -247,22 +249,14 @@ func (mc *MvnCommand) conditionalUpload() error {
 }
 
 // updateBuildInfoArtifactsWithDeploymentRepo updates existing build-info temp file with the target repository for each artifact
-func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.Viper, buildInfoService *biservice.BuildInfoService) error {
-	buildName, err := mc.configuration.GetBuildName()
+func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.Viper, buildInfoFilePath string) error {
+	content, err := os.ReadFile(buildInfoFilePath)
 	if err != nil {
-		return err
+		return errorutils.CheckError(fmt.Errorf("failed to read build info file: %w", err))
 	}
-	buildNumber, err := mc.configuration.GetBuildNumber()
-	if err != nil {
-		return err
-	}
-	mvnBuild, err := buildInfoService.GetOrCreateBuildWithProject(buildName, buildNumber, mc.configuration.GetProject())
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	buildInfo, err := mvnBuild.ToBuildInfo()
-	if err != nil {
-		return errorutils.CheckError(err)
+	buildInfo := new(entities.BuildInfo)
+	if err = json.Unmarshal(content, &buildInfo); err != nil {
+		return errorutils.CheckErrorf("failed to parse build info file: %w", err)
 	}
 
 	if vConfig.IsSet(project.ProjectConfigDeployerPrefix) {
@@ -278,7 +272,13 @@ func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.
 			}
 		}
 	}
-	return mvnBuild.SaveBuildInfo(buildInfo)
+
+	newBuildInfo, err := json.Marshal(buildInfo)
+	if err != nil {
+		return errorutils.CheckErrorf("failed to marshal build info: %w", err)
+	}
+
+	return os.WriteFile(buildInfoFilePath, newBuildInfo, 0644)
 }
 
 func updateArtifactRepo(artifact *entities.Artifact, snapshotRepo, releaseRepo string) {

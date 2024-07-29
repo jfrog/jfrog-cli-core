@@ -21,6 +21,7 @@ type MvnUtils struct {
 	vConfig                   *viper.Viper
 	buildConf                 *buildUtils.BuildConfiguration
 	buildArtifactsDetailsFile string
+	buildInfoFilePath         string
 	goals                     []string
 	threads                   int
 	insecureTls               bool
@@ -113,7 +114,15 @@ func RunMvn(mu *MvnUtils) error {
 		useWrapper).
 		SetOutputWriter(mu.outputWriter)
 	mavenModule.SetMavenOpts(mvnOpts...)
-	return coreutils.ConvertExitCodeError(mavenModule.CalcDependencies())
+	if err = coreutils.ConvertExitCodeError(mavenModule.CalcDependencies()); err != nil {
+		return err
+	}
+	mu.buildInfoFilePath = mavenModule.GetGeneratedBuildInfoPath()
+	return nil
+}
+
+func (mu *MvnUtils) GetBuildInfoFilePath() string {
+	return mu.buildInfoFilePath
 }
 
 func getMavenDependencyLocalPath() (string, error) {

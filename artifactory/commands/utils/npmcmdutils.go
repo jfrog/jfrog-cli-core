@@ -1,10 +1,10 @@
 package utils
 
 import (
+	"fmt"
+	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
 	"net/http"
 	"strings"
-
-	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
@@ -16,23 +16,37 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const minSupportedArtifactoryVersionForNpmCmds = "5.5.2"
+const (
+	minSupportedArtifactoryVersionForNpmCmds = "5.5.2"
+	NpmConfigAuthKey                         = "_auth"
+	NpmConfigAuthTokenKey                    = "_authToken"
+	npmAuthRestApi                           = "api/npm/auth"
+)
 
-func GetArtifactoryNpmRepoDetails(repo string, authArtDetails *auth.ServiceDetails) (npmAuth, registry string, err error) {
-	npmAuth, err = getNpmAuth(authArtDetails)
+// Constructs npm auth config and registry, manually or by requesting the Artifactory /npm/auth endpoint.
+// Since the Artifactory /npm/auth endpoint doesn't handle groups access tokens well,
+// we avoid using it when an access token is configured and the npm version supports setting the token directly.
+// For yarn, this is always supported.
+func GetArtifactoryNpmRepoDetails(repo string, authArtDetails auth.ServiceDetails, isNpmAuthLegacyVersion bool) (npmAuth, registry string, err error) {
+	npmAuth, err = getNpmAuth(authArtDetails, isNpmAuthLegacyVersion)
 	if err != nil {
 		return "", "", err
 	}
 
-	if err = utils.ValidateRepoExists(repo, *authArtDetails); err != nil {
+	if err = utils.ValidateRepoExists(repo, authArtDetails); err != nil {
 		return "", "", err
 	}
 
-	registry = getNpmRepositoryUrl(repo, (*authArtDetails).GetUrl())
+	registry = getNpmRepositoryUrl(repo, authArtDetails.GetUrl())
 	return
 }
 
-func getNpmAuth(authArtDetails *auth.ServiceDetails) (npmAuth string, err error) {
+func getNpmAuth(authArtDetails auth.ServiceDetails, isNpmAuthLegacyVersion bool) (npmAuth string, err error) {
+	// For supported npm versions, construct the npm authToken without using Artifactory due to limitations with access tokens.
+	if authArtDetails.GetAccessToken() != "" && !isNpmAuthLegacyVersion {
+		return constructNpmAuthToken(authArtDetails.GetAccessToken()), nil
+	}
+
 	// Check Artifactory version
 	err = validateArtifactoryVersionForNpmCmds(authArtDetails)
 	if err != nil {
@@ -43,9 +57,14 @@ func getNpmAuth(authArtDetails *auth.ServiceDetails) (npmAuth string, err error)
 	return getNpmAuthFromArtifactory(authArtDetails)
 }
 
-func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error {
+// Manually constructs the npm authToken config data.
+func constructNpmAuthToken(token string) string {
+	return fmt.Sprintf("%s = %s\nalways-auth = true", NpmConfigAuthTokenKey, token)
+}
+
+func validateArtifactoryVersionForNpmCmds(artDetails auth.ServiceDetails) error {
 	// Get Artifactory version.
-	versionStr, err := (*artDetails).GetVersion()
+	versionStr, err := artDetails.GetVersion()
 	if err != nil {
 		return err
 	}
@@ -54,8 +73,8 @@ func validateArtifactoryVersionForNpmCmds(artDetails *auth.ServiceDetails) error
 	return clientutils.ValidateMinimumVersion(clientutils.Artifactory, versionStr, minSupportedArtifactoryVersionForNpmCmds)
 }
 
-func getNpmAuthFromArtifactory(artDetails *auth.ServiceDetails) (npmAuth string, err error) {
-	authApiUrl := (*artDetails).GetUrl() + "api/npm/auth"
+func getNpmAuthFromArtifactory(artDetails auth.ServiceDetails) (npmAuth string, err error) {
+	authApiUrl := artDetails.GetUrl() + npmAuthRestApi
 	log.Debug("Sending npm auth request")
 
 	// Get npm token from Artifactory.
@@ -63,7 +82,7 @@ func getNpmAuthFromArtifactory(artDetails *auth.ServiceDetails) (npmAuth string,
 	if err != nil {
 		return "", err
 	}
-	resp, body, _, err := client.SendGet(authApiUrl, true, (*artDetails).CreateHttpClientDetails(), "")
+	resp, body, _, err := client.SendGet(authApiUrl, true, artDetails.CreateHttpClientDetails(), "")
 	if err != nil {
 		return "", err
 	}

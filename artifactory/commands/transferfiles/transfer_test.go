@@ -86,11 +86,13 @@ func TestSignalStopError(t *testing.T) {
 	assert.EqualError(t, transferFilesCommand.signalStop(), "Graceful stop is already in progress. Please wait...")
 }
 
-/* #nosec G101 -- Not credentials. */
 const (
-	firstUuidTokenForTest  = "347cd3e9-86b6-4bec-9be9-e053a485f327"
+	//#nosec G101 - Dummy token for tests.
+	firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"
+	//#nosec G101 - Dummy token for tests.
 	secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
-	nodeIdForTest          = "nodea0gwihu76sk5g-artifactory-primary-0"
+	//#nosec G101 - Dummy token for tests.
+	nodeIdForTest = "nodea0gwihu76sk5g-artifactory-primary-0"
 )
 
 func TestValidateDataTransferPluginMinimumVersion(t *testing.T) {

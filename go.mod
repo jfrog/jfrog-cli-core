@@ -21,8 +21,8 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
-	github.com/vbauerster/mpb/v7 v7.5.3
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
+	github.com/vbauerster/mpb/v8 v8.7.4
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
 	golang.org/x/mod v0.19.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/term v0.22.0

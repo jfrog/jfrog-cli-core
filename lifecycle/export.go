@@ -52,8 +52,8 @@ func (rbe *ReleaseBundleExportCommand) downloadReleaseBundle(exportResponse serv
 			Pattern: strings.TrimPrefix(exportResponse.RelativeUrl, "/"),
 			Target:  rbe.targetPath,
 		},
-		MinSplitSize: downloadConfiguration.MinSplitSize,
-		SplitCount:   downloadConfiguration.SplitCount,
+		MinSplitSizeKb: downloadConfiguration.MinSplitSizeKb,
+		SplitCount:     downloadConfiguration.SplitCount,
 	}
 	artifactoryServiceManager, err := createArtifactoryServiceManager(rbe.serverDetails)
 	if err != nil {

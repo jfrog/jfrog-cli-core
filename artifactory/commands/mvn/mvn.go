@@ -2,7 +2,6 @@ package mvn
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -250,13 +249,17 @@ func (mc *MvnCommand) conditionalUpload() error {
 
 // updateBuildInfoArtifactsWithDeploymentRepo updates existing build-info temp file with the target repository for each artifact
 func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.Viper, buildInfoFilePath string) error {
+	exists, err := fileutils.IsFileExists(buildInfoFilePath, false)
+	if err != nil || !exists {
+		return err
+	}
 	content, err := os.ReadFile(buildInfoFilePath)
 	if err != nil {
-		return errorutils.CheckError(fmt.Errorf("failed to read build info file: %w", err))
+		return errorutils.CheckErrorf("failed to read build info file: %s", err.Error())
 	}
 	buildInfo := new(entities.BuildInfo)
 	if err = json.Unmarshal(content, &buildInfo); err != nil {
-		return errorutils.CheckErrorf("failed to parse build info file: %w", err)
+		return errorutils.CheckErrorf("failed to parse build info file: %s", err.Error())
 	}
 
 	if vConfig.IsSet(project.ProjectConfigDeployerPrefix) {
@@ -275,7 +278,7 @@ func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.
 
 	newBuildInfo, err := json.Marshal(buildInfo)
 	if err != nil {
-		return errorutils.CheckErrorf("failed to marshal build info: %w", err)
+		return errorutils.CheckErrorf("failed to marshal build info: %s", err.Error())
 	}
 
 	return os.WriteFile(buildInfoFilePath, newBuildInfo, 0644)

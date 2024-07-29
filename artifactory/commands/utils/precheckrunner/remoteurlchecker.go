@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -166,7 +165,7 @@ func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httput
 	if args.ProgressMng == nil {
 		return nil, nil
 	}
-	return args.ProgressMng.NewTasksProgressBar(int64(response.TotalRepositories), coreutils.IsWindows(), "Remote repositories"), nil
+	return args.ProgressMng.NewTasksProgressBar(int64(response.TotalRepositories), "Remote repositories"), nil
 }
 
 func (rrc *RemoteRepositoryCheck) waitForRemoteReposCheckCompletion(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) (*[]inaccessibleRepository, error) {

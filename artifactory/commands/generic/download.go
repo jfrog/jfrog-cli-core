@@ -66,6 +66,7 @@ func (dc *DownloadCommand) Run() error {
 func (dc *DownloadCommand) download() (err error) {
 	// Init progress bar if needed
 	if dc.progress != nil {
+		dc.progress.SetHeadlineMsg("")
 		dc.progress.InitProgressReaders()
 	}
 	// Create Service Manager:
@@ -208,7 +209,7 @@ func getDownloadParams(f *spec.File, configuration *utils.DownloadConfiguration)
 		return
 	}
 	downParams.Symlink = configuration.Symlink
-	downParams.MinSplitSize = configuration.MinSplitSize
+	downParams.MinSplitSizeKb = configuration.MinSplitSizeKb
 	downParams.SplitCount = configuration.SplitCount
 	downParams.SkipChecksum = configuration.SkipChecksum
 

@@ -152,7 +152,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	if err = mc.updateBuildInfoArtifactsWithTargetRepo(vConfig, build.CreateBuildInfoService()); err != nil {
+	if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, build.CreateBuildInfoService()); err != nil {
 		return err
 	}
 
@@ -246,8 +246,8 @@ func (mc *MvnCommand) conditionalUpload() error {
 	return err
 }
 
-// updateBuildInfoArtifactsWithTargetRepo updates existing build-info temp file with the target repository for each artifact
-func (mc *MvnCommand) updateBuildInfoArtifactsWithTargetRepo(vConfig *viper.Viper, buildInfoService *biservice.BuildInfoService) error {
+// updateBuildInfoArtifactsWithDeploymentRepo updates existing build-info temp file with the target repository for each artifact
+func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.Viper, buildInfoService *biservice.BuildInfoService) error {
 	buildName, err := mc.configuration.GetBuildName()
 	if err != nil {
 		return err
@@ -265,9 +265,9 @@ func (mc *MvnCommand) updateBuildInfoArtifactsWithTargetRepo(vConfig *viper.Vipe
 		return errorutils.CheckError(err)
 	}
 
-	if vConfig.IsSet("deployer") {
-		snapshotRepository := vConfig.GetString("deployer.snapshotrepo")
-		releaseRepository := vConfig.GetString("deployer.releaserepo")
+	if vConfig.IsSet(project.ProjectConfigDeployerPrefix) {
+		snapshotRepository := vConfig.GetString(build.DeployerPrefix + build.SnapshotRepo)
+		releaseRepository := vConfig.GetString(build.DeployerPrefix + build.ReleaseRepo)
 		for moduleIndex := range buildInfo.Modules {
 			currModule := &buildInfo.Modules[moduleIndex]
 			for artifactIndex := range currModule.Artifacts {
@@ -283,8 +283,8 @@ func (mc *MvnCommand) updateBuildInfoArtifactsWithTargetRepo(vConfig *viper.Vipe
 
 func updateArtifactRepo(artifact *entities.Artifact, snapshotRepo, releaseRepo string) {
 	if snapshotRepo != "" && strings.Contains(artifact.Path, "-SNAPSHOT") {
-		artifact.OriginalRepo = snapshotRepo
+		artifact.OriginalDeploymentRepo = snapshotRepo
 	} else {
-		artifact.OriginalRepo = releaseRepo
+		artifact.OriginalDeploymentRepo = releaseRepo
 	}
 }

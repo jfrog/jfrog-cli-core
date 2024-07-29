@@ -17,7 +17,7 @@ import (
 
 const (
 	testServerId = "test"
-	// #nosec G101 -- False positive - no hardcoded credentials.
+	//#nosec G101 - Dummy token for tests.
 	// jfrog-ignore - not a real token
 	acmeConfigToken = "eyJ2ZXJzaW9uIjoyLCJ1cmwiOiJodHRwczovL2FjbWUuamZyb2cuaW8vIiwiYXJ0aWZhY3RvcnlVcmwiOiJodHRwczovL2FjbWUuamZyb2cuaW8vYXJ0aWZhY3RvcnkvIiwiZGlzdHJpYnV0aW9uVXJsIjoiaHR0cHM6Ly9hY21lLmpmcm9nLmlvL2Rpc3RyaWJ1dGlvbi8iLCJ4cmF5VXJsIjoiaHR0cHM6Ly9hY21lLmpmcm9nLmlvL3hyYXkvIiwibWlzc2lvbkNvbnRyb2xVcmwiOiJodHRwczovL2FjbWUuamZyb2cuaW8vbWMvIiwicGlwZWxpbmVzVXJsIjoiaHR0cHM6Ly9hY21lLmpmcm9nLmlvL3BpcGVsaW5lcy8iLCJ1c2VyIjoiYWRtaW4iLCJwYXNzd29yZCI6InBhc3N3b3JkIiwidG9rZW5SZWZyZXNoSW50ZXJ2YWwiOjYwLCJzZXJ2ZXJJZCI6ImFjbWUifQ=="
 )

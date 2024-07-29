@@ -28,3 +28,5 @@ jobs:
       - name: Setup Go with cache
         uses: jfrog/.github/actions/install-go-with-cache@main
 
+      - name: Run Go-Sec scanner
+        uses: jfrog/.github/actions/gosec-scanner@main

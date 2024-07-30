@@ -47,8 +47,7 @@ func TestGetRtMajorVersion(t *testing.T) {
 
 func testGetRtMajorVersion(t *testing.T, version string, expected int) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.RequestURI {
-		case "/api/system/version":
+		if r.RequestURI == "/api/system/version" {
 			content := []byte(fmt.Sprintf("{\"version\": \"%s\"}", version))
 			_, err := w.Write(content)
 			assert.NoError(t, err)

@@ -391,33 +391,35 @@ func getPrintCommandHelpFunc(c *cli.Context) func(commandName string) error {
 }
 
 func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) error {
+	c.existingFlags = datastructures.MakeSet[string]()
 	c.stringFlags = make(map[string]string)
 	c.boolFlags = make(map[string]bool)
 
 	// Loop over all plugin's known flags.
 	for _, flag := range originalFlags {
 		if stringFlag, ok := flag.(StringFlag); ok {
-			finalValue, skip, err := getValueForStringFlag(stringFlag, baseContext)
+			finalValue, err := getValueForStringFlag(stringFlag, baseContext)
 			if err != nil {
 				return err
 			}
-			if skip {
-				continue
+			if finalValue != "" || baseContext.IsSet(stringFlag.Name) {
+				c.existingFlags.Add(stringFlag.Name)
 			}
 			c.stringFlags[stringFlag.Name] = finalValue
+			continue
 		}
-
 		if boolFlag, ok := flag.(BoolFlag); ok {
-			finalValue, skip := getValueForBoolFlag(boolFlag, baseContext)
-			if !skip {
-				c.boolFlags[boolFlag.Name] = finalValue
+			finalValue := getValueForBoolFlag(boolFlag, baseContext)
+			if finalValue || baseContext.IsSet(boolFlag.Name) {
+				c.existingFlags.Add(boolFlag.Name)
 			}
+			c.boolFlags[boolFlag.Name] = finalValue
 		}
 	}
 	return nil
 }
 
-func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue string, skip bool, err error) {
+func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue string, err error) {
 	value := baseContext.String(f.Name)
 	if value != "" {
 		finalValue = value
@@ -428,20 +430,16 @@ func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue s
 		finalValue = f.DefaultValue
 		return
 	}
-	skip = !baseContext.IsSet(f.Name)
-	// Empty but mandatory.
 	if f.Mandatory {
+		// Empty but mandatory.
 		err = errors.New("Mandatory flag '" + f.Name + "' is missing")
 	}
 	return
 }
 
-func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) (finalValue, skip bool) {
+func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) bool {
 	if f.DefaultValue {
-		finalValue = baseContext.BoolT(f.Name)
-		return
+		return baseContext.BoolT(f.Name)
 	}
-	skip = !baseContext.IsSet(f.Name)
-	finalValue = baseContext.Bool(f.Name)
-	return
+	return baseContext.Bool(f.Name)
 }

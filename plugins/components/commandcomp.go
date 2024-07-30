@@ -3,6 +3,8 @@ package components
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/jfrog/gofrog/datastructures"
 )
 
 type Argument struct {
@@ -51,6 +53,7 @@ type ActionFunc func(c *Context) error
 type Context struct {
 	Arguments        []string
 	CommandName      string
+	existingFlags    *datastructures.Set[string]
 	stringFlags      map[string]string
 	boolFlags        map[string]bool
 	PrintCommandHelp func(commandName string) error
@@ -75,11 +78,7 @@ func (c *Context) GetBoolFlagValue(flagName string) bool {
 }
 
 func (c *Context) IsFlagSet(flagName string) bool {
-	if _, exist := c.stringFlags[flagName]; exist {
-		return true
-	}
-	_, exist := c.boolFlags[flagName]
-	return exist
+	return c.existingFlags.Exists(flagName)
 }
 
 type Flag interface {

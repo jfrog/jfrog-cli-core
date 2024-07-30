@@ -273,30 +273,27 @@ func TestGetValueForStringFlag(t *testing.T) {
 	baseContext := cli.NewContext(nil, flagSet, nil)
 
 	// Not received, no default or mandatory.
-	finalValue, skip, err := getValueForStringFlag(f, baseContext)
+	finalValue, err := getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
-	assert.True(t, skip)
 	assert.Empty(t, finalValue)
 
 	// Not received, no default but mandatory.
 	f.Mandatory = true
-	_, _, err = getValueForStringFlag(f, baseContext)
+	_, err = getValueForStringFlag(f, baseContext)
 	assert.Error(t, err)
 
 	// Not received, verify default is taken.
 	f.DefaultValue = "default"
-	finalValue, skip, err = getValueForStringFlag(f, baseContext)
+	finalValue, err = getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
-	assert.False(t, skip)
 	assert.Equal(t, finalValue, f.DefaultValue)
 
 	// Received, verify default is ignored.
 	expected := "value"
 	flagSet.Var(DummyFlagValue{Value: expected}, f.Name, f.HelpValue)
-	assert.NoError(t,baseContext.Set(f.Name, expected))
-	finalValue, skip, err = getValueForStringFlag(f, baseContext)
+	assert.NoError(t, baseContext.Set(f.Name, expected))
+	finalValue, err = getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
-	assert.False(t, skip)
 	assert.Equal(t, finalValue, expected)
 }
 

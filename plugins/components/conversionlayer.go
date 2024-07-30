@@ -425,12 +425,11 @@ func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue s
 		finalValue = value
 		return
 	}
-	skip = !baseContext.IsSet(f.Name)
 	if f.DefaultValue != "" {
-		skip = false
 		finalValue = f.DefaultValue
 		return
 	}
+	skip = !baseContext.IsSet(f.Name)
 	// Empty but mandatory.
 	if f.Mandatory {
 		err = errors.New("Mandatory flag '" + f.Name + "' is missing")
@@ -439,12 +438,11 @@ func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue s
 }
 
 func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) (finalValue, skip bool) {
-	skip = !baseContext.IsSet(f.Name)
 	if f.DefaultValue {
-		skip = false
 		finalValue = baseContext.BoolT(f.Name)
 		return
 	}
+	skip = !baseContext.IsSet(f.Name)
 	finalValue = baseContext.Bool(f.Name)
 	return
 }

@@ -124,17 +124,33 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 
 // Return - manifest artifacts as buildinfo.Artifact struct.
 func getManifestArtifact(manifest *utils.ResultItem) (artifact buildinfo.Artifact) {
-	return buildinfo.Artifact{Name: "manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5}, Path: path.Join(manifest.Path, manifest.Name)}
+	return buildinfo.Artifact{
+		Name:                   "manifest.json",
+		Type:                   "json",
+		Checksum:               buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5},
+		Path:                   path.Join(manifest.Path, manifest.Name),
+		OriginalDeploymentRepo: manifest.Repo,
+	}
 }
 
 // Return - fat manifest artifacts as buildinfo.Artifact struct.
 func getFatManifestArtifact(fatManifest *utils.ResultItem) (artifact buildinfo.Artifact) {
-	return buildinfo.Artifact{Name: "list.manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5}, Path: path.Join(fatManifest.Path, fatManifest.Name)}
+	return buildinfo.Artifact{
+		Name:                   "list.manifest.json",
+		Type:                   "json",
+		Checksum:               buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5},
+		Path:                   path.Join(fatManifest.Path, fatManifest.Name),
+		OriginalDeploymentRepo: fatManifest.Repo,
+	}
 }
 
 // Return - manifest dependency as buildinfo.Dependency struct.
 func getManifestDependency(searchResults *utils.ResultItem) (dependency buildinfo.Dependency) {
-	return buildinfo.Dependency{Id: "manifest.json", Type: "json", Checksum: buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5}}
+	return buildinfo.Dependency{
+		Id:       "manifest.json",
+		Type:     "json",
+		Checksum: buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5},
+	}
 }
 
 // Read the file which contains the following format: 'IMAGE-TAG-IN-ARTIFACTORY'@sha256'SHA256-OF-THE-IMAGE-MANIFEST'.
@@ -321,7 +337,7 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 }
 
 // Create the image's build info from list.manifest.json.
-func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatManifest, searchRultFatManifest *utils.ResultItem, candidateimages map[string][]*utils.ResultItem, module string) (*buildinfo.BuildInfo, error) {
+func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatManifest, searchResultFatManifest *utils.ResultItem, candidateImages map[string][]*utils.ResultItem, module string) (*buildinfo.BuildInfo, error) {
 	imageProperties := map[string]string{
 		"docker.image.tag": builder.image.Name(),
 	}
@@ -333,17 +349,17 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 		module = imageName
 	}
 	// Add layers.
-	builder.imageLayers = append(builder.imageLayers, *searchRultFatManifest)
+	builder.imageLayers = append(builder.imageLayers, *searchResultFatManifest)
 	// Create fat-manifest module
 	buildInfo := &buildinfo.BuildInfo{Modules: []buildinfo.Module{{
 		Id:         module,
 		Type:       buildinfo.Docker,
 		Properties: imageProperties,
-		Artifacts:  []buildinfo.Artifact{getFatManifestArtifact(searchRultFatManifest)},
+		Artifacts:  []buildinfo.Artifact{getFatManifestArtifact(searchResultFatManifest)},
 	}}}
 	// Create all image arch modules
 	for _, manifest := range fatManifest.Manifests {
-		image := candidateimages[manifest.Digest]
+		image := candidateImages[manifest.Digest]
 		var artifacts []buildinfo.Artifact
 		for _, layer := range image {
 			builder.imageLayers = append(builder.imageLayers, *layer)

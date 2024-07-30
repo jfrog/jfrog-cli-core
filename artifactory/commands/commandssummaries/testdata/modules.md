@@ -11,9 +11,13 @@
     └── 📁 to
         └── <a href=ui/repos/tree/General/libs-release/path/to/artifact1 target="_blank">artifact1</a>
 
-📦 libs-snapshot
+</pre>
+ ####  
+
+
+ <pre>📦 generic-local
 └── 📁 path
     └── 📁 to
-        └── <a href=ui/repos/tree/General/libs-snapshot/path/to/artifact2 target="_blank">artifact2</a>
+        └── <a href=ui/repos/tree/General/generic-local/path/to/artifact2 target="_blank">artifact2</a>
 
 </pre>

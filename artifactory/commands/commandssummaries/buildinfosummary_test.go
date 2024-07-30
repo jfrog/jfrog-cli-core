@@ -3,7 +3,6 @@ package commandssummaries
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -39,17 +38,20 @@ func TestBuildInfoModules(t *testing.T) {
 						Name:                   "artifact1",
 						Path:                   "path/to/artifact1",
 						OriginalDeploymentRepo: "libs-release",
-					},
-						{
-							Name:                   "artifact2",
-							Path:                   "path/to/artifact2",
-							OriginalDeploymentRepo: "libs-snapshot",
-						}},
+					}},
 					// Validate that dependencies don't show.
 					Dependencies: []buildinfo.Dependency{{
 						Id: "dep1",
 					},
 					},
+				},
+				{
+					Type: buildinfo.Generic,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact2",
+						Path:                   "path/to/artifact2",
+						OriginalDeploymentRepo: "generic-local",
+					}},
 				},
 				{
 					// Validate that ignored types don't show.
@@ -75,7 +77,6 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	assert.NoError(t, err)
 	contentStr := string(content)
 	if coreutils.IsWindows() {
-		log.Info(strings.Contains(contentStr, "\r\n"))
 		contentStr = strings.ReplaceAll(contentStr, "\r\n", "\n")
 	}
 	return contentStr

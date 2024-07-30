@@ -1,6 +1,8 @@
 package mvn
 
 import (
+	"encoding/json"
+	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -13,6 +15,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
+	"os"
+	"strings"
 )
 
 type MvnCommand struct {
@@ -149,6 +153,10 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
+	if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mvnParams.GetBuildInfoFilePath()); err != nil {
+		return err
+	}
+
 	if mc.buildArtifactsDetailsFile == "" {
 		return nil
 	}
@@ -237,4 +245,49 @@ func (mc *MvnCommand) conditionalUpload() error {
 		err = uploadCmd.Run()
 	}
 	return err
+}
+
+// updateBuildInfoArtifactsWithDeploymentRepo updates existing build-info temp file with the target repository for each artifact
+func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.Viper, buildInfoFilePath string) error {
+	exists, err := fileutils.IsFileExists(buildInfoFilePath, false)
+	if err != nil || !exists {
+		return err
+	}
+	content, err := os.ReadFile(buildInfoFilePath)
+	if err != nil {
+		return errorutils.CheckErrorf("failed to read build info file: %s", err.Error())
+	}
+	buildInfo := new(entities.BuildInfo)
+	if err = json.Unmarshal(content, &buildInfo); err != nil {
+		return errorutils.CheckErrorf("failed to parse build info file: %s", err.Error())
+	}
+
+	if vConfig.IsSet(project.ProjectConfigDeployerPrefix) {
+		snapshotRepository := vConfig.GetString(build.DeployerPrefix + build.SnapshotRepo)
+		releaseRepository := vConfig.GetString(build.DeployerPrefix + build.ReleaseRepo)
+		for moduleIndex := range buildInfo.Modules {
+			currModule := &buildInfo.Modules[moduleIndex]
+			for artifactIndex := range currModule.Artifacts {
+				updateArtifactRepo(&currModule.Artifacts[artifactIndex], snapshotRepository, releaseRepository)
+			}
+			for artifactIndex := range currModule.ExcludedArtifacts {
+				updateArtifactRepo(&currModule.ExcludedArtifacts[artifactIndex], snapshotRepository, releaseRepository)
+			}
+		}
+	}
+
+	newBuildInfo, err := json.Marshal(buildInfo)
+	if err != nil {
+		return errorutils.CheckErrorf("failed to marshal build info: %s", err.Error())
+	}
+
+	return os.WriteFile(buildInfoFilePath, newBuildInfo, 0644)
+}
+
+func updateArtifactRepo(artifact *entities.Artifact, snapshotRepo, releaseRepo string) {
+	if snapshotRepo != "" && strings.Contains(artifact.Path, "-SNAPSHOT") {
+		artifact.OriginalDeploymentRepo = snapshotRepo
+	} else {
+		artifact.OriginalDeploymentRepo = releaseRepo
+	}
 }

@@ -3,6 +3,7 @@ package commandssummaries
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -74,7 +75,8 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	assert.NoError(t, err)
 	contentStr := string(content)
 	if coreutils.IsWindows() {
-		contentStr = strings.ReplaceAll(contentStr, `\r\n`, `\n`)
+		log.Info(strings.Contains(contentStr, "\r\n"))
+		contentStr = strings.ReplaceAll(contentStr, "\r\n", "\n")
 	}
 	return contentStr
 }

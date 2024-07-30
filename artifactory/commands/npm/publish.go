@@ -206,7 +206,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	}
 
 	moduleName, err := npc.buildConfiguration.ResolveBaseModuleName()
-	if errorutils.CheckError(err) != nil {
+	if err != nil {
 		return
 	}
 	npmModule.SetName(moduleName)

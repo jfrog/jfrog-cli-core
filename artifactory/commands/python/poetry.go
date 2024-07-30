@@ -76,7 +76,7 @@ func (pc *PoetryCommand) install(buildConfiguration *buildUtils.BuildConfigurati
 		return
 	}
 	moduleName, err := buildConfiguration.ResolveBaseModuleName()
-	if errorutils.CheckError(err) != nil {
+	if err != nil {
 		return
 	}
 	pythonModule.SetName(moduleName)

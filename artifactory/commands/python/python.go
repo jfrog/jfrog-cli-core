@@ -60,7 +60,7 @@ func (pc *PythonCommand) Run() (err error) {
 		}
 		var moduleName string
 		moduleName, err = buildConfiguration.ResolveBaseModuleName()
-		if errorutils.CheckError(err) != nil {
+		if err != nil {
 			return
 		}
 		pythonModule.SetName(moduleName)

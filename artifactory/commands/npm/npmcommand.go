@@ -354,7 +354,7 @@ func (nc *NpmCommand) prepareBuildInfoModule() error {
 	}
 	nc.buildInfoModule.SetCollectBuildInfo(nc.collectBuildInfo)
 	moduleName, err := nc.buildConfiguration.ResolveBaseModuleName()
-	if errorutils.CheckError(err) != nil {
+	if err != nil {
 		return err
 	}
 	nc.buildInfoModule.SetName(moduleName)

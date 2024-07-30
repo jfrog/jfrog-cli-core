@@ -129,7 +129,7 @@ func (gpc *GoPublishCommand) Run() error {
 			return errorutils.CheckError(err)
 		}
 		moduleName, err := gpc.buildConfiguration.ResolveBaseModuleName()
-		if errorutils.CheckError(err) != nil {
+		if err != nil {
 			return err
 		}
 		goModule.SetName(moduleName)

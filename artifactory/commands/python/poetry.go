@@ -75,11 +75,9 @@ func (pc *PoetryCommand) install(buildConfiguration *buildUtils.BuildConfigurati
 	if err != nil {
 		return
 	}
-	moduleName, err := buildConfiguration.ResolveBaseModuleName()
-	if err != nil {
-		return
+	if buildConfiguration.GetModule() != "" {
+		pythonModule.SetName(buildConfiguration.GetModule())
 	}
-	pythonModule.SetName(moduleName)
 	var localDependenciesPath string
 	localDependenciesPath, err = config.GetJfrogDependenciesPath()
 	if err != nil {

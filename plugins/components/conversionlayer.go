@@ -408,11 +408,9 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 		}
 
 		if boolFlag, ok := flag.(BoolFlag); ok {
-			if baseContext.IsSet(boolFlag.Name) {
-				finalValue, skip := getValueForBoolFlag(boolFlag, baseContext)
-				if !skip {
-					c.boolFlags[boolFlag.Name] = finalValue
-				}
+			finalValue, skip := getValueForBoolFlag(boolFlag, baseContext)
+			if !skip {
+				c.boolFlags[boolFlag.Name] = finalValue
 			}
 		}
 	}

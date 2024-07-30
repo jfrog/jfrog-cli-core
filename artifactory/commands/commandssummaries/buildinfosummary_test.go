@@ -3,6 +3,8 @@ package commandssummaries
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/stretchr/testify/assert"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -16,8 +18,59 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-	expected := "\n\n ### Published Build Infos  \n\n\n\n|  Build Info |  Time Stamp | \n|---------|------------| \n| [buildName 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 , 12:47:20 |\n\n\n"
-	assert.Equal(t, expected, gh.buildInfoTable(builds))
+	assert.Equal(t, getTestDataFile(t, "table.md"), gh.buildInfoTable(builds))
+}
+
+func TestBuildInfoModules(t *testing.T) {
+	gh := &BuildInfoSummary{}
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Type: buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact1",
+						Path:                   "path/to/artifact1",
+						OriginalDeploymentRepo: "libs-release",
+					},
+						{
+							Name:                   "artifact2",
+							Path:                   "path/to/artifact2",
+							OriginalDeploymentRepo: "libs-snapshot",
+						}},
+					// Validate that dependencies don't show.
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep1",
+					},
+					},
+				},
+				{
+					// Validate that ignored types don't show.
+					Type: buildinfo.Gradle,
+					Artifacts: []buildinfo.Artifact{
+						{
+							Name:                   "gradleArtifact",
+							Path:                   "dir/gradleArtifact",
+							OriginalDeploymentRepo: "gradle-local",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.Equal(t, getTestDataFile(t, "modules.md"), gh.buildInfoModules(builds))
+}
+
+func getTestDataFile(t *testing.T, fileName string) string {
+	modulesPath := filepath.Join(".", "testdata", fileName)
+	content, err := os.ReadFile(modulesPath)
+	assert.NoError(t, err)
+	return string(content)
 }
 
 func TestParseBuildTime(t *testing.T) {

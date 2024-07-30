@@ -290,7 +290,7 @@ func TestGetValueForStringFlag(t *testing.T) {
 	// Received, verify default is ignored.
 	expected := "value"
 	baseContext := &cli.Context{}
-	baseContext.Set(f.Name, expected)
+	assert.NoError(t,baseContext.Set(f.Name, expected))
 	finalValue, skip, err = getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
 	assert.False(t, skip)

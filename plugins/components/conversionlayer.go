@@ -426,6 +426,7 @@ func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue s
 		return
 	}
 	if f.DefaultValue != "" {
+		// Empty but has a default value defined.
 		finalValue = f.DefaultValue
 		return
 	}

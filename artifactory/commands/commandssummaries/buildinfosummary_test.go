@@ -2,9 +2,11 @@ package commandssummaries
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -70,7 +72,11 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	modulesPath := filepath.Join(".", "testdata", fileName)
 	content, err := os.ReadFile(modulesPath)
 	assert.NoError(t, err)
-	return string(content)
+	contentStr := string(content)
+	if coreutils.IsWindows() {
+		strings.ReplaceAll(contentStr, "\\r\\n", "\\n")
+	}
+	return contentStr
 }
 
 func TestParseBuildTime(t *testing.T) {

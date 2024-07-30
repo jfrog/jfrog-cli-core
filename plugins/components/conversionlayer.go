@@ -397,45 +397,54 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	// Loop over all plugin's known flags.
 	for _, flag := range originalFlags {
 		if stringFlag, ok := flag.(StringFlag); ok {
-			if !baseContext.IsSet(stringFlag.Name) {
-				// Flag not set, continue.
-				continue
-			}
-			finalValue, err := getValueForStringFlag(stringFlag, baseContext.String(stringFlag.Name))
+			finalValue, skip, err := getValueForStringFlag(stringFlag, baseContext)
 			if err != nil {
 				return err
 			}
+			if skip {
+				continue
+			}
 			c.stringFlags[stringFlag.Name] = finalValue
-			continue
 		}
 
 		if boolFlag, ok := flag.(BoolFlag); ok {
 			if baseContext.IsSet(boolFlag.Name) {
-				c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
+				finalValue, skip := getValueForBoolFlag(boolFlag, baseContext)
+				if !skip {
+					c.boolFlags[boolFlag.Name] = finalValue
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func getValueForStringFlag(f StringFlag, receivedValue string) (finalValue string, err error) {
-	if receivedValue != "" {
-		return receivedValue, nil
+func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue string, skip bool, err error) {
+	value := baseContext.String(f.Name)
+	if value != "" {
+		finalValue = value
+		return
 	}
-	// Empty but has a default value defined.
+	skip = !baseContext.IsSet(f.Name)
 	if f.DefaultValue != "" {
-		return f.DefaultValue, nil
+		skip = false
+		finalValue = f.DefaultValue
+		return
 	}
 	// Empty but mandatory.
 	if f.Mandatory {
-		return "", errors.New("Mandatory flag '" + f.Name + "' is missing")
+		err = errors.New("Mandatory flag '" + f.Name + "' is missing")
 	}
-	return "", nil
+	return
 }
 
-func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) bool {
+func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) (finalValue, skip bool) {
+	skip = !baseContext.IsSet(f.Name)
 	if f.DefaultValue {
-		return baseContext.BoolT(f.Name)
+		skip = false
+		finalValue = baseContext.BoolT(f.Name)
+		return
 	}
-	return baseContext.Bool(f.Name)
+	finalValue = baseContext.Bool(f.Name)
+	return
 }

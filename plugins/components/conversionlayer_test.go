@@ -6,6 +6,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli"
 )
 
 func TestCreateCommandUsages(t *testing.T) {
@@ -269,24 +270,29 @@ func TestGetValueForStringFlag(t *testing.T) {
 	f := NewStringFlag("string-flag", "This is how you use it.")
 
 	// Not received, no default or mandatory.
-	finalValue, err := getValueForStringFlag(f, "")
+	finalValue, skip, err := getValueForStringFlag(f, &cli.Context{})
 	assert.NoError(t, err)
+	assert.True(t, skip)
 	assert.Empty(t, finalValue)
 
 	// Not received, no default but mandatory.
 	f.Mandatory = true
-	_, err = getValueForStringFlag(f, "")
+	_, _, err = getValueForStringFlag(f, &cli.Context{})
 	assert.Error(t, err)
 
 	// Not received, verify default is taken.
 	f.DefaultValue = "default"
-	finalValue, err = getValueForStringFlag(f, "")
+	finalValue, skip, err = getValueForStringFlag(f, &cli.Context{})
 	assert.NoError(t, err)
+	assert.False(t, skip)
 	assert.Equal(t, finalValue, f.DefaultValue)
 
 	// Received, verify default is ignored.
 	expected := "value"
-	finalValue, err = getValueForStringFlag(f, expected)
+	baseContext := &cli.Context{}
+	baseContext.Set(f.Name, expected)
+	finalValue, skip, err = getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
+	assert.False(t, skip)
 	assert.Equal(t, finalValue, expected)
 }

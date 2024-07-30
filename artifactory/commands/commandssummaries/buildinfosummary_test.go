@@ -74,7 +74,7 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	assert.NoError(t, err)
 	contentStr := string(content)
 	if coreutils.IsWindows() {
-		strings.ReplaceAll(contentStr, "\\r\\n", "\\n")
+		contentStr = strings.ReplaceAll(contentStr, "\\r\\n", "\\n")
 	}
 	return contentStr
 }

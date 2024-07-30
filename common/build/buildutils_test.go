@@ -3,6 +3,7 @@ package build
 import (
 	biutils "github.com/jfrog/build-info-go/utils"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -244,4 +245,38 @@ func TestIsLoadedFromConfigFile(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, buildName, buildNameFile)
 	assert.Equal(t, buildNumber, artclientutils.LatestBuildNumberKey)
+}
+
+func TestBuildConfiguration_ResolveModuleName(t *testing.T) {
+	testCases := []struct {
+		name   string
+		module string
+	}{
+		{
+			name:   "Module is set",
+			module: "custom-module",
+		},
+		{
+			name:   "Module not set, fallback to base directory name",
+			module: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			bc := BuildConfiguration{module: tc.module}
+			// Execute
+			result, err := bc.ResolveBaseModuleName()
+			assert.NoError(t, err)
+			// Assert
+			if tc.module == "" {
+				wd, err := os.Getwd()
+				assert.NoError(t, err)
+				assert.Equal(t, path.Base(wd), result)
+			} else {
+				assert.Equal(t, tc.module, result)
+			}
+		})
+	}
 }

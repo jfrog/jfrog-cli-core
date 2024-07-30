@@ -397,6 +397,10 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	// Loop over all plugin's known flags.
 	for _, flag := range originalFlags {
 		if stringFlag, ok := flag.(StringFlag); ok {
+			if !baseContext.IsSet(stringFlag.Name) {
+				// Flag not set, continue.
+				continue
+			}
 			finalValue, err := getValueForStringFlag(stringFlag, baseContext.String(stringFlag.Name))
 			if err != nil {
 				return err
@@ -406,7 +410,9 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 		}
 
 		if boolFlag, ok := flag.(BoolFlag); ok {
-			c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
+			if baseContext.IsSet(boolFlag.Name) {
+				c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
+			}
 		}
 	}
 	return nil

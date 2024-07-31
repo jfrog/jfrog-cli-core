@@ -412,22 +412,20 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	return nil
 }
 
-func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (finalValue string, err error) {
+func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (string, error) {
 	value := baseContext.String(f.Name)
 	if value != "" {
-		finalValue = value
-		return
+		return value, nil
 	}
 	if f.DefaultValue != "" {
 		// Empty but has a default value defined.
-		finalValue = f.DefaultValue
-		return
+		return f.DefaultValue, nil
 	}
 	if f.Mandatory {
 		// Empty but mandatory.
-		err = errors.New("Mandatory flag '" + f.Name + "' is missing")
+		return "", errors.New("Mandatory flag '" + f.Name + "' is missing")
 	}
-	return
+	return "", nil
 }
 
 func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) bool {

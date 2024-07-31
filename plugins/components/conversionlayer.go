@@ -391,7 +391,6 @@ func getPrintCommandHelpFunc(c *cli.Context) func(commandName string) error {
 }
 
 func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) error {
-	c.existingFlags = datastructures.MakeSet[string]()
 	c.stringFlags = make(map[string]string)
 	c.boolFlags = make(map[string]bool)
 
@@ -403,17 +402,11 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 				return err
 			}
 			if finalValue != "" || baseContext.IsSet(stringFlag.Name) {
-				c.existingFlags.Add(stringFlag.Name)
+				c.stringFlags[stringFlag.Name] = finalValue
 			}
-			c.stringFlags[stringFlag.Name] = finalValue
-			continue
 		}
 		if boolFlag, ok := flag.(BoolFlag); ok {
-			finalValue := getValueForBoolFlag(boolFlag, baseContext)
-			if finalValue || baseContext.IsSet(boolFlag.Name) {
-				c.existingFlags.Add(boolFlag.Name)
-			}
-			c.boolFlags[boolFlag.Name] = finalValue
+			c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
 		}
 	}
 	return nil

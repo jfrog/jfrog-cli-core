@@ -9,8 +9,9 @@ import (
 type UploadSummary struct {
 	uploadTree        *utils.FileTree
 	uploadedArtifacts ResultsWrapper
-	PlatformUrl       string
-	JfrogProjectKey   string
+	platformUrl       string
+	projectKey        string
+	majorVersion      int
 }
 
 type UploadResult struct {
@@ -23,10 +24,11 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary(platformUrl, projectKey string) *UploadSummary {
+func NewUploadSummary(platformUrl, projectKey string, majorVersion int) *UploadSummary {
 	return &UploadSummary{
-		PlatformUrl:     platformUrl,
-		JfrogProjectKey: projectKey,
+		platformUrl:  platformUrl,
+		projectKey:   projectKey,
+		majorVersion: majorVersion,
 	}
 }
 
@@ -61,6 +63,5 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	template := "%sui/repos/tree/General/%s/?projectKey=%s"
-	return fmt.Sprintf(template, us.PlatformUrl, targetPath, us.JfrogProjectKey)
+	return generateArtifactUrl(us.platformUrl, targetPath, us.projectKey, us.majorVersion)
 }

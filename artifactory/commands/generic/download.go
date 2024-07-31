@@ -66,6 +66,7 @@ func (dc *DownloadCommand) Run() error {
 func (dc *DownloadCommand) download() (err error) {
 	// Init progress bar if needed
 	if dc.progress != nil {
+		dc.progress.SetHeadlineMsg("")
 		dc.progress.InitProgressReaders()
 	}
 	// Create Service Manager:

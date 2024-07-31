@@ -4,6 +4,7 @@ import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
@@ -73,6 +74,7 @@ func (uc *UploadCommand) Run() error {
 func (uc *UploadCommand) upload() (err error) {
 	// Init progress bar if needed
 	if uc.progress != nil {
+		uc.progress.SetHeadlineMsg("Uploading")
 		uc.progress.InitProgressReaders()
 	}
 	// In case of sync-delete get the user to confirm first, and save the operation timestamp.
@@ -157,7 +159,7 @@ func (uc *UploadCommand) upload() (err error) {
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
 
-			if err = recordCommandSummary(summary, serverDetails.Url, uc.buildConfiguration); err != nil {
+			if err = recordCommandSummary(servicesManager, summary, serverDetails.Url, uc.buildConfiguration); err != nil {
 				return
 			}
 		}
@@ -280,16 +282,22 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		BuildSpec()
 }
 
-func recordCommandSummary(summary *rtServicesUtils.OperationSummary, platformUrl string, buildConfig *build.BuildConfiguration) (err error) {
+func recordCommandSummary(servicesManager artifactory.ArtifactoryServicesManager, summary *rtServicesUtils.OperationSummary, platformUrl string, buildConfig *build.BuildConfiguration) (err error) {
 	if !commandsummary.ShouldRecordSummary() {
 		return
 	}
+
+	majorVersion, err := utils.GetRtMajorVersion(servicesManager)
+	if err != nil {
+		return err
+	}
+
 	// Get project key if exists
 	var projectKey string
 	if buildConfig != nil {
 		projectKey = buildConfig.GetProject()
 	}
-	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(platformUrl, projectKey), "upload")
+	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(platformUrl, projectKey, majorVersion), "upload")
 	if err != nil {
 		return
 	}

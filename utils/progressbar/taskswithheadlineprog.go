@@ -1,6 +1,6 @@
 package progressbar
 
-import "github.com/vbauerster/mpb/v7"
+import "github.com/vbauerster/mpb/v8"
 
 // Progress that includes two bars:
 // 1. Headline bar

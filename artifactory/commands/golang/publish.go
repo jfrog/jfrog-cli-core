@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
-	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/crypto"
 	"github.com/jfrog/gofrog/version"
 	"io"
 	"os"
@@ -161,14 +161,14 @@ func readModFile(version, projectPath, deploymentRepo, relPathInRepo string, cre
 		return content, nil, nil
 	}
 
-	checksums, err := biutils.CalcChecksums(bytes.NewBuffer(content))
+	checksums, err := crypto.CalcChecksums(bytes.NewBuffer(content))
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
 
 	// Add mod file as artifact
 	artifact := &buildinfo.Artifact{Name: version + ".mod", Type: "mod", OriginalDeploymentRepo: deploymentRepo, Path: relPathInRepo}
-	artifact.Checksum = buildinfo.Checksum{Sha1: checksums[biutils.SHA1], Md5: checksums[biutils.MD5]}
+	artifact.Checksum = buildinfo.Checksum{Sha1: checksums[crypto.SHA1], Md5: checksums[crypto.MD5]}
 	return content, artifact, nil
 }
 

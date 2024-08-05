@@ -10,7 +10,6 @@ type UploadSummary struct {
 	uploadTree        *utils.FileTree
 	uploadedArtifacts ResultsWrapper
 	platformUrl       string
-	projectKey        string
 	majorVersion      int
 }
 
@@ -24,10 +23,9 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary(platformUrl, projectKey string, majorVersion int) *UploadSummary {
+func NewUploadSummary(platformUrl string, majorVersion int) *UploadSummary {
 	return &UploadSummary{
 		platformUrl:  platformUrl,
-		projectKey:   projectKey,
 		majorVersion: majorVersion,
 	}
 }
@@ -63,5 +61,5 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	return generateArtifactUrl(us.platformUrl, targetPath, us.projectKey, us.majorVersion)
+	return generateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
 }

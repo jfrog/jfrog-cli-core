@@ -16,14 +16,12 @@ const (
 
 type BuildInfoSummary struct {
 	platformUrl  string
-	projectKey   string
 	majorVersion int
 }
 
-func NewBuildInfo(platformUrl, projectKey string, majorVersion int) *BuildInfoSummary {
+func NewBuildInfo(platformUrl string, majorVersion int) *BuildInfoSummary {
 	return &BuildInfoSummary{
 		platformUrl:  platformUrl,
-		projectKey:   projectKey,
 		majorVersion: majorVersion,
 	}
 }
@@ -107,5 +105,5 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.projectKey, bis.majorVersion)
+	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.majorVersion)
 }

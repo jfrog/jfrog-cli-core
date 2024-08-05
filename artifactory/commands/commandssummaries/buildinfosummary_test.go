@@ -71,6 +71,41 @@ func TestBuildInfoModules(t *testing.T) {
 	assert.Equal(t, getTestDataFile(t, "modules.md"), gh.buildInfoModules(builds))
 }
 
+// Validate that if no supported module with artifacts was found, we avoid generating the markdown.
+func TestBuildInfoModulesEmpty(t *testing.T) {
+	gh := &BuildInfoSummary{}
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Type:      buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep1",
+					},
+					},
+				},
+				{
+					Type: buildinfo.Gradle,
+					Artifacts: []buildinfo.Artifact{
+						{
+							Name:                   "gradleArtifact",
+							Path:                   "dir/gradleArtifact",
+							OriginalDeploymentRepo: "gradle-local",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	assert.Empty(t, gh.buildInfoModules(builds))
+}
+
 func getTestDataFile(t *testing.T, fileName string) string {
 	modulesPath := filepath.Join(".", "testdata", fileName)
 	content, err := os.ReadFile(modulesPath)

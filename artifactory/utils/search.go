@@ -156,7 +156,7 @@ func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.C
 		delete(resultItem.Props, "vcs.revision")
 		writer.Write(*resultItem)
 	}
-	if err := reader.GetError(); err != nil {
+	if err = reader.GetError(); err != nil {
 		return nil, err
 	}
 	reader.Reset()

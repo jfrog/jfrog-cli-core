@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -69,11 +70,7 @@ func searchItems(spec *spec.SpecFiles, servicesManager artifactory.ArtifactorySe
 	temp := []*content.ContentReader{}
 	defer func() {
 		for _, reader := range temp {
-			e := reader.Close()
-			if err == nil {
-				err = e
-			}
-
+			err = errors.Join(err, reader.Close())
 		}
 	}()
 	for i := 0; i < len(spec.Files); i++ {

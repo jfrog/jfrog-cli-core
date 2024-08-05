@@ -16,14 +16,12 @@ const (
 
 type BuildInfoSummary struct {
 	platformUrl  string
-	projectKey   string
 	majorVersion int
 }
 
-func NewBuildInfo(platformUrl, projectKey string, majorVersion int) *BuildInfoSummary {
+func NewBuildInfo(platformUrl string, majorVersion int) *BuildInfoSummary {
 	return &BuildInfoSummary{
 		platformUrl:  platformUrl,
-		projectKey:   projectKey,
 		majorVersion: majorVersion,
 	}
 }
@@ -62,16 +60,27 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
 	markdownBuilder.WriteString("\n\n ### Modules Published As Part of This Build  \n\n")
+	var shouldGenerate bool
 	for _, build := range builds {
 		for _, module := range build.Modules {
+			if len(module.Artifacts) == 0 {
+				continue
+			}
+
 			switch module.Type {
 			case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
 				markdownBuilder.WriteString(bis.generateModuleMarkdown(module))
+				shouldGenerate = true
 			default:
 				// Skip unsupported module types.
 				continue
 			}
 		}
+	}
+
+	// If no supported module with artifacts was found, avoid generating the markdown.
+	if !shouldGenerate {
+		return ""
 	}
 	return markdownBuilder.String()
 }
@@ -107,5 +116,5 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.projectKey, bis.majorVersion)
+	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.majorVersion)
 }

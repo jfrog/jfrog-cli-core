@@ -17,8 +17,8 @@ func TestGenerateArtifactUrl(t *testing.T) {
 		majorVersion int
 		expected     string
 	}{
-		{"artifactory 7 without project", "", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file"},
-		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?projectKey=proj"},
+		{"artifactory 7 without project", "", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true"},
+		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&projectKey=proj"},
 		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/#/artifacts/browse/tree/General/repo/path/file"},
 	}
 

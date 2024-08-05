@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	artifactory7UiFormat = "%sui/repos/tree/General/%s"
+	artifactory7UiFormat = "%sui/repos/tree/General/%s?clearFilter=true"
 	artifactory6UiFormat = "%sartifactory/webapp/#/artifacts/browse/tree/General/%s"
 )
 
@@ -17,7 +17,8 @@ func generateArtifactUrl(rtUrl, pathInRt, project string, majorVersion int) stri
 	}
 	uri := fmt.Sprintf(artifactory7UiFormat, rtUrl, pathInRt)
 	if project != "" {
-		uri += "?projectKey=" + project
+		// Project key is added as a second parameter, because the format already has a query parameter.
+		uri += "&projectKey=" + project
 	}
 	return uri
 }

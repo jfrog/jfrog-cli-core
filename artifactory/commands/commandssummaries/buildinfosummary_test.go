@@ -24,7 +24,7 @@ func TestBuildInfoTable(t *testing.T) {
 }
 
 func TestBuildInfoModules(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	gh := &BuildInfoSummary{platformUrl: platformUrl, majorVersion: 7}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",

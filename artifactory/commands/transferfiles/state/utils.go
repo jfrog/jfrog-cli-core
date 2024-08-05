@@ -2,13 +2,13 @@ package state
 
 import (
 	"fmt"
+	"github.com/jfrog/gofrog/crypto"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -100,11 +100,11 @@ func GetRepositoryTransferDir(repoKey string) (string, error) {
 }
 
 func getRepositoryHash(repoKey string) (string, error) {
-	checksums, err := utils.CalcChecksums(strings.NewReader(repoKey), utils.SHA1)
+	checksums, err := crypto.CalcChecksums(strings.NewReader(repoKey), crypto.SHA1)
 	if err = errorutils.CheckError(err); err != nil {
 		return "", err
 	}
-	return checksums[utils.SHA1], nil
+	return checksums[crypto.SHA1], nil
 }
 
 func GetJfrogTransferRepoSubDir(repoKey, subDirName string) (string, error) {

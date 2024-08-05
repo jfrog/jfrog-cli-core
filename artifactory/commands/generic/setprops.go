@@ -1,6 +1,7 @@
 package generic
 
 import (
+	"errors"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -21,7 +22,7 @@ func (setProps *SetPropsCommand) CommandName() string {
 	return "rt_set_properties"
 }
 
-func (setProps *SetPropsCommand) Run() error {
+func (setProps *SetPropsCommand) Run() (err error) {
 	serverDetails, err := setProps.ServerDetails()
 	if errorutils.CheckError(err) != nil {
 		return err
@@ -35,7 +36,9 @@ func (setProps *SetPropsCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+	defer func() {
+		err = errors.Join(err, reader.Close())
+	}()
 	propsParams := GetPropsParams(reader, setProps.props)
 	success, err := servicesManager.SetProps(propsParams)
 

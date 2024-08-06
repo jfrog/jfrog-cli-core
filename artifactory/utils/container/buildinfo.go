@@ -381,12 +381,13 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 	return buildInfo, setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager)
 }
 
+// Construct the manifest's module ID by its type (attestation) or its platform.
 func getModuleIdByManifest(manifest ManifestDetails, baseModuleId string) string {
 	if manifest.Annotations.ReferenceType == attestationManifestRefType {
-		return attestationsModuleIdPrefix + "/" + baseModuleId
+		return path.Join(attestationsModuleIdPrefix, baseModuleId)
 	}
 	if manifest.Platform.Os != unknownPlatformPlaceholder && manifest.Platform.Architecture != unknownPlatformPlaceholder {
-		return manifest.Platform.Os + "/" + manifest.Platform.Architecture + "/" + baseModuleId
+		return path.Join(manifest.Platform.Os, manifest.Platform.Architecture, baseModuleId)
 	}
 	return baseModuleId
 }

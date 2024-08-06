@@ -20,11 +20,14 @@ import (
 )
 
 const (
-	Pull                      CommandType = "pull"
-	Push                      CommandType = "push"
-	foreignLayerMediaType     string      = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
-	imageNotFoundErrorMessage string      = "Could not find docker image in Artifactory, expecting image tag: %s"
-	markerLayerSuffix         string      = ".marker"
+	Pull                       CommandType = "pull"
+	Push                       CommandType = "push"
+	foreignLayerMediaType      string      = "application/vnd.docker.image.rootfs.foreign.diff.tar.gzip"
+	imageNotFoundErrorMessage  string      = "Could not find docker image in Artifactory, expecting image tag: %s"
+	markerLayerSuffix          string      = ".marker"
+	attestationManifestRefType string      = "attestation-manifest"
+	unknownPlatformPlaceholder string      = "unknown"
+	attestationsModuleIdPrefix string      = "attestations"
 )
 
 // Docker image build info builder.
@@ -337,22 +340,22 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 }
 
 // Create the image's build info from list.manifest.json.
-func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatManifest, searchResultFatManifest *utils.ResultItem, candidateImages map[string][]*utils.ResultItem, module string) (*buildinfo.BuildInfo, error) {
+func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatManifest, searchResultFatManifest *utils.ResultItem, candidateImages map[string][]*utils.ResultItem, baseModuleId string) (*buildinfo.BuildInfo, error) {
 	imageProperties := map[string]string{
 		"docker.image.tag": builder.image.Name(),
 	}
-	if module == "" {
+	if baseModuleId == "" {
 		imageName, err := builder.image.GetImageShortNameWithTag()
 		if err != nil {
 			return nil, err
 		}
-		module = imageName
+		baseModuleId = imageName
 	}
 	// Add layers.
 	builder.imageLayers = append(builder.imageLayers, *searchResultFatManifest)
 	// Create fat-manifest module
 	buildInfo := &buildinfo.BuildInfo{Modules: []buildinfo.Module{{
-		Id:         module,
+		Id:         baseModuleId,
 		Type:       buildinfo.Docker,
 		Properties: imageProperties,
 		Artifacts:  []buildinfo.Artifact{getFatManifestArtifact(searchResultFatManifest)},
@@ -370,12 +373,22 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 			}
 		}
 		buildInfo.Modules = append(buildInfo.Modules, buildinfo.Module{
-			Id:        manifest.Platform.Os + "/" + manifest.Platform.Architecture + "/" + module,
+			Id:        getModuleIdByManifest(manifest, baseModuleId),
 			Type:      buildinfo.Docker,
 			Artifacts: artifacts,
 		})
 	}
 	return buildInfo, setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager)
+}
+
+func getModuleIdByManifest(manifest ManifestDetails, baseModuleId string) string {
+	if manifest.Annotations.ReferenceType == attestationManifestRefType {
+		return attestationsModuleIdPrefix + "/" + baseModuleId
+	}
+	if manifest.Platform.Os != unknownPlatformPlaceholder && manifest.Platform.Architecture != unknownPlatformPlaceholder {
+		return manifest.Platform.Os + "/" + manifest.Platform.Architecture + "/" + baseModuleId
+	}
+	return baseModuleId
 }
 
 func (builder *buildInfoBuilder) createPushBuildProperties(imageManifest *manifest, candidateLayers map[string]*utils.ResultItem) (artifacts []buildinfo.Artifact, dependencies []buildinfo.Dependency, imageLayers []utils.ResultItem, err error) {

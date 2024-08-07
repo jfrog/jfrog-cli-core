@@ -1,21 +1,23 @@
 package python
 
 import (
+	"bytes"
 	"errors"
-	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
-	"io"
-	"os/exec"
-
+	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
 )
 
 type PythonCommand struct {
@@ -71,7 +73,24 @@ func (pc *PythonCommand) Run() (err error) {
 		err = errorutils.CheckError(pythonModule.RunInstallAndCollectDependencies(pc.args))
 	} else {
 		// Python native command
-		err = gofrogcmd.RunCmd(pc)
+		for k, v := range pc.GetEnv() {
+			if err := os.Setenv(k, v); err != nil {
+				return err
+			}
+		}
+
+		cmd := pc.GetCmd()
+		errBuffer := bytes.NewBuffer([]byte{})
+		cmd.Stderr = errBuffer
+
+		err = cmd.Run()
+		if err != nil {
+			var exitError *exec.ExitError
+			if errors.As(err, &exitError) {
+				err = errors.New(err.Error())
+			}
+			return fmt.Errorf("error while running '%s': %s\n%s", strings.Join(cmd.Args, " "), err.Error(), strings.TrimSpace(string(errBuffer.Bytes())))
+		}
 	}
 	return
 }

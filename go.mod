@@ -21,12 +21,12 @@ require (
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
-	github.com/vbauerster/mpb/v8 v8.7.4
+	github.com/vbauerster/mpb/v8 v8.7.5
 	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
-	golang.org/x/mod v0.19.0
-	golang.org/x/sync v0.7.0
-	golang.org/x/term v0.22.0
-	golang.org/x/text v0.16.0
+	golang.org/x/mod v0.20.0
+	golang.org/x/sync v0.8.0
+	golang.org/x/term v0.23.0
+	golang.org/x/text v0.17.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -61,7 +61,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
-	github.com/mattn/go-runewidth v0.0.15 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -90,13 +90,13 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/crypto v0.25.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/sys v0.23.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240804093619-f1e3266838bc
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240806162439-01bb7dcd43fc
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20240804091815-7407ceb49077
 

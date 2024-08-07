@@ -124,7 +124,7 @@ func (ur *UsageReporter) WaitForResponses() (err error) {
 
 func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error) {
 	if ur.serverDetails.Url == "" {
-		err = errorutils.CheckErrorf("platform URL is not set")
+		err = errorutils.CheckErrorf("JFrog Platform URL is not set")
 		return
 	}
 	reports, err := ur.convertAttributesToEcosystemReports(features...)

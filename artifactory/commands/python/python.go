@@ -89,7 +89,7 @@ func (pc *PythonCommand) Run() (err error) {
 			if errors.As(err, &exitError) {
 				err = errors.New(err.Error())
 			}
-			return fmt.Errorf("error while running '%s': %s\n%s", strings.Join(cmd.Args, " "), err.Error(), strings.TrimSpace(string(errBuffer.Bytes())))
+			return fmt.Errorf("error while running '%s': %s\n%s", strings.Join(cmd.Args, " "), err.Error(), strings.TrimSpace(errBuffer.String()))
 		}
 	}
 	return

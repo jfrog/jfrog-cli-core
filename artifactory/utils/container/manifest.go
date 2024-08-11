@@ -39,13 +39,20 @@ type FatManifest struct {
 }
 
 type ManifestDetails struct {
-	Digest   string   `json:"digest"`
-	Platform Platform `json:"platform"`
+	Digest      string      `json:"digest"`
+	Platform    Platform    `json:"platform"`
+	Annotations Annotations `json:"annotations"`
 }
 
 type Platform struct {
 	Architecture string `json:"architecture"`
 	Os           string `json:"os"`
+}
+
+// Annotations for attestation manifests.
+type Annotations struct {
+	ReferenceDigest string `json:"vnd.docker.reference.digest"`
+	ReferenceType   string `json:"vnd.docker.reference.type"`
 }
 
 // Return all the search patterns in which manifest can be found.

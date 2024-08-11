@@ -397,14 +397,14 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	// Loop over all plugin's known flags.
 	for _, flag := range originalFlags {
 		if stringFlag, ok := flag.(StringFlag); ok {
-			finalValue, err := getValueForStringFlag(stringFlag, baseContext.String(stringFlag.Name))
+			finalValue, err := getValueForStringFlag(stringFlag, baseContext)
 			if err != nil {
 				return err
 			}
-			c.stringFlags[stringFlag.Name] = finalValue
-			continue
+			if finalValue != "" || baseContext.IsSet(stringFlag.Name) {
+				c.stringFlags[stringFlag.Name] = finalValue
+			}
 		}
-
 		if boolFlag, ok := flag.(BoolFlag); ok {
 			c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
 		}
@@ -412,16 +412,17 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	return nil
 }
 
-func getValueForStringFlag(f StringFlag, receivedValue string) (finalValue string, err error) {
-	if receivedValue != "" {
-		return receivedValue, nil
+func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (string, error) {
+	value := baseContext.String(f.Name)
+	if value != "" {
+		return value, nil
 	}
-	// Empty but has a default value defined.
 	if f.DefaultValue != "" {
+		// Empty but has a default value defined.
 		return f.DefaultValue, nil
 	}
-	// Empty but mandatory.
 	if f.Mandatory {
+		// Empty but mandatory.
 		return "", errors.New("Mandatory flag '" + f.Name + "' is missing")
 	}
 	return "", nil

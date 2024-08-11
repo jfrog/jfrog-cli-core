@@ -1,11 +1,13 @@
 package components
 
 import (
+	"flag"
 	"fmt"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli"
 )
 
 func TestCreateCommandUsages(t *testing.T) {
@@ -267,26 +269,42 @@ func TestConvertBoolFlag(t *testing.T) {
 
 func TestGetValueForStringFlag(t *testing.T) {
 	f := NewStringFlag("string-flag", "This is how you use it.")
+	flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+	baseContext := cli.NewContext(nil, flagSet, nil)
 
 	// Not received, no default or mandatory.
-	finalValue, err := getValueForStringFlag(f, "")
+	finalValue, err := getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
 	assert.Empty(t, finalValue)
 
 	// Not received, no default but mandatory.
 	f.Mandatory = true
-	_, err = getValueForStringFlag(f, "")
+	_, err = getValueForStringFlag(f, baseContext)
 	assert.Error(t, err)
 
 	// Not received, verify default is taken.
 	f.DefaultValue = "default"
-	finalValue, err = getValueForStringFlag(f, "")
+	finalValue, err = getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
 	assert.Equal(t, finalValue, f.DefaultValue)
 
 	// Received, verify default is ignored.
 	expected := "value"
-	finalValue, err = getValueForStringFlag(f, expected)
+	flagSet.Var(DummyFlagValue{Value: expected}, f.Name, f.HelpValue)
+	assert.NoError(t, baseContext.Set(f.Name, expected))
+	finalValue, err = getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
 	assert.Equal(t, finalValue, expected)
+}
+
+type DummyFlagValue struct {
+	Value string
+}
+
+func (d DummyFlagValue) String() string {
+	return d.Value
+}
+
+func (d DummyFlagValue) Set(value string) error {
+	return nil
 }

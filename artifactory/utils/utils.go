@@ -12,6 +12,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -297,4 +299,14 @@ func GetTestDataPath() (string, error) {
 		return "", errorutils.CheckError(err)
 	}
 	return filepath.Join(dir, "testdata"), nil
+}
+
+func GetRtMajorVersion(servicesManager artifactory.ArtifactoryServicesManager) (int, error) {
+	artVersion, err := servicesManager.GetVersion()
+	if err != nil {
+		return -1, err
+	}
+	artVersionSlice := strings.Split(artVersion, ".")
+	majorVersion, err := strconv.Atoi(artVersionSlice[0])
+	return majorVersion, errorutils.CheckError(err)
 }

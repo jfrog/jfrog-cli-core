@@ -61,17 +61,3 @@ func testGetRtMajorVersion(t *testing.T, version string, expected int) {
 	assert.NoError(t, err)
 	assert.Equal(t, expected, major)
 }
-
-func TestCreateMetadataServiceManager(t *testing.T) {
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "api/v1/query" {
-			content := []byte(`{"query":"queryBody"}`)
-			_, err := w.Write(content)
-			assert.NoError(t, err)
-		}
-	}))
-	defer testServer.Close()
-	serviceManager, err := CreateMetadataServiceManager(&config.ServerDetails{MetadataUrl: testServer.URL + "/"}, false)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, serviceManager)
-}

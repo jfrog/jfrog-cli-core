@@ -266,7 +266,7 @@ func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.
 		return errorutils.CheckErrorf("failed to read build info file: %s", err.Error())
 	}
 	// In some scenarios, the build info details are set but no content is generated.
-	// For example, running a `jf mvn <command>` from the jfrog-cli-setup GitHub Action
+	// For example, running a `jf mvn <command>` from the Setup JFrog Cli GitHub Action
 	// automatically fills the build info details, but the command itself may not generate any content.
 	// Examples include `mvn -v`, `mvn test`, etc.
 	if len(content) == 0 {

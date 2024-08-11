@@ -158,7 +158,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 	if isCollectedBuildInfo {
-		if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mc.buildArtifactsDetailsFile); err != nil {
+		if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mvnParams.GetBuildInfoFilePath()); err != nil {
 			return err
 		}
 	}

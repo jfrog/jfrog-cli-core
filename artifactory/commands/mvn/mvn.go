@@ -153,8 +153,14 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mvnParams.GetBuildInfoFilePath()); err != nil {
+	isCollectedBuildInfo, err := mc.configuration.IsCollectBuildInfo()
+	if err != nil {
 		return err
+	}
+	if isCollectedBuildInfo {
+		if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mc.buildArtifactsDetailsFile); err != nil {
+			return err
+		}
 	}
 
 	if mc.buildArtifactsDetailsFile == "" {
@@ -256,6 +262,9 @@ func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.
 	content, err := os.ReadFile(buildInfoFilePath)
 	if err != nil {
 		return errorutils.CheckErrorf("failed to read build info file: %s", err.Error())
+	}
+	if len(content) == 0 {
+		return nil
 	}
 	buildInfo := new(entities.BuildInfo)
 	if err = json.Unmarshal(content, &buildInfo); err != nil {

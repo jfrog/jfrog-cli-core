@@ -153,8 +153,16 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mvnParams.GetBuildInfoFilePath()); err != nil {
-		return err
+	if mc.configuration != nil {
+		isCollectedBuildInfo, err := mc.configuration.IsCollectBuildInfo()
+		if err != nil {
+			return err
+		}
+		if isCollectedBuildInfo {
+			if err = mc.updateBuildInfoArtifactsWithDeploymentRepo(vConfig, mvnParams.GetBuildInfoFilePath()); err != nil {
+				return err
+			}
+		}
 	}
 
 	if mc.buildArtifactsDetailsFile == "" {
@@ -256,6 +264,13 @@ func (mc *MvnCommand) updateBuildInfoArtifactsWithDeploymentRepo(vConfig *viper.
 	content, err := os.ReadFile(buildInfoFilePath)
 	if err != nil {
 		return errorutils.CheckErrorf("failed to read build info file: %s", err.Error())
+	}
+	// In some scenarios, the build info details are set but no content is generated.
+	// For example, running a `jf mvn <command>` from the Setup JFrog Cli GitHub Action
+	// automatically fills the build info details, but the command itself may not generate any content.
+	// Examples include `mvn -v`, `mvn test`, etc.
+	if len(content) == 0 {
+		return nil
 	}
 	buildInfo := new(entities.BuildInfo)
 	if err = json.Unmarshal(content, &buildInfo); err != nil {

@@ -65,7 +65,7 @@ func testGetRtMajorVersion(t *testing.T, version string, expected int) {
 func TestCreateMetadataServiceManager(t *testing.T) {
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.RequestURI == "api/v1/query" {
-			content := []byte(fmt.Sprintf("{\"query\": \"queryBody\"\"}"))
+			content := []byte(`{"query":"queryBody"}`)
 			_, err := w.Write(content)
 			assert.NoError(t, err)
 		}

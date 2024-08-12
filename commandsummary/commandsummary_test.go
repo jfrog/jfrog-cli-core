@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"path"
 	"testing"
 )
 
@@ -19,7 +18,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[string]map[string]string) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 
@@ -35,20 +34,17 @@ func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
 		cleanUp()
 	}()
 
-	// Call GenerateMarkdownFromFiles
+	// Call Record
 	err := cs.Record("someData")
 	assert.NoError(t, err)
 
-	// Verify that the directory contains two files
+	// Verify that the directory contains one file
 	files, err := os.ReadDir(cs.summaryOutputPath)
 	assert.NoError(t, err, "Failed to read directory 'test'")
-	assert.Equal(t, 2, len(files), "Directory 'test' does not contain exactly two files")
-
-	// Verify a markdown file has been created
-	assert.FileExists(t, path.Join(cs.summaryOutputPath, "markdown.md"))
+	assert.Equal(t, 1, len(files), "Directory 'test' does not contain exactly data file")
 }
 
-func TestDataPersistence(t *testing.T) {
+func TestSimpleRecord(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
 		name         string
@@ -84,11 +80,11 @@ func TestDataPersistence(t *testing.T) {
 				cleanUp()
 			}()
 			// Save data to file
-			err := cs.saveDataToFileSystem(tc.originalData)
+			err := cs.Record(tc.originalData)
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			dataFiles, err := cs.getAllDataFilesPaths()
+			dataFiles, _, err := cs.getAllDataFilesPaths()
 			assert.NoError(t, err)
 			assert.NotEqual(t, 0, len(dataFiles))
 
@@ -97,6 +93,72 @@ func TestDataPersistence(t *testing.T) {
 			assert.NoError(t, err)
 			assert.EqualValues(t, tc.originalData, loadedData)
 		})
+	}
+}
+
+// Verifies the behavior of recording with extra args
+// should create a nested file structure that can be used later on.
+func TestRecordWithArgs(t *testing.T) {
+	// Define test cases
+	testCases := []struct {
+		name         string
+		dirName      string
+		originalData interface{}
+		nestedFiles  map[string]map[string]string
+		recordArgs   []string
+	}{
+		{
+			name:         "Record with nested files",
+			dirName:      "nested dir",
+			originalData: "test string",
+			nestedFiles: map[string]map[string]string{
+				"subdir": {
+					"buildName-buildNumber": "buildScanResults",
+				},
+			},
+			recordArgs: []string{"subdir", "buildName", "buildNumber"},
+		},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Prepare a new CommandSummary for each test case
+			cs, cleanUp := prepareTest(t)
+			defer func() {
+				cleanUp()
+			}()
+			// Save data to root folder
+			err := cs.Record(tc.originalData)
+			assert.NoError(t, err)
+
+			// Save data to nested folders
+			err = cs.Record(tc.originalData, tc.recordArgs...)
+			assert.NoError(t, err)
+
+			// Verify file has been saved
+			rootDataFiles, nestedFiles, err := cs.getAllDataFilesPaths()
+			assert.NoError(t, err)
+			assert.NotEqual(t, 0, len(rootDataFiles))
+
+			// Verify that data has not been corrupted
+			loadedData, err := unmarshalData(tc.originalData, rootDataFiles[0])
+			assert.NoError(t, err)
+			assert.EqualValues(t, tc.originalData, loadedData)
+
+			// Verify nested files
+			assertFieldsExist(t, tc.nestedFiles, nestedFiles)
+		})
+	}
+}
+
+// Helper function to assert that each field exists in the map
+func assertFieldsExist(t *testing.T, expected, actual map[string]map[string]string) {
+	for key, subMap := range expected {
+		assert.Contains(t, actual, key, "Key '%s' not found in actual map", key)
+		for subKey := range subMap {
+			assert.Contains(t, actual[key], subKey, "Sub-key '%s' not found in actual map for key '%s'", subKey, key)
+		}
 	}
 }
 

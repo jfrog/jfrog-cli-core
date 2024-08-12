@@ -5,6 +5,8 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"strings"
 	"time"
@@ -15,18 +17,23 @@ const (
 )
 
 type BuildInfoSummary struct {
-	platformUrl  string
-	majorVersion int
+	platformUrl     string
+	majorVersion    int
+	nestedFilePaths map[string]map[string]string
 }
 
-func NewBuildInfo(platformUrl string, majorVersion int) *BuildInfoSummary {
+func NewBuildInfoWithUrl(platformUrl string, majorVersion int) *BuildInfoSummary {
 	return &BuildInfoSummary{
 		platformUrl:  platformUrl,
 		majorVersion: majorVersion,
 	}
 }
+func NewBuildInfo() *BuildInfoSummary {
+	return &BuildInfoSummary{}
+}
 
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[string]map[string]string) (finalMarkdown string, err error) {
+	bis.nestedFilePaths = nestedFilePaths
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, path := range dataFilePaths {
@@ -47,14 +54,31 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString("\n\n ### Published Build Infos  \n\n")
-	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | \n")
-	tableBuilder.WriteString("|---------|------------| \n")
+	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | Scan Result \n")
+	tableBuilder.WriteString("|---------|------------|------------| \n")
 	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime, bis.getScanResultsMarkdown(build)))
 	}
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
+}
+
+func (bis *BuildInfoSummary) getScanResultsMarkdown(build *buildInfo.BuildInfo) (nestedMarkdown []byte) {
+	nestedMarkdown = []byte("<pre>🚨 Artifact was not scanned in the job!</pre>")
+	var scanResult string
+	scanResult, ok := bis.nestedFilePaths["build-scan"][build.Name+"-"+build.Number]
+	if !ok {
+		return
+	}
+	nestedMarkdown, err := fileutils.ReadFile(scanResult)
+	if err != nil {
+		log.Warn("failed to read build scan results for build: " + build.Name + "-" + build.Number)
+		return
+	}
+	// Replace new lines with <br> to preserve the formatting in the markdown table
+	nestedMarkdown = []byte(strings.ReplaceAll(string(nestedMarkdown), "\n", "<br>"))
+	return
 }
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {

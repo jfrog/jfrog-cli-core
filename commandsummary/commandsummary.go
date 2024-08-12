@@ -14,7 +14,7 @@ import (
 )
 
 type CommandSummaryInterface interface {
-	GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error)
+	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[string]map[string]string) (finalMarkdown string, err error)
 }
 
 const (
@@ -46,40 +46,112 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 	return
 }
 
-// This function stores the current data on the file system.
-// It then invokes the GenerateMarkdownFromFiles function on all existing data files.
-// Finally, it saves the generated markdown file to the file system.
-func (cs *CommandSummary) Record(data any) (err error) {
-	if err = cs.saveDataToFileSystem(data); err != nil {
-		return
-	}
-	dataFilesPaths, err := cs.getAllDataFilesPaths()
+func (cs *CommandSummary) GenerateMarkdown() error {
+	dataFilesPaths, nestedFiles, err := cs.getAllDataFilesPaths()
 	if err != nil {
 		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)
 	}
-	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths)
+	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths, nestedFiles)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown: %w", err)
 	}
 	if err = cs.saveMarkdownToFileSystem(markdown); err != nil {
 		return fmt.Errorf("failed to save markdown to file system: %w", err)
 	}
-	return
+	return nil
 }
 
-func (cs *CommandSummary) getAllDataFilesPaths() ([]string, error) {
-	entries, err := os.ReadDir(cs.summaryOutputPath)
+// This function stores the current data on the file system.
+// The args are to provide context about what is being recorded.
+// The first args is a subdirectory name, and the rest are the file name.
+//
+// For example, record(data,"subdir", "buildName", "buildNumber")
+// will save the file inside outputDir/subdir1/buildName-buildNumber
+func (cs *CommandSummary) Record(data any, args ...string) (err error) {
+	filePath, fileName, err := cs.determineFilePathAndName(args)
 	if err != nil {
-		return nil, errorutils.CheckError(err)
+		return err
 	}
-	// Exclude markdown files
-	var filePaths []string
-	for _, entry := range entries {
-		if !entry.IsDir() && !strings.HasSuffix(entry.Name(), ".md") {
-			filePaths = append(filePaths, path.Join(cs.summaryOutputPath, entry.Name()))
+	return cs.createAndWriteToFile(filePath, fileName, data)
+}
+
+func (cs *CommandSummary) determineFilePathAndName(args []string) (filePath, fileName string, err error) {
+	filePath = cs.summaryOutputPath
+	if len(args) > 0 {
+		filePath = path.Join(cs.summaryOutputPath, args[0])
+		args = args[1:]
+		if err = createDirIfNotExists(filePath); err != nil {
+			return "", "", err
 		}
 	}
-	return filePaths, nil
+	if len(args) > 0 {
+		fileName = strings.Join(args, "-")
+	} else {
+		fileName = "data-*"
+	}
+	return filePath, fileName, nil
+}
+
+func (cs *CommandSummary) createAndWriteToFile(filePath, fileName string, data any) (err error) {
+	var fd *os.File
+	if fileName == "data-*" {
+		fd, err = os.CreateTemp(filePath, fileName)
+	} else {
+		fd, err = os.Create(path.Join(filePath, fileName))
+	}
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	defer func() {
+		err = errors.Join(err, fd.Close())
+	}()
+
+	bytes, err := convertDataToBytes(data)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+
+	if _, err = fd.Write(bytes); err != nil {
+		return errorutils.CheckError(err)
+	}
+
+	return nil
+}
+
+func (cs *CommandSummary) getAllDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[string]map[string]string, err error) {
+	return cs.getAllDataFilesPathsRecursive(cs.summaryOutputPath, true)
+}
+
+func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[string]map[string]string, err error) {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return nil, nil, errorutils.CheckError(err)
+	}
+
+	nestedFilesMap = make(map[string]map[string]string)
+	for _, entry := range entries {
+		fullPath := path.Join(dirPath, entry.Name())
+		if entry.IsDir() {
+			_, subNestedFilesMap, err := cs.getAllDataFilesPathsRecursive(fullPath, false)
+			if err != nil {
+				return nil, nil, err
+			}
+			for subDir, files := range subNestedFilesMap {
+				nestedFilesMap[subDir] = files
+			}
+		} else if !strings.HasSuffix(entry.Name(), ".md") {
+			if isRoot {
+				currentDirFiles = append(currentDirFiles, fullPath)
+			} else {
+				base := path.Base(dirPath)
+				if nestedFilesMap[base] == nil {
+					nestedFilesMap[base] = make(map[string]string)
+				}
+				nestedFilesMap[base][entry.Name()] = fullPath
+			}
+		}
+	}
+	return currentDirFiles, nestedFilesMap, nil
 }
 
 func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) {
@@ -94,31 +166,6 @@ func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) 
 		return errorutils.CheckError(err)
 	}
 	return
-}
-
-// Saves the given data into a file in the specified directory.
-func (cs *CommandSummary) saveDataToFileSystem(data interface{}) error {
-	// Create a random file name in the data file path.
-	fd, err := os.CreateTemp(cs.summaryOutputPath, "data-*")
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	defer func() {
-		err = errors.Join(err, fd.Close())
-	}()
-
-	// Convert the data into bytes.
-	bytes, err := convertDataToBytes(data)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	// Write the bytes to the file.
-	if _, err = fd.Write(bytes); err != nil {
-		return errorutils.CheckError(err)
-	}
-
-	return nil
 }
 
 // This function creates the base dir for the command summary inside

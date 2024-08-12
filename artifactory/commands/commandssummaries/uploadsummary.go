@@ -30,7 +30,7 @@ func NewUploadSummary(platformUrl string, majorVersion int) *UploadSummary {
 	}
 }
 
-func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
+func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string, _ map[string]map[string]string) (markdown string, err error) {
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}

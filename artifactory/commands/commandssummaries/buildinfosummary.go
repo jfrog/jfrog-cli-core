@@ -120,27 +120,29 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.majorVersion)
 }
 
+// groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.
 func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Module {
 	parentToModulesMap := make(map[string][]buildInfo.Module, len(modules))
 	for _, module := range modules {
-		switch module.Type {
-		case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
-			if len(module.Artifacts) == 0 {
-				continue
-			}
-			if _, exists := parentToModulesMap[module.Id]; exists {
-				continue
-			}
-			parentID := module.Parent
-			if parentID == "" {
-				parentID = module.Id
-			}
-			parentToModulesMap[parentID] = append(parentToModulesMap[parentID], module)
-		default:
+		if len(module.Artifacts) == 0 || !isSupportedModuleType(module.Type) {
 			continue
 		}
+		parentID := module.Parent
+		if parentID == "" {
+			parentID = module.Id
+		}
+		parentToModulesMap[parentID] = append(parentToModulesMap[parentID], module)
 	}
 	return parentToModulesMap
+}
+
+func isSupportedModuleType(moduleType buildInfo.ModuleType) bool {
+	switch moduleType {
+	case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
+		return true
+	default:
+		return false
+	}
 }
 
 func parseBuildTime(timestamp string) string {

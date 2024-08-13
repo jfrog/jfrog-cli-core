@@ -3,9 +3,9 @@ package python
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
+	buildInfoUtils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -17,7 +17,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 type PythonCommand struct {
@@ -81,15 +80,15 @@ func (pc *PythonCommand) Run() (err error) {
 
 		cmd := pc.GetCmd()
 		errBuffer := bytes.NewBuffer([]byte{})
-		cmd.Stderr = errBuffer
+		multiWriter := io.MultiWriter(os.Stderr, errBuffer)
+		cmd.Stderr = multiWriter
+		cmd.Stdout = os.Stdout
 
 		err = cmd.Run()
 		if err != nil {
-			var exitError *exec.ExitError
-			if errors.As(err, &exitError) {
-				err = errors.New(err.Error())
+			if buildInfoUtils.IsForbiddenOutput("pip", errBuffer.String()) {
+				err = errors.Join(err, buildInfoUtils.NewForbiddenError())
 			}
-			return fmt.Errorf("error while running '%s': %s\n%s", strings.Join(cmd.Args, " "), err.Error(), strings.TrimSpace(errBuffer.String()))
 		}
 	}
 	return

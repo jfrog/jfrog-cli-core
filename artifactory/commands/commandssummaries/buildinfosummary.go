@@ -85,6 +85,7 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 	for parentModuleID, parentModules := range parentToModulesMap {
 		modulesMarkdown.WriteString(fmt.Sprintf("#### %s\n<pre>", parentModuleID))
 		isMultiModule := len(parentModules) > 1
+
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header

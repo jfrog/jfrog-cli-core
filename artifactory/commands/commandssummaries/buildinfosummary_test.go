@@ -33,6 +33,18 @@ func TestBuildInfoModules(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 			Modules: []buildinfo.Module{
 				{
+					Id: "gradle",
+					// Validate that ignored types don't show.
+					Type: buildinfo.Gradle,
+					Artifacts: []buildinfo.Artifact{
+						{
+							Name:                   "gradleArtifact",
+							Path:                   "dir/gradleArtifact",
+							OriginalDeploymentRepo: "gradle-local",
+						},
+					},
+				},
+				{
 					Id:   "maven",
 					Type: buildinfo.Maven,
 					Artifacts: []buildinfo.Artifact{{
@@ -54,18 +66,6 @@ func TestBuildInfoModules(t *testing.T) {
 						Path:                   "path/to/artifact2",
 						OriginalDeploymentRepo: "generic-local",
 					}},
-				},
-				{
-					Id: "gradle",
-					// Validate that ignored types don't show.
-					Type: buildinfo.Gradle,
-					Artifacts: []buildinfo.Artifact{
-						{
-							Name:                   "gradleArtifact",
-							Path:                   "dir/gradleArtifact",
-							OriginalDeploymentRepo: "gradle-local",
-						},
-					},
 				},
 			},
 		},

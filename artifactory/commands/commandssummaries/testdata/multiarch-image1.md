@@ -1,5 +1,4 @@
 #### multiarch-image:1
-
 <pre><details><summary>linux/amd64/multiarch-image:1</summary>
 📦 docker-local
 └── 📁 multiarch-image

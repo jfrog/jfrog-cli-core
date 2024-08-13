@@ -7,9 +7,7 @@
         └── <a href=https://myplatform.com/ui/repos/tree/General/libs-release/path/to/artifact1?clearFilter=true target="_blank">artifact1</a>
 
 </pre>
-
 #### generic
-
 <pre>📦 generic-local
 └── 📁 path
     └── 📁 to

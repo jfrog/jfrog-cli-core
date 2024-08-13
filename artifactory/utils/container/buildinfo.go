@@ -376,6 +376,7 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 			Id:        getModuleIdByManifest(manifest, baseModuleId),
 			Type:      buildinfo.Docker,
 			Artifacts: artifacts,
+			Parent:    baseModuleId,
 		})
 	}
 	return buildInfo, setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager)

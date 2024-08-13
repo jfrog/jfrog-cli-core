@@ -59,22 +59,12 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n ### Modules Published As Part of This Build  \n\n")
+	markdownBuilder.WriteString("\n### Modules Published As Part of This Build\n")
 	var shouldGenerate bool
 	for _, build := range builds {
-		for _, module := range build.Modules {
-			if len(module.Artifacts) == 0 {
-				continue
-			}
-
-			switch module.Type {
-			case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
-				markdownBuilder.WriteString(bis.generateModuleMarkdown(module))
-				shouldGenerate = true
-			default:
-				// Skip unsupported module types.
-				continue
-			}
+		if modulesMarkdown := bis.generateModulesMarkdown(build.Modules...); modulesMarkdown != "" {
+			markdownBuilder.WriteString(modulesMarkdown)
+			shouldGenerate = true
 		}
 	}
 
@@ -85,19 +75,31 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 	return markdownBuilder.String()
 }
 
-func parseBuildTime(timestamp string) string {
-	// Parse the timestamp string into a time.Time object
-	buildInfoTime, err := time.Parse(buildInfo.TimeFormat, timestamp)
-	if err != nil {
-		return "N/A"
+func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
+	var modulesMarkdown strings.Builder
+	parentToModulesMap := groupModulesByParent(modules)
+	if len(parentToModulesMap) == 0 {
+		return ""
 	}
-	// Format the time in a more human-readable format and save it in a variable
-	return buildInfoTime.Format(timeFormat)
+
+	for parentModuleID, parentModules := range parentToModulesMap {
+		modulesMarkdown.WriteString(fmt.Sprintf("\n#### %s\n<pre>", parentModuleID))
+		shouldCollapseModuleSection := len(parentModules) > 1
+
+		for _, module := range parentModules {
+			artifactsTree := bis.createArtifactsTree(module)
+			if shouldCollapseModuleSection {
+				modulesMarkdown.WriteString(fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", module.Id, artifactsTree))
+			} else {
+				modulesMarkdown.WriteString(artifactsTree)
+			}
+		}
+		modulesMarkdown.WriteString("</pre>")
+	}
+	return modulesMarkdown.String()
 }
 
-func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) string {
-	var moduleMarkdown strings.Builder
-	moduleMarkdown.WriteString(fmt.Sprintf("\n #### %s \n", module.Id))
+func (bis *BuildInfoSummary) createArtifactsTree(module buildInfo.Module) string {
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
@@ -108,8 +110,7 @@ func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) str
 		artifactTreePath := path.Join(artifact.OriginalDeploymentRepo, artifact.Path)
 		artifactsTree.AddFile(artifactTreePath, artifactUrlInArtifactory)
 	}
-	moduleMarkdown.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
-	return moduleMarkdown.String()
+	return artifactsTree.String()
 }
 
 func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) string {
@@ -117,4 +118,37 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 		return ""
 	}
 	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.majorVersion)
+}
+
+func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Module {
+	parentToModulesMap := make(map[string][]buildInfo.Module, len(modules))
+	for _, module := range modules {
+		switch module.Type {
+		case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
+			if len(module.Artifacts) == 0 {
+				continue
+			}
+			if _, exists := parentToModulesMap[module.Id]; exists {
+				continue
+			}
+			parentID := module.Parent
+			if parentID == "" {
+				parentID = module.Id
+			}
+			parentToModulesMap[parentID] = append(parentToModulesMap[parentID], module)
+		default:
+			continue
+		}
+	}
+	return parentToModulesMap
+}
+
+func parseBuildTime(timestamp string) string {
+	// Parse the timestamp string into a time.Time object
+	buildInfoTime, err := time.Parse(buildInfo.TimeFormat, timestamp)
+	if err != nil {
+		return "N/A"
+	}
+	// Format the time in a more human-readable format and save it in a variable
+	return buildInfoTime.Format(timeFormat)
 }

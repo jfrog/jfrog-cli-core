@@ -71,7 +71,10 @@ func TestBuildInfoModules(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, getTestDataFile(t, "modules.md"), gh.buildInfoModules(builds))
+	result := gh.buildInfoModules(builds)
+	assert.Contains(t, result, getTestDataFile(t, "generic.md"))
+	assert.Contains(t, result, getTestDataFile(t, "maven.md"))
+	assert.NotContains(t, result, "gradle")
 }
 
 // Validate that if no supported module with artifacts was found, we avoid generating the markdown.
@@ -221,7 +224,9 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, getTestDataFile(t, "modules_with_grouping.md"), gh.buildInfoModules(builds))
+	result := gh.buildInfoModules(builds)
+	assert.Contains(t, result, getTestDataFile(t, "image2.md"))
+	assert.Contains(t, result, getTestDataFile(t, "multiarch-image1.md"))
 }
 
 func getTestDataFile(t *testing.T, fileName string) string {

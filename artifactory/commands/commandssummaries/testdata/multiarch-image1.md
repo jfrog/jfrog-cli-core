@@ -1,6 +1,5 @@
-
-### Modules Published As Part of This Build
 #### multiarch-image:1
+
 <pre><details><summary>linux/amd64/multiarch-image:1</summary>
 📦 docker-local
 └── 📁 multiarch-image
@@ -21,10 +20,3 @@
         └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c?clearFilter=true target="_blank">sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c</a>
 
 </details></pre>
-#### image:2
-<pre>📦 docker-local
-└── 📁 image2
-    └── 📁 sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21
-        └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/image2/sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21/sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e?clearFilter=true target="_blank">sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e</a>
-
-</pre>

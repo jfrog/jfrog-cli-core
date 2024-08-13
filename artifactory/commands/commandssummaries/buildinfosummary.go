@@ -83,18 +83,22 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
-		modulesMarkdown.WriteString(fmt.Sprintf("\n#### %s\n<pre>", parentModuleID))
-		shouldCollapseModuleSection := len(parentModules) > 1
-
+		modulesMarkdown.WriteString(fmt.Sprintf("#### %s\n<pre>", parentModuleID))
+		isMultiModule := len(parentModules) > 1
 		for _, module := range parentModules {
+			if isMultiModule && parentModuleID == module.Id {
+				// Skip the parent module if there are multiple modules, as it will be displayed as a header
+				continue
+			}
 			artifactsTree := bis.createArtifactsTree(module)
-			if shouldCollapseModuleSection {
+			if isMultiModule {
+				// Collapse the module tree if there are multiple modules
 				modulesMarkdown.WriteString(fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", module.Id, artifactsTree))
 			} else {
 				modulesMarkdown.WriteString(artifactsTree)
 			}
 		}
-		modulesMarkdown.WriteString("</pre>")
+		modulesMarkdown.WriteString("</pre>\n")
 	}
 	return modulesMarkdown.String()
 }
@@ -127,6 +131,7 @@ func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Mod
 		if len(module.Artifacts) == 0 || !isSupportedModuleType(module.Type) {
 			continue
 		}
+
 		parentID := module.Parent
 		if parentID == "" {
 			parentID = module.Id

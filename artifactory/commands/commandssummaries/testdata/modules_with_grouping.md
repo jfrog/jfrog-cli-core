@@ -1,14 +1,8 @@
-### Modules Published As Part of This Build
 
+### Modules Published As Part of This Build
 #### multiarch-image:1
 
-<pre><details><summary>multiarch-image:1</summary>
-📦 docker-local
-└── 📁 multiarch-image
-    └── 📁 1
-        └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/multiarch-image/1/list.manifest.json?clearFilter=true target="_blank">list.manifest.json</a>
-
-</details><details><summary>linux/amd64/multiarch-image:1</summary>
+<pre><details><summary>linux/amd64/multiarch-image:1</summary>
 📦 docker-local
 └── 📁 multiarch-image
     └── 📁 sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21
@@ -28,9 +22,7 @@
         └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c?clearFilter=true target="_blank">sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c</a>
 
 </details></pre>
-
 #### image:2
-
 <pre>📦 docker-local
 └── 📁 image2
     └── 📁 sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21

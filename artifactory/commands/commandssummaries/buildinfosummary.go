@@ -53,7 +53,7 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, n
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n ### Published Build Infos  \n\n")
+	tableBuilder.WriteString("\n\n### Published Build Info\n\n")
 	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | Scan Result \n")
 	tableBuilder.WriteString("|---------|------------|------------| \n")
 	for _, build := range builds {
@@ -83,17 +83,16 @@ func (bis *BuildInfoSummary) getScanResultsMarkdown(build *buildInfo.BuildInfo) 
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n ### Modules Published As Part of This Build  \n\n")
+	markdownBuilder.WriteString("\n\n### Published Modules\n\n")
 	var shouldGenerate bool
 	for _, build := range builds {
 		for _, module := range build.Modules {
 			if len(module.Artifacts) == 0 {
 				continue
 			}
-
 			switch module.Type {
 			case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
-				markdownBuilder.WriteString(bis.generateModuleMarkdown(module))
+				markdownBuilder.WriteString(bis.generateModuleMarkdown(module, bis.getScanResultsMarkdown(build)))
 				shouldGenerate = true
 			default:
 				// Skip unsupported module types.
@@ -119,9 +118,12 @@ func parseBuildTime(timestamp string) string {
 	return buildInfoTime.Format(timeFormat)
 }
 
-func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) string {
+func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module, securityMarkdown []byte) string {
 	var moduleMarkdown strings.Builder
-	moduleMarkdown.WriteString(fmt.Sprintf("\n #### %s \n", module.Id))
+	moduleMarkdown.WriteString(fmt.Sprintf("\n#### `%s`\n", module.Id))
+	moduleMarkdown.WriteString("\n\n|      Artifacts   |     Security Issues     | \n")
+	moduleMarkdown.WriteString("|-----------------------|---------------------------------------| \n")
+
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
@@ -132,7 +134,8 @@ func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) str
 		artifactTreePath := path.Join(artifact.OriginalDeploymentRepo, artifact.Path)
 		artifactsTree.AddFile(artifactTreePath, artifactUrlInArtifactory)
 	}
-	moduleMarkdown.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
+	content := strings.ReplaceAll(artifactsTree.String(), "\n", "<br>") + "|" + string(securityMarkdown)
+	moduleMarkdown.WriteString("| <pre>" + content + "</pre>")
 	return moduleMarkdown.String()
 }
 

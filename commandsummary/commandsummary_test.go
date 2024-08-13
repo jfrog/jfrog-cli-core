@@ -18,7 +18,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[string]map[string]string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[string]map[string]string) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 

@@ -72,8 +72,10 @@ func TestBuildInfoModules(t *testing.T) {
 	}
 
 	result := gh.buildInfoModules(builds)
+	// Validate that the markdown contains the expected "generic" repo content as well as the "maven" repo content.
 	assert.Contains(t, result, getTestDataFile(t, "generic.md"))
 	assert.Contains(t, result, getTestDataFile(t, "maven.md"))
+	// The build-info also contains a "gradle" module, but it should not be included in the markdown.
 	assert.NotContains(t, result, "gradle")
 }
 

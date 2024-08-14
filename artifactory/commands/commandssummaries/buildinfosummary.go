@@ -134,6 +134,7 @@ func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Mod
 		}
 
 		parentID := module.Parent
+		// If the module has no parent, that means it is the parent module itself, so we can use its ID as the parent ID.
 		if parentID == "" {
 			parentID = module.Id
 		}

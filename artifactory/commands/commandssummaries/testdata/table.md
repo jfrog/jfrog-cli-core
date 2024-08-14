@@ -1,11 +1,11 @@
 
 
-### Published Build Info
+ ### Published Build Infos  
 
 
 
-| Build Info                                                   | Time Stamp             | Scan Result                                        |
-|--------------------------------------------------------------|------------------------|----------------------------------------------------|
-| [buildName 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 , 12:47:20 | <pre>🚨 Artifact was not scanned in the job!</pre> |
+|  Build Info |  Time Stamp | 
+|---------|------------| 
+| [buildName 123](http://myJFrogPlatform/builds/buildName/123) | May 5, 2024 , 12:47:20 |
 
 

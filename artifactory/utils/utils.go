@@ -25,6 +25,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/distribution"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/lifecycle"
+	"github.com/jfrog/jfrog-client-go/metadata"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
@@ -236,6 +237,27 @@ func CreateEvidenceServiceManager(serviceDetails *config.ServerDetails, isDryRun
 		return nil, err
 	}
 	return evidence.New(serviceConfig)
+}
+
+func CreateMetadataServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (metadata.Manager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	mdAuth, err := serviceDetails.CreateMetadataAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(mdAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serviceDetails.InsecureTls).
+		SetDryRun(isDryRun).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return metadata.NewManager(serviceConfig)
 }
 
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.

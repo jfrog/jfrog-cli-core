@@ -232,19 +232,18 @@ func createDirIfNotExists(homeDir string) error {
 	return errorutils.CheckError(os.MkdirAll(homeDir, 0755))
 }
 
-// File name should be decided based on the index and args.
+// File name should be decided based on the subject and args.
 func determineFileName(summaryIndex Index, args []string) string {
 	if summaryIndex == SarifReport {
 		return SarifFileFormat
 	}
 	if len(args) > 0 {
 		fileName := strings.Join(args, "-")
+		// Replace slashes with dashes.
+		fileName = strings.ReplaceAll(fileName, "/", "-")
 		// If running on Windows, replace backslashes with dashes.
 		if runtime.GOOS == "windows" {
 			fileName = strings.ReplaceAll(fileName, "\\", "-")
-		} else {
-			// Replace slashes with dashes.
-			fileName = strings.ReplaceAll(fileName, "/", "-")
 		}
 		return fileName
 	}

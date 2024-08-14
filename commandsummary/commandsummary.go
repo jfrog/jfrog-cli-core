@@ -14,8 +14,17 @@ import (
 )
 
 type CommandSummaryInterface interface {
-	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[string]map[string]string) (finalMarkdown string, err error)
+	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[SummariesSubDirs]map[string]string) (finalMarkdown string, err error)
 }
+
+type SummariesSubDirs string
+
+const (
+	Binaries  SummariesSubDirs = "Binaries"
+	BuildScan SummariesSubDirs = "Build-Scan"
+	Docker    SummariesSubDirs = "Docker"
+	Sarif     SummariesSubDirs = "Sarif"
+)
 
 const (
 	// The name of the directory where all the commands summaries will be stored.
@@ -62,24 +71,41 @@ func (cs *CommandSummary) GenerateMarkdown() error {
 }
 
 // This function stores the current data on the file system.
-// The args are to provide context about what is being recorded.
-// The first args is a subdirectory name, and the rest are the file name.
-//
-// For example, record(data,"subdir", "buildName", "buildNumber")
-// will save the file inside outputDir/subdir1/buildName-buildNumber
-func (cs *CommandSummary) Record(data any, args ...string) (err error) {
-	filePath, fileName, err := cs.determineFilePathAndName(args)
+func (cs *CommandSummary) Record(data any) (err error) {
+	return cs.recordInternal(data)
+}
+
+// This function stores the current data on the file system with additional context.
+func (cs *CommandSummary) RecordWithArgs(data any, subDir SummariesSubDirs, args ...string) (err error) {
+	return cs.recordInternal(data, subDir, args)
+}
+
+func (cs *CommandSummary) recordInternal(data any, args ...interface{}) (err error) {
+	var subDir SummariesSubDirs
+	var extraArgs []string
+
+	if len(args) > 0 {
+		if dir, ok := args[0].(SummariesSubDirs); ok {
+			subDir = dir
+			if len(args) > 1 {
+				extraArgs = args[1].([]string)
+			}
+		} else {
+			extraArgs = args[0].([]string)
+		}
+	}
+
+	filePath, fileName, err := cs.determineFilePathAndName(subDir, extraArgs)
 	if err != nil {
 		return err
 	}
 	return cs.createAndWriteToFile(filePath, fileName, data)
 }
 
-func (cs *CommandSummary) determineFilePathAndName(args []string) (filePath, fileName string, err error) {
+func (cs *CommandSummary) determineFilePathAndName(subDir SummariesSubDirs, args []string) (filePath, fileName string, err error) {
 	filePath = cs.summaryOutputPath
-	if len(args) > 0 {
-		filePath = path.Join(cs.summaryOutputPath, args[0])
-		args = args[1:]
+	if subDir != "" {
+		filePath = path.Join(filePath, string(subDir))
 		if err = createDirIfNotExists(filePath); err != nil {
 			return "", "", err
 		}
@@ -117,18 +143,17 @@ func (cs *CommandSummary) createAndWriteToFile(filePath, fileName string, data a
 
 	return nil
 }
-
-func (cs *CommandSummary) getAllDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[string]map[string]string, err error) {
+func (cs *CommandSummary) getAllDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[SummariesSubDirs]map[string]string, err error) {
 	return cs.getAllDataFilesPathsRecursive(cs.summaryOutputPath, true)
 }
 
-func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[string]map[string]string, err error) {
+func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[SummariesSubDirs]map[string]string, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
 
-	nestedFilesMap = make(map[string]map[string]string)
+	nestedFilesMap = make(map[SummariesSubDirs]map[string]string)
 	for _, entry := range entries {
 		fullPath := path.Join(dirPath, entry.Name())
 		if entry.IsDir() {
@@ -144,10 +169,10 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 				currentDirFiles = append(currentDirFiles, fullPath)
 			} else {
 				base := path.Base(dirPath)
-				if nestedFilesMap[base] == nil {
-					nestedFilesMap[base] = make(map[string]string)
+				if nestedFilesMap[SummariesSubDirs(base)] == nil {
+					nestedFilesMap[SummariesSubDirs(base)] = make(map[string]string)
 				}
-				nestedFilesMap[base][entry.Name()] = fullPath
+				nestedFilesMap[SummariesSubDirs(base)][entry.Name()] = fullPath
 			}
 		}
 	}

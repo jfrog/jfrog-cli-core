@@ -18,7 +18,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[string]map[string]string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[SummariesSubDirs]map[string]string) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 
@@ -104,19 +104,21 @@ func TestRecordWithArgs(t *testing.T) {
 		name         string
 		dirName      string
 		originalData interface{}
-		nestedFiles  map[string]map[string]string
+		subDir       SummariesSubDirs
+		nestedFiles  map[SummariesSubDirs]map[string]string
 		recordArgs   []string
 	}{
 		{
 			name:         "Record with nested files",
 			dirName:      "nested dir",
 			originalData: "test string",
-			nestedFiles: map[string]map[string]string{
-				"subdir": {
+			subDir:       BuildScan,
+			nestedFiles: map[SummariesSubDirs]map[string]string{
+				BuildScan: {
 					"buildName-buildNumber": "buildScanResults",
 				},
 			},
-			recordArgs: []string{"subdir", "buildName", "buildNumber"},
+			recordArgs: []string{"buildName", "buildNumber"},
 		},
 	}
 
@@ -133,7 +135,7 @@ func TestRecordWithArgs(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Save data to nested folders
-			err = cs.Record(tc.originalData, tc.recordArgs...)
+			err = cs.RecordWithArgs(tc.originalData, tc.subDir, tc.recordArgs...)
 			assert.NoError(t, err)
 
 			// Verify file has been saved
@@ -153,7 +155,7 @@ func TestRecordWithArgs(t *testing.T) {
 }
 
 // Helper function to assert that each field exists in the map
-func assertFieldsExist(t *testing.T, expected, actual map[string]map[string]string) {
+func assertFieldsExist(t *testing.T, expected, actual map[SummariesSubDirs]map[string]string) {
 	for key, subMap := range expected {
 		assert.Contains(t, actual, key, "Key '%s' not found in actual map", key)
 		for subKey := range subMap {

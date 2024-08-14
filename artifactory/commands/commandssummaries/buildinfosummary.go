@@ -17,7 +17,7 @@ const (
 type BuildInfoSummary struct {
 	platformUrl     string
 	majorVersion    int
-	nestedFilePaths map[commandsummary.Category]map[string]string
+	nestedFilePaths map[commandsummary.Index]map[string]string
 }
 
 func NewBuildInfoWithUrl(platformUrl string, majorVersion int) *BuildInfoSummary {
@@ -30,7 +30,7 @@ func NewBuildInfo() *BuildInfoSummary {
 	return &BuildInfoSummary{}
 }
 
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[commandsummary.Category]map[string]string) (finalMarkdown string, err error) {
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[commandsummary.Index]map[string]string) (finalMarkdown string, err error) {
 	bis.nestedFilePaths = nestedFilePaths
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo

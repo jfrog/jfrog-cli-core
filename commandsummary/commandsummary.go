@@ -15,21 +15,21 @@ import (
 )
 
 type CommandSummaryInterface interface {
-	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[Category]map[string]string) (finalMarkdown string, err error)
+	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[Index]map[string]string) (finalMarkdown string, err error)
 }
 
-// These optional categories determine where files are saved, making them easier to locate.
+// These optional index determine where files are saved, making them easier to locate.
 // Each category corresponds to a nested folder within the current command summary structure.
 //
 // For example, if the command summary is for the build-info command and the category is "DockerScan,"
 // the file will be saved in the following path: outputDirPath/jfrog-command-summary/build-info/Docker-Scan
-type Category string
+type Index string
 
 const (
-	BinariesScan Category = "binaries-scans"
-	BuildScan    Category = "build-scans"
-	DockerScan   Category = "docker-scans"
-	SarifReport  Category = "sarif-reports"
+	BinariesScan Index = "binaries-scans"
+	BuildScan    Index = "build-scans"
+	DockerScan   Index = "docker-scans"
+	SarifReport  Index = "sarif-reports"
 )
 
 const (
@@ -66,11 +66,11 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 
 // Loads all the relevant data files and invoke the implementation to generate the Markdown.
 func (cs *CommandSummary) GenerateMarkdown() error {
-	dataFilesPaths, nestedSubjectFiles, err := cs.getDataFilesPaths()
+	dataFilesPaths, indexedFiles, err := cs.getDataFilesPaths()
 	if err != nil {
 		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)
 	}
-	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths, nestedSubjectFiles)
+	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths, indexedFiles)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown: %w", err)
 	}
@@ -87,17 +87,17 @@ func (cs *CommandSummary) Record(data any) (err error) {
 
 // Record data with specific name and location for future use by other components.
 // Data: The data to be recorded.
-// SummariesSubject: data will be saved inside a nested directory within the subject name.
+// summaryIndex: data will be saved inside a nested directory within the index name.
 // Args: These arguments will be used to determine the file name.
-func (cs *CommandSummary) RecordWithArgs(data any, summariesSubject Category, args ...string) (err error) {
-	return cs.recordInternal(data, summariesSubject, args)
+func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...string) (err error) {
+	return cs.recordInternal(data, summaryIndex, args)
 }
 
 func (cs *CommandSummary) recordInternal(data any, args ...interface{}) (err error) {
 	// Handle optional extra arguments for recording
-	subSubject, extraArgs := extractSubDirAndArgs(args)
+	summaryIndex, extraArgs := extractSubDirAndArgs(args)
 	// Decide on the location and the file name based on the subject and the extra arguments.
-	filePath, fileName, err := determineFilePathAndName(cs.summaryOutputPath, subSubject, extraArgs)
+	filePath, fileName, err := determineFilePathAndName(cs.summaryOutputPath, summaryIndex, extraArgs)
 	if err != nil {
 		return err
 	}
@@ -131,18 +131,18 @@ func (cs *CommandSummary) createAndWriteToFile(filePath, fileName string, data a
 	return
 }
 
-// Returns all the data files paths in the current command summary directory and nested directories if exists.
-func (cs *CommandSummary) getDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[Category]map[string]string, err error) {
+// Returns all the data files paths in the current command summary directory and nested indexed directories if exists.
+func (cs *CommandSummary) getDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[Index]map[string]string, err error) {
 	return cs.getAllDataFilesPathsRecursive(cs.summaryOutputPath, true)
 }
 
-func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[Category]map[string]string, err error) {
+func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[Index]map[string]string, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
 
-	nestedFilesMap = make(map[Category]map[string]string)
+	nestedFilesMap = make(map[Index]map[string]string)
 	for _, entry := range entries {
 		fullPath := path.Join(dirPath, entry.Name())
 		if entry.IsDir() {
@@ -158,10 +158,10 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 				currentDirFiles = append(currentDirFiles, fullPath)
 			} else {
 				base := path.Base(dirPath)
-				if nestedFilesMap[Category(base)] == nil {
-					nestedFilesMap[Category(base)] = make(map[string]string)
+				if nestedFilesMap[Index(base)] == nil {
+					nestedFilesMap[Index(base)] = make(map[string]string)
 				}
-				nestedFilesMap[Category(base)][entry.Name()] = fullPath
+				nestedFilesMap[Index(base)][entry.Name()] = fullPath
 			}
 		}
 	}
@@ -232,9 +232,9 @@ func createDirIfNotExists(homeDir string) error {
 	return errorutils.CheckError(os.MkdirAll(homeDir, 0755))
 }
 
-// File name should be decided based on the subject and args.
-func determineFileName(subject Category, args []string) string {
-	if subject == SarifReport {
+// File name should be decided based on the index and args.
+func determineFileName(summaryIndex Index, args []string) string {
+	if summaryIndex == SarifReport {
 		return SarifFileFormat
 	}
 	if len(args) > 0 {
@@ -251,34 +251,34 @@ func determineFileName(subject Category, args []string) string {
 	return DataFileFormat
 }
 
-func determineFilePathAndName(summaryOutputPath string, subject Category, args []string) (filePath, fileName string, err error) {
+func determineFilePathAndName(summaryOutputPath string, index Index, args []string) (filePath, fileName string, err error) {
 	filePath = summaryOutputPath
-	// Create subdirectory if the subject is not empty
-	if subject != "" {
-		filePath = path.Join(filePath, string(subject))
+	// Create subdirectory if the index is not empty
+	if index != "" {
+		filePath = path.Join(filePath, string(index))
 		if err = createDirIfNotExists(filePath); err != nil {
 			return "", "", err
 		}
 	}
-	fileName = determineFileName(subject, args)
+	fileName = determineFileName(index, args)
 	return
 }
 
-func extractSubDirAndArgs(args []interface{}) (Category, []string) {
-	var subject Category
+func extractSubDirAndArgs(args []interface{}) (Index, []string) {
+	var index Index
 	var extraArgs []string
 
 	if len(args) > 0 {
-		if dir, ok := args[0].(Category); ok {
-			subject = dir
+		if dir, ok := args[0].(Index); ok {
+			index = dir
 			if len(args) > 1 {
 				if extraArgs, ok = args[1].([]string); !ok {
-					return subject, nil
+					return index, nil
 				}
 			}
 		} else if extraArgs, ok := args[0].([]string); ok {
-			return subject, extraArgs
+			return index, extraArgs
 		}
 	}
-	return subject, extraArgs
+	return index, extraArgs
 }

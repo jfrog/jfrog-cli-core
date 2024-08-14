@@ -20,7 +20,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[Category]map[string]string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[Index]map[string]string) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 
@@ -106,14 +106,14 @@ func TestRecordWithArgs(t *testing.T) {
 		name                     string
 		dirName                  string
 		originalData             interface{}
-		summarySubject           Category
-		expectedDirectoryMapping map[Category]map[string]string
+		summaryIndex             Index
+		expectedDirectoryMapping map[Index]map[string]string
 		recordArgs               []string
 	}{
 		{
-			name:           "Record build scan result",
-			summarySubject: BuildScan,
-			expectedDirectoryMapping: map[Category]map[string]string{
+			name:         "Record build scan result",
+			summaryIndex: BuildScan,
+			expectedDirectoryMapping: map[Index]map[string]string{
 				BuildScan: {
 					"buildName-buildNumber": "buildScanResults",
 				},
@@ -123,9 +123,9 @@ func TestRecordWithArgs(t *testing.T) {
 		// Binary files should contain a full path to the file
 		// To handle the case where we scan different binaries but with different names.
 		{
-			name:           "Record binary scan result",
-			summarySubject: BinariesScan,
-			expectedDirectoryMapping: map[Category]map[string]string{
+			name:         "Record binary scan result",
+			summaryIndex: BinariesScan,
+			expectedDirectoryMapping: map[Index]map[string]string{
 				BinariesScan: {
 					"path-to-some-binary.exe": "binaryResults",
 				},
@@ -133,9 +133,9 @@ func TestRecordWithArgs(t *testing.T) {
 			recordArgs: []string{"path/to/some-binary.exe"},
 		},
 		{
-			name:           "Record docker scan result",
-			summarySubject: DockerScan,
-			expectedDirectoryMapping: map[Category]map[string]string{
+			name:         "Record docker scan result",
+			summaryIndex: DockerScan,
+			expectedDirectoryMapping: map[Index]map[string]string{
 				DockerScan: {
 					"linux-amd64-my-image:latest": "dockerResults",
 				},
@@ -144,9 +144,9 @@ func TestRecordWithArgs(t *testing.T) {
 		},
 		// There could be multiple sarif reports in the same directory
 		{
-			name:           "Record sarif report",
-			summarySubject: SarifReport,
-			expectedDirectoryMapping: map[Category]map[string]string{
+			name:         "Record sarif report",
+			summaryIndex: SarifReport,
+			expectedDirectoryMapping: map[Index]map[string]string{
 				SarifReport: {
 					"*.sarif": "sarifReport",
 				},
@@ -164,7 +164,7 @@ func TestRecordWithArgs(t *testing.T) {
 			}()
 
 			// Save data to nested folders
-			err := cs.RecordWithArgs(tc.originalData, tc.summarySubject, tc.recordArgs...)
+			err := cs.RecordWithIndex(tc.originalData, tc.summaryIndex, tc.recordArgs...)
 			assert.NoError(t, err)
 
 			// Verify file has been saved
@@ -181,13 +181,13 @@ func TestRecordWithArgs(t *testing.T) {
 func TestSarifMultipleReports(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
-		name           string
-		originalData   interface{}
-		summarySubject Category
+		name         string
+		originalData interface{}
+		summaryIndex Index
 	}{
 		{
-			name:           "Record sarif report",
-			summarySubject: SarifReport,
+			name:         "Record sarif report",
+			summaryIndex: SarifReport,
 		},
 	}
 
@@ -200,9 +200,9 @@ func TestSarifMultipleReports(t *testing.T) {
 				cleanUp()
 			}()
 			// Save multiple reports
-			err := cs.RecordWithArgs(tc.originalData, tc.summarySubject)
+			err := cs.RecordWithIndex(tc.originalData, tc.summaryIndex)
 			assert.NoError(t, err)
-			err = cs.RecordWithArgs(tc.originalData, tc.summarySubject)
+			err = cs.RecordWithIndex(tc.originalData, tc.summaryIndex)
 			assert.NoError(t, err)
 			// Verify file has been saved
 			_, nestedFiles, err := cs.getDataFilesPaths()
@@ -214,14 +214,14 @@ func TestSarifMultipleReports(t *testing.T) {
 
 // This function will verify that the actual map contains all the expected keys and sub-keys.
 // It will NOT check for key values as they are temp path values, which cannot be predicted.
-func verifyCurrentMapping(t *testing.T, expected, actual map[Category]map[string]string) {
+func verifyCurrentMapping(t *testing.T, expected, actual map[Index]map[string]string) {
 	for key, subMap := range expected {
 		assert.Contains(t, actual, key, "Key '%s' not found in actual map", key)
 		checkSubKeys(t, key, subMap, actual[key])
 	}
 }
 
-func checkSubKeys(t *testing.T, key Category, expectedSubMap, actualSubMap map[string]string) {
+func checkSubKeys(t *testing.T, key Index, expectedSubMap, actualSubMap map[string]string) {
 	for subKey, _ := range expectedSubMap {
 		if strings.Contains(subKey, "*") {
 			assertSubKeyPattern(t, key, subKey, actualSubMap)
@@ -231,7 +231,7 @@ func checkSubKeys(t *testing.T, key Category, expectedSubMap, actualSubMap map[s
 	}
 }
 
-func assertSubKeyPattern(t *testing.T, key Category, subKeyPattern string, actualSubMap map[string]string) {
+func assertSubKeyPattern(t *testing.T, key Index, subKeyPattern string, actualSubMap map[string]string) {
 	found := false
 	for actualSubKey := range actualSubMap {
 		if match, _ := filepath.Match(subKeyPattern, actualSubKey); match {

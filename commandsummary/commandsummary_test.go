@@ -137,7 +137,7 @@ func TestRecordWithArgs(t *testing.T) {
 			summaryIndex: DockerScan,
 			expectedDirectoryMapping: map[Index]map[string]string{
 				DockerScan: {
-					"linux-amd64-my-image:latest": "dockerResults",
+					"linux-amd64-my-image-latest": "dockerResults",
 				},
 			},
 			recordArgs: []string{"linux/amd64/my-image:latest"},

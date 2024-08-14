@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -238,12 +239,13 @@ func determineFileName(summaryIndex Index, args []string) string {
 	}
 	if len(args) > 0 {
 		fileName := strings.Join(args, "-")
-		// Replace slashes with dashes.
-		fileName = strings.ReplaceAll(fileName, "/", "-")
 		// If running on Windows, replace backslashes with dashes.
 		if runtime.GOOS == "windows" {
 			fileName = strings.ReplaceAll(fileName, "\\", "-")
 		}
+		// Replace all other invalid characters with dashes.
+		invalidChars := regexp.MustCompile(`[<>:"/\\|?*]`)
+		fileName = invalidChars.ReplaceAllString(fileName, "-")
 		return fileName
 	}
 	return DataFileFormat

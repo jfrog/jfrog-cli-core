@@ -264,10 +264,12 @@ func extractSubDirAndArgs(args []interface{}) (CommandSummariesSubject, []string
 		if dir, ok := args[0].(CommandSummariesSubject); ok {
 			subject = dir
 			if len(args) > 1 {
-				extraArgs = args[1].([]string)
+				if extraArgs, ok = args[1].([]string); !ok {
+					return subject, nil
+				}
 			}
-		} else {
-			extraArgs = args[0].([]string)
+		} else if extraArgs, ok := args[0].([]string); ok {
+			return subject, extraArgs
 		}
 	}
 	return subject, extraArgs

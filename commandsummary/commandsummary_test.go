@@ -222,16 +222,16 @@ func verifyCurrentMapping(t *testing.T, expected, actual map[CommandSummariesSub
 }
 
 func checkSubKeys(t *testing.T, key CommandSummariesSubject, expectedSubMap, actualSubMap map[string]string) {
-	for subKey, expectedValue := range expectedSubMap {
+	for subKey, _ := range expectedSubMap {
 		if strings.Contains(subKey, "*") {
-			assertSubKeyPattern(t, key, subKey, expectedValue, actualSubMap)
+			assertSubKeyPattern(t, key, subKey, actualSubMap)
 		} else {
 			assert.Contains(t, actualSubMap, subKey, "Sub-key '%s' not found in actual map for key '%s'", subKey, key)
 		}
 	}
 }
 
-func assertSubKeyPattern(t *testing.T, key CommandSummariesSubject, subKeyPattern, expectedValue string, actualSubMap map[string]string) {
+func assertSubKeyPattern(t *testing.T, key CommandSummariesSubject, subKeyPattern string, actualSubMap map[string]string) {
 	found := false
 	for actualSubKey := range actualSubMap {
 		if match, _ := filepath.Match(subKeyPattern, actualSubKey); match {

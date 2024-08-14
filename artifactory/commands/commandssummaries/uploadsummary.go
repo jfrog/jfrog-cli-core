@@ -34,8 +34,8 @@ func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string, _ map
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}
-	// Wrap the markdown in a <pre> tags to preserve spaces
-	markdown = fmt.Sprintf("\n<pre>\n\n\n" + us.generateFileTreeMarkdown() + "</pre>\n\n")
+	// Wrap the Markdown in a <pre> tags to preserve spaces
+	markdown = fmt.Sprintf("\n<pre>\n\n\n%s</pre>\n\n", us.generateFileTreeMarkdown())
 	return
 }
 

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -237,8 +238,14 @@ func determineFileName(subject CommandSummariesSubject, args []string) string {
 	}
 	if len(args) > 0 {
 		fileName := strings.Join(args, "-")
-		// File name could contain slashes, replace them with dashes.
-		return strings.ReplaceAll(fileName, "/", "-")
+		// If running on Windows, replace backslashes with dashes.
+		if runtime.GOOS == "windows" {
+			fileName = strings.ReplaceAll(fileName, "\\", "-")
+		} else {
+			// Replace slashes with dashes.
+			fileName = strings.ReplaceAll(fileName, "/", "-")
+		}
+		return fileName
 	}
 	return DataFileFormat
 }

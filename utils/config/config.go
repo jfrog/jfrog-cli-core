@@ -14,6 +14,7 @@ import (
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
 	evidenceAuth "github.com/jfrog/jfrog-client-go/evidence/auth"
 	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
+	metadataAuth "github.com/jfrog/jfrog-client-go/metadata/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -40,7 +41,7 @@ func IsServerConfExists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return conf.Servers != nil && len(conf.Servers) > 0, nil
+	return len(conf.Servers) > 0, nil
 }
 
 // Returns the configured server or error if the server id was not found.
@@ -580,6 +581,7 @@ type ServerDetails struct {
 	AccessUrl                       string `json:"accessUrl,omitempty"`
 	LifecycleUrl                    string `json:"-"`
 	EvidenceUrl                     string `json:"-"`
+	MetadataUrl                     string `json:"-"`
 	User                            string `json:"user,omitempty"`
 	Password                        string `json:"password,omitempty"`
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
@@ -674,6 +676,10 @@ func (serverDetails *ServerDetails) GetEvidenceUrl() string {
 	return serverDetails.EvidenceUrl
 }
 
+func (serverDetails *ServerDetails) GetMetadataUrl() string {
+	return serverDetails.MetadataUrl
+}
+
 func (serverDetails *ServerDetails) GetUser() string {
 	return serverDetails.User
 }
@@ -751,6 +757,12 @@ func (serverDetails *ServerDetails) CreateEvidenceAuthConfig() (auth.ServiceDeta
 	evdAuth := evidenceAuth.NewEvidenceDetails()
 	evdAuth.SetUrl(serverDetails.EvidenceUrl)
 	return serverDetails.createAuthConfig(evdAuth)
+}
+
+func (serverDetails *ServerDetails) CreateMetadataAuthConfig() (auth.ServiceDetails, error) {
+	mdAuth := metadataAuth.NewMetadataDetails()
+	mdAuth.SetUrl(serverDetails.MetadataUrl)
+	return serverDetails.createAuthConfig(mdAuth)
 }
 
 func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {

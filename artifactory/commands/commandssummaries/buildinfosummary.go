@@ -5,8 +5,6 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"strings"
 	"time"
@@ -53,46 +51,30 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, n
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n### Published Build Info\n\n")
-	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | Scan Result \n")
-	tableBuilder.WriteString("|---------|------------|------------| \n")
+	tableBuilder.WriteString("\n\n ### Published Build Infos  \n\n")
+	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | \n")
+	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime, bis.getScanResultsMarkdown(build)))
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
 	}
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
 }
 
-func (bis *BuildInfoSummary) getScanResultsMarkdown(build *buildInfo.BuildInfo) (nestedMarkdown []byte) {
-	nestedMarkdown = []byte("<pre>🚨 Artifact was not scanned in the job!</pre>")
-	var scanResult string
-	scanResult, ok := bis.nestedFilePaths["build-scan"][build.Name+"-"+build.Number]
-	if !ok {
-		return
-	}
-	nestedMarkdown, err := fileutils.ReadFile(scanResult)
-	if err != nil {
-		log.Warn("failed to read build scan results for build: " + build.Name + "-" + build.Number)
-		return
-	}
-	// Replace new lines with <br> to preserve the formatting in the markdown table
-	nestedMarkdown = []byte(strings.ReplaceAll(string(nestedMarkdown), "\n", "<br>"))
-	return
-}
-
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n### Published Modules\n\n")
+	markdownBuilder.WriteString("\n\n ### Modules Published As Part of This Build  \n\n")
 	var shouldGenerate bool
 	for _, build := range builds {
 		for _, module := range build.Modules {
 			if len(module.Artifacts) == 0 {
 				continue
 			}
+
 			switch module.Type {
 			case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
-				markdownBuilder.WriteString(bis.generateModuleMarkdown(module, bis.getScanResultsMarkdown(build)))
+				markdownBuilder.WriteString(bis.generateModuleMarkdown(module))
 				shouldGenerate = true
 			default:
 				// Skip unsupported module types.
@@ -118,12 +100,9 @@ func parseBuildTime(timestamp string) string {
 	return buildInfoTime.Format(timeFormat)
 }
 
-func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module, securityMarkdown []byte) string {
+func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) string {
 	var moduleMarkdown strings.Builder
-	moduleMarkdown.WriteString(fmt.Sprintf("\n#### `%s`\n", module.Id))
-	moduleMarkdown.WriteString("\n\n|      Artifacts   |     Security Issues     | \n")
-	moduleMarkdown.WriteString("|-----------------------|---------------------------------------| \n")
-
+	moduleMarkdown.WriteString(fmt.Sprintf("\n #### %s \n", module.Id))
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
@@ -134,8 +113,7 @@ func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module, sec
 		artifactTreePath := path.Join(artifact.OriginalDeploymentRepo, artifact.Path)
 		artifactsTree.AddFile(artifactTreePath, artifactUrlInArtifactory)
 	}
-	content := strings.ReplaceAll(artifactsTree.String(), "\n", "<br>") + "|" + string(securityMarkdown)
-	moduleMarkdown.WriteString("| <pre>" + content + "</pre>")
+	moduleMarkdown.WriteString("\n\n <pre>" + artifactsTree.String() + "</pre>")
 	return moduleMarkdown.String()
 }
 

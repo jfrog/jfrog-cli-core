@@ -6,6 +6,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -18,7 +20,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[SummariesSubDirs]map[string]string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[CommandSummariesSubject]map[string]string) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 
@@ -84,7 +86,7 @@ func TestSimpleRecord(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			dataFiles, _, err := cs.getAllDataFilesPaths()
+			dataFiles, _, err := cs.getDataFilesPaths()
 			assert.NoError(t, err)
 			assert.NotEqual(t, 0, len(dataFiles))
 
@@ -101,24 +103,54 @@ func TestSimpleRecord(t *testing.T) {
 func TestRecordWithArgs(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
-		name         string
-		dirName      string
-		originalData interface{}
-		subDir       SummariesSubDirs
-		nestedFiles  map[SummariesSubDirs]map[string]string
-		recordArgs   []string
+		name                     string
+		dirName                  string
+		originalData             interface{}
+		summarySubject           CommandSummariesSubject
+		expectedDirectoryMapping map[CommandSummariesSubject]map[string]string
+		recordArgs               []string
 	}{
 		{
-			name:         "Record with nested files",
-			dirName:      "nested dir",
-			originalData: "test string",
-			subDir:       BuildScan,
-			nestedFiles: map[SummariesSubDirs]map[string]string{
+			name:           "Record build scan result",
+			summarySubject: BuildScan,
+			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
 				BuildScan: {
 					"buildName-buildNumber": "buildScanResults",
 				},
 			},
 			recordArgs: []string{"buildName", "buildNumber"},
+		},
+		// Binary files should contain a full path to the file
+		// To handle the case where we scan different binaries but with different names.
+		{
+			name:           "Record binary scan result",
+			summarySubject: Binaries,
+			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
+				Binaries: {
+					"path-to-some-binary.exe": "binaryResults",
+				},
+			},
+			recordArgs: []string{"path/to/some-binary.exe"},
+		},
+		{
+			name:           "Record docker scan result",
+			summarySubject: Docker,
+			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
+				Docker: {
+					"linux-amd64-my-image:latest": "dockerResults",
+				},
+			},
+			recordArgs: []string{"linux/amd64/my-image:latest"},
+		},
+		// There could be multiple sarif reports in the same directory
+		{
+			name:           "Record sarif report",
+			summarySubject: Sarif,
+			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
+				Sarif: {
+					"*.sarif": "sarifReport",
+				},
+			},
 		},
 	}
 
@@ -130,38 +162,84 @@ func TestRecordWithArgs(t *testing.T) {
 			defer func() {
 				cleanUp()
 			}()
-			// Save data to root folder
-			err := cs.Record(tc.originalData)
-			assert.NoError(t, err)
 
 			// Save data to nested folders
-			err = cs.RecordWithArgs(tc.originalData, tc.subDir, tc.recordArgs...)
+			err := cs.RecordWithArgs(tc.originalData, tc.summarySubject, tc.recordArgs...)
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			rootDataFiles, nestedFiles, err := cs.getAllDataFilesPaths()
+			_, nestedFiles, err := cs.getDataFilesPaths()
 			assert.NoError(t, err)
-			assert.NotEqual(t, 0, len(rootDataFiles))
-
-			// Verify that data has not been corrupted
-			loadedData, err := unmarshalData(tc.originalData, rootDataFiles[0])
-			assert.NoError(t, err)
-			assert.EqualValues(t, tc.originalData, loadedData)
 
 			// Verify nested files
-			assertFieldsExist(t, tc.nestedFiles, nestedFiles)
+			verifyCurrentMapping(t, tc.expectedDirectoryMapping, nestedFiles)
 		})
 	}
 }
 
-// Helper function to assert that each field exists in the map
-func assertFieldsExist(t *testing.T, expected, actual map[SummariesSubDirs]map[string]string) {
+// Verifies the recording of sarif multiple reports.
+func TestSarifMultipleReports(t *testing.T) {
+	// Define test cases
+	testCases := []struct {
+		name           string
+		originalData   interface{}
+		summarySubject CommandSummariesSubject
+	}{
+		{
+			name:           "Record sarif report",
+			summarySubject: Sarif,
+		},
+	}
+
+	// Run test cases
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Prepare a new CommandSummary for each test case
+			cs, cleanUp := prepareTest(t)
+			defer func() {
+				cleanUp()
+			}()
+			// Save multiple reports
+			err := cs.RecordWithArgs(tc.originalData, tc.summarySubject)
+			assert.NoError(t, err)
+			err = cs.RecordWithArgs(tc.originalData, tc.summarySubject)
+			assert.NoError(t, err)
+			// Verify file has been saved
+			_, nestedFiles, err := cs.getDataFilesPaths()
+			assert.NoError(t, err)
+			assert.Equal(t, 2, len(nestedFiles[Sarif]))
+		})
+	}
+}
+
+// This function will verify that the actual map contains all the expected keys and sub-keys.
+// It will NOT check for key values as they are temp path values, which cannot be predicted.
+func verifyCurrentMapping(t *testing.T, expected, actual map[CommandSummariesSubject]map[string]string) {
 	for key, subMap := range expected {
 		assert.Contains(t, actual, key, "Key '%s' not found in actual map", key)
-		for subKey := range subMap {
-			assert.Contains(t, actual[key], subKey, "Sub-key '%s' not found in actual map for key '%s'", subKey, key)
+		checkSubKeys(t, key, subMap, actual[key])
+	}
+}
+
+func checkSubKeys(t *testing.T, key CommandSummariesSubject, expectedSubMap, actualSubMap map[string]string) {
+	for subKey, expectedValue := range expectedSubMap {
+		if strings.Contains(subKey, "*") {
+			assertSubKeyPattern(t, key, subKey, expectedValue, actualSubMap)
+		} else {
+			assert.Contains(t, actualSubMap, subKey, "Sub-key '%s' not found in actual map for key '%s'", subKey, key)
 		}
 	}
+}
+
+func assertSubKeyPattern(t *testing.T, key CommandSummariesSubject, subKeyPattern, expectedValue string, actualSubMap map[string]string) {
+	found := false
+	for actualSubKey := range actualSubMap {
+		if match, _ := filepath.Match(subKeyPattern, actualSubKey); match {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Sub-key pattern '%s' not found in actual map for key '%s'", subKeyPattern, key)
 }
 
 func unmarshalData(expected interface{}, filePath string) (interface{}, error) {

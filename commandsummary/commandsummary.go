@@ -15,26 +15,27 @@ import (
 )
 
 type CommandSummaryInterface interface {
-	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[CommandSummariesSubject]map[string]string) (finalMarkdown string, err error)
+	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[Category]map[string]string) (finalMarkdown string, err error)
 }
 
-// These are the subjects under which the command summaries can be categorized.
-// They're used to save files in specific locations for easier access.
-// Each subject will be organized into a nested folder within the current command summary implementation.
+// These optional categories determine where files are saved, making them easier to locate.
+// Each category corresponds to a nested folder within the current command summary structure.
 //
-// For example, if the command summary is for the build-info command and the subject is "Docker,"
-// the file will be saved in the following path: outputDirPath/jfrog-command-summary/build/Docker
-type CommandSummariesSubject string
+// For example, if the command summary is for the build-info command and the category is "DockerScan,"
+// the file will be saved in the following path: outputDirPath/jfrog-command-summary/build-info/Docker-Scan
+type Category string
+
+const (
+	BinariesScan Category = "binaries-scans"
+	BuildScan    Category = "build-scans"
+	DockerScan   Category = "docker-scans"
+	SarifReport  Category = "sarif-reports"
+)
 
 const (
 	// The name of the directory where all the commands summaries will be stored.
 	// Inside this directory, each command will have its own directory.
 	OutputDirName = "jfrog-command-summary"
-	// Command Summaries subjects
-	Binaries  CommandSummariesSubject = "Binaries"
-	BuildScan CommandSummariesSubject = "Build-Scan"
-	Docker    CommandSummariesSubject = "Docker"
-	Sarif     CommandSummariesSubject = "Sarif"
 	// Filenames formats
 	SarifFileFormat = "*.sarif"
 	DataFileFormat  = "*-data"
@@ -65,11 +66,11 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 
 // Loads all the relevant data files and invoke the implementation to generate the Markdown.
 func (cs *CommandSummary) GenerateMarkdown() error {
-	dataFilesPaths, nestedFiles, err := cs.getDataFilesPaths()
+	dataFilesPaths, nestedSubjectFiles, err := cs.getDataFilesPaths()
 	if err != nil {
 		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)
 	}
-	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths, nestedFiles)
+	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths, nestedSubjectFiles)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown: %w", err)
 	}
@@ -88,7 +89,7 @@ func (cs *CommandSummary) Record(data any) (err error) {
 // Data: The data to be recorded.
 // SummariesSubject: data will be saved inside a nested directory within the subject name.
 // Args: These arguments will be used to determine the file name.
-func (cs *CommandSummary) RecordWithArgs(data any, summariesSubject CommandSummariesSubject, args ...string) (err error) {
+func (cs *CommandSummary) RecordWithArgs(data any, summariesSubject Category, args ...string) (err error) {
 	return cs.recordInternal(data, summariesSubject, args)
 }
 
@@ -116,7 +117,7 @@ func (cs *CommandSummary) createAndWriteToFile(filePath, fileName string, data a
 		return errorutils.CheckError(err)
 	}
 	defer func() {
-		err = errors.Join(err, fd.Close())
+		err = errors.Join(err, errorutils.CheckError(fd.Close()))
 	}()
 
 	// Write to file
@@ -131,17 +132,17 @@ func (cs *CommandSummary) createAndWriteToFile(filePath, fileName string, data a
 }
 
 // Returns all the data files paths in the current command summary directory and nested directories if exists.
-func (cs *CommandSummary) getDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[CommandSummariesSubject]map[string]string, err error) {
+func (cs *CommandSummary) getDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[Category]map[string]string, err error) {
 	return cs.getAllDataFilesPathsRecursive(cs.summaryOutputPath, true)
 }
 
-func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[CommandSummariesSubject]map[string]string, err error) {
+func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[Category]map[string]string, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
 
-	nestedFilesMap = make(map[CommandSummariesSubject]map[string]string)
+	nestedFilesMap = make(map[Category]map[string]string)
 	for _, entry := range entries {
 		fullPath := path.Join(dirPath, entry.Name())
 		if entry.IsDir() {
@@ -157,10 +158,10 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 				currentDirFiles = append(currentDirFiles, fullPath)
 			} else {
 				base := path.Base(dirPath)
-				if nestedFilesMap[CommandSummariesSubject(base)] == nil {
-					nestedFilesMap[CommandSummariesSubject(base)] = make(map[string]string)
+				if nestedFilesMap[Category(base)] == nil {
+					nestedFilesMap[Category(base)] = make(map[string]string)
 				}
-				nestedFilesMap[CommandSummariesSubject(base)][entry.Name()] = fullPath
+				nestedFilesMap[Category(base)][entry.Name()] = fullPath
 			}
 		}
 	}
@@ -232,8 +233,8 @@ func createDirIfNotExists(homeDir string) error {
 }
 
 // File name should be decided based on the subject and args.
-func determineFileName(subject CommandSummariesSubject, args []string) string {
-	if subject == Sarif {
+func determineFileName(subject Category, args []string) string {
+	if subject == SarifReport {
 		return SarifFileFormat
 	}
 	if len(args) > 0 {
@@ -250,7 +251,7 @@ func determineFileName(subject CommandSummariesSubject, args []string) string {
 	return DataFileFormat
 }
 
-func determineFilePathAndName(summaryOutputPath string, subject CommandSummariesSubject, args []string) (filePath, fileName string, err error) {
+func determineFilePathAndName(summaryOutputPath string, subject Category, args []string) (filePath, fileName string, err error) {
 	filePath = summaryOutputPath
 	// Create subdirectory if the subject is not empty
 	if subject != "" {
@@ -263,12 +264,12 @@ func determineFilePathAndName(summaryOutputPath string, subject CommandSummaries
 	return
 }
 
-func extractSubDirAndArgs(args []interface{}) (CommandSummariesSubject, []string) {
-	var subject CommandSummariesSubject
+func extractSubDirAndArgs(args []interface{}) (Category, []string) {
+	var subject Category
 	var extraArgs []string
 
 	if len(args) > 0 {
-		if dir, ok := args[0].(CommandSummariesSubject); ok {
+		if dir, ok := args[0].(Category); ok {
 			subject = dir
 			if len(args) > 1 {
 				if extraArgs, ok = args[1].([]string); !ok {

@@ -20,7 +20,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[CommandSummariesSubject]map[string]string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[Category]map[string]string) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 
@@ -106,14 +106,14 @@ func TestRecordWithArgs(t *testing.T) {
 		name                     string
 		dirName                  string
 		originalData             interface{}
-		summarySubject           CommandSummariesSubject
-		expectedDirectoryMapping map[CommandSummariesSubject]map[string]string
+		summarySubject           Category
+		expectedDirectoryMapping map[Category]map[string]string
 		recordArgs               []string
 	}{
 		{
 			name:           "Record build scan result",
 			summarySubject: BuildScan,
-			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
+			expectedDirectoryMapping: map[Category]map[string]string{
 				BuildScan: {
 					"buildName-buildNumber": "buildScanResults",
 				},
@@ -124,9 +124,9 @@ func TestRecordWithArgs(t *testing.T) {
 		// To handle the case where we scan different binaries but with different names.
 		{
 			name:           "Record binary scan result",
-			summarySubject: Binaries,
-			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
-				Binaries: {
+			summarySubject: BinariesScan,
+			expectedDirectoryMapping: map[Category]map[string]string{
+				BinariesScan: {
 					"path-to-some-binary.exe": "binaryResults",
 				},
 			},
@@ -134,9 +134,9 @@ func TestRecordWithArgs(t *testing.T) {
 		},
 		{
 			name:           "Record docker scan result",
-			summarySubject: Docker,
-			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
-				Docker: {
+			summarySubject: DockerScan,
+			expectedDirectoryMapping: map[Category]map[string]string{
+				DockerScan: {
 					"linux-amd64-my-image:latest": "dockerResults",
 				},
 			},
@@ -145,9 +145,9 @@ func TestRecordWithArgs(t *testing.T) {
 		// There could be multiple sarif reports in the same directory
 		{
 			name:           "Record sarif report",
-			summarySubject: Sarif,
-			expectedDirectoryMapping: map[CommandSummariesSubject]map[string]string{
-				Sarif: {
+			summarySubject: SarifReport,
+			expectedDirectoryMapping: map[Category]map[string]string{
+				SarifReport: {
 					"*.sarif": "sarifReport",
 				},
 			},
@@ -183,11 +183,11 @@ func TestSarifMultipleReports(t *testing.T) {
 	testCases := []struct {
 		name           string
 		originalData   interface{}
-		summarySubject CommandSummariesSubject
+		summarySubject Category
 	}{
 		{
 			name:           "Record sarif report",
-			summarySubject: Sarif,
+			summarySubject: SarifReport,
 		},
 	}
 
@@ -207,21 +207,21 @@ func TestSarifMultipleReports(t *testing.T) {
 			// Verify file has been saved
 			_, nestedFiles, err := cs.getDataFilesPaths()
 			assert.NoError(t, err)
-			assert.Equal(t, 2, len(nestedFiles[Sarif]))
+			assert.Equal(t, 2, len(nestedFiles[SarifReport]))
 		})
 	}
 }
 
 // This function will verify that the actual map contains all the expected keys and sub-keys.
 // It will NOT check for key values as they are temp path values, which cannot be predicted.
-func verifyCurrentMapping(t *testing.T, expected, actual map[CommandSummariesSubject]map[string]string) {
+func verifyCurrentMapping(t *testing.T, expected, actual map[Category]map[string]string) {
 	for key, subMap := range expected {
 		assert.Contains(t, actual, key, "Key '%s' not found in actual map", key)
 		checkSubKeys(t, key, subMap, actual[key])
 	}
 }
 
-func checkSubKeys(t *testing.T, key CommandSummariesSubject, expectedSubMap, actualSubMap map[string]string) {
+func checkSubKeys(t *testing.T, key Category, expectedSubMap, actualSubMap map[string]string) {
 	for subKey, _ := range expectedSubMap {
 		if strings.Contains(subKey, "*") {
 			assertSubKeyPattern(t, key, subKey, actualSubMap)
@@ -231,7 +231,7 @@ func checkSubKeys(t *testing.T, key CommandSummariesSubject, expectedSubMap, act
 	}
 }
 
-func assertSubKeyPattern(t *testing.T, key CommandSummariesSubject, subKeyPattern string, actualSubMap map[string]string) {
+func assertSubKeyPattern(t *testing.T, key Category, subKeyPattern string, actualSubMap map[string]string) {
 	found := false
 	for actualSubKey := range actualSubMap {
 		if match, _ := filepath.Match(subKeyPattern, actualSubKey); match {

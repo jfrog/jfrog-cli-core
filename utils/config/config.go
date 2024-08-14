@@ -41,7 +41,7 @@ func IsServerConfExists() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return conf.Servers != nil && len(conf.Servers) > 0, nil
+	return len(conf.Servers) > 0, nil
 }
 
 // Returns the configured server or error if the server id was not found.

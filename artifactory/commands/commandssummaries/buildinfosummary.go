@@ -51,8 +51,8 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, n
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n ### Published Build Infos  \n\n")
-	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | \n")
+	tableBuilder.WriteString("\n\n### Published Build Infos\n\n")
+	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp |\n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
@@ -64,7 +64,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n ### Modules Published As Part of This Build  \n\n")
+	markdownBuilder.WriteString("\n\n### Modules Published As Part of This Build\n\n")
 	var shouldGenerate bool
 	for _, build := range builds {
 		for _, module := range build.Modules {
@@ -102,7 +102,7 @@ func parseBuildTime(timestamp string) string {
 
 func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module) string {
 	var moduleMarkdown strings.Builder
-	moduleMarkdown.WriteString(fmt.Sprintf("\n #### %s \n", module.Id))
+	moduleMarkdown.WriteString(fmt.Sprintf("\n#### %s\n", module.Id))
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)

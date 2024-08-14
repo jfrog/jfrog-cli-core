@@ -1,9 +1,9 @@
 
 
- ### Modules Published As Part of This Build  
+### Modules Published As Part of This Build
 
 
- ####  
+#### maven
 
 
  <pre>📦 libs-release
@@ -12,7 +12,7 @@
         └── <a href=https://myplatform.com/ui/repos/tree/General/libs-release/path/to/artifact1?clearFilter=true target="_blank">artifact1</a>
 
 </pre>
- ####  
+#### generic
 
 
  <pre>📦 generic-local

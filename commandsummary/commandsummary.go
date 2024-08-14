@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -111,7 +110,7 @@ func (cs *CommandSummary) createAndWriteToFile(filePath, fileName string, data a
 	if strings.Contains(fileName, "*") {
 		fd, err = os.CreateTemp(filePath, fileName)
 	} else {
-		fd, err = os.Create(path.Join(filePath, fileName))
+		fd, err = os.Create(filepath.Join(filePath, fileName))
 	}
 	if err != nil {
 		return errorutils.CheckError(err)
@@ -144,7 +143,7 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 
 	nestedFilesMap = make(map[Index]map[string]string)
 	for _, entry := range entries {
-		fullPath := path.Join(dirPath, entry.Name())
+		fullPath := filepath.Join(dirPath, entry.Name())
 		if entry.IsDir() {
 			_, subNestedFilesMap, err := cs.getAllDataFilesPathsRecursive(fullPath, false)
 			if err != nil {
@@ -157,7 +156,7 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 			if isRoot {
 				currentDirFiles = append(currentDirFiles, fullPath)
 			} else {
-				base := path.Base(dirPath)
+				base := filepath.Base(dirPath)
 				if nestedFilesMap[Index(base)] == nil {
 					nestedFilesMap[Index(base)] = make(map[string]string)
 				}
@@ -169,7 +168,7 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 }
 
 func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) {
-	file, err := os.OpenFile(path.Join(cs.summaryOutputPath, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filepath.Join(cs.summaryOutputPath, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -254,7 +253,7 @@ func determineFilePathAndName(summaryOutputPath string, index Index, args []stri
 	filePath = summaryOutputPath
 	// Create subdirectory if the index is not empty
 	if index != "" {
-		filePath = path.Join(filePath, string(index))
+		filePath = filepath.Join(filePath, string(index))
 		if err = createDirIfNotExists(filePath); err != nil {
 			return "", "", err
 		}

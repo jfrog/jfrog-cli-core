@@ -146,7 +146,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	if err = recordCommandSummary(buildInfo, buildLink); err != nil {
+	if err = recordCommandSummary(buildInfo, buildLink, bpc.serverDetails.Url, majorVersion); err != nil {
 		return err
 	}
 
@@ -232,12 +232,12 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 	return strconv.Itoa(latestBuildNumber), nil
 }
 
-func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
+func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink, serverUrl string, majorVersion int) (err error) {
 	if !commandsummary.ShouldRecordSummary() {
 		return
 	}
 	buildInfo.BuildUrl = buildLink
-	buildInfoSummary, err := commandssummaries.NewBuildInfoSummary("", 0)
+	buildInfoSummary, err := commandssummaries.NewBuildInfoSummary(serverUrl, majorVersion)
 	if err != nil {
 		return
 	}

@@ -20,7 +20,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ map[Index]map[string]string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 
@@ -71,7 +71,7 @@ func TestSimpleRecord(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			dataFiles, _, err := cs.getDataFilesPaths()
+			dataFiles, err := cs.GetDataFilesPaths()
 			assert.NoError(t, err)
 			assert.NotEqual(t, 0, len(dataFiles))
 
@@ -155,7 +155,7 @@ func TestIndexedRecord(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			_, nestedFiles, err := cs.getDataFilesPaths()
+			nestedFiles, err := cs.GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
 
 			// Verify nested files
@@ -193,7 +193,7 @@ func TestSarifMultipleReports(t *testing.T) {
 			err = cs.RecordWithIndex(tc.originalData, tc.summaryIndex)
 			assert.NoError(t, err)
 			// Verify file has been saved
-			_, nestedFiles, err := cs.getDataFilesPaths()
+			nestedFiles, err := cs.GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
 			assert.Equal(t, 2, len(nestedFiles[SarifReport]))
 		})
@@ -284,7 +284,7 @@ func verifyCurrentMapping(t *testing.T, expected, actual map[Index]map[string]st
 }
 
 func checkSubKeys(t *testing.T, key Index, expectedSubMap, actualSubMap map[string]string) {
-	for subKey, _ := range expectedSubMap {
+	for subKey := range expectedSubMap {
 		if strings.Contains(subKey, "*") {
 			assertSubKeyPattern(t, key, subKey, actualSubMap)
 		} else {

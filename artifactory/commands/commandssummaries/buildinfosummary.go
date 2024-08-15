@@ -17,26 +17,19 @@ const (
 type BuildInfoSummary struct {
 	platformUrl          string
 	platformMajorVersion int
-	// Map holding indexed scan results for each build info file.
-	indexedFilesMap map[commandsummary.Index]map[string]string
 }
 
-func NewBuildInfoSummaryWithUrl(platformUrl string, majorVersion int) *BuildInfoSummary {
-	return &BuildInfoSummary{
-		platformUrl:          platformUrl,
-		platformMajorVersion: majorVersion,
-	}
-}
-
-func NewBuildInfoSummary() *BuildInfoSummary {
-	return &BuildInfoSummary{}
+func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*commandsummary.CommandSummary, error) {
+	return commandsummary.New(&BuildInfoSummary{
+		platformUrl:          serverUrl,
+		platformMajorVersion: platformMajorVersion,
+	}, "build-info")
 }
 
 // GenerateMarkdownFromFiles generates a Markdown summary from the build info data files.
 // dataFilePaths - The paths to the build info files.
 // indexedFilesMap - A map holding scan results corresponding to builds
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, indexedFiles map[commandsummary.Index]map[string]string) (finalMarkdown string, err error) {
-	bis.indexedFilesMap = indexedFiles
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {

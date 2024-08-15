@@ -23,14 +23,14 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary(platformUrl string, majorVersion int) *UploadSummary {
-	return &UploadSummary{
+func NewUploadSummary(platformUrl string, majorVersion int) (*commandsummary.CommandSummary, error) {
+	return commandsummary.New(&UploadSummary{
 		platformUrl:  platformUrl,
 		majorVersion: majorVersion,
-	}
+	}, "upload")
 }
 
-func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string, _ map[commandsummary.Index]map[string]string) (markdown string, err error) {
+func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}

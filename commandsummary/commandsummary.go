@@ -17,10 +17,8 @@ import (
 // To create a new command summary, the user must implement this interface.
 // The GenerateMarkdownFromFiles function should be implemented to generate Markdown from the provided data file paths.
 // This involves loading data from the files and converting it into a Markdown string.
-// The indexedFilePaths map contains special indexed file paths for more advanced use cases,
-// see RecordWithIndex comments for more information.
 type CommandSummaryInterface interface {
-	GenerateMarkdownFromFiles(dataFilePaths []string, indexedFilePaths map[Index]map[string]string) (finalMarkdown string, err error)
+	GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error)
 }
 
 // These optional index determine where files are saved, making them easier to locate.
@@ -42,7 +40,6 @@ const (
 	// Inside this directory, each command will have its own directory.
 	OutputDirName         = "jfrog-command-summary"
 	finalMarkdownFileName = "markdown.md"
-	MarkdownSuffix        = ".md"
 	// Filenames formats
 	SarifFileFormat = "*.sarif"
 	DataFileFormat  = "*-data"
@@ -73,11 +70,11 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 
 // Loads all the relevant data files and invoke the implementation to generate the Markdown.
 func (cs *CommandSummary) GenerateMarkdown() error {
-	dataFilesPaths, indexedFiles, err := cs.getDataFilesPaths()
+	dataFilesPaths, err := cs.GetDataFilesPaths()
 	if err != nil {
 		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)
 	}
-	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths, indexedFiles)
+	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown: %w", err)
 	}
@@ -105,6 +102,26 @@ func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...
 	return cs.recordInternal(data, summaryIndex, args)
 }
 
+// Retrieve all the indexed data files in the current command directory.
+func (cs *CommandSummary) GetIndexedDataFilesPaths() (indexedFilePathsMap map[Index]map[string]string, err error) {
+	return cs.getIndexedFileRecursively(cs.summaryOutputPath, true)
+}
+
+func (cs *CommandSummary) GetDataFilesPaths() ([]string, error) {
+	entries, err := os.ReadDir(cs.summaryOutputPath)
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+	// Exclude markdown files
+	var filePaths []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			filePaths = append(filePaths, filepath.Join(cs.summaryOutputPath, entry.Name()))
+		}
+	}
+	return filePaths, nil
+}
+
 func (cs *CommandSummary) recordInternal(data any, args ...interface{}) (err error) {
 	// Handle optional extra arguments for recording
 	summaryIndex, extraArgs := extractIndexAndArgs(args)
@@ -130,32 +147,25 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 	return createAndWriteToFile(cs.summaryOutputPath, finalMarkdownFileName, data)
 }
 
-// Returns all the data files paths in the current command summary directory and nested indexed directories if exists.
-func (cs *CommandSummary) getDataFilesPaths() (currentDirFiles []string, nestedFilesMap map[Index]map[string]string, err error) {
-	return cs.getAllDataFilesPathsRecursive(cs.summaryOutputPath, true)
-}
-
-// Retrieve all the data files paths in the given directory and its subdirectories recursively.
-func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[Index]map[string]string, err error) {
+// Retrieve all the indexed data files paths in the given directory
+func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap map[Index]map[string]string, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
-		return nil, nil, errorutils.CheckError(err)
+		return nil, errorutils.CheckError(err)
 	}
 	nestedFilesMap = make(map[Index]map[string]string)
 	for _, entry := range entries {
 		fullPath := filepath.Join(dirPath, entry.Name())
 		if entry.IsDir() {
-			_, subNestedFilesMap, err := cs.getAllDataFilesPathsRecursive(fullPath, false)
+			subNestedFilesMap, err := cs.getIndexedFileRecursively(fullPath, false)
 			if err != nil {
-				return nil, nil, err
+				return nil, err
 			}
 			for subDir, files := range subNestedFilesMap {
 				nestedFilesMap[subDir] = files
 			}
 		} else {
-			if isRoot {
-				currentDirFiles = append(currentDirFiles, fullPath)
-			} else {
+			if !isRoot {
 				base := filepath.Base(dirPath)
 				if nestedFilesMap[Index(base)] == nil {
 					nestedFilesMap[Index(base)] = make(map[string]string)
@@ -164,7 +174,7 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 			}
 		}
 	}
-	return currentDirFiles, nestedFilesMap, nil
+	return nestedFilesMap, nil
 }
 
 // This function creates the base dir for the command summary inside

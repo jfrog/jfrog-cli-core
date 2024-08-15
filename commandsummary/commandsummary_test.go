@@ -83,8 +83,8 @@ func TestSimpleRecord(t *testing.T) {
 	}
 }
 
-// Verifies the behavior of recording with indexes
-// should create a nested file structure that can be used later on.
+// Tests the behavior of recording with indexes.
+// Ensures a nested file structure is created for future use.
 func TestIndexedRecord(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
@@ -196,6 +196,80 @@ func TestSarifMultipleReports(t *testing.T) {
 			_, nestedFiles, err := cs.getDataFilesPaths()
 			assert.NoError(t, err)
 			assert.Equal(t, 2, len(nestedFiles[SarifReport]))
+		})
+	}
+}
+
+func TestExtractIndexAndArgs(t *testing.T) {
+	tests := []struct {
+		name          string
+		args          []interface{}
+		expectedIndex Index
+		expectedArgs  []string
+	}{
+		{"No arguments", nil, "", nil},
+		{"Only index", []interface{}{BuildScan}, BuildScan, nil},
+		{"Index and args", []interface{}{BuildScan, []string{"arg1", "arg2"}}, BuildScan, []string{"arg1", "arg2"}},
+		{"Only args", []interface{}{[]string{"arg1", "arg2"}}, "", []string{"arg1", "arg2"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			index, args := extractIndexAndArgs(tt.args)
+			assert.Equal(t, tt.expectedIndex, index)
+			assert.Equal(t, tt.expectedArgs, args)
+		})
+	}
+}
+
+func TestDetermineFilePathAndName(t *testing.T) {
+	tempDir, err := fileutils.CreateTempDir()
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
+	}()
+	tests := []struct {
+		name              string
+		summaryOutputPath string
+		index             Index
+		args              []string
+		expectedPath      string
+		expectedName      string
+	}{
+		{"No index", tempDir, "", []string{"arg1"}, tempDir, "arg1"},
+		{"With index", tempDir, BuildScan, []string{"arg1"}, filepath.Join(tempDir, "build-scans"), "arg1"},
+		{"Invalid characters", tempDir, "", []string{"arg1/arg2"}, tempDir, "arg1-arg2"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			filePath, fileName, err := determineFilePathAndName(tt.summaryOutputPath, tt.index, tt.args)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedPath, filePath)
+			assert.Equal(t, tt.expectedName, fileName)
+
+		})
+	}
+}
+
+func TestDetermineFileName(t *testing.T) {
+	tests := []struct {
+		name         string
+		index        Index
+		args         []string
+		expectedName string
+	}{
+		{"No arguments", "", nil, "*-data"},
+		{"With index", SarifReport, nil, "*.sarif"},
+		{"With index and args", BuildScan, []string{"buildName", "buildNumber"}, "buildName-buildNumber"},
+		{"With args", "", []string{"arg1", "arg2"}, "arg1-arg2"},
+		{"Invalid characters /", "", []string{"arg1/arg2"}, "arg1-arg2"},
+		{"Invalid characters :", "", []string{"arg1:arg2"}, "arg1-arg2"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fileName := determineFileName(tt.index, tt.args)
+			assert.Equal(t, tt.expectedName, fileName)
 		})
 	}
 }

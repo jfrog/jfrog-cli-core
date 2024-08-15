@@ -24,7 +24,7 @@ func TestBuildInfoTable(t *testing.T) {
 }
 
 func TestBuildInfoModules(t *testing.T) {
-	gh := &BuildInfoSummary{platformUrl: platformUrl, majorVersion: 7}
+	buildInfoSummary := &BuildInfoSummary{platformUrl: platformUrl, platformMajorVersion: 7}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -70,7 +70,7 @@ func TestBuildInfoModules(t *testing.T) {
 		},
 	}
 
-	assert.Equal(t, getTestDataFile(t, "modules.md"), gh.buildInfoModules(builds))
+	assert.Equal(t, getTestDataFile(t, "modules.md"), buildInfoSummary.buildInfoModules(builds))
 }
 
 // Validate that if no supported module with artifacts was found, we avoid generating the markdown.

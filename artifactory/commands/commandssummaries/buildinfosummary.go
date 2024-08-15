@@ -15,21 +15,26 @@ const (
 )
 
 type BuildInfoSummary struct {
-	platformUrl  string
-	majorVersion int
+	platformUrl          string
+	platformMajorVersion int
+	// Map holding indexed scan results for each build info file.
 	indexedFiles map[commandsummary.Index]map[string]string
 }
 
-func NewBuildInfoWithUrl(platformUrl string, majorVersion int) *BuildInfoSummary {
+func NewBuildInfoSummaryWithUrl(platformUrl string, majorVersion int) *BuildInfoSummary {
 	return &BuildInfoSummary{
-		platformUrl:  platformUrl,
-		majorVersion: majorVersion,
+		platformUrl:          platformUrl,
+		platformMajorVersion: majorVersion,
 	}
 }
-func NewBuildInfo() *BuildInfoSummary {
+
+func NewBuildInfoSummary() *BuildInfoSummary {
 	return &BuildInfoSummary{}
 }
 
+// GenerateMarkdownFromFiles generates a Markdown summary from the build info data files.
+// dataFilePaths - The paths to the build info files.
+// indexedFiles - A map holding scan results corresponding to builds
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, indexedFiles map[commandsummary.Index]map[string]string) (finalMarkdown string, err error) {
 	bis.indexedFiles = indexedFiles
 	// Aggregate all the build info files into a slice
@@ -121,5 +126,5 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.majorVersion)
+	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
 }

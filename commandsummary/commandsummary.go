@@ -14,6 +14,11 @@ import (
 	"strings"
 )
 
+// To create a new command summary, the user must implement this interface.
+// The GenerateMarkdownFromFiles function should be implemented to generate Markdown from the provided data file paths.
+// This involves loading data from the files and converting it into a Markdown string.
+// The indexedFilePaths map contains special indexed file paths for more advanced use cases,
+// see RecordWithIndex comments for more information.
 type CommandSummaryInterface interface {
 	GenerateMarkdownFromFiles(dataFilePaths []string, indexedFilePaths map[Index]map[string]string) (finalMarkdown string, err error)
 }
@@ -87,11 +92,15 @@ func (cs *CommandSummary) Record(data any) (err error) {
 	return cs.recordInternal(data)
 }
 
-// RecordWithIndex stores the data inside an indexed folder, which is nested under the command summary directory.
+// The RecordWithIndex function saves data into an indexed folder within the command summary directory.
+// This allows you to associate specific indexed data with other recorded data using a key-value mapping.
+// For example,
+// when you have uploaded artifact and want to combine it with its scan results recorded at a different time,
+// recording the scan results as an index helps merge the information later on.
 //
-//	Data: The data to be recorded.
-//	SummaryIndex: Name of the index.
-//	Args: Extra arguments to be used in the file name.
+// Data: The data to be recorded.
+// SummaryIndex: The name of the index under which the data will be stored.
+// Args: Additional arguments used to determine the file name.
 func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...string) (err error) {
 	return cs.recordInternal(data, summaryIndex, args)
 }
@@ -132,7 +141,6 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
-
 	nestedFilesMap = make(map[Index]map[string]string)
 	for _, entry := range entries {
 		fullPath := filepath.Join(dirPath, entry.Name())
@@ -144,8 +152,7 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 			for subDir, files := range subNestedFilesMap {
 				nestedFilesMap[subDir] = files
 			}
-			// Ignore markdown files as they are not data files and could break handling of files.
-		} else if !strings.HasSuffix(entry.Name(), MarkdownSuffix) {
+		} else {
 			if isRoot {
 				currentDirFiles = append(currentDirFiles, fullPath)
 			} else {

@@ -15,7 +15,7 @@ import (
 )
 
 type CommandSummaryInterface interface {
-	GenerateMarkdownFromFiles(dataFilePaths []string, nestedFilePaths map[Index]map[string]string) (finalMarkdown string, err error)
+	GenerateMarkdownFromFiles(dataFilePaths []string, indexedFilePaths map[Index]map[string]string) (finalMarkdown string, err error)
 }
 
 // These optional index determine where files are saved, making them easier to locate.
@@ -35,7 +35,9 @@ const (
 const (
 	// The name of the directory where all the commands summaries will be stored.
 	// Inside this directory, each command will have its own directory.
-	OutputDirName = "jfrog-command-summary"
+	OutputDirName         = "jfrog-command-summary"
+	finalMarkdownFileName = "markdown.md"
+	MarkdownSuffix        = ".md"
 	// Filenames formats
 	SarifFileFormat = "*.sarif"
 	DataFileFormat  = "*-data"
@@ -74,7 +76,7 @@ func (cs *CommandSummary) GenerateMarkdown() error {
 	if err != nil {
 		return fmt.Errorf("failed to render markdown: %w", err)
 	}
-	if err = cs.saveMarkdownToFileSystem(markdown); err != nil {
+	if err = cs.saveMarkdownFile(markdown); err != nil {
 		return fmt.Errorf("failed to save markdown to file system: %w", err)
 	}
 	return nil
@@ -85,50 +87,38 @@ func (cs *CommandSummary) Record(data any) (err error) {
 	return cs.recordInternal(data)
 }
 
-// Record data with specific name and location for future use by other components.
-// Data: The data to be recorded.
-// summaryIndex: data will be saved inside a nested directory within the index name.
-// Args: These arguments will be used to determine the file name.
+// RecordWithIndex stores the data inside an indexed folder, which is nested under the command summary directory.
+//
+//	Data: The data to be recorded.
+//	SummaryIndex: Name of the index.
+//	Args: Extra arguments to be used in the file name.
 func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...string) (err error) {
 	return cs.recordInternal(data, summaryIndex, args)
 }
 
 func (cs *CommandSummary) recordInternal(data any, args ...interface{}) (err error) {
 	// Handle optional extra arguments for recording
-	summaryIndex, extraArgs := extractSubDirAndArgs(args)
+	summaryIndex, extraArgs := extractIndexAndArgs(args)
 	// Decide on the location and the file name based on the subject and the extra arguments.
 	filePath, fileName, err := determineFilePathAndName(cs.summaryOutputPath, summaryIndex, extraArgs)
 	if err != nil {
 		return err
 	}
 	// Create the file and write the data to it.
-	return cs.createAndWriteToFile(filePath, fileName, data)
+	return cs.saveDataFile(filePath, fileName, data)
 }
 
-func (cs *CommandSummary) createAndWriteToFile(filePath, fileName string, data any) (err error) {
-	var fd *os.File
-	// Create a file
-	if strings.Contains(fileName, "*") {
-		fd, err = os.CreateTemp(filePath, fileName)
-	} else {
-		fd, err = os.Create(filepath.Join(filePath, fileName))
-	}
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	defer func() {
-		err = errors.Join(err, errorutils.CheckError(fd.Close()))
-	}()
-
-	// Write to file
+func (cs *CommandSummary) saveDataFile(filePath, fileName string, data any) (err error) {
 	bytes, err := convertDataToBytes(data)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	if _, err = fd.Write(bytes); err != nil {
-		return errorutils.CheckError(err)
-	}
-	return
+	return createAndWriteToFile(filePath, fileName, bytes)
+}
+
+func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
+	data := []byte(markdown)
+	return createAndWriteToFile(cs.summaryOutputPath, finalMarkdownFileName, data)
 }
 
 // Returns all the data files paths in the current command summary directory and nested indexed directories if exists.
@@ -136,6 +126,7 @@ func (cs *CommandSummary) getDataFilesPaths() (currentDirFiles []string, nestedF
 	return cs.getAllDataFilesPathsRecursive(cs.summaryOutputPath, true)
 }
 
+// Retrieve all the data files paths in the given directory and its subdirectories recursively.
 func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot bool) (currentDirFiles []string, nestedFilesMap map[Index]map[string]string, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -153,7 +144,8 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 			for subDir, files := range subNestedFilesMap {
 				nestedFilesMap[subDir] = files
 			}
-		} else if !strings.HasSuffix(entry.Name(), ".md") {
+			// Ignore markdown files as they are not data files and could break handling of files.
+		} else if !strings.HasSuffix(entry.Name(), MarkdownSuffix) {
 			if isRoot {
 				currentDirFiles = append(currentDirFiles, fullPath)
 			} else {
@@ -166,20 +158,6 @@ func (cs *CommandSummary) getAllDataFilesPathsRecursive(dirPath string, isRoot b
 		}
 	}
 	return currentDirFiles, nestedFilesMap, nil
-}
-
-func (cs *CommandSummary) saveMarkdownToFileSystem(markdown string) (err error) {
-	file, err := os.OpenFile(filepath.Join(cs.summaryOutputPath, "markdown.md"), os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	defer func() {
-		err = errors.Join(err, errorutils.CheckError(file.Close()))
-	}()
-	if _, err = file.WriteString(markdown); err != nil {
-		return errorutils.CheckError(err)
-	}
-	return
 }
 
 // This function creates the base dir for the command summary inside
@@ -203,6 +181,28 @@ func (cs *CommandSummary) prepareFileSystem() (err error) {
 // If the output dir path is not defined, the command summary should not be recorded.
 func ShouldRecordSummary() bool {
 	return os.Getenv(coreutils.OutputDirPathEnv) != ""
+}
+
+func createAndWriteToFile(filePath, fileName string, data []byte) (err error) {
+	var fd *os.File
+	// Create a file
+	if strings.Contains(fileName, "*") {
+		fd, err = os.CreateTemp(filePath, fileName)
+	} else {
+		fd, err = os.Create(filepath.Join(filePath, fileName))
+	}
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	defer func() {
+		err = errors.Join(err, errorutils.CheckError(fd.Close()))
+	}()
+
+	// Write to file
+	if _, err = fd.Write(data); err != nil {
+		return errorutils.CheckError(err)
+	}
+	return
 }
 
 // Helper function to unmarshal data from a file path into the target object.
@@ -264,7 +264,7 @@ func determineFilePathAndName(summaryOutputPath string, index Index, args []stri
 	return
 }
 
-func extractSubDirAndArgs(args []interface{}) (Index, []string) {
+func extractIndexAndArgs(args []interface{}) (Index, []string) {
 	var index Index
 	var extraArgs []string
 

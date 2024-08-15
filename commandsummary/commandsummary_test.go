@@ -30,22 +30,7 @@ func TestInitWithoutOutputDir(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestCommandSummaryFileSystemBehaviour(t *testing.T) {
-	cs, cleanUp := prepareTest(t)
-	defer func() {
-		cleanUp()
-	}()
-
-	// Call Record
-	err := cs.Record("someData")
-	assert.NoError(t, err)
-
-	// Verify that the directory contains one file
-	files, err := os.ReadDir(cs.summaryOutputPath)
-	assert.NoError(t, err, "Failed to read directory 'test'")
-	assert.Equal(t, 1, len(files), "Directory 'test' does not contain exactly data file")
-}
-
+// Verifies the behavior of recording simple data.
 func TestSimpleRecord(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
@@ -98,9 +83,9 @@ func TestSimpleRecord(t *testing.T) {
 	}
 }
 
-// Verifies the behavior of recording with extra args
+// Verifies the behavior of recording with indexes
 // should create a nested file structure that can be used later on.
-func TestRecordWithArgs(t *testing.T) {
+func TestIndexedRecord(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
 		name                     string
@@ -110,6 +95,7 @@ func TestRecordWithArgs(t *testing.T) {
 		expectedDirectoryMapping map[Index]map[string]string
 		recordArgs               []string
 	}{
+		// Build-Scan result file should contain the build name and build number
 		{
 			name:         "Record build scan result",
 			summaryIndex: BuildScan,
@@ -121,7 +107,7 @@ func TestRecordWithArgs(t *testing.T) {
 			recordArgs: []string{"buildName", "buildNumber"},
 		},
 		// Binary files should contain a full path to the file
-		// To handle the case where we scan different binaries but with different names.
+		// To handle the case where we scan different binaries but with identical names.
 		{
 			name:         "Record binary scan result",
 			summaryIndex: BinariesScan,
@@ -132,6 +118,7 @@ func TestRecordWithArgs(t *testing.T) {
 			},
 			recordArgs: []string{"path/to/some-binary.exe"},
 		},
+		// Docker images files should be saved without any slashes or colons
 		{
 			name:         "Record docker scan result",
 			summaryIndex: DockerScan,
@@ -177,7 +164,8 @@ func TestRecordWithArgs(t *testing.T) {
 	}
 }
 
-// Verifies the recording of sarif multiple reports.
+// Sarif is a special indexed case, where there could be multiple indexed files.
+// Therefore, the names are random and should be saved in the same directory.
 func TestSarifMultipleReports(t *testing.T) {
 	// Define test cases
 	testCases := []struct {

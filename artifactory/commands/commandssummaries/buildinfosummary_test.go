@@ -11,7 +11,7 @@ import (
 )
 
 func TestBuildInfoTable(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -20,7 +20,7 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-	assert.Equal(t, getTestDataFile(t, "table.md"), gh.buildInfoTable(builds))
+	assert.Equal(t, getTestDataFile(t, "table.md"), buildInfoSummary.buildInfoTable(builds))
 }
 
 func TestBuildInfoModules(t *testing.T) {
@@ -75,7 +75,7 @@ func TestBuildInfoModules(t *testing.T) {
 
 // Validate that if no supported module with artifacts was found, we avoid generating the markdown.
 func TestBuildInfoModulesEmpty(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -105,7 +105,7 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 		},
 	}
 
-	assert.Empty(t, gh.buildInfoModules(builds))
+	assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 }
 
 func getTestDataFile(t *testing.T, fileName string) string {

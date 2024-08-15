@@ -18,7 +18,7 @@ type BuildInfoSummary struct {
 	platformUrl          string
 	platformMajorVersion int
 	// Map holding indexed scan results for each build info file.
-	indexedFiles map[commandsummary.Index]map[string]string
+	indexedFilesMap map[commandsummary.Index]map[string]string
 }
 
 func NewBuildInfoSummaryWithUrl(platformUrl string, majorVersion int) *BuildInfoSummary {
@@ -34,9 +34,9 @@ func NewBuildInfoSummary() *BuildInfoSummary {
 
 // GenerateMarkdownFromFiles generates a Markdown summary from the build info data files.
 // dataFilePaths - The paths to the build info files.
-// indexedFiles - A map holding scan results corresponding to builds
+// indexedFilesMap - A map holding scan results corresponding to builds
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, indexedFiles map[commandsummary.Index]map[string]string) (finalMarkdown string, err error) {
-	bis.indexedFiles = indexedFiles
+	bis.indexedFilesMap = indexedFiles
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {

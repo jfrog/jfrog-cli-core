@@ -176,12 +176,12 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	}
 
 	if !npc.tarballProvided {
-		if err := npc.pack(); err != nil {
+		if err = npc.pack(); err != nil {
 			return err
 		}
 	}
 
-	if err := npc.publish(); err != nil {
+	if err = npc.publish(); err != nil {
 		if npc.tarballProvided {
 			return err
 		}
@@ -190,7 +190,7 @@ func (npc *NpmPublishCommand) Run() (err error) {
 	}
 
 	if !npc.tarballProvided {
-		if err := deleteCreatedTarball(npc.packedFilePaths); err != nil {
+		if err = deleteCreatedTarball(npc.packedFilePaths); err != nil {
 			return err
 		}
 	}

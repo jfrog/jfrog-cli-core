@@ -155,11 +155,11 @@ func TestIndexedRecord(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			nestedFiles, err := cs.GetIndexedDataFilesPaths()
+			indexedFilesMap, err := cs.GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
 
 			// Verify nested files
-			verifyCurrentMapping(t, tc.expectedDirectoryMapping, nestedFiles)
+			verifyCurrentMapping(t, tc.expectedDirectoryMapping, indexedFilesMap)
 		})
 	}
 }
@@ -193,9 +193,9 @@ func TestSarifMultipleReports(t *testing.T) {
 			err = cs.RecordWithIndex(tc.originalData, tc.summaryIndex)
 			assert.NoError(t, err)
 			// Verify file has been saved
-			nestedFiles, err := cs.GetIndexedDataFilesPaths()
+			indexedFilesMap, err := cs.GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
-			assert.Equal(t, 2, len(nestedFiles[SarifReport]))
+			assert.Equal(t, 2, len(indexedFilesMap[SarifReport]))
 		})
 	}
 }

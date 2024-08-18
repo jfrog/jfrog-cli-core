@@ -170,7 +170,6 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 				nestedFilesMap[Index(base)] = make(map[string]string)
 			}
 			nestedFilesMap[Index(base)][entry.Name()] = fullPath
-
 		}
 	}
 	return nestedFilesMap, nil

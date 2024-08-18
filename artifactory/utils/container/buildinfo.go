@@ -27,7 +27,8 @@ const (
 	markerLayerSuffix          string      = ".marker"
 	attestationManifestRefType string      = "attestation-manifest"
 	unknownPlatformPlaceholder string      = "unknown"
-	attestationsModuleIdPrefix string      = "attestations"
+
+	AttestationsModuleIdPrefix string = "attestations"
 )
 
 // Docker image build info builder.
@@ -385,7 +386,7 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 // Construct the manifest's module ID by its type (attestation) or its platform.
 func getModuleIdByManifest(manifest ManifestDetails, baseModuleId string) string {
 	if manifest.Annotations.ReferenceType == attestationManifestRefType {
-		return path.Join(attestationsModuleIdPrefix, baseModuleId)
+		return path.Join(AttestationsModuleIdPrefix, baseModuleId)
 	}
 	if manifest.Platform.Os != unknownPlatformPlaceholder && manifest.Platform.Architecture != unknownPlatformPlaceholder {
 		return path.Join(manifest.Platform.Os, manifest.Platform.Architecture, baseModuleId)

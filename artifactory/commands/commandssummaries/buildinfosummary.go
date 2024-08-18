@@ -4,6 +4,7 @@ import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 	"path"
 	"strings"
@@ -91,17 +92,37 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
 				continue
 			}
-			artifactsTree := bis.createArtifactsTree(module)
-			if isMultiModule {
-				// Collapse the module tree if there are multiple modules
-				modulesMarkdown.WriteString(fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", module.Id, artifactsTree))
-			} else {
-				modulesMarkdown.WriteString(artifactsTree)
-			}
+			modulesMarkdown.WriteString(bis.generateModuleMarkdown(module, isMultiModule))
 		}
 		modulesMarkdown.WriteString("</pre>\n")
 	}
 	return modulesMarkdown.String()
+}
+
+func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module, shouldCollapse bool) string {
+	artifactsTree := bis.createArtifactsTree(module)
+	if shouldCollapse {
+		return bis.generateModuleCollapsibleSection(module, artifactsTree)
+	}
+	return artifactsTree
+}
+
+func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.Module, artifactsTree string) string {
+	switch module.Type {
+	case buildInfo.Docker:
+		// Skip attestations that are added as a module for multi-arch docker builds
+		if strings.HasPrefix(module.Id, container.AttestationsModuleIdPrefix) {
+			return ""
+		}
+		// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
+		parentImageName := strings.Split(module.Id, ":")[0]
+		// Create a link to the Docker package in Artifactory UI
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(bis.platformUrl, "/"), "%2F%2F"+parentImageName, module.Sha256)
+		dockerTitleWithLink := fmt.Sprintf("%s <a href=%s>(View 🐸)</a>", module.Id, dockerModuleLink)
+		return createCollapsibleSection(dockerTitleWithLink, artifactsTree)
+	default:
+		return createCollapsibleSection(module.Id, artifactsTree)
+	}
 }
 
 func (bis *BuildInfoSummary) createArtifactsTree(module buildInfo.Module) string {
@@ -160,4 +181,8 @@ func parseBuildTime(timestamp string) string {
 	}
 	// Format the time in a more human-readable format and save it in a variable
 	return buildInfoTime.Format(timeFormat)
+}
+
+func createCollapsibleSection(title, content string) string {
+	return fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", title, content)
 }

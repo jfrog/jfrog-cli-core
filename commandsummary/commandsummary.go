@@ -74,6 +74,9 @@ func (cs *CommandSummary) GenerateMarkdown() error {
 	if err != nil {
 		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)
 	}
+	if len(dataFilesPaths) == 0 {
+		return nil
+	}
 	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown: %w", err)
@@ -115,7 +118,7 @@ func (cs *CommandSummary) GetDataFilesPaths() ([]string, error) {
 	// Exclude markdown files
 	var filePaths []string
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		if !entry.IsDir() && !strings.HasSuffix(entry.Name(), ".md") {
 			filePaths = append(filePaths, filepath.Join(cs.summaryOutputPath, entry.Name()))
 		}
 	}

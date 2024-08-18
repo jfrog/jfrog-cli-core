@@ -164,14 +164,13 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 			for subDir, files := range subNestedFilesMap {
 				nestedFilesMap[subDir] = files
 			}
-		} else {
-			if !isRoot {
-				base := filepath.Base(dirPath)
-				if nestedFilesMap[Index(base)] == nil {
-					nestedFilesMap[Index(base)] = make(map[string]string)
-				}
-				nestedFilesMap[Index(base)][entry.Name()] = fullPath
+		} else if !isRoot {
+			base := filepath.Base(dirPath)
+			if nestedFilesMap[Index(base)] == nil {
+				nestedFilesMap[Index(base)] = make(map[string]string)
 			}
+			nestedFilesMap[Index(base)][entry.Name()] = fullPath
+
 		}
 	}
 	return nestedFilesMap, nil

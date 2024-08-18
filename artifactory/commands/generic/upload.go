@@ -292,7 +292,7 @@ func recordCommandSummary(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 
-	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(platformUrl, majorVersion), "upload")
+	uploadSummary, err := commandssummaries.NewUploadSummary(platformUrl, majorVersion)
 	if err != nil {
 		return
 	}

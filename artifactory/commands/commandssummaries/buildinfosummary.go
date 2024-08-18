@@ -111,10 +111,10 @@ func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.M
 	switch module.Type {
 	case buildInfo.Docker:
 		// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
-		parentImageName := strings.Split(module.Id, ":")[0]
+		parentImageName := strings.Split(module.Parent, ":")[0]
 		// Create a link to the Docker package in Artifactory UI
 		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(bis.platformUrl, "/"), "%2F%2F"+parentImageName, module.Sha256)
-		dockerTitleWithLink := fmt.Sprintf("%s <a href=%s>(View 🐸)</a>", module.Id, dockerModuleLink)
+		dockerTitleWithLink := fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 		return createCollapsibleSection(dockerTitleWithLink, sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)

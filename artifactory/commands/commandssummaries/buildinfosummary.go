@@ -92,22 +92,22 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
 				continue
 			}
-			modulesMarkdown.WriteString(bis.generateModuleMarkdown(module, isMultiModule))
+			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(module, isMultiModule))
 		}
 		modulesMarkdown.WriteString("</pre>\n")
 	}
 	return modulesMarkdown.String()
 }
 
-func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module, shouldCollapse bool) string {
+func (bis *BuildInfoSummary) generateModuleArtifactsTree(module buildInfo.Module, shouldCollapseArtifactsTree bool) string {
 	artifactsTree := bis.createArtifactsTree(module)
-	if shouldCollapse {
+	if shouldCollapseArtifactsTree {
 		return bis.generateModuleCollapsibleSection(module, artifactsTree)
 	}
 	return artifactsTree
 }
 
-func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.Module, artifactsTree string) string {
+func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
 		// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
@@ -115,9 +115,9 @@ func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.M
 		// Create a link to the Docker package in Artifactory UI
 		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(bis.platformUrl, "/"), "%2F%2F"+parentImageName, module.Sha256)
 		dockerTitleWithLink := fmt.Sprintf("%s <a href=%s>(View 🐸)</a>", module.Id, dockerModuleLink)
-		return createCollapsibleSection(dockerTitleWithLink, artifactsTree)
+		return createCollapsibleSection(dockerTitleWithLink, sectionContent)
 	default:
-		return createCollapsibleSection(module.Id, artifactsTree)
+		return createCollapsibleSection(module.Id, sectionContent)
 	}
 }
 

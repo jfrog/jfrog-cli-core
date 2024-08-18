@@ -1,5 +1,4 @@
 #### multiarch-image:1
-
 <pre><details><summary>linux/amd64/multiarch-image:1 <a href=https://myplatform.com/ui/packages/docker:%2F%2Flinux/amd64/multiarch-image/sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e>(View 🐸)</a></summary>
 📦 docker-local
 └── 📁 multiarch-image

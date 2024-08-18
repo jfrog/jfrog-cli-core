@@ -110,10 +110,6 @@ func (bis *BuildInfoSummary) generateModuleMarkdown(module buildInfo.Module, sho
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.Module, artifactsTree string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		// Skip attestations that are added as a module for multi-arch docker builds
-		if strings.HasPrefix(module.Id, container.AttestationsModuleIdPrefix) {
-			return ""
-		}
 		// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
 		parentImageName := strings.Split(module.Id, ":")[0]
 		// Create a link to the Docker package in Artifactory UI
@@ -150,7 +146,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Module {
 	parentToModulesMap := make(map[string][]buildInfo.Module, len(modules))
 	for _, module := range modules {
-		if len(module.Artifacts) == 0 || !isSupportedModuleType(module.Type) {
+		if len(module.Artifacts) == 0 || !isSupportedModule(module) {
 			continue
 		}
 
@@ -164,10 +160,13 @@ func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Mod
 	return parentToModulesMap
 }
 
-func isSupportedModuleType(moduleType buildInfo.ModuleType) bool {
-	switch moduleType {
-	case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
+func isSupportedModule(module buildInfo.Module) bool {
+	switch module.Type {
+	case buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
 		return true
+	case buildInfo.Docker:
+		// Skip attestations that are added as a module for multi-arch docker builds
+		return !strings.HasPrefix(module.Id, container.AttestationsModuleIdPrefix)
 	default:
 		return false
 	}

@@ -235,8 +235,9 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 	assert.Contains(t, result, getTestDataFile(t, "multiarch-image1.md"))
 }
 
+// Tests data files are location artifactory/commands/testdata/command_summary
 func getTestDataFile(t *testing.T, fileName string) string {
-	modulesPath := filepath.Join(".", "testdata", fileName)
+	modulesPath := filepath.Join("../", "testdata", "command_summaries", fileName)
 	content, err := os.ReadFile(modulesPath)
 	assert.NoError(t, err)
 	contentStr := string(content)

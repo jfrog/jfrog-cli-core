@@ -6,7 +6,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"strings"
 	"time"
@@ -186,9 +185,8 @@ func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string) st
 	var sha256 string
 	for _, artifact := range module.Artifacts {
 		if artifact.Name == container.ManifestJsonFile {
-			log.Info("Manifest file found with SHA256:", artifact.Sha256)
-			// Extract the sha256 from the artifact's sha256 field, The format is sha256:<sha256>
-			sha256 = strings.Split(artifact.Sha256, ":")[1]
+			sha256 = artifact.Sha256
+			break
 		}
 	}
 	// Create a link to the Docker package in Artifactory UI

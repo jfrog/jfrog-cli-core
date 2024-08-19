@@ -86,7 +86,7 @@ func (pc *PythonCommand) Run() (err error) {
 
 		err = cmd.Run()
 		if err != nil {
-			if buildInfoUtils.IsForbiddenOutput("pip", errBuffer.String()) {
+			if buildInfoUtils.IsForbiddenOutput(buildInfoUtils.Pip, errBuffer.String()) {
 				err = errors.Join(err, buildInfoUtils.NewForbiddenError())
 			}
 		}

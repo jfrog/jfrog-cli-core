@@ -132,7 +132,7 @@ func getManifestArtifact(manifest *utils.ResultItem) (artifact buildinfo.Artifac
 	return buildinfo.Artifact{
 		Name:                   ManifestJsonFile,
 		Type:                   "json",
-		Checksum:               buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5},
+		Checksum:               buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5, Sha256: manifest.Sha256},
 		Path:                   path.Join(manifest.Path, manifest.Name),
 		OriginalDeploymentRepo: manifest.Repo,
 	}
@@ -143,7 +143,7 @@ func getFatManifestArtifact(fatManifest *utils.ResultItem) (artifact buildinfo.A
 	return buildinfo.Artifact{
 		Name:                   "list.manifest.json",
 		Type:                   "json",
-		Checksum:               buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5},
+		Checksum:               buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5, Sha256: fatManifest.Sha256},
 		Path:                   path.Join(fatManifest.Path, fatManifest.Name),
 		OriginalDeploymentRepo: fatManifest.Repo,
 	}
@@ -154,7 +154,7 @@ func getManifestDependency(searchResults *utils.ResultItem) (dependency buildinf
 	return buildinfo.Dependency{
 		Id:       ManifestJsonFile,
 		Type:     "json",
-		Checksum: buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5},
+		Checksum: buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5, Sha256: searchResults.Sha256},
 	}
 }
 

@@ -1,4 +1,4 @@
-package buildinfo
+package commandsummary
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
@@ -8,10 +8,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-)
-
-const (
-	platformUrl = "https://myplatform.com/"
 )
 
 func TestBuildInfoTable(t *testing.T) {

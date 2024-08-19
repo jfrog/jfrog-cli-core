@@ -236,7 +236,7 @@ func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink, serverUrl s
 		return
 	}
 	buildInfo.BuildUrl = buildLink
-	buildInfoSummary, err := NewBuildInfoSummary(serverUrl, majorVersion)
+	buildInfoSummary, err := commandsummary.NewBuildInfoSummary(serverUrl, majorVersion)
 	if err != nil {
 		return
 	}

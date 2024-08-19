@@ -1,11 +1,10 @@
-package buildinfo
+package commandsummary
 
 import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 	"path"
 	"strings"
 	"time"
@@ -20,8 +19,8 @@ type BuildInfoSummary struct {
 	platformMajorVersion int
 }
 
-func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*commandsummary.CommandSummary, error) {
-	return commandsummary.New(&BuildInfoSummary{
+func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*CommandSummary, error) {
+	return New(&BuildInfoSummary{
 		platformUrl:          serverUrl,
 		platformMajorVersion: platformMajorVersion,
 	}, "build-info")
@@ -32,7 +31,7 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {
 		var publishBuildInfo buildInfo.BuildInfo
-		if err = commandsummary.UnmarshalFromFilePath(filePath, &publishBuildInfo); err != nil {
+		if err = UnmarshalFromFilePath(filePath, &publishBuildInfo); err != nil {
 			return
 		}
 		builds = append(builds, &publishBuildInfo)
@@ -123,7 +122,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return commandsummary.GenerateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
+	return GenerateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
 }
 
 // groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.

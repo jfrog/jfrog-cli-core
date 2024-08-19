@@ -1,9 +1,9 @@
-package commandssummaries
+package generic
 
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 )
 
 type UploadSummary struct {
@@ -61,5 +61,5 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	return generateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
+	return commandsummary.GenerateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
 }

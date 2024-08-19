@@ -1,4 +1,4 @@
-package commandssummaries
+package commandsummary
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ const (
 	artifactory6UiFormat = "%sartifactory/webapp/#/artifacts/browse/tree/General/%s"
 )
 
-func generateArtifactUrl(rtUrl, pathInRt string, majorVersion int) string {
+func GenerateArtifactUrl(rtUrl, pathInRt string, majorVersion int) string {
 	rtUrl = clientUtils.AddTrailingSlashIfNeeded(rtUrl)
 	if majorVersion == 6 {
 		return fmt.Sprintf(artifactory6UiFormat, rtUrl, pathInRt)

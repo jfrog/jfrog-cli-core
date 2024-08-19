@@ -2,8 +2,7 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"os"
 
@@ -292,7 +291,7 @@ func recordCommandSummary(servicesManager artifactory.ArtifactoryServicesManager
 		return err
 	}
 
-	uploadSummary, err := commandssummaries.NewUploadSummary(platformUrl, majorVersion)
+	uploadSummary, err := NewUploadSummary(platformUrl, majorVersion)
 	if err != nil {
 		return
 	}

@@ -1,10 +1,11 @@
-package commandssummaries
+package buildinfo
 
 import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 	"path"
 	"strings"
 	"time"
@@ -122,7 +123,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
+	return commandsummary.GenerateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
 }
 
 // groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.
@@ -158,6 +159,6 @@ func parseBuildTime(timestamp string) string {
 	if err != nil {
 		return "N/A"
 	}
-	// Format the time in a more human-readable format and save it in a variable
+	// Format the time in a more human-readable format
 	return buildInfoTime.Format(timeFormat)
 }

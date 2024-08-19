@@ -203,7 +203,9 @@ func ShouldRecordSummary() bool {
 
 func createAndWriteToFile(filePath, fileName string, data []byte) (err error) {
 	var fd *os.File
-	// Create a file
+	// If the filename contains a '*' character, it indicates that a random value will be injected to the filename.
+	// This is often used for temporary files to avoid name conflicts.
+	// However, for indexed content, we usually want to maintain a consistent filename without randomization.
 	if strings.Contains(fileName, "*") {
 		fd, err = os.CreateTemp(filePath, fileName)
 	} else {

@@ -1,4 +1,4 @@
-package commandssummaries
+package commandsummary
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -24,7 +24,7 @@ func TestGenerateArtifactUrl(t *testing.T) {
 
 	for _, testCase := range cases {
 		t.Run(testCase.testName, func(t *testing.T) {
-			artifactUrl := generateArtifactUrl(platformUrl, fullPath, testCase.majorVersion)
+			artifactUrl := GenerateArtifactUrl(platformUrl, fullPath, testCase.majorVersion)
 			assert.Equal(t, testCase.expected, artifactUrl)
 		})
 	}

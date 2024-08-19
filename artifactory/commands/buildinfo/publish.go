@@ -3,8 +3,7 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 	"net/url"
 	"strconv"
 	"strings"
@@ -237,7 +236,7 @@ func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink, serverUrl s
 		return
 	}
 	buildInfo.BuildUrl = buildLink
-	buildInfoSummary, err := commandssummaries.NewBuildInfoSummary(serverUrl, majorVersion)
+	buildInfoSummary, err := NewBuildInfoSummary(serverUrl, majorVersion)
 	if err != nil {
 		return
 	}

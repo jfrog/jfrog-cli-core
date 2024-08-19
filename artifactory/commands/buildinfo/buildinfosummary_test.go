@@ -1,4 +1,4 @@
-package commandssummaries
+package buildinfo
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
@@ -8,6 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+)
+
+const (
+	platformUrl = "https://myplatform.com/"
 )
 
 func TestBuildInfoTable(t *testing.T) {
@@ -117,7 +121,7 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 }
 
 func TestBuildInfoModulesWithGrouping(t *testing.T) {
-	gh := &BuildInfoSummary{platformUrl: platformUrl, platformMajorVersion: 7}
+	buildInfoSummary := &BuildInfoSummary{platformUrl: platformUrl, platformMajorVersion: 7}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:    "dockerx",
@@ -226,7 +230,7 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 		},
 	}
 
-	result := gh.buildInfoModules(builds)
+	result := buildInfoSummary.buildInfoModules(builds)
 	assert.Contains(t, result, getTestDataFile(t, "image2.md"))
 	assert.Contains(t, result, getTestDataFile(t, "multiarch-image1.md"))
 }

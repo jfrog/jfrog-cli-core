@@ -92,14 +92,14 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
 				continue
 			}
-			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(module, isMultiModule))
+			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
 		}
 		modulesMarkdown.WriteString("</pre>\n")
 	}
 	return modulesMarkdown.String()
 }
 
-func (bis *BuildInfoSummary) generateModuleArtifactsTree(module buildInfo.Module, shouldCollapseArtifactsTree bool) string {
+func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
 	artifactsTree := bis.createArtifactsTree(module)
 	if shouldCollapseArtifactsTree {
 		return bis.generateModuleCollapsibleSection(module, artifactsTree)
@@ -107,16 +107,16 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module buildInfo.Module
 	return artifactsTree
 }
 
-func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.Module, sectionContent string) string {
+func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		return createCollapsibleSection(createDockerMultiArchTitle(&module, bis.platformUrl), sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
 }
 
-func (bis *BuildInfoSummary) createArtifactsTree(module buildInfo.Module) string {
+func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) string {
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
@@ -141,7 +141,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Module {
 	parentToModulesMap := make(map[string][]buildInfo.Module, len(modules))
 	for _, module := range modules {
-		if len(module.Artifacts) == 0 || !isSupportedModule(module) {
+		if len(module.Artifacts) == 0 || !isSupportedModule(&module) {
 			continue
 		}
 
@@ -155,7 +155,7 @@ func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Mod
 	return parentToModulesMap
 }
 
-func isSupportedModule(module buildInfo.Module) bool {
+func isSupportedModule(module *buildInfo.Module) bool {
 	switch module.Type {
 	case buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
 		return true

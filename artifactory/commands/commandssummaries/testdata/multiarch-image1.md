@@ -1,19 +1,19 @@
 #### multiarch-image:1
-<pre><details><summary>linux/amd64/multiarch-image:1 <a href=https://myplatform.com/ui/packages/docker:%2F%2Fmultiarch-image/sha256__552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21>(🐸 View)</a></summary>
+<pre><details><summary>linux/amd64/multiarch-image:1 <a href=https://myplatform.com/ui/packages/docker:%2F%2Fmultiarch-image/sha256__sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21>(🐸 View)</a></summary>
 📦 docker-local
 └── 📁 multiarch-image
     ├── 📁 sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21
     │   └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/multiarch-image/sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21/sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e?clearFilter=true target="_blank">sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e</a>
     └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/multiarch-image/sha256__552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21?clearFilter=true target="_blank">sha256__552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21</a>
 
-</details><details><summary>linux/arm64/multiarch-image:1 <a href=https://myplatform.com/ui/packages/docker:%2F%2Fmultiarch-image/sha256__bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92>(🐸 View)</a></summary>
+</details><details><summary>linux/arm64/multiarch-image:1 <a href=https://myplatform.com/ui/packages/docker:%2F%2Fmultiarch-image/sha256__sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92>(🐸 View)</a></summary>
 📦 docker-local
 └── 📁 multiarch-image
     ├── 📁 sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92
     │   └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/multiarch-image/sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92/sha256__1f17f9d95f85ba55773db30ac8e6fae894831be87f5c28f2b58d17f04ef65e93?clearFilter=true target="_blank">sha256__1f17f9d95f85ba55773db30ac8e6fae894831be87f5c28f2b58d17f04ef65e93</a>
     └── <a href=https://myplatform.com/ui/repos/tree/General/docker-local/multiarch-image/sha256__bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92?clearFilter=true target="_blank">sha256__bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92</a>
 
-</details><details><summary>linux/arm/multiarch-image:1 <a href=https://myplatform.com/ui/packages/docker:%2F%2Fmultiarch-image/sha256__686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338>(🐸 View)</a></summary>
+</details><details><summary>linux/arm/multiarch-image:1 <a href=https://myplatform.com/ui/packages/docker:%2F%2Fmultiarch-image/sha256__sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338>(🐸 View)</a></summary>
 📦 docker-local
 └── 📁 multiarch-image
     ├── 📁 sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338

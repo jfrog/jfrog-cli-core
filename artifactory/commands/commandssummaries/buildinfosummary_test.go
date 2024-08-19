@@ -125,9 +125,6 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 			Started: "2024-08-12T11:11:50.198+0300",
 			Modules: []buildinfo.Module{
 				{
-					Checksum: buildinfo.Checksum{
-						Sha256: "2217c766cddcd2d24994caaf7713db556a0fa8de108a946ebe5b0369f784a59a",
-					},
 					Properties: map[string]string{
 						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
 					},
@@ -151,10 +148,17 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 					Type:   "docker",
 					Parent: "multiarch-image:1",
 					Id:     "linux/amd64/multiarch-image:1",
-					Checksum: buildinfo.Checksum{
-						Sha256: "aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
-					},
 					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+								Sha256: "sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21",
+								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+							},
+							Name:                   "manifest.json",
+							Path:                   "multiarch-image/sha256__552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21",
+							OriginalDeploymentRepo: "docker-local",
+						},
 						{
 							Checksum: buildinfo.Checksum{
 								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
@@ -171,10 +175,17 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 					Type:   "docker",
 					Parent: "multiarch-image:1",
 					Id:     "linux/arm64/multiarch-image:1",
-					Checksum: buildinfo.Checksum{
-						Sha256: "1f17f9d95f85ba55773db30ac8e6fae894831be87f5c28f2b58d17f04ef65e93",
-					},
 					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+								Sha256: "sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92",
+								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+							},
+							Name:                   "manifest.json",
+							Path:                   "multiarch-image/sha256__bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92",
+							OriginalDeploymentRepo: "docker-local",
+						},
 						{
 							Checksum: buildinfo.Checksum{
 								Sha1:   "82b6d4ae1f673c609469a0a84170390ecdff5a38",
@@ -191,10 +202,17 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 					Type:   "docker",
 					Parent: "multiarch-image:1",
 					Id:     "linux/arm/multiarch-image:1",
-					Checksum: buildinfo.Checksum{
-						Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
-					},
 					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+								Sha256: "sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
+								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+							},
+							Name:                   "manifest.json",
+							Path:                   "multiarch-image/sha256__686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
+							OriginalDeploymentRepo: "docker-local",
+						},
 						{
 							Checksum: buildinfo.Checksum{
 								Sha1:   "63d3ac90f9cd322b76543d7bf96eeb92417faf41",

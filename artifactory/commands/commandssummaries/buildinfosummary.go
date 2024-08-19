@@ -110,12 +110,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module buildInfo.Module
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
-		parentImageName := strings.Split(module.Parent, ":")[0]
-		// Create a link to the Docker package in Artifactory UI
-		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(bis.platformUrl, "/"), "%2F%2F"+parentImageName, module.Sha256)
-		dockerTitleWithLink := fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
-		return createCollapsibleSection(dockerTitleWithLink, sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(&module, bis.platformUrl), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
@@ -180,6 +175,23 @@ func parseBuildTime(timestamp string) string {
 	}
 	// Format the time in a more human-readable format and save it in a variable
 	return buildInfoTime.Format(timeFormat)
+}
+
+func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string) string {
+	// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
+	parentImageName := strings.Split(module.Parent, ":")[0]
+
+	// Get the relevant SHA256
+	var sha256 string
+	for _, artifact := range module.Artifacts {
+		if artifact.Name == container.ManifestJsonFile {
+			// Extract the sha256 from the artifact's sha256 field, The format is sha256:<sha256>
+			sha256 = strings.Split(artifact.Sha256, ":")[1]
+		}
+	}
+	// Create a link to the Docker package in Artifactory UI
+	dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(platformUrl, "/"), "%2F%2F"+parentImageName, sha256)
+	return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 }
 
 func createCollapsibleSection(title, content string) string {

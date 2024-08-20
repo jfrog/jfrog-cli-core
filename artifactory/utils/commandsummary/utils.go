@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	artifactory7UiFormat = "%sui/repos/tree/General/%s?clearFilter=true"
-	artifactory6UiFormat = "%sartifactory/webapp/#/artifacts/browse/tree/General/%s"
+	artifactory7UiFormat              = "%sui/repos/tree/General/%s?clearFilter=true"
+	artifactory6UiFormat              = "%sartifactory/webapp/#/artifacts/browse/tree/General/%s"
+	artifactoryDockerPackagesUiFormat = "%s/ui/packages/docker:%s/sha256__%s"
 )
 
 func GenerateArtifactUrl(rtUrl, pathInRt string, majorVersion int) string {

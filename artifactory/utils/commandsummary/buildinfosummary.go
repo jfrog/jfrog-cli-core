@@ -3,6 +3,7 @@ package commandsummary
 import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"path"
@@ -91,20 +92,31 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
 				continue
 			}
-			artifactsTree := bis.createArtifactsTree(module)
-			if isMultiModule {
-				// Collapse the module tree if there are multiple modules
-				modulesMarkdown.WriteString(fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", module.Id, artifactsTree))
-			} else {
-				modulesMarkdown.WriteString(artifactsTree)
-			}
+			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
 		}
 		modulesMarkdown.WriteString("</pre>\n")
 	}
 	return modulesMarkdown.String()
 }
 
-func (bis *BuildInfoSummary) createArtifactsTree(module buildInfo.Module) string {
+func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
+	artifactsTree := bis.createArtifactsTree(module)
+	if shouldCollapseArtifactsTree {
+		return bis.generateModuleCollapsibleSection(module, artifactsTree)
+	}
+	return artifactsTree
+}
+
+func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
+	switch module.Type {
+	case buildInfo.Docker:
+		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl), sectionContent)
+	default:
+		return createCollapsibleSection(module.Id, sectionContent)
+	}
+}
+
+func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) string {
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
@@ -129,7 +141,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Module {
 	parentToModulesMap := make(map[string][]buildInfo.Module, len(modules))
 	for _, module := range modules {
-		if len(module.Artifacts) == 0 || !isSupportedModuleType(module.Type) {
+		if len(module.Artifacts) == 0 || !isSupportedModule(&module) {
 			continue
 		}
 
@@ -143,10 +155,13 @@ func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Mod
 	return parentToModulesMap
 }
 
-func isSupportedModuleType(moduleType buildInfo.ModuleType) bool {
-	switch moduleType {
-	case buildInfo.Docker, buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
+func isSupportedModule(module *buildInfo.Module) bool {
+	switch module.Type {
+	case buildInfo.Maven, buildInfo.Npm, buildInfo.Go, buildInfo.Generic, buildInfo.Terraform:
 		return true
+	case buildInfo.Docker:
+		// Skip attestations that are added as a module for multi-arch docker builds
+		return !strings.HasPrefix(module.Id, container.AttestationsModuleIdPrefix)
 	default:
 		return false
 	}
@@ -160,4 +175,25 @@ func parseBuildTime(timestamp string) string {
 	}
 	// Format the time in a more human-readable format
 	return buildInfoTime.Format(timeFormat)
+}
+
+func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string) string {
+	// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
+	parentImageName := strings.Split(module.Parent, ":")[0]
+
+	// Get the relevant SHA256
+	var sha256 string
+	for _, artifact := range module.Artifacts {
+		if artifact.Name == container.ManifestJsonFile {
+			sha256 = artifact.Sha256
+			break
+		}
+	}
+	// Create a link to the Docker package in Artifactory UI
+	dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(platformUrl, "/"), "%2F%2F"+parentImageName, sha256)
+	return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
+}
+
+func createCollapsibleSection(title, content string) string {
+	return fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", title, content)
 }

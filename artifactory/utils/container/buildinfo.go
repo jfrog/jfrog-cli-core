@@ -27,7 +27,9 @@ const (
 	markerLayerSuffix          string      = ".marker"
 	attestationManifestRefType string      = "attestation-manifest"
 	unknownPlatformPlaceholder string      = "unknown"
-	attestationsModuleIdPrefix string      = "attestations"
+
+	ManifestJsonFile                  = "manifest.json"
+	AttestationsModuleIdPrefix string = "attestations"
 )
 
 // Docker image build info builder.
@@ -128,9 +130,9 @@ func writeLayersToFile(layers []utils.ResultItem) (filePath string, err error) {
 // Return - manifest artifacts as buildinfo.Artifact struct.
 func getManifestArtifact(manifest *utils.ResultItem) (artifact buildinfo.Artifact) {
 	return buildinfo.Artifact{
-		Name:                   "manifest.json",
+		Name:                   ManifestJsonFile,
 		Type:                   "json",
-		Checksum:               buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5},
+		Checksum:               buildinfo.Checksum{Sha1: manifest.Actual_Sha1, Md5: manifest.Actual_Md5, Sha256: manifest.Sha256},
 		Path:                   path.Join(manifest.Path, manifest.Name),
 		OriginalDeploymentRepo: manifest.Repo,
 	}
@@ -141,7 +143,7 @@ func getFatManifestArtifact(fatManifest *utils.ResultItem) (artifact buildinfo.A
 	return buildinfo.Artifact{
 		Name:                   "list.manifest.json",
 		Type:                   "json",
-		Checksum:               buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5},
+		Checksum:               buildinfo.Checksum{Sha1: fatManifest.Actual_Sha1, Md5: fatManifest.Actual_Md5, Sha256: fatManifest.Sha256},
 		Path:                   path.Join(fatManifest.Path, fatManifest.Name),
 		OriginalDeploymentRepo: fatManifest.Repo,
 	}
@@ -150,9 +152,9 @@ func getFatManifestArtifact(fatManifest *utils.ResultItem) (artifact buildinfo.A
 // Return - manifest dependency as buildinfo.Dependency struct.
 func getManifestDependency(searchResults *utils.ResultItem) (dependency buildinfo.Dependency) {
 	return buildinfo.Dependency{
-		Id:       "manifest.json",
+		Id:       ManifestJsonFile,
 		Type:     "json",
-		Checksum: buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5},
+		Checksum: buildinfo.Checksum{Sha1: searchResults.Actual_Sha1, Md5: searchResults.Actual_Md5, Sha256: searchResults.Sha256},
 	}
 }
 
@@ -239,7 +241,7 @@ func performMultiPlatformImageSearch(imagePathPattern string, serviceManager art
 	resultMap = make(map[string][]*utils.ResultItem)
 	for resultItem := new(utils.ResultItem); reader.NextRecord(resultItem) == nil; resultItem = new(utils.ResultItem) {
 		pathToImageLayers[resultItem.Path] = append(pathToImageLayers[resultItem.Path], resultItem)
-		if resultItem.Name == "manifest.json" {
+		if resultItem.Name == ManifestJsonFile {
 			pathToSha2[resultItem.Path] = "sha256:" + resultItem.Sha256
 		}
 	}
@@ -366,7 +368,7 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 		var artifacts []buildinfo.Artifact
 		for _, layer := range image {
 			builder.imageLayers = append(builder.imageLayers, *layer)
-			if layer.Name == "manifest.json" {
+			if layer.Name == ManifestJsonFile {
 				artifacts = append(artifacts, getManifestArtifact(layer))
 			} else {
 				artifacts = append(artifacts, layer.ToArtifact())
@@ -385,7 +387,7 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 // Construct the manifest's module ID by its type (attestation) or its platform.
 func getModuleIdByManifest(manifest ManifestDetails, baseModuleId string) string {
 	if manifest.Annotations.ReferenceType == attestationManifestRefType {
-		return path.Join(attestationsModuleIdPrefix, baseModuleId)
+		return path.Join(AttestationsModuleIdPrefix, baseModuleId)
 	}
 	if manifest.Platform.Os != unknownPlatformPlaceholder && manifest.Platform.Architecture != unknownPlatformPlaceholder {
 		return path.Join(manifest.Platform.Os, manifest.Platform.Architecture, baseModuleId)
@@ -395,11 +397,11 @@ func getModuleIdByManifest(manifest ManifestDetails, baseModuleId string) string
 
 func (builder *buildInfoBuilder) createPushBuildProperties(imageManifest *manifest, candidateLayers map[string]*utils.ResultItem) (artifacts []buildinfo.Artifact, dependencies []buildinfo.Dependency, imageLayers []utils.ResultItem, err error) {
 	// Add artifacts.
-	artifacts = append(artifacts, getManifestArtifact(candidateLayers["manifest.json"]))
+	artifacts = append(artifacts, getManifestArtifact(candidateLayers[ManifestJsonFile]))
 	artifacts = append(artifacts, candidateLayers[digestToLayer(builder.imageSha2)].ToArtifact())
 
 	// Add layers.
-	imageLayers = append(imageLayers, *candidateLayers["manifest.json"])
+	imageLayers = append(imageLayers, *candidateLayers[ManifestJsonFile])
 	imageLayers = append(imageLayers, *candidateLayers[digestToLayer(builder.imageSha2)])
 
 	totalLayers := len(imageManifest.Layers)
@@ -448,7 +450,7 @@ func (builder *buildInfoBuilder) createPullBuildProperties(imageManifest *manife
 
 func getDependenciesFromManifestConfig(candidateLayers map[string]*utils.ResultItem, imageSha2 string) ([]buildinfo.Dependency, error) {
 	var dependencies []buildinfo.Dependency
-	manifestSearchResults, found := candidateLayers["manifest.json"]
+	manifestSearchResults, found := candidateLayers[ManifestJsonFile]
 	if !found {
 		return nil, errorutils.CheckErrorf("failed to collect build-info. The manifest.json was not found in Artifactory")
 	}

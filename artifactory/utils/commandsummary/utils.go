@@ -1,7 +1,7 @@
 package commandsummary
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 - This is only used for encoding, not security.
 	"encoding/hex"
 	"fmt"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"

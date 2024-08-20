@@ -37,7 +37,7 @@ func (nm IndexedFilesMap) Get(index Index, key string) (exists bool, value strin
 }
 
 func fileNameToSha1(fileName string) string {
-	hash := sha1.New()
+	hash := sha1.New() // #nosec G401 - This is only used for encoding, not security.
 	hash.Write([]byte(fileName))
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes)

@@ -9,8 +9,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"os"
 	"path/filepath"
-	"regexp"
-	"runtime"
 	"strings"
 )
 
@@ -106,7 +104,7 @@ func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...
 }
 
 // Retrieve all the indexed data files in the current command directory.
-func (cs *CommandSummary) GetIndexedDataFilesPaths() (indexedFilePathsMap map[Index]map[string]string, err error) {
+func (cs *CommandSummary) GetIndexedDataFilesPaths() (indexedFilePathsMap IndexedFilesMap, err error) {
 	return cs.getIndexedFileRecursively(cs.summaryOutputPath, true)
 }
 
@@ -128,13 +126,13 @@ func (cs *CommandSummary) GetDataFilesPaths() ([]string, error) {
 func (cs *CommandSummary) recordInternal(data any, args ...interface{}) (err error) {
 	// Handle optional extra arguments for recording
 	summaryIndex, extraArgs := extractIndexAndArgs(args)
-	// Decide on the location and the file name based on the subject and the extra arguments.
-	filePath, fileName, err := determineFilePathAndName(cs.summaryOutputPath, summaryIndex, extraArgs)
+	// Decide on the location of the file and uses SHA1 on the filename to handle possible invalid chars.
+	filePath, sha1FileName, err := determineFilePathAndName(cs.summaryOutputPath, summaryIndex, extraArgs)
 	if err != nil {
 		return err
 	}
 	// Create the file and write the data to it.
-	return cs.saveDataFile(filePath, fileName, data)
+	return cs.saveDataFile(filePath, sha1FileName, data)
 }
 
 func (cs *CommandSummary) saveDataFile(filePath, fileName string, data any) (err error) {
@@ -151,7 +149,7 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 }
 
 // Retrieve all the indexed data files paths in the given directory
-func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap map[Index]map[string]string, err error) {
+func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -252,23 +250,19 @@ func createDirIfNotExists(homeDir string) error {
 	return errorutils.CheckError(os.MkdirAll(homeDir, 0755))
 }
 
-// File name should be decided based on the subject and args.
 func determineFileName(summaryIndex Index, args []string) string {
+	// Sarif report should be saved as a random file with .sarif suffix
 	if summaryIndex == SarifReport {
 		return SarifFileFormat
 	}
-	if len(args) > 0 {
-		fileName := strings.Join(args, "-")
-		// If running on Windows, replace backslashes with dashes.
-		if runtime.GOOS == "windows" {
-			fileName = strings.ReplaceAll(fileName, "\\", "-")
-		}
-		// Replace all other invalid characters with dashes.
-		invalidChars := regexp.MustCompile(`[<>:"/\\|?*]`)
-		fileName = invalidChars.ReplaceAllString(fileName, "-")
-		return fileName
+	// Regular data files should be saved with a random name and a '-data' suffix.
+	if len(args) == 0 {
+		return DataFileFormat
 	}
-	return DataFileFormat
+	// If there are arguments, they should be concatenated with a '-' separator.
+	fileName := strings.Join(args, "-")
+	// Specific filenames should be converted to sha1 hash to avoid invalid characters.
+	return fileNameToSha1(fileName)
 }
 
 func determineFilePathAndName(summaryOutputPath string, index Index, args []string) (filePath, fileName string, err error) {

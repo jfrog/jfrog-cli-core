@@ -101,10 +101,10 @@ func TestIndexedRecord(t *testing.T) {
 			summaryIndex: BuildScan,
 			expectedDirectoryMapping: map[Index]map[string]string{
 				BuildScan: {
-					"buildName-buildNumber": "buildScanResults",
+					"392d285469e73e6ef6a086c5a06146f86e144905": "buildScanResults",
 				},
 			},
-			recordArgs: []string{"buildName", "buildNumber"},
+			recordArgs: []string{"buildName-buildNumber"},
 		},
 		// Binary files should contain a full path to the file
 		// To handle the case where we scan different binaries but with identical names.
@@ -113,7 +113,7 @@ func TestIndexedRecord(t *testing.T) {
 			summaryIndex: BinariesScan,
 			expectedDirectoryMapping: map[Index]map[string]string{
 				BinariesScan: {
-					"path-to-some-binary.exe": "binaryResults",
+					"ebe9d4d414fcf0bdc381566a2f6d43c3cb5fd746": "binaryResults",
 				},
 			},
 			recordArgs: []string{"path/to/some-binary.exe"},
@@ -124,7 +124,7 @@ func TestIndexedRecord(t *testing.T) {
 			summaryIndex: DockerScan,
 			expectedDirectoryMapping: map[Index]map[string]string{
 				DockerScan: {
-					"linux-amd64-my-image-latest": "dockerResults",
+					"4db037f6d840c596656407e3c87adc591ad81421": "dockerResults",
 				},
 			},
 			recordArgs: []string{"linux/amd64/my-image:latest"},
@@ -236,9 +236,9 @@ func TestDetermineFilePathAndName(t *testing.T) {
 		expectedPath      string
 		expectedName      string
 	}{
-		{"No index", tempDir, "", []string{"arg1"}, tempDir, "arg1"},
-		{"With index", tempDir, BuildScan, []string{"arg1"}, filepath.Join(tempDir, "build-scans"), "arg1"},
-		{"Invalid characters", tempDir, "", []string{"arg1/arg2"}, tempDir, "arg1-arg2"},
+		{"No index", tempDir, "", []string{"arg1"}, tempDir, "e044db5cacc7c1e1ded3c45fa7472331fe5e6246"},
+		{"With index", tempDir, BuildScan, []string{"arg1"}, filepath.Join(tempDir, "build-scans"), "e044db5cacc7c1e1ded3c45fa7472331fe5e6246"},
+		{"Invalid characters", tempDir, "", []string{"arg1/arg2"}, tempDir, "a375ac1939572005313081632204fc72c4ab5a35"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -260,10 +260,10 @@ func TestDetermineFileName(t *testing.T) {
 	}{
 		{"No arguments", "", nil, "*-data"},
 		{"With index", SarifReport, nil, "*.sarif"},
-		{"With index and args", BuildScan, []string{"buildName", "buildNumber"}, "buildName-buildNumber"},
-		{"With args", "", []string{"arg1", "arg2"}, "arg1-arg2"},
-		{"Invalid characters /", "", []string{"arg1/arg2"}, "arg1-arg2"},
-		{"Invalid characters :", "", []string{"arg1:arg2"}, "arg1-arg2"},
+		{"With index and args", BuildScan, []string{"buildName", "buildNumber"}, "392d285469e73e6ef6a086c5a06146f86e144905"},
+		{"With args", "", []string{"arg1", "arg2"}, "1a928c6c3487cea1ecfd510b65f06ed4018c8cea"},
+		{"Invalid characters /", "", []string{"arg1/arg2"}, "a375ac1939572005313081632204fc72c4ab5a35"},
+		{"Invalid characters :", "", []string{"arg1:arg2"}, "3d20cb681ddbfc8ead817a2910dbc5a1f65548a6"},
 	}
 
 	for _, tt := range tests {

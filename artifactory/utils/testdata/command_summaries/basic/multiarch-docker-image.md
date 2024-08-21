@@ -1,6 +1,6 @@
 #### multiarch-image:1
 <pre>
-<strong> Upgrade your jFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>
+<strong> Upgrade your JFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>
 <details><summary>linux/amd64/multiarch-image:1</summary>
 📦 docker-local
 └── 📁 multiarch-image
@@ -8,18 +8,14 @@
     │   └── 📄 sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e
     └── 📄 sha256__552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21
 
-</details>
-<strong> Upgrade your jFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>
-<details><summary>linux/arm64/multiarch-image:1</summary>
+</details><details><summary>linux/arm64/multiarch-image:1</summary>
 📦 docker-local
 └── 📁 multiarch-image
     ├── 📁 sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92
     │   └── 📄 sha256__1f17f9d95f85ba55773db30ac8e6fae894831be87f5c28f2b58d17f04ef65e93
     └── 📄 sha256__bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92
 
-</details>
-<strong> Upgrade your jFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>
-<details><summary>linux/arm/multiarch-image:1</summary>
+</details><details><summary>linux/arm/multiarch-image:1</summary>
 📦 docker-local
 └── 📁 multiarch-image
     ├── 📁 sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338

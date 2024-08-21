@@ -13,7 +13,7 @@ import (
 
 const (
 	timeFormat              = "Jan 2, 2006 , 15:04:05"
-	fullReportTeaserMessage = "\n<strong> Upgrade your jFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>\n"
+	fullReportTeaserMessage = "\n<strong> Upgrade your JFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>\n"
 )
 
 type BuildInfoSummary struct {
@@ -93,13 +93,13 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		modulesMarkdown.WriteString(fmt.Sprintf("#### %s\n<pre>", parentModuleID))
 		isMultiModule := len(parentModules) > 1
 
+		if !bis.CommandSummary.extendedSummary {
+			modulesMarkdown.WriteString(fullReportTeaserMessage)
+		}
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
 				continue
-			}
-			if !bis.CommandSummary.extendedSummary {
-				modulesMarkdown.WriteString(fullReportTeaserMessage)
 			}
 			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
 		}

@@ -1,4 +1,4 @@
-package commandssummaries
+package commandsummary
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestBuildInfoTable(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -20,11 +20,11 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-	assert.Equal(t, getTestDataFile(t, "table.md"), gh.buildInfoTable(builds))
+	assert.Equal(t, getTestDataFile(t, "table.md"), buildInfoSummary.buildInfoTable(builds))
 }
 
 func TestBuildInfoModules(t *testing.T) {
-	gh := &BuildInfoSummary{platformUrl: platformUrl, majorVersion: 7}
+	buildInfoSummary := &BuildInfoSummary{platformUrl: platformUrl, platformMajorVersion: 7}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -71,7 +71,7 @@ func TestBuildInfoModules(t *testing.T) {
 		},
 	}
 
-	result := gh.buildInfoModules(builds)
+	result := buildInfoSummary.buildInfoModules(builds)
 	// Validate that the markdown contains the expected "generic" repo content as well as the "maven" repo content.
 	assert.Contains(t, result, getTestDataFile(t, "generic.md"))
 	assert.Contains(t, result, getTestDataFile(t, "maven.md"))
@@ -81,7 +81,7 @@ func TestBuildInfoModules(t *testing.T) {
 
 // Validate that if no supported module with artifacts was found, we avoid generating the markdown.
 func TestBuildInfoModulesEmpty(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -113,11 +113,11 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 		},
 	}
 
-	assert.Empty(t, gh.buildInfoModules(builds))
+	assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 }
 
 func TestBuildInfoModulesWithGrouping(t *testing.T) {
-	gh := &BuildInfoSummary{platformUrl: platformUrl, majorVersion: 7}
+	buildInfoSummary := &BuildInfoSummary{platformUrl: platformUrl, platformMajorVersion: 7}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:    "dockerx",
@@ -279,13 +279,14 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 		},
 	}
 
-	result := gh.buildInfoModules(builds)
+	result := buildInfoSummary.buildInfoModules(builds)
 	assert.Contains(t, result, getTestDataFile(t, "image2.md"))
 	assert.Contains(t, result, getTestDataFile(t, "multiarch-image1.md"))
 }
 
+// Tests data files are location artifactory/commands/testdata/command_summary
 func getTestDataFile(t *testing.T, fileName string) string {
-	modulesPath := filepath.Join(".", "testdata", fileName)
+	modulesPath := filepath.Join("../", "testdata", "command_summaries", fileName)
 	content, err := os.ReadFile(modulesPath)
 	assert.NoError(t, err)
 	contentStr := string(content)

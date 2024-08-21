@@ -1,11 +1,11 @@
-package commandssummaries
+package commandsummary
 
 import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"path"
 	"strings"
 	"time"
@@ -16,23 +16,23 @@ const (
 )
 
 type BuildInfoSummary struct {
-	platformUrl  string
-	majorVersion int
+	platformUrl          string
+	platformMajorVersion int
 }
 
-func NewBuildInfo(platformUrl string, majorVersion int) *BuildInfoSummary {
-	return &BuildInfoSummary{
-		platformUrl:  platformUrl,
-		majorVersion: majorVersion,
-	}
+func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*CommandSummary, error) {
+	return New(&BuildInfoSummary{
+		platformUrl:          serverUrl,
+		platformMajorVersion: platformMajorVersion,
+	}, "build-info")
 }
 
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
-	for _, path := range dataFilePaths {
+	for _, filePath := range dataFilePaths {
 		var publishBuildInfo buildInfo.BuildInfo
-		if err = commandsummary.UnmarshalFromFilePath(path, &publishBuildInfo); err != nil {
+		if err = UnmarshalFromFilePath(filePath, &publishBuildInfo); err != nil {
 			return
 		}
 		builds = append(builds, &publishBuildInfo)
@@ -47,8 +47,8 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n ### Published Build Infos  \n\n")
-	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp | \n")
+	tableBuilder.WriteString("\n\n### Published Build Infos\n\n")
+	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp |\n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
@@ -60,7 +60,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n### Modules Published As Part of This Build\n")
+	markdownBuilder.WriteString("\n\n### Modules Published As Part of This Build\n\n")
 	var shouldGenerate bool
 	for _, build := range builds {
 		if modulesMarkdown := bis.generateModulesMarkdown(build.Modules...); modulesMarkdown != "" {
@@ -134,7 +134,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return generateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.majorVersion)
+	return GenerateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
 }
 
 // groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.
@@ -173,7 +173,7 @@ func parseBuildTime(timestamp string) string {
 	if err != nil {
 		return "N/A"
 	}
-	// Format the time in a more human-readable format and save it in a variable
+	// Format the time in a more human-readable format
 	return buildInfoTime.Format(timeFormat)
 }
 

@@ -6,6 +6,7 @@ import (
 )
 
 type UploadSummary struct {
+	CommandSummary
 	uploadTree        *utils.FileTree
 	uploadedArtifacts ResultsWrapper
 	platformUrl       string
@@ -60,5 +61,10 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
+	if !us.extendedSummary {
+		// When the summary is not extended, the UI URL is not generated.
+		// When passing empty string to the upload tree, it won't be displayed as a link.
+		return ""
+	}
 	return GenerateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
 }

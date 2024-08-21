@@ -47,6 +47,7 @@ type CommandSummary struct {
 	CommandSummaryInterface
 	summaryOutputPath string
 	commandsName      string
+	extendedSummary   bool
 }
 
 // Create a new instance of CommandSummary.
@@ -67,7 +68,8 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 }
 
 // Loads all the relevant data files and invoke the implementation to generate the Markdown.
-func (cs *CommandSummary) GenerateMarkdown() error {
+func (cs *CommandSummary) GenerateMarkdown(extendedSummary bool) error {
+	cs.extendedSummary = extendedSummary
 	dataFilesPaths, err := cs.GetDataFilesPaths()
 	if err != nil {
 		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)

@@ -20,7 +20,16 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-	assert.Equal(t, getTestDataFile(t, "table.md"), buildInfoSummary.buildInfoTable(builds))
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = true
+		assert.Equal(t, getTestDataFile(t, "build-info-table.md", true), buildInfoSummary.buildInfoTable(builds))
+	})
+
+	t.Run("Basic Summary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = false
+		assert.Equal(t, getTestDataFile(t, "build-info-table.md", false), buildInfoSummary.buildInfoTable(builds))
+	})
 }
 
 func TestBuildInfoModules(t *testing.T) {
@@ -33,8 +42,7 @@ func TestBuildInfoModules(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 			Modules: []buildinfo.Module{
 				{
-					Id: "gradle",
-					// Validate that ignored types don't show.
+					Id:   "gradle",
 					Type: buildinfo.Gradle,
 					Artifacts: []buildinfo.Artifact{
 						{
@@ -52,11 +60,9 @@ func TestBuildInfoModules(t *testing.T) {
 						Path:                   "path/to/artifact1",
 						OriginalDeploymentRepo: "libs-release",
 					}},
-					// Validate that dependencies don't show.
 					Dependencies: []buildinfo.Dependency{{
 						Id: "dep1",
-					},
-					},
+					}},
 				},
 				{
 					Id:   "generic",
@@ -71,15 +77,27 @@ func TestBuildInfoModules(t *testing.T) {
 		},
 	}
 
-	result := buildInfoSummary.buildInfoModules(builds)
+	t.Run("Extended Summary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = true
+		result := buildInfoSummary.buildInfoModules(builds)
+		verifyModulesResult(t, result, true)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = false
+		result := buildInfoSummary.buildInfoModules(builds)
+		verifyModulesResult(t, result, false)
+	})
+
+}
+
+func verifyModulesResult(t *testing.T, result string, extendedSummary bool) {
 	// Validate that the markdown contains the expected "generic" repo content as well as the "maven" repo content.
-	assert.Contains(t, result, getTestDataFile(t, "generic.md"))
-	assert.Contains(t, result, getTestDataFile(t, "maven.md"))
+	assertContainsWithInfo(t, result, getTestDataFile(t, "generic-module.md", extendedSummary))
+	assertContainsWithInfo(t, result, getTestDataFile(t, "maven-module.md", extendedSummary))
 	// The build-info also contains a "gradle" module, but it should not be included in the markdown.
 	assert.NotContains(t, result, "gradle")
 }
 
-// Validate that if no supported module with artifacts was found, we avoid generating the markdown.
 func TestBuildInfoModulesEmpty(t *testing.T) {
 	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
@@ -95,8 +113,7 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 					Artifacts: []buildinfo.Artifact{},
 					Dependencies: []buildinfo.Dependency{{
 						Id: "dep1",
-					},
-					},
+					}},
 				},
 				{
 					Id:   "gradle",
@@ -113,7 +130,15 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 		},
 	}
 
-	assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
+	t.Run("ExtendedSummary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = true
+		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
+	})
+
+	t.Run("BasicSummary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = false
+		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
+	})
 }
 
 func TestBuildInfoModulesWithGrouping(t *testing.T) {
@@ -279,14 +304,43 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 		},
 	}
 
-	result := buildInfoSummary.buildInfoModules(builds)
-	assert.Contains(t, result, getTestDataFile(t, "image2.md"))
-	assert.Contains(t, result, getTestDataFile(t, "multiarch-image1.md"))
+	t.Run("Extended Summary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = true
+		result := buildInfoSummary.buildInfoModules(builds)
+		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md", true))
+		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md", true))
+	})
+
+	t.Run("Basic Summary", func(t *testing.T) {
+		buildInfoSummary.CommandSummary.extendedSummary = false
+		result := buildInfoSummary.buildInfoModules(builds)
+		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md", false))
+		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md", false))
+	})
+}
+
+// Helper function to handle diffs in contains assertions
+// As these tests handle markdown files, it easier to fix the necessary output
+func assertContainsWithInfo(t *testing.T, result, expected string) {
+	contains := assert.Contains(t, result, expected)
+	if !contains {
+		t.Log("----------------------------------------------------------------------------------------------------------------")
+		t.Log("The actual result does not contain the expected result.")
+		t.Log("----------------------------------------------------------------------------------------------------------------")
+		t.Log("\n\nExpected to be contained in the actual result:\n\n", expected)
+		t.Log("\n\nActual result:\n\n", result)
+	}
 }
 
 // Tests data files are location artifactory/commands/testdata/command_summary
-func getTestDataFile(t *testing.T, fileName string) string {
-	modulesPath := filepath.Join("../", "testdata", "command_summaries", fileName)
+func getTestDataFile(t *testing.T, fileName string, extendedSummary bool) string {
+	var modulesPath string
+	if extendedSummary {
+		modulesPath = filepath.Join("../", "testdata", "command_summaries", "extended", fileName)
+	} else {
+		modulesPath = filepath.Join("../", "testdata", "command_summaries", "basic", fileName)
+	}
+
 	content, err := os.ReadFile(modulesPath)
 	assert.NoError(t, err)
 	contentStr := string(content)

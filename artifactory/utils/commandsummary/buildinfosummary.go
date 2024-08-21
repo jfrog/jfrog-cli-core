@@ -12,10 +12,12 @@ import (
 )
 
 const (
-	timeFormat = "Jan 2, 2006 , 15:04:05"
+	timeFormat              = "Jan 2, 2006 , 15:04:05"
+	fullReportTeaserMessage = "\n<strong> Upgrade your jFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>\n"
 )
 
 type BuildInfoSummary struct {
+	CommandSummary
 	platformUrl          string
 	platformMajorVersion int
 }
@@ -52,7 +54,11 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
+		if bis.CommandSummary.extendedSummary {
+			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
+		} else {
+			tableBuilder.WriteString(fmt.Sprintf("| %s | %s |\n", build.Name+" "+build.Number, buildTime))
+		}
 	}
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
@@ -92,6 +98,9 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
 				continue
 			}
+			if !bis.CommandSummary.extendedSummary {
+				modulesMarkdown.WriteString(fullReportTeaserMessage)
+			}
 			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
 		}
 		modulesMarkdown.WriteString("</pre>\n")
@@ -110,7 +119,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Modul
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl), sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl, bis.CommandSummary.extendedSummary), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
@@ -119,7 +128,10 @@ func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.
 func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) string {
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
-		artifactUrlInArtifactory := bis.generateArtifactUrl(artifact)
+		var artifactUrlInArtifactory string
+		if bis.CommandSummary.extendedSummary {
+			artifactUrlInArtifactory = bis.generateArtifactUrl(artifact)
+		}
 		if artifact.OriginalDeploymentRepo == "" {
 			// Placeholder needed to build an artifact tree when repo is missing.
 			artifact.OriginalDeploymentRepo = " "
@@ -177,7 +189,7 @@ func parseBuildTime(timestamp string) string {
 	return buildInfoTime.Format(timeFormat)
 }
 
-func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string) string {
+func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, isFullReport bool) string {
 	// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
 	parentImageName := strings.Split(module.Parent, ":")[0]
 
@@ -189,9 +201,13 @@ func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string) st
 			break
 		}
 	}
-	// Create a link to the Docker package in Artifactory UI
-	dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(platformUrl, "/"), "%2F%2F"+parentImageName, sha256)
-	return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
+
+	if isFullReport {
+		// Create a link to the Docker package in Artifactory UI
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(platformUrl, "/"), "%2F%2F"+parentImageName, sha256)
+		return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
+	}
+	return module.Id
 }
 
 func createCollapsibleSection(title, content string) string {

@@ -209,12 +209,12 @@ func createAndWriteToFile(filePath, fileName string, data []byte) (err error) {
 	} else {
 		fd, err = os.Create(filepath.Join(filePath, fileName))
 	}
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
 	defer func() {
 		err = errors.Join(err, errorutils.CheckError(fd.Close()))
 	}()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
 
 	// Write to file
 	if _, err = fd.Write(data); err != nil {

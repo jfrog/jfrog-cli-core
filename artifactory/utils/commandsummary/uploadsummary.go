@@ -13,6 +13,10 @@ type UploadSummary struct {
 	majorVersion      int
 }
 
+func (us *UploadSummary) GetSummaryTitle() string {
+	return "📁 Files uploaded to Artifactory by this workflow"
+}
+
 type UploadResult struct {
 	SourcePath string `json:"sourcePath"`
 	TargetPath string `json:"targetPath"`

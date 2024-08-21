@@ -29,6 +29,10 @@ func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*CommandSu
 	}, "build-info")
 }
 
+func (bis *BuildInfoSummary) GetSummaryTitle() string {
+	return "🐸 Published JFrog Build Infos"
+}
+
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
@@ -41,15 +45,19 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 	}
 
 	if len(builds) > 0 {
-		finalMarkdown = bis.buildInfoTable(builds) + bis.buildInfoModules(builds)
+		tableInfo := bis.buildInfoTable(builds)
+		modulesMarkdown, err := bis.buildInfoModules(builds)
+		if err != nil {
+			return "", err
+		}
+		finalMarkdown = tableInfo + modulesMarkdown
 	}
-	return
+	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown)
 }
 
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n### Published Build Infos\n\n")
 	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp |\n")
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {
@@ -64,7 +72,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	return tableBuilder.String()
 }
 
-func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
+func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (string, error) {
 	var markdownBuilder strings.Builder
 	markdownBuilder.WriteString("\n\n### Modules Published As Part of This Build\n\n")
 	var shouldGenerate bool
@@ -77,9 +85,9 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 
 	// If no supported module with artifacts was found, avoid generating the markdown.
 	if !shouldGenerate {
-		return ""
+		return "", nil
 	}
-	return markdownBuilder.String()
+	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", markdownBuilder.String())
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {

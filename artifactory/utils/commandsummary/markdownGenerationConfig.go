@@ -5,6 +5,7 @@ import (
 	"fmt"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -55,12 +56,19 @@ func InitMarkdownGenerationValues(serverUrl string, platformMajorVersion int) (e
 	return
 }
 
-func checkExtendedSummaryEntitled(serverUrl string) (entitled bool, err error) {
-	url := fmt.Sprintf("%sui/api/v1/system/auth/screen/footer", serverUrl)
-	resp, err := http.Get(url)
+func checkExtendedSummaryEntitled(serverUrl string) (bool, error) {
+	// Parse and validate the URL
+	parsedUrl, err := url.Parse(serverUrl)
+	if err != nil || !parsedUrl.IsAbs() {
+		return false, fmt.Errorf("invalid server URL: %s", serverUrl)
+	}
+
+	// Construct the full URL
+	fullUrl := fmt.Sprintf("%sui/api/v1/system/auth/screen/footer", parsedUrl.String())
+	resp, err := http.Get(fullUrl)
 	if err != nil {
 		fmt.Println("Error making HTTP request:", err)
-		return
+		return false, err
 	}
 	defer func() {
 		err = resp.Body.Close()
@@ -68,7 +76,7 @@ func checkExtendedSummaryEntitled(serverUrl string) (entitled bool, err error) {
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Non-OK HTTP status:", resp.StatusCode)
-		return
+		return false, nil
 	}
 
 	var result struct {
@@ -79,6 +87,6 @@ func checkExtendedSummaryEntitled(serverUrl string) (entitled bool, err error) {
 		fmt.Println("Error decoding JSON response:", err)
 		return false, err
 	}
-	entitled = strings.Contains(strings.ToLower(result.PlatformId), "enterprise")
-	return
+	entitled := strings.Contains(strings.ToLower(result.PlatformId), "enterprise")
+	return entitled, nil
 }

@@ -31,7 +31,8 @@ func (bis *BuildInfoSummary) GetSummaryTitle() string {
 	return "🐸 Published JFrog Build Infos"
 }
 
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string,extendedSummary bool) (finalMarkdown string, err error) {
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (finalMarkdown string, err error) {
+	bis.extendedSummary = extendedSummary
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {
@@ -59,7 +60,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	tableBuilder.WriteString("\n\n|  Build Info |  Security Violations | Security Issues |\n")
 	tableBuilder.WriteString("|---------|------------|------------| \n")
 	for _, build := range builds {
-		if bis.CommandSummary.extendedSummary {
+		if bis.extendedSummary {
 			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s | %s | \n", build.Name+" "+build.Number, build.BuildUrl, "violations", "issues"))
 		} else {
 			tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name+" "+build.Number, "violations", "issues"))
@@ -95,16 +96,17 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
+		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n %s \n\n", parentModuleID))
 		parentModulesMarkdown.WriteString("\n\n|  Artifacts |  Security Violations | Security Issues |\n")
 		parentModulesMarkdown.WriteString("|---------|------------|------------| \n")
 
 		isMultiModule := len(parentModules) > 1
 
-		if !bis.CommandSummary.extendedSummary {
+		if !bis.extendedSummary {
 			parentModulesMarkdown.WriteString(fitInsideMarkdownTable(fullReportTeaserMessage))
 		}
 		var nestedModuleMarkdownTree strings.Builder
-		nestedModuleMarkdownTree.WriteString("<pre>")
+		nestedModuleMarkdownTree.WriteString("|<pre>")
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header

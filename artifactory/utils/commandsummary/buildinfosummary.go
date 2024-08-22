@@ -3,17 +3,14 @@ package commandsummary
 import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"path"
 	"strings"
-	"time"
 )
 
 const (
-	timeFormat              = "Jan 2, 2006 , 15:04:05"
-	fullReportTeaserMessage = "\n<strong> Upgrade your JFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>\n"
+	fullReportTeaserMessage = "<strong> Upgrade your JFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>"
 )
 
 type BuildInfoSummary struct {
@@ -58,14 +55,13 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp |\n")
-	tableBuilder.WriteString("|---------|------------| \n")
+	tableBuilder.WriteString("\n\n|  Build Info |  Security Violations | Security Issues |\n")
+	tableBuilder.WriteString("|---------|------------|------------| \n")
 	for _, build := range builds {
-		buildTime := parseBuildTime(build.Started)
 		if bis.CommandSummary.extendedSummary {
-			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
+			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s | %s | \n", build.Name+" "+build.Number, build.BuildUrl, "violations", "issues"))
 		} else {
-			tableBuilder.WriteString(fmt.Sprintf("| %s | %s |\n", build.Name+" "+build.Number, buildTime))
+			tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name+" "+build.Number, "violations", "issues"))
 		}
 	}
 	tableBuilder.WriteString("\n\n")
@@ -91,29 +87,41 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (st
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
-	var modulesMarkdown strings.Builder
+	var parentModulesMarkdown strings.Builder
 	parentToModulesMap := groupModulesByParent(modules)
 	if len(parentToModulesMap) == 0 {
 		return ""
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
-		modulesMarkdown.WriteString(fmt.Sprintf("#### %s\n<pre>", parentModuleID))
+		parentModulesMarkdown.WriteString("\n\n|  Artifacts |  Security Violations | Security Issues |\n")
+		parentModulesMarkdown.WriteString("|---------|------------|------------| \n")
+
 		isMultiModule := len(parentModules) > 1
 
 		if !bis.CommandSummary.extendedSummary {
-			modulesMarkdown.WriteString(fullReportTeaserMessage)
+			parentModulesMarkdown.WriteString(fitInsideMarkdownTable(fullReportTeaserMessage))
 		}
+		var nestedModuleMarkdownTree strings.Builder
+		nestedModuleMarkdownTree.WriteString("<pre>")
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
 				continue
 			}
-			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
+			nestedModuleMarkdownTree.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
 		}
-		modulesMarkdown.WriteString("</pre>\n")
+		nestedModuleMarkdownTree.WriteString("</pre>")
+
+		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), "violations", "issues"))
+
 	}
-	return modulesMarkdown.String()
+	return parentModulesMarkdown.String()
+}
+
+// To fit inside the markdown table, replace new lines with <br>
+func fitInsideMarkdownTable(str string) string {
+	return strings.ReplaceAll(str, "\n", "<br>")
 }
 
 func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
@@ -185,16 +193,6 @@ func isSupportedModule(module *buildInfo.Module) bool {
 	default:
 		return false
 	}
-}
-
-func parseBuildTime(timestamp string) string {
-	// Parse the timestamp string into a time.Time object
-	buildInfoTime, err := time.Parse(buildInfo.TimeFormat, timestamp)
-	if err != nil {
-		return "N/A"
-	}
-	// Format the time in a more human-readable format
-	return buildInfoTime.Format(timeFormat)
 }
 
 func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, isExtendedSummary bool) string {

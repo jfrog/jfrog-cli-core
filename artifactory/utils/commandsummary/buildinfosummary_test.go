@@ -357,14 +357,3 @@ func getTestDataFile(t *testing.T, fileName string, extendedSummary bool) string
 	}
 	return contentStr
 }
-
-func TestParseBuildTime(t *testing.T) {
-	// Test format
-	actual := parseBuildTime("2006-01-02T15:04:05.000-0700")
-	expected := "Jan 2, 2006 , 15:04:05"
-	assert.Equal(t, expected, actual)
-	// Test invalid format
-	expected = "N/A"
-	actual = parseBuildTime("")
-	assert.Equal(t, expected, actual)
-}

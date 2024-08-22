@@ -11,6 +11,7 @@ type UploadSummary struct {
 	uploadedArtifacts ResultsWrapper
 	platformUrl       string
 	majorVersion      int
+	extendedSummary   bool
 }
 
 func (us *UploadSummary) GetSummaryTitle() string {
@@ -34,7 +35,8 @@ func NewUploadSummary(platformUrl string, majorVersion int) (*CommandSummary, er
 	}, "upload")
 }
 
-func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
+func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (markdown string, err error) {
+	us.extendedSummary = extendedSummary
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}

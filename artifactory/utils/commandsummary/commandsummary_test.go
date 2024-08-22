@@ -20,7 +20,7 @@ type BasicStruct struct {
 	Field2 int
 }
 
-func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string) (finalMarkdown string, err error) {
+func (tcs *mockCommandSummary) GenerateMarkdownFromFiles(_ []string, _ bool) (finalMarkdown string, err error) {
 	return "mockMarkdown", nil
 }
 

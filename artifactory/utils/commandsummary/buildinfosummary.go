@@ -17,6 +17,7 @@ type BuildInfoSummary struct {
 	CommandSummary
 	platformUrl          string
 	platformMajorVersion int
+	extendedSummary      bool
 }
 
 func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*CommandSummary, error) {
@@ -30,7 +31,7 @@ func (bis *BuildInfoSummary) GetSummaryTitle() string {
 	return "🐸 Published JFrog Build Infos"
 }
 
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string,extendedSummary bool) (finalMarkdown string, err error) {
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {
@@ -135,7 +136,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Modul
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl, bis.CommandSummary.extendedSummary), sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl, bis.extendedSummary), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
@@ -145,7 +146,7 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) strin
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		var artifactUrlInArtifactory string
-		if bis.CommandSummary.extendedSummary {
+		if bis.extendedSummary {
 			artifactUrlInArtifactory = bis.generateArtifactUrl(artifact)
 		}
 		if artifact.OriginalDeploymentRepo == "" {

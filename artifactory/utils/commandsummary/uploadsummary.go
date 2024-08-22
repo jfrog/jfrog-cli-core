@@ -1,9 +1,8 @@
-package commandssummaries
+package commandsummary
 
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 )
 
 type UploadSummary struct {
@@ -23,19 +22,19 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary(platformUrl string, majorVersion int) *UploadSummary {
-	return &UploadSummary{
+func NewUploadSummary(platformUrl string, majorVersion int) (*CommandSummary, error) {
+	return New(&UploadSummary{
 		platformUrl:  platformUrl,
 		majorVersion: majorVersion,
-	}
+	}, "upload")
 }
 
 func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}
-	// Wrap the markdown in a <pre> tags to preserve spaces
-	markdown = fmt.Sprintf("\n<pre>\n\n\n" + us.generateFileTreeMarkdown() + "</pre>\n\n")
+	// Wrap the Markdown in a <pre> tags to preserve spaces
+	markdown = fmt.Sprintf("\n<pre>\n\n\n%s</pre>\n\n", us.generateFileTreeMarkdown())
 	return
 }
 
@@ -44,7 +43,7 @@ func (us *UploadSummary) loadResults(filePaths []string) error {
 	us.uploadedArtifacts = ResultsWrapper{}
 	for _, path := range filePaths {
 		var uploadResult ResultsWrapper
-		if err := commandsummary.UnmarshalFromFilePath(path, &uploadResult); err != nil {
+		if err := UnmarshalFromFilePath(path, &uploadResult); err != nil {
 			return err
 		}
 		us.uploadedArtifacts.Results = append(us.uploadedArtifacts.Results, uploadResult.Results...)
@@ -61,5 +60,5 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	return generateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
+	return GenerateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
 }

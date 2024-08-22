@@ -65,7 +65,9 @@ func checkExtendedSummaryEntitled(serverUrl string) (bool, error) {
 
 	// Construct the full URL
 	fullUrl := fmt.Sprintf("%sui/api/v1/system/auth/screen/footer", parsedUrl.String())
-	resp, err := http.Get(fullUrl)
+	// Suppress HTTP request security warning:
+	// URL is validated and the request is internal
+	resp, err := http.Get(fullUrl) //nolint:gosec
 	if err != nil {
 		fmt.Println("Error making HTTP request:", err)
 		return false, err

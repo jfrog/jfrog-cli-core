@@ -265,12 +265,7 @@ func (p *filesProgressBarManager) newHeadlineBar(headline string) {
 
 func (p *filesProgressBarManager) SetHeadlineMsg(msg string) {
 	if p.headlineBar != nil {
-		current := p.headlineBar
-		p.barsRWMutex.RLock()
-		// First abort, then mark progress as done and finally release the lock.
-		defer p.barsRWMutex.RUnlock()
-		defer p.barsWg.Done()
-		defer current.Abort(true)
+		p.ClearHeadlineMsg()
 	}
 	// Remove emojis from non-supported terminals
 	msg = coreutils.RemoveEmojisIfNonSupportedTerminal(msg)
@@ -280,9 +275,9 @@ func (p *filesProgressBarManager) SetHeadlineMsg(msg string) {
 func (p *filesProgressBarManager) ClearHeadlineMsg() {
 	if p.headlineBar != nil {
 		p.barsRWMutex.RLock()
+		defer p.barsRWMutex.RUnlock()
 		p.headlineBar.Abort(true)
 		p.barsWg.Done()
-		p.barsRWMutex.RUnlock()
 		// Wait a refresh rate to make sure the abort has finished
 		time.Sleep(progressbar.ProgressRefreshRate)
 	}

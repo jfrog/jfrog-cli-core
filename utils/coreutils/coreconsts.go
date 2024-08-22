@@ -44,11 +44,13 @@ const (
 	LogTimestamp       = "JFROG_CLI_LOG_TIMESTAMP"
 	ReportUsage        = "JFROG_CLI_REPORT_USAGE"
 	DependenciesDir    = "JFROG_CLI_DEPENDENCIES_DIR"
-	TransitiveDownload = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
 	FailNoOp           = "JFROG_CLI_FAIL_NO_OP"
 	OutputDirPathEnv   = "JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR"
 	CI                 = "CI"
 	ServerID           = "JFROG_CLI_SERVER_ID"
+	TransitiveDownload = "JFROG_CLI_TRANSITIVE_DOWNLOAD"
+	// Deprecated and replaced with TransitiveDownload
+	TransitiveDownloadExperimental = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
 )
 
 // Although these vars are constant, they are defined inside a vars section and not a constants section because the tests modify these values.

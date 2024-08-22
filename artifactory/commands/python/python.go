@@ -1,21 +1,22 @@
 package python
 
 import (
+	"bytes"
 	"errors"
-	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
-	"io"
-	"os/exec"
-
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/entities"
+	buildInfoUtils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
-	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"io"
+	"os"
+	"os/exec"
 )
 
 type PythonCommand struct {
@@ -71,7 +72,24 @@ func (pc *PythonCommand) Run() (err error) {
 		err = errorutils.CheckError(pythonModule.RunInstallAndCollectDependencies(pc.args))
 	} else {
 		// Python native command
-		err = gofrogcmd.RunCmd(pc)
+		for k, v := range pc.GetEnv() {
+			if err := os.Setenv(k, v); err != nil {
+				return err
+			}
+		}
+
+		cmd := pc.GetCmd()
+		errBuffer := bytes.NewBuffer([]byte{})
+		multiWriter := io.MultiWriter(os.Stderr, errBuffer)
+		cmd.Stderr = multiWriter
+		cmd.Stdout = os.Stdout
+
+		err = cmd.Run()
+		if err != nil {
+			if buildInfoUtils.IsForbiddenOutput(buildInfoUtils.Pip, errBuffer.String()) {
+				err = errors.Join(err, buildInfoUtils.NewForbiddenError())
+			}
+		}
 	}
 	return
 }

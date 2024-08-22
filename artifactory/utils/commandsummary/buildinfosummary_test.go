@@ -1,4 +1,4 @@
-package commandssummaries
+package commandsummary
 
 import (
 	buildinfo "github.com/jfrog/build-info-go/entities"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestBuildInfoTable(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -20,11 +20,11 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-	assert.Equal(t, getTestDataFile(t, "table.md"), gh.buildInfoTable(builds))
+	assert.Equal(t, getTestDataFile(t, "table.md"), buildInfoSummary.buildInfoTable(builds))
 }
 
 func TestBuildInfoModules(t *testing.T) {
-	gh := &BuildInfoSummary{platformUrl: platformUrl, majorVersion: 7}
+	buildInfoSummary := &BuildInfoSummary{platformUrl: platformUrl, platformMajorVersion: 7}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -71,7 +71,7 @@ func TestBuildInfoModules(t *testing.T) {
 		},
 	}
 
-	result := gh.buildInfoModules(builds)
+	result := buildInfoSummary.buildInfoModules(builds)
 	// Validate that the markdown contains the expected "generic" repo content as well as the "maven" repo content.
 	assert.Contains(t, result, getTestDataFile(t, "generic.md"))
 	assert.Contains(t, result, getTestDataFile(t, "maven.md"))
@@ -81,7 +81,7 @@ func TestBuildInfoModules(t *testing.T) {
 
 // Validate that if no supported module with artifacts was found, we avoid generating the markdown.
 func TestBuildInfoModulesEmpty(t *testing.T) {
-	gh := &BuildInfoSummary{}
+	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -113,11 +113,11 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 		},
 	}
 
-	assert.Empty(t, gh.buildInfoModules(builds))
+	assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 }
 
 func TestBuildInfoModulesWithGrouping(t *testing.T) {
-	gh := &BuildInfoSummary{platformUrl: platformUrl, majorVersion: 7}
+	buildInfoSummary := &BuildInfoSummary{platformUrl: platformUrl, platformMajorVersion: 7}
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:    "dockerx",
@@ -152,6 +152,16 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 						{
 							Checksum: buildinfo.Checksum{
 								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+								Sha256: "sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21",
+								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+							},
+							Name:                   "manifest.json",
+							Path:                   "multiarch-image/sha256__552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21",
+							OriginalDeploymentRepo: "docker-local",
+						},
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
 								Sha256: "aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
 								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
 							},
@@ -166,6 +176,16 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 					Parent: "multiarch-image:1",
 					Id:     "linux/arm64/multiarch-image:1",
 					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+								Sha256: "sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92",
+								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+							},
+							Name:                   "manifest.json",
+							Path:                   "multiarch-image/sha256__bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92",
+							OriginalDeploymentRepo: "docker-local",
+						},
 						{
 							Checksum: buildinfo.Checksum{
 								Sha1:   "82b6d4ae1f673c609469a0a84170390ecdff5a38",
@@ -183,6 +203,16 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 					Parent: "multiarch-image:1",
 					Id:     "linux/arm/multiarch-image:1",
 					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+								Sha256: "sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
+								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+							},
+							Name:                   "manifest.json",
+							Path:                   "multiarch-image/sha256__686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
+							OriginalDeploymentRepo: "docker-local",
+						},
 						{
 							Checksum: buildinfo.Checksum{
 								Sha1:   "63d3ac90f9cd322b76543d7bf96eeb92417faf41",
@@ -207,8 +237,31 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 				},
 				{
 					Type:   "docker",
+					Parent: "multiarch-image:1",
+					Id:     "attestations/multiarch-image:1",
+					Checksum: buildinfo.Checksum{
+						Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
+					},
+					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "63d3ac90f9cd322b76543d7bf96eeb92417faf41",
+								Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
+								Md5:    "99bbb1e1035aea4d9150e4348f24e107",
+							},
+							Name:                   "sha256:67a5a1efd2df970568a17c1178ec5df786bbf627274f285c6dbce71fae9ebe57",
+							Path:                   "multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
+							OriginalDeploymentRepo: "docker-local",
+						},
+					},
+				},
+				{
+					Type:   "docker",
 					Parent: "image:2",
 					Id:     "image:2",
+					Checksum: buildinfo.Checksum{
+						Sha256: "aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
+					},
 					Artifacts: []buildinfo.Artifact{
 						{
 							Checksum: buildinfo.Checksum{
@@ -226,13 +279,14 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 		},
 	}
 
-	result := gh.buildInfoModules(builds)
+	result := buildInfoSummary.buildInfoModules(builds)
 	assert.Contains(t, result, getTestDataFile(t, "image2.md"))
 	assert.Contains(t, result, getTestDataFile(t, "multiarch-image1.md"))
 }
 
+// Tests data files are location artifactory/commands/testdata/command_summary
 func getTestDataFile(t *testing.T, fileName string) string {
-	modulesPath := filepath.Join(".", "testdata", fileName)
+	modulesPath := filepath.Join("../", "testdata", "command_summaries", fileName)
 	content, err := os.ReadFile(modulesPath)
 	assert.NoError(t, err)
 	contentStr := string(content)

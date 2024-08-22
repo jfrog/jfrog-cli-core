@@ -264,9 +264,7 @@ func (p *filesProgressBarManager) newHeadlineBar(headline string) {
 }
 
 func (p *filesProgressBarManager) SetHeadlineMsg(msg string) {
-	if p.headlineBar != nil {
-		p.ClearHeadlineMsg()
-	}
+	p.ClearHeadlineMsg()
 	// Remove emojis from non-supported terminals
 	msg = coreutils.RemoveEmojisIfNonSupportedTerminal(msg)
 	p.newHeadlineBar(msg)

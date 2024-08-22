@@ -22,12 +22,12 @@ func TestBuildInfoTable(t *testing.T) {
 	}
 
 	t.Run("Extended Summary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = true
+		buildInfoSummary.extendedSummary = true
 		assert.Equal(t, getTestDataFile(t, "build-info-table.md", true), buildInfoSummary.buildInfoTable(builds))
 	})
 
 	t.Run("Basic Summary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = false
+		buildInfoSummary.extendedSummary = false
 		assert.Equal(t, getTestDataFile(t, "build-info-table.md", false), buildInfoSummary.buildInfoTable(builds))
 	})
 }
@@ -78,12 +78,12 @@ func TestBuildInfoModules(t *testing.T) {
 	}
 
 	t.Run("Extended Summary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = true
+		buildInfoSummary.extendedSummary = true
 		result := buildInfoSummary.buildInfoModules(builds)
 		verifyModulesResult(t, result, true)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = false
+		buildInfoSummary.extendedSummary = false
 		result := buildInfoSummary.buildInfoModules(builds)
 		verifyModulesResult(t, result, false)
 	})
@@ -131,12 +131,12 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 	}
 
 	t.Run("ExtendedSummary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = true
+		buildInfoSummary.extendedSummary = true
 		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 	})
 
 	t.Run("BasicSummary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = false
+		buildInfoSummary.extendedSummary = false
 		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 	})
 }
@@ -305,14 +305,14 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 	}
 
 	t.Run("Extended Summary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = true
+		buildInfoSummary.extendedSummary = true
 		result := buildInfoSummary.buildInfoModules(builds)
 		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md", true))
 		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md", true))
 	})
 
 	t.Run("Basic Summary", func(t *testing.T) {
-		buildInfoSummary.CommandSummary.extendedSummary = false
+		buildInfoSummary.extendedSummary = false
 		result := buildInfoSummary.buildInfoModules(builds)
 		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md", false))
 		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md", false))

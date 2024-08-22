@@ -18,20 +18,13 @@ const (
 
 type BuildInfoSummary struct {
 	CommandSummary
-	platformUrl          string
-	platformMajorVersion int
-	extendedSummary      bool
 }
 
-func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*CommandSummary, error) {
-	return New(&BuildInfoSummary{
-		platformUrl:          serverUrl,
-		platformMajorVersion: platformMajorVersion,
-	}, "build-info")
+func NewBuildInfoSummary() (*CommandSummary, error) {
+	return New(&BuildInfoSummary{}, "build-info")
 }
 
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (finalMarkdown string, err error) {
-	bis.extendedSummary = extendedSummary
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {
@@ -56,7 +49,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
-		if bis.extendedSummary {
+		if isExtendedSummary() {
 			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
 		} else {
 			tableBuilder.WriteString(fmt.Sprintf("| %s | %s |\n", build.Name+" "+build.Number, buildTime))
@@ -95,7 +88,7 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		modulesMarkdown.WriteString(fmt.Sprintf("#### %s\n<pre>", parentModuleID))
 		isMultiModule := len(parentModules) > 1
 
-		if !bis.extendedSummary {
+		if !isExtendedSummary() {
 			modulesMarkdown.WriteString(fullReportTeaserMessage)
 		}
 		for _, module := range parentModules {
@@ -121,7 +114,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Modul
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl, bis.extendedSummary), sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(module, GetPlatformUrl(), isExtendedSummary()), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
@@ -131,7 +124,7 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) strin
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		var artifactUrlInArtifactory string
-		if bis.extendedSummary {
+		if isExtendedSummary() {
 			artifactUrlInArtifactory = bis.generateArtifactUrl(artifact)
 		}
 		if artifact.OriginalDeploymentRepo == "" {
@@ -148,7 +141,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return GenerateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
+	return GenerateArtifactUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path))
 }
 
 // groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.

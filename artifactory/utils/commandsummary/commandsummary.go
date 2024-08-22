@@ -16,7 +16,7 @@ import (
 // The GenerateMarkdownFromFiles function should be implemented to generate Markdown from the provided data file paths.
 // This involves loading data from the files and converting it into a Markdown string.
 type CommandSummaryInterface interface {
-	GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (finalMarkdown string, err error)
+	GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error)
 }
 
 // These optional index determine where files are saved, making them easier to locate.
@@ -67,7 +67,7 @@ func New(userImplementation CommandSummaryInterface, commandsName string) (cs *C
 }
 
 // Loads all the relevant data files and invoke the implementation to generate the Markdown.
-func (cs *CommandSummary) GenerateMarkdown(extendedSummary bool) error {
+func (cs *CommandSummary) GenerateMarkdown() error {
 	dataFilesPaths, err := cs.GetDataFilesPaths()
 	if err != nil {
 		return fmt.Errorf("failed to load data files from directory %s, with error: %w", cs.commandsName, err)
@@ -75,7 +75,7 @@ func (cs *CommandSummary) GenerateMarkdown(extendedSummary bool) error {
 	if len(dataFilesPaths) == 0 {
 		return nil
 	}
-	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths, extendedSummary)
+	markdown, err := cs.GenerateMarkdownFromFiles(dataFilesPaths)
 	if err != nil {
 		return fmt.Errorf("failed to render markdown: %w", err)
 	}

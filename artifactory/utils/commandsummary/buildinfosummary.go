@@ -24,7 +24,7 @@ func NewBuildInfoSummary() (*CommandSummary, error) {
 	return New(&BuildInfoSummary{}, "build-info")
 }
 
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (finalMarkdown string, err error) {
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {

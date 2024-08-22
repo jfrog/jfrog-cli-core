@@ -25,7 +25,7 @@ func NewUploadSummary() (*CommandSummary, error) {
 	return New(&UploadSummary{}, "upload")
 }
 
-func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (markdown string, err error) {
+func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}

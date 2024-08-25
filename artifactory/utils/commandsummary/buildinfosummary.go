@@ -11,6 +11,8 @@ import (
 
 const (
 	basicSummaryUpgradeNotice = "\n<p> <a href=\"%s\">⏫ Enable the linkage to Artifactory</a> </p>\n"
+	minTableColumnLength      = 400
+	markdownSpaceFiller       = "&nbsp;"
 )
 
 type BuildInfoSummary struct {
@@ -53,11 +55,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	tableBuilder.WriteString("\n\n|  Build Info |  Security Violations | Security Issues |\n")
 	tableBuilder.WriteString("|---------|------------|------------| \n")
 	for _, build := range builds {
-		if isExtendedSummary() {
-			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, "violations", "issues"))
-		} else {
-			tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name+" "+build.Number, "violations", "issues"))
-		}
+		appendBuildRow(&tableBuilder, build)
 	}
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
@@ -109,15 +107,15 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 			}
 			nestedModuleMarkdownTree.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
 		}
+		nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
 		nestedModuleMarkdownTree.WriteString("</pre>")
-
-		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), "violations", "issues"))
+		writeFixedLengthTableRow(&parentModulesMarkdown, " %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), "violations", "issues")
 
 	}
 	return parentModulesMarkdown.String()
 }
 
-// To fit inside the markdown table, replace new lines with <br>
+// To fit inside the Markdown table, replace new lines with <br>
 func fitInsideMarkdownTable(str string) string {
 	return strings.ReplaceAll(str, "\n", "<br>")
 }
@@ -194,7 +192,7 @@ func isSupportedModule(module *buildInfo.Module) bool {
 }
 
 func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, isExtendedSummary bool) string {
-	// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
+	// Extract the parent image name from the module ID (e.g., my-image:1.0 -> my-image)
 	parentImageName := strings.Split(module.Parent, ":")[0]
 
 	// Get the relevant SHA256
@@ -216,4 +214,32 @@ func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, is
 
 func createCollapsibleSection(title, content string) string {
 	return fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", title, content)
+}
+
+func appendSpacesToTableColumn(str string) string {
+	const nbspLength = len(markdownSpaceFiller)
+	if len(str) < minTableColumnLength {
+		padding := minTableColumnLength - len(str)
+		if padding > 0 {
+			str += strings.Repeat(markdownSpaceFiller, padding/nbspLength)
+		}
+	}
+	return str
+}
+
+func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
+	buildName := appendSpacesToTableColumn(build.Name + " " + build.Number)
+	tableRowFormat := getTableRowFormat()
+	writeFixedLengthTableRow(tableBuilder, tableRowFormat, buildName, "violations", "issues")
+}
+
+func getTableRowFormat() string {
+	if isExtendedSummary() {
+		return "| [%s](%s) | %s |\n"
+	}
+	return "| %s | %s | %s |\n"
+}
+
+func writeFixedLengthTableRow(stringBuilder *strings.Builder, tableFormat, data, violations, issues string) {
+	stringBuilder.WriteString(fmt.Sprintf(tableFormat, data, appendSpacesToTableColumn(violations), appendSpacesToTableColumn(issues)))
 }

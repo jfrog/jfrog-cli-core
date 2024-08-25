@@ -27,14 +27,14 @@ func TestBuildInfoTable(t *testing.T) {
 	})
 
 	t.Run("Basic Summary", func(t *testing.T) {
-		setExtendedSummary(true)
+		setExtendedSummary(false)
 		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
 	})
 
 	cleanCommandSummaryValues()
 }
 
-func TestBuildInfoModules(t *testing.T) {
+func TestBuildInfoModulesMaven(t *testing.T) {
 	buildInfoSummary := &BuildInfoSummary{}
 	var builds = []*buildinfo.BuildInfo{
 		{
@@ -43,17 +43,6 @@ func TestBuildInfoModules(t *testing.T) {
 			Started:  "2024-05-05T12:47:20.803+0300",
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 			Modules: []buildinfo.Module{
-				{
-					Id:   "gradle",
-					Type: buildinfo.Gradle,
-					Artifacts: []buildinfo.Artifact{
-						{
-							Name:                   "gradleArtifact",
-							Path:                   "dir/gradleArtifact",
-							OriginalDeploymentRepo: "gradle-local",
-						},
-					},
-				},
 				{
 					Id:   "maven",
 					Type: buildinfo.Maven,
@@ -66,6 +55,34 @@ func TestBuildInfoModules(t *testing.T) {
 						Id: "dep1",
 					}},
 				},
+			},
+		},
+	}
+	setPlatformUrl(testPlatformUrl)
+	t.Run("Extended Summary", func(t *testing.T) {
+		setExtendedSummary(true)
+		result, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		assert.Equal(t, getTestDataFile(t, "maven-module.md"), result)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		setExtendedSummary(false)
+		result, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		assert.Equal(t, getTestDataFile(t, "maven-module.md"), result)
+	})
+	cleanCommandSummaryValues()
+}
+
+func TestBuildInfoModulesGeneric(t *testing.T) {
+	buildInfoSummary := &BuildInfoSummary{}
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
 				{
 					Id:   "generic",
 					Type: buildinfo.Generic,
@@ -84,13 +101,13 @@ func TestBuildInfoModules(t *testing.T) {
 		setExtendedSummary(true)
 		result, err := buildInfoSummary.buildInfoModules(builds)
 		assert.NoError(t, err)
-		verifyModulesResult(t, result)
+		assert.Equal(t, getTestDataFile(t, "generic-module.md"), result)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		setExtendedSummary(false)
 		result, err := buildInfoSummary.buildInfoModules(builds)
 		assert.NoError(t, err)
-		verifyModulesResult(t, result)
+		assert.Equal(t, getTestDataFile(t, "generic-module.md"), result)
 	})
 	cleanCommandSummaryValues()
 }

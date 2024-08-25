@@ -11,7 +11,7 @@ import (
 
 const (
 	basicSummaryUpgradeNotice = "\n<p> <a href=\"%s\">⏫ Enable the linkage to Artifactory</a> </p>\n"
-	minTableColumnLength      = 400
+	minTableColumnLength      = 250
 	markdownSpaceFiller       = "&nbsp;"
 )
 
@@ -53,7 +53,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString("\n\n|  Build Info |  Security Violations | Security Issues |\n")
-	tableBuilder.WriteString("|---------|------------|------------| \n")
+	tableBuilder.WriteString("|---------|------------|------------|\n")
 	for _, build := range builds {
 		appendBuildRow(&tableBuilder, build)
 	}
@@ -63,7 +63,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (string, error) {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n### Modules Published As Part of This Build\n\n")
+	markdownBuilder.WriteString("\n\n### Published Modules\n\n")
 	var shouldGenerate bool
 	for _, build := range builds {
 		if modulesMarkdown := bis.generateModulesMarkdown(build.Modules...); modulesMarkdown != "" {
@@ -87,19 +87,19 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
-		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n `%s` \n\n", parentModuleID))
+		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n`%s`\n\n", parentModuleID))
 		parentModulesMarkdown.WriteString("\n\n|  Artifacts |  Security Violations | Security Issues |\n")
-		parentModulesMarkdown.WriteString("|---------|------------|------------| \n")
+		parentModulesMarkdown.WriteString("|------------|---------------------|------------------|\n")
 
 		isMultiModule := len(parentModules) > 1
 
+		var nestedModuleMarkdownTree strings.Builder
+		nestedModuleMarkdownTree.WriteString("|<pre>")
 		if !isExtendedSummary() {
 			// The basic summary includes a notice to enable the linkage to Artifactory
 			// Notice the UI link has to be updated.
-			parentModulesMarkdown.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, GetPlatformUrl()))
+			nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, GetPlatformUrl()))
 		}
-		var nestedModuleMarkdownTree strings.Builder
-		nestedModuleMarkdownTree.WriteString("|<pre>")
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {
 				// Skip the parent module if there are multiple modules, as it will be displayed as a header
@@ -109,8 +109,7 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		}
 		nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
 		nestedModuleMarkdownTree.WriteString("</pre>")
-		writeFixedLengthTableRow(&parentModulesMarkdown, " %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), "violations", "issues")
-
+		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), "violations", "issues"))
 	}
 	return parentModulesMarkdown.String()
 }
@@ -228,18 +227,10 @@ func appendSpacesToTableColumn(str string) string {
 }
 
 func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
-	buildName := appendSpacesToTableColumn(build.Name + " " + build.Number)
-	tableRowFormat := getTableRowFormat()
-	writeFixedLengthTableRow(tableBuilder, tableRowFormat, buildName, "violations", "issues")
-}
-
-func getTableRowFormat() string {
+	buildName := build.Name + " " + build.Number
 	if isExtendedSummary() {
-		return "| [%s](%s) | %s |\n"
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, build.BuildUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn("violations"), appendSpacesToTableColumn("issues")))
+	} else {
+		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", buildName, appendSpacesToTableColumn(""), appendSpacesToTableColumn("violations"), appendSpacesToTableColumn("issues")))
 	}
-	return "| %s | %s | %s |\n"
-}
-
-func writeFixedLengthTableRow(stringBuilder *strings.Builder, tableFormat, data, violations, issues string) {
-	stringBuilder.WriteString(fmt.Sprintf(tableFormat, data, appendSpacesToTableColumn(violations), appendSpacesToTableColumn(issues)))
 }

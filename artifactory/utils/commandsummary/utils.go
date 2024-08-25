@@ -22,7 +22,7 @@ func GenerateArtifactUrl(pathInRt string) string {
 }
 
 func WrapCollapsableMarkdown(title, markdown string) (string, error) {
-	return fmt.Sprintf("\n\n\n<details open>\n\n<summary> <h4>  %s </h4> </summary><p></p> \n\n %s \n\n</details>\n\n\n", title, markdown), nil
+	return fmt.Sprintf("\n\n\n<details open>\n\n<summary> <h4> %s </h4></summary><p></p>\n\n%s\n\n</details>\n\n\n", title, markdown), nil
 }
 
 // Map containing indexed data recorded to the file system.

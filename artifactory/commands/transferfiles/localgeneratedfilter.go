@@ -41,7 +41,7 @@ type locallyGeneratedFilter struct {
 func NewLocallyGenerated(context context.Context, serviceManager artifactory.ArtifactoryServicesManager, artifactoryVersion string) *locallyGeneratedFilter {
 	serviceDetails := serviceManager.GetConfig().GetServiceDetails()
 	httpDetails := serviceDetails.CreateHttpClientDetails()
-	utils.SetContentType("application/json", &httpDetails.Headers)
+	httpDetails.SetContentTypeApplicationJson()
 
 	enabled := version.NewVersion(artifactoryVersion).AtLeast(minArtifactoryVersionForLocallyGenerated)
 	log.Debug("Locally generated filter enabled:", enabled)

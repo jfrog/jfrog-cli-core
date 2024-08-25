@@ -11,7 +11,7 @@ import (
 
 const (
 	basicSummaryUpgradeNotice = "\n<p> <a href=\"%s\">⏫ Enable the linkage to Artifactory</a> </p>\n"
-	minTableColumnLength      = 250
+	minTableColumnLength      = 400
 	markdownSpaceFiller       = "&nbsp;"
 )
 
@@ -77,8 +77,7 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (st
 		return "", nil
 	}
 	finalString := markdownBuilder.String()
-	test, err := WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString)
-	return test, err
+	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString)
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
@@ -111,7 +110,7 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		}
 		nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
 		nestedModuleMarkdownTree.WriteString("</pre>")
-		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), "violations", "issues"))
+		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), appendSpacesToTableColumn("violations"), appendSpacesToTableColumn("issues")))
 	}
 	return parentModulesMarkdown.String()
 }

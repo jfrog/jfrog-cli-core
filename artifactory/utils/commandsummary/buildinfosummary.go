@@ -13,7 +13,7 @@ import (
 
 const (
 	timeFormat                = "Jan 2, 2006 , 15:04:05"
-	basicSummaryUpgradeNotice = "\nEnable the linkage to Artifactory\n"
+	basicSummaryUpgradeNotice = "\n<p> <a href=\"%s\">⏫ Enable the linkage to Artifactory</a> </p>\n"
 )
 
 type BuildInfoSummary struct {
@@ -89,7 +89,9 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		isMultiModule := len(parentModules) > 1
 
 		if !isExtendedSummary() {
-			modulesMarkdown.WriteString(basicSummaryUpgradeNotice)
+			// The basic summary includes a notice to enable the linkage to Artifactory
+			// Notice the UI link has to be updated.
+			modulesMarkdown.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, GetPlatformUrl()))
 		}
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {

@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	timeFormat              = "Jan 2, 2006 , 15:04:05"
-	fullReportTeaserMessage = "\n<strong> Upgrade your JFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>\n"
+	timeFormat                = "Jan 2, 2006 , 15:04:05"
+	basicSummaryUpgradeNotice = "\nEnable the linkage to Artifactory\n"
 )
 
 type BuildInfoSummary struct {
@@ -89,7 +89,7 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		isMultiModule := len(parentModules) > 1
 
 		if !isExtendedSummary() {
-			modulesMarkdown.WriteString(fullReportTeaserMessage)
+			modulesMarkdown.WriteString(basicSummaryUpgradeNotice)
 		}
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {

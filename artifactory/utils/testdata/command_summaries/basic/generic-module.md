@@ -1,6 +1,6 @@
 #### generic
 <pre>
-<strong> Upgrade your JFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>
+<p> <a href="https://myplatform.com/">⏫ Enable the linkage to Artifactory</a> </p>
 📦 generic-local
 └── 📁 path
     └── 📁 to

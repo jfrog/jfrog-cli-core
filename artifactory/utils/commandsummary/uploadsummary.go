@@ -9,9 +9,6 @@ type UploadSummary struct {
 	CommandSummary
 	uploadTree        *utils.FileTree
 	uploadedArtifacts ResultsWrapper
-	platformUrl       string
-	majorVersion      int
-	extendedSummary   bool
 }
 
 func (us *UploadSummary) GetSummaryTitle() string {
@@ -28,15 +25,11 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary(platformUrl string, majorVersion int) (*CommandSummary, error) {
-	return New(&UploadSummary{
-		platformUrl:  platformUrl,
-		majorVersion: majorVersion,
-	}, "upload")
+func NewUploadSummary() (*CommandSummary, error) {
+	return New(&UploadSummary{}, "upload")
 }
 
-func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (markdown string, err error) {
-	us.extendedSummary = extendedSummary
+func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}
@@ -67,10 +60,10 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	if !us.extendedSummary {
+	if !isExtendedSummary() {
 		// When the summary is not extended, the UI URL is not generated.
 		// When passing empty string to the upload tree, it won't be displayed as a link.
 		return ""
 	}
-	return GenerateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
+	return GenerateArtifactUrl(targetPath)
 }

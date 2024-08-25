@@ -10,29 +10,22 @@ import (
 )
 
 const (
-	fullReportTeaserMessage = "<strong> Upgrade your JFrog subscription to unlink the linkage of related artifacts in Artifactory. </strong>"
+	basicSummaryUpgradeNotice = "\n<p> <a href=\"%s\">⏫ Enable the linkage to Artifactory</a> </p>\n"
 )
 
 type BuildInfoSummary struct {
 	CommandSummary
-	platformUrl          string
-	platformMajorVersion int
-	extendedSummary      bool
 }
 
-func NewBuildInfoSummary(serverUrl string, platformMajorVersion int) (*CommandSummary, error) {
-	return New(&BuildInfoSummary{
-		platformUrl:          serverUrl,
-		platformMajorVersion: platformMajorVersion,
-	}, "build-info")
+func NewBuildInfoSummary() (*CommandSummary, error) {
+	return New(&BuildInfoSummary{}, "build-info")
 }
 
 func (bis *BuildInfoSummary) GetSummaryTitle() string {
 	return "🐸 Published JFrog Build Infos"
 }
 
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string, extendedSummary bool) (finalMarkdown string, err error) {
-	bis.extendedSummary = extendedSummary
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
 	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {
@@ -60,8 +53,8 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	tableBuilder.WriteString("\n\n|  Build Info |  Security Violations | Security Issues |\n")
 	tableBuilder.WriteString("|---------|------------|------------| \n")
 	for _, build := range builds {
-		if bis.extendedSummary {
-			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s | %s | \n", build.Name+" "+build.Number, build.BuildUrl, "violations", "issues"))
+		if isExtendedSummary() {
+			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, "violations", "issues"))
 		} else {
 			tableBuilder.WriteString(fmt.Sprintf("| %s | %s | %s |\n", build.Name+" "+build.Number, "violations", "issues"))
 		}
@@ -102,8 +95,10 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 
 		isMultiModule := len(parentModules) > 1
 
-		if !bis.extendedSummary {
-			parentModulesMarkdown.WriteString(fitInsideMarkdownTable(fullReportTeaserMessage))
+		if !isExtendedSummary() {
+			// The basic summary includes a notice to enable the linkage to Artifactory
+			// Notice the UI link has to be updated.
+			parentModulesMarkdown.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, GetPlatformUrl()))
 		}
 		var nestedModuleMarkdownTree strings.Builder
 		nestedModuleMarkdownTree.WriteString("|<pre>")
@@ -138,7 +133,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Modul
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		return createCollapsibleSection(createDockerMultiArchTitle(module, bis.platformUrl, bis.extendedSummary), sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(module, GetPlatformUrl(), isExtendedSummary()), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
@@ -148,7 +143,7 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) strin
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		var artifactUrlInArtifactory string
-		if bis.extendedSummary {
+		if isExtendedSummary() {
 			artifactUrlInArtifactory = bis.generateArtifactUrl(artifact)
 		}
 		if artifact.OriginalDeploymentRepo == "" {
@@ -165,7 +160,7 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return ""
 	}
-	return GenerateArtifactUrl(bis.platformUrl, path.Join(artifact.OriginalDeploymentRepo, artifact.Path), bis.platformMajorVersion)
+	return GenerateArtifactUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path))
 }
 
 // groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.

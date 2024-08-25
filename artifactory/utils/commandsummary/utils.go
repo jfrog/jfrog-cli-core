@@ -4,7 +4,6 @@ import (
 	"crypto/sha1" // #nosec G505 - This is only used for encoding, not security.
 	"encoding/hex"
 	"fmt"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 )
 
 const (
@@ -13,8 +12,9 @@ const (
 	artifactoryDockerPackagesUiFormat = "%s/ui/packages/docker:%s/sha256__%s"
 )
 
-func GenerateArtifactUrl(rtUrl, pathInRt string, majorVersion int) string {
-	rtUrl = clientUtils.AddTrailingSlashIfNeeded(rtUrl)
+func GenerateArtifactUrl(pathInRt string) string {
+	rtUrl := GetPlatformUrl()
+	majorVersion := GetPlatformMajorVersion()
 	if majorVersion == 6 {
 		return fmt.Sprintf(artifactory6UiFormat, rtUrl, pathInRt)
 	}

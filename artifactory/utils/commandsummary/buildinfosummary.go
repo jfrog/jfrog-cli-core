@@ -89,7 +89,7 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
-		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n %s \n\n", parentModuleID))
+		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n `%s` \n\n", parentModuleID))
 		parentModulesMarkdown.WriteString("\n\n|  Artifacts |  Security Violations | Security Issues |\n")
 		parentModulesMarkdown.WriteString("|---------|------------|------------| \n")
 

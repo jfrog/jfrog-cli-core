@@ -76,7 +76,9 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (st
 	if !shouldGenerate {
 		return "", nil
 	}
-	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", markdownBuilder.String())
+	finalString := markdownBuilder.String()
+	test, err := WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString)
+	return test, err
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
@@ -130,7 +132,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Modul
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		return createCollapsibleSection(createDockerMultiArchTitle(module, GetPlatformUrl(), isExtendedSummary()), sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(module), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
@@ -190,7 +192,7 @@ func isSupportedModule(module *buildInfo.Module) bool {
 	}
 }
 
-func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, isExtendedSummary bool) string {
+func createDockerMultiArchTitle(module *buildInfo.Module) string {
 	// Extract the parent image name from the module ID (e.g., my-image:1.0 -> my-image)
 	parentImageName := strings.Split(module.Parent, ":")[0]
 
@@ -203,9 +205,9 @@ func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, is
 		}
 	}
 
-	if isExtendedSummary {
+	if isExtendedSummary() {
 		// Create a link to the Docker package in Artifactory UI
-		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(platformUrl, "/"), "%2F%2F"+parentImageName, sha256)
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(GetPlatformUrl(), "/"), "%2F%2F"+parentImageName, sha256)
 		return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 	}
 	return module.Id

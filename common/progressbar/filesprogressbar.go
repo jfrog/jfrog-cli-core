@@ -274,10 +274,13 @@ func (p *filesProgressBarManager) ClearHeadlineMsg() {
 	if p.headlineBar != nil {
 		p.barsRWMutex.RLock()
 		defer p.barsRWMutex.RUnlock()
-		p.headlineBar.Abort(true)
-		p.barsWg.Done()
-		// Wait a refresh rate to make sure the abort has finished
-		time.Sleep(progressbar.ProgressRefreshRate)
+		if p.headlineBar != nil {
+			p.headlineBar.Abort(true)
+			p.barsWg.Done()
+			// Wait a refresh rate to make sure the abort has finished
+			time.Sleep(progressbar.ProgressRefreshRate)
+			p.headlineBar = nil
+		}
 	}
 	p.headlineBar = nil
 }

@@ -50,6 +50,8 @@ const (
 	XrayIndex                    = "xrayIndex"
 	PropertySets                 = "propertySets"
 	DownloadRedirect             = "downloadRedirect"
+	PriorityResolution           = "priorityResolution"
+	CdnRedirect                  = "cdnRedirect"
 	BlockPushingSchema1          = "blockPushingSchema1"
 
 	// Mutual local and virtual repository configuration JSON keys
@@ -235,6 +237,8 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 	SuppressPomConsistencyChecks:      {Text: SuppressPomConsistencyChecks},
 	BlackedOut:                        {Text: BlackedOut},
 	DownloadRedirect:                  {Text: DownloadRedirect},
+	PriorityResolution:                {Text: PriorityResolution},
+	CdnRedirect:                       {Text: CdnRedirect},
 	BlockPushingSchema1:               {Text: BlockPushingSchema1},
 	DebianTrivialLayout:               {Text: DebianTrivialLayout},
 	ExternalDependenciesEnabled:       {Text: ExternalDependenciesEnabled},
@@ -302,7 +306,7 @@ var optionalSuggestsMap = map[string]prompt.Suggest{
 
 var baseLocalRepoConfKeys = []string{
 	Description, Notes, IncludePatterns, ExcludePatterns, RepoLayoutRef, ProjectKey, Environment, BlackedOut, XrayIndex,
-	PropertySets, ArchiveBrowsingEnabled, OptionalIndexCompressionFormats, DownloadRedirect, BlockPushingSchema1,
+	PropertySets, ArchiveBrowsingEnabled, OptionalIndexCompressionFormats, DownloadRedirect, PriorityResolution, CdnRedirect, BlockPushingSchema1,
 }
 
 var mavenGradleLocalRepoConfKeys = []string{
@@ -330,7 +334,7 @@ var baseRemoteRepoConfKeys = []string{
 	BlackedOut, XrayIndex, StoreArtifactsLocally, SocketTimeoutMillis, LocalAddress, RetrievalCachePeriodSecs, FailedRetrievalCachePeriodSecs,
 	MissedRetrievalCachePeriodSecs, UnusedArtifactsCleanupEnabled, UnusedArtifactsCleanupPeriodHours, AssumedOfflinePeriodSecs,
 	ShareConfiguration, SynchronizeProperties, BlockMismatchingMimeTypes, PropertySets, AllowAnyHostAuth, EnableCookieManagement,
-	BypassHeadRequests, ClientTlsCertificate, DownloadRedirect, BlockPushingSchema1, ContentSynchronisation,
+	BypassHeadRequests, ClientTlsCertificate, DownloadRedirect, PriorityResolution, CdnRedirect, BlockPushingSchema1, ContentSynchronisation,
 }
 
 var mavenGradleRemoteRepoConfKeys = []string{
@@ -815,6 +819,8 @@ var questionMap = map[string]ioutils.QuestionInfo{
 	SuppressPomConsistencyChecks: BoolToStringQuestionInfo,
 	BlackedOut:                   BoolToStringQuestionInfo,
 	DownloadRedirect:             BoolToStringQuestionInfo,
+	PriorityResolution:           BoolToStringQuestionInfo,
+	CdnRedirect:                  BoolToStringQuestionInfo,
 	BlockPushingSchema1:          BoolToStringQuestionInfo,
 	DebianTrivialLayout:          BoolToStringQuestionInfo,
 	ExternalDependenciesEnabled:  BoolToStringQuestionInfo,

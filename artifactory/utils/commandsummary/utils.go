@@ -26,7 +26,7 @@ type IndexedFilesMap map[Index]map[string]string
 // Receives an index and a predicted file name, return the value if exists.
 func (nm IndexedFilesMap) Get(index Index, key string) (exists bool, value string) {
 	if _, exists := nm[index]; exists {
-		shaKey := fileNameToSha1(key)
+		shaKey := nm.fileNameToSha1(key)
 		if _, exists := nm[index][shaKey]; exists {
 			return true, nm[index][shaKey]
 		}
@@ -34,7 +34,7 @@ func (nm IndexedFilesMap) Get(index Index, key string) (exists bool, value strin
 	return
 }
 
-func fileNameToSha1(fileName string) string {
+func (nm IndexedFilesMap) fileNameToSha1(fileName string) string {
 	hash := sha1.New() // #nosec G401 - This is only used for encoding, not security.
 	hash.Write([]byte(fileName))
 	hashBytes := hash.Sum(nil)

@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	basicSummaryUpgradeNotice         = "\n<p><a href=\"%s\">⏫ Enable the linkage to Artifactory</a></p>\n"
+	basicSummaryUpgradeNotice         = "<a href=\"%s\">⏫ Enable the linkage to Artifactory</a>\n\n"
 	minTableColumnLength              = 350
 	markdownSpaceFiller               = "&nbsp;"
 	defaultSecurityIssuesMessage      = "Artifact was not scanned by this job"
@@ -52,14 +52,14 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 		}
 		finalMarkdown = tableInfo + modulesMarkdown
 	}
-	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown)
+	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 2)
 }
 
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString("\n\n|  Build Info |  Security Violations | Security Issues |\n")
-	tableBuilder.WriteString("|---------|------------|------------|\n")
+	tableBuilder.WriteString("|:---------|:------------|:------------|\n")
 	for _, build := range builds {
 		appendBuildRow(&tableBuilder, build)
 	}
@@ -83,7 +83,7 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (st
 		return "", nil
 	}
 	finalString := markdownBuilder.String()
-	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString)
+	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString, 4)
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
@@ -94,18 +94,21 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
-		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n`%s`\n\n", parentModuleID))
+		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n**%s**\n\n", parentModuleID))
 		parentModulesMarkdown.WriteString("\n\n|  Artifacts |  Security Violations | Security Issues |\n")
-		parentModulesMarkdown.WriteString("|------------|---------------------|------------------|\n")
+		parentModulesMarkdown.WriteString("|:------------|:---------------------|:------------------|\n")
 
 		isMultiModule := len(parentModules) > 1
 
 		var nestedModuleMarkdownTree strings.Builder
-		nestedModuleMarkdownTree.WriteString("|<pre>")
 		if !isExtendedSummary() {
 			// The basic summary includes a notice to enable the linkage to Artifactory
 			// Notice the UI link has to be updated.
+			nestedModuleMarkdownTree.WriteString("|")
 			nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, GetPlatformUrl()))
+			nestedModuleMarkdownTree.WriteString("<pre>")
+		} else {
+			nestedModuleMarkdownTree.WriteString("|<pre>")
 		}
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {

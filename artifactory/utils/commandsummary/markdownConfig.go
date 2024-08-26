@@ -46,11 +46,11 @@ func GetPlatformMajorVersion() int {
 
 // Initializes the command summary values that effect Markdown generation
 func InitMarkdownGenerationValues(serverUrl string, platformMajorVersion int) (err error) {
-	_, err = checkExtendedSummaryEntitled(serverUrl)
+	entitled, err := checkExtendedSummaryEntitled(serverUrl)
 	if err != nil {
 		return
 	}
-	setExtendedSummary(false)
+	setExtendedSummary(entitled)
 	setPlatformMajorVersion(platformMajorVersion)
 	setPlatformUrl(serverUrl)
 	return

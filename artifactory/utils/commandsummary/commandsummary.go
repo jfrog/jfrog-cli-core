@@ -41,8 +41,9 @@ type ScanResult interface {
 
 // This interface is used to accumulate scan results from different sources and generate a Markdown summary
 type ScanResultMarkdownInterface interface {
-	BuildScan(filePaths []string) (ScanResult, error)
-	DockerScanScan(filePaths []string) (ScanResult, error)
+	BuildScan(filePaths []string) (result ScanResult, fallback ScanResult, err error)
+	DockerScanScan(filePaths []string) (result ScanResult, fallback ScanResult, err error)
+	BinaryScanScan(filePaths []string) (result ScanResult, fallback ScanResult, err error)
 }
 
 const (

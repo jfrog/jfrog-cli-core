@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	basicSummaryUpgradeNotice = "<a href=\"%s\">⏫ Enable the linkage to Artifactory</a>\n\n"
+	basicSummaryUpgradeNotice = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
 	minTableColumnLength      = 350
 	markdownSpaceFiller       = "&nbsp;"
 )
@@ -27,7 +27,7 @@ func NewBuildInfoSummary() (*CommandSummary, error) {
 }
 
 func (bis *BuildInfoSummary) GetSummaryTitle() string {
-	return "🐸 Published JFrog Build Infos"
+	return "ℹ️ Published JFrog Build Infos"
 }
 
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
@@ -49,7 +49,7 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 		}
 		finalMarkdown = tableInfo + modulesMarkdown
 	}
-	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 2)
+	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3)
 }
 
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
@@ -65,7 +65,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (string, error) {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n### Published Modules\n\n")
+	markdownBuilder.WriteString("\n\n<h3>Published Modules</h3>\n\n")
 	var shouldGenerate bool
 	for _, build := range builds {
 		if modulesMarkdown := bis.generateModulesMarkdown(build.Modules...); modulesMarkdown != "" {
@@ -79,7 +79,7 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (st
 		return "", nil
 	}
 	finalString := markdownBuilder.String()
-	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString, 4)
+	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString, 2)
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {

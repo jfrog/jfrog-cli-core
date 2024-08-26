@@ -53,7 +53,7 @@ type CommandSummary struct {
 // Notice to check if the command should record the summary before calling this function.
 // You can do this by calling the helper function ShouldRecordSummary.
 func New(userImplementation CommandSummaryInterface, commandsName string) (cs *CommandSummary, err error) {
-	outputDir := os.Getenv(coreutils.OutputDirPathEnv)
+	outputDir := os.Getenv(coreutils.SummaryOutputDirPathEnv)
 	if outputDir == "" {
 		return nil, fmt.Errorf("output dir path is not defined,please set the JFROG_CLI_COMMAND_SUMMARY_OUTPUT_DIR environment variable")
 	}
@@ -196,7 +196,7 @@ func (cs *CommandSummary) prepareFileSystem() (err error) {
 
 // If the output dir path is not defined, the command summary should not be recorded.
 func ShouldRecordSummary() bool {
-	return os.Getenv(coreutils.OutputDirPathEnv) != ""
+	return os.Getenv(coreutils.SummaryOutputDirPathEnv) != ""
 }
 
 func createAndWriteToFile(filePath, fileName string, data []byte) (err error) {

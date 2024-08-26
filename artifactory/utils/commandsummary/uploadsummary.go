@@ -6,10 +6,9 @@ import (
 )
 
 type UploadSummary struct {
+	CommandSummary
 	uploadTree        *utils.FileTree
 	uploadedArtifacts ResultsWrapper
-	platformUrl       string
-	majorVersion      int
 }
 
 type UploadResult struct {
@@ -22,11 +21,8 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary(platformUrl string, majorVersion int) (*CommandSummary, error) {
-	return New(&UploadSummary{
-		platformUrl:  platformUrl,
-		majorVersion: majorVersion,
-	}, "upload")
+func NewUploadSummary() (*CommandSummary, error) {
+	return New(&UploadSummary{}, "upload")
 }
 
 func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
@@ -60,5 +56,9 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	return GenerateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
+	// Only build URL if extended summary is enabled
+	if StaticMarkdownConfig.IsExtendedSummary() {
+		return GenerateArtifactUrl(targetPath)
+	}
+	return ""
 }

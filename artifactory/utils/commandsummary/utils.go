@@ -4,7 +4,6 @@ import (
 	"crypto/sha1" // #nosec G505 - This is only used for encoding, not security.
 	"encoding/hex"
 	"fmt"
-	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 )
 
 const (
@@ -13,12 +12,11 @@ const (
 	artifactoryDockerPackagesUiFormat = "%s/ui/packages/docker:%s/sha256__%s"
 )
 
-func GenerateArtifactUrl(rtUrl, pathInRt string, majorVersion int) string {
-	rtUrl = clientUtils.AddTrailingSlashIfNeeded(rtUrl)
-	if majorVersion == 6 {
-		return fmt.Sprintf(artifactory6UiFormat, rtUrl, pathInRt)
+func GenerateArtifactUrl(pathInRt string) string {
+	if StaticMarkdownConfig.GetPlatformMajorVersion() == 6 {
+		return fmt.Sprintf(artifactory6UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 	}
-	return fmt.Sprintf(artifactory7UiFormat, rtUrl, pathInRt)
+	return fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 }
 
 // Map containing indexed data recorded to the file system.

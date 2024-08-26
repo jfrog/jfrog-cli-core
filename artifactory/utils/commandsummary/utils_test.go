@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	platformUrl = "https://myplatform.com/"
-	fullPath    = "repo/path/file"
+	testPlatformUrl = "https://myplatform.com/"
+	fullPath        = "repo/path/file"
 )
 
 func TestGenerateArtifactUrl(t *testing.T) {
@@ -21,10 +21,11 @@ func TestGenerateArtifactUrl(t *testing.T) {
 		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true"},
 		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/#/artifacts/browse/tree/General/repo/path/file"},
 	}
-
+	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 	for _, testCase := range cases {
 		t.Run(testCase.testName, func(t *testing.T) {
-			artifactUrl := GenerateArtifactUrl(platformUrl, fullPath, testCase.majorVersion)
+			StaticMarkdownConfig.setPlatformMajorVersion(testCase.majorVersion)
+			artifactUrl := GenerateArtifactUrl(fullPath)
 			assert.Equal(t, testCase.expected, artifactUrl)
 		})
 	}

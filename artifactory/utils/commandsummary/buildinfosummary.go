@@ -10,12 +10,9 @@ import (
 )
 
 const (
-	basicSummaryUpgradeNotice         = "<a href=\"%s\">⏫ Enable the linkage to Artifactory</a>\n\n"
-	minTableColumnLength              = 350
-	markdownSpaceFiller               = "&nbsp;"
-	defaultSecurityIssuesMessage      = "Artifact was not scanned by this job"
-	basicSummarySecurityIssuesMessage = "<br><br> ⏫ <a href='https://myurl.com'> Unlock detailed findings</a> <br><br>"
-	defaultViolationsMessage          = "No watch is defined"
+	basicSummaryUpgradeNotice = "<a href=\"%s\">⏫ Enable the linkage to Artifactory</a>\n\n"
+	minTableColumnLength      = 350
+	markdownSpaceFiller       = "&nbsp;"
 )
 
 // Static mapping of scan results to be used in the summary
@@ -252,17 +249,5 @@ func getScanResults(scannedEntity string) (sc ScanResult) {
 	if sc != nil {
 		return
 	}
-	return getNonScannedResult()
-}
-
-func getNonScannedResult() ScanResult {
-	vulnerabilities := defaultSecurityIssuesMessage
-	if !isExtendedSummary() {
-		vulnerabilities += basicSummarySecurityIssuesMessage
-	}
-	sc := &notScanned{
-		Violations:      defaultViolationsMessage,
-		Vulnerabilities: vulnerabilities,
-	}
-	return sc
+	return ScanResultsMapping["fallback"]
 }

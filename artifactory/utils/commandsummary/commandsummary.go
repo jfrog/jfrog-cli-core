@@ -33,6 +33,18 @@ const (
 	SarifReport  Index = "sarif-reports"
 )
 
+// Each scan result object can be used to generate violations or vulnerabilities.
+type ScanResult interface {
+	GetViolations() string
+	GetVulnerabilities() string
+}
+
+// This interface is used to accumulate scan results from different sources and generate a Markdown summary
+type ScanResultMarkdownInterface interface {
+	BuildScan(filePaths []string) (ScanResult, error)
+	DockerScanScan(filePaths []string) (ScanResult, error)
+}
+
 const (
 	// The name of the directory where all the commands summaries will be stored.
 	// Inside this directory, each command will have its own directory.
@@ -148,6 +160,7 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 	return createAndWriteToFile(cs.summaryOutputPath, finalMarkdownFileName, data)
 }
 
+// TODO encode file names before fetching them
 // Retrieve all the indexed data files paths in the given directory
 func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
 	entries, err := os.ReadDir(dirPath)

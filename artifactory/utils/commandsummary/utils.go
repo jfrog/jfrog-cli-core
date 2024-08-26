@@ -46,3 +46,17 @@ func fileNameToSha1(fileName string) string {
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes)
 }
+
+// notScanned is a default implementation of the ScanResult interface.
+type notScanned struct {
+	Violations      string
+	Vulnerabilities string
+}
+
+func (m *notScanned) GetViolations() string {
+	return m.Violations
+}
+
+func (m *notScanned) GetVulnerabilities() string {
+	return m.Vulnerabilities
+}

@@ -10,10 +10,16 @@ import (
 )
 
 const (
-	basicSummaryUpgradeNotice = "\n<p> <a href=\"%s\">⏫ Enable the linkage to Artifactory</a> </p>\n"
-	minTableColumnLength      = 400
-	markdownSpaceFiller       = "&nbsp;"
+	basicSummaryUpgradeNotice         = "\n<p><a href=\"%s\">⏫ Enable the linkage to Artifactory</a></p>\n"
+	minTableColumnLength              = 350
+	markdownSpaceFiller               = "&nbsp;"
+	defaultSecurityIssuesMessage      = "Artifact was not scanned by this job"
+	basicSummarySecurityIssuesMessage = "<br><br> ⏫ <a href='https://myurl.com'> Unlock detailed findings</a> <br><br>"
+	defaultViolationsMessage          = "No watch is defined"
 )
+
+// Static mapping of scan results to be used in the summary
+var ScanResultsMapping map[string]ScanResult
 
 type BuildInfoSummary struct {
 	CommandSummary
@@ -110,14 +116,10 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		}
 		nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
 		nestedModuleMarkdownTree.WriteString("</pre>")
-		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), appendSpacesToTableColumn("violations"), appendSpacesToTableColumn("issues")))
+		scanResult := getScanResults(parentModuleID)
+		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), appendSpacesToTableColumn(scanResult.GetViolations()), appendSpacesToTableColumn(scanResult.GetVulnerabilities())))
 	}
 	return parentModulesMarkdown.String()
-}
-
-// To fit inside the Markdown table, replace new lines with <br>
-func fitInsideMarkdownTable(str string) string {
-	return strings.ReplaceAll(str, "\n", "<br>")
 }
 
 func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
@@ -229,9 +231,35 @@ func appendSpacesToTableColumn(str string) string {
 
 func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
 	buildName := build.Name + " " + build.Number
+	buildScanResult := getScanResults(buildName)
 	if isExtendedSummary() {
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, build.BuildUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn("violations"), appendSpacesToTableColumn("issues")))
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, build.BuildUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetViolations())))
 	} else {
-		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", buildName, appendSpacesToTableColumn(""), appendSpacesToTableColumn("violations"), appendSpacesToTableColumn("issues")))
+		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", buildName, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
 	}
+}
+
+// To fit inside the Markdown table, replace new lines with <br>
+func fitInsideMarkdownTable(str string) string {
+	return strings.ReplaceAll(str, "\n", "<br>")
+}
+
+func getScanResults(scannedEntity string) (sc ScanResult) {
+	sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]
+	if sc != nil {
+		return
+	}
+	return getNonScannedResult()
+}
+
+func getNonScannedResult() ScanResult {
+	vulnerabilities := defaultSecurityIssuesMessage
+	if !isExtendedSummary() {
+		vulnerabilities += basicSummarySecurityIssuesMessage
+	}
+	sc := &notScanned{
+		Violations:      defaultViolationsMessage,
+		Vulnerabilities: vulnerabilities,
+	}
+	return sc
 }

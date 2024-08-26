@@ -13,12 +13,10 @@ const (
 )
 
 func GenerateArtifactUrl(pathInRt string) string {
-	rtUrl := GetPlatformUrl()
-	majorVersion := GetPlatformMajorVersion()
-	if majorVersion == 6 {
-		return fmt.Sprintf(artifactory6UiFormat, rtUrl, pathInRt)
+	if StaticMarkdownConfig.GetPlatformMajorVersion() == 6 {
+		return fmt.Sprintf(artifactory6UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 	}
-	return fmt.Sprintf(artifactory7UiFormat, rtUrl, pathInRt)
+	return fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 }
 
 func WrapCollapsableMarkdown(title, markdown string, headerSize int) (string, error) {

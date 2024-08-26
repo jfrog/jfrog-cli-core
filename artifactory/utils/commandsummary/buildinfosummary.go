@@ -98,11 +98,11 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		isMultiModule := len(parentModules) > 1
 
 		var nestedModuleMarkdownTree strings.Builder
-		if !isExtendedSummary() {
+		if !StaticMarkdownConfig.IsExtendedSummary() {
 			// The basic summary includes a notice to enable the linkage to Artifactory
 			// Notice the UI link has to be updated.
 			nestedModuleMarkdownTree.WriteString("|")
-			nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, GetPlatformUrl()))
+			nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetPlatformUrl()))
 			nestedModuleMarkdownTree.WriteString("<pre>")
 		} else {
 			nestedModuleMarkdownTree.WriteString("|<pre>")
@@ -143,7 +143,7 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) strin
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		var artifactUrlInArtifactory string
-		if isExtendedSummary() {
+		if StaticMarkdownConfig.IsExtendedSummary() {
 			artifactUrlInArtifactory = bis.generateArtifactUrl(artifact)
 		}
 		if artifact.OriginalDeploymentRepo == "" {
@@ -206,9 +206,9 @@ func createDockerMultiArchTitle(module *buildInfo.Module) string {
 		}
 	}
 
-	if isExtendedSummary() {
+	if StaticMarkdownConfig.IsExtendedSummary() {
 		// Create a link to the Docker package in Artifactory UI
-		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(GetPlatformUrl(), "/"), "%2F%2F"+parentImageName, sha256)
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetPlatformUrl(), "/"), "%2F%2F"+parentImageName, sha256)
 		return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 	}
 	return module.Id
@@ -232,7 +232,7 @@ func appendSpacesToTableColumn(str string) string {
 func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
 	buildName := build.Name + " " + build.Number
 	buildScanResult := getScanResults(buildName)
-	if isExtendedSummary() {
+	if StaticMarkdownConfig.IsExtendedSummary() {
 		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, build.BuildUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetViolations())))
 	} else {
 		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", buildName, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))

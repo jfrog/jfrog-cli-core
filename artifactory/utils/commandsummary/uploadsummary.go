@@ -60,10 +60,9 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	if !isExtendedSummary() {
-		// When the summary is not extended, the UI URL is not generated.
-		// When passing empty string to the upload tree, it won't be displayed as a link.
-		return ""
+	// Only build URL if extended summary is enabled
+	if StaticMarkdownConfig.IsExtendedSummary() {
+		return GenerateArtifactUrl(targetPath)
 	}
-	return GenerateArtifactUrl(targetPath)
+	return ""
 }

@@ -1,5 +1,16 @@
 package commandsummary
 
+//
+//import (
+//	buildinfo "github.com/jfrog/build-info-go/entities"
+//	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+//	"github.com/stretchr/testify/assert"
+//	"os"
+//	"path/filepath"
+//	"strings"
+//	"testing"
+//)
+//
 //func TestBuildInfoTable(t *testing.T) {
 //	buildInfoSummary := &BuildInfoSummary{}
 //	var builds = []*buildinfo.BuildInfo{
@@ -12,19 +23,19 @@ package commandsummary
 //	}
 //
 //	t.Run("Extended Summary", func(t *testing.T) {
-//		setExtendedSummary(true)
+//		StaticMarkdownConfig.setExtendedSummary(true)
 //		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
 //	})
 //
 //	t.Run("Basic Summary", func(t *testing.T) {
-//		setExtendedSummary(false)
+//		StaticMarkdownConfig.setExtendedSummary(true)
 //		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
 //	})
 //
 //	cleanCommandSummaryValues()
 //}
 //
-//func TestBuildInfoModulesMaven(t *testing.T) {
+//func TestBuildInfoModules(t *testing.T) {
 //	buildInfoSummary := &BuildInfoSummary{}
 //	var builds = []*buildinfo.BuildInfo{
 //		{
@@ -33,6 +44,17 @@ package commandsummary
 //			Started:  "2024-05-05T12:47:20.803+0300",
 //			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 //			Modules: []buildinfo.Module{
+//				{
+//					Id:   "gradle",
+//					Type: buildinfo.Gradle,
+//					Artifacts: []buildinfo.Artifact{
+//						{
+//							Name:                   "gradleArtifact",
+//							Path:                   "dir/gradleArtifact",
+//							OriginalDeploymentRepo: "gradle-local",
+//						},
+//					},
+//				},
 //				{
 //					Id:   "maven",
 //					Type: buildinfo.Maven,
@@ -45,34 +67,6 @@ package commandsummary
 //						Id: "dep1",
 //					}},
 //				},
-//			},
-//		},
-//	}
-//	setPlatformUrl(testPlatformUrl)
-//	t.Run("Extended Summary", func(t *testing.T) {
-//		setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, getTestDataFile(t, "maven-module.md"), result)
-//	})
-//	t.Run("Basic Summary", func(t *testing.T) {
-//		setExtendedSummary(false)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, getTestDataFile(t, "maven-module.md"), result)
-//	})
-//	cleanCommandSummaryValues()
-//}
-//
-//func TestBuildInfoModulesGeneric(t *testing.T) {
-//	buildInfoSummary := &BuildInfoSummary{}
-//	var builds = []*buildinfo.BuildInfo{
-//		{
-//			Name:     "buildName",
-//			Number:   "123",
-//			Started:  "2024-05-05T12:47:20.803+0300",
-//			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
-//			Modules: []buildinfo.Module{
 //				{
 //					Id:   "generic",
 //					Type: buildinfo.Generic,
@@ -86,20 +80,26 @@ package commandsummary
 //		},
 //	}
 //
-//	setPlatformUrl(testPlatformUrl)
+//	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 //	t.Run("Extended Summary", func(t *testing.T) {
-//		setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, getTestDataFile(t, "generic-module.md"), result)
+//		StaticMarkdownConfig.setExtendedSummary(true)
+//		result := buildInfoSummary.buildInfoModules(builds)
+//		verifyModulesResult(t, result)
 //	})
 //	t.Run("Basic Summary", func(t *testing.T) {
-//		setExtendedSummary(false)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, getTestDataFile(t, "generic-module.md"), result)
+//		StaticMarkdownConfig.setExtendedSummary(false)
+//		result := buildInfoSummary.buildInfoModules(builds)
+//		verifyModulesResult(t, result)
 //	})
 //	cleanCommandSummaryValues()
+//}
+//
+//func verifyModulesResult(t *testing.T, result string) {
+//	// Validate that the markdown contains the expected "generic" repo content as well as the "maven" repo content.
+//	assertContainsWithInfo(t, result, getTestDataFile(t, "generic-module.md"))
+//	assertContainsWithInfo(t, result, getTestDataFile(t, "maven-module.md"))
+//	// The build-info also contains a "gradle" module, but it should not be included in the markdown.
+//	assert.NotContains(t, result, "gradle")
 //}
 //
 //func TestBuildInfoModulesEmpty(t *testing.T) {
@@ -135,21 +135,17 @@ package commandsummary
 //	}
 //
 //	t.Run("ExtendedSummary", func(t *testing.T) {
-//		setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Empty(t, result)
+//		StaticMarkdownConfig.setExtendedSummary(true)
+//		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 //	})
 //
 //	t.Run("BasicSummary", func(t *testing.T) {
-//		setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Empty(t, result)
+//		StaticMarkdownConfig.setExtendedSummary(true)
+//		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 //	})
 //}
 //
-//func TestDockerMultiArchView(t *testing.T) {
+//func TestBuildInfoModulesWithGrouping(t *testing.T) {
 //	buildInfoSummary := &BuildInfoSummary{}
 //	var builds = []*buildinfo.BuildInfo{
 //		{
@@ -234,6 +230,43 @@ package commandsummary
 //				{
 //					Type:   "docker",
 //					Parent: "multiarch-image:1",
+//					Id:     "linux/arm/multiarch-image:1",
+//					Artifacts: []buildinfo.Artifact{
+//						{
+//							Checksum: buildinfo.Checksum{
+//								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+//								Sha256: "sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
+//								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+//							},
+//							Name:                   "manifest.json",
+//							Path:                   "multiarch-image/sha256__686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
+//							OriginalDeploymentRepo: "docker-local",
+//						},
+//						{
+//							Checksum: buildinfo.Checksum{
+//								Sha1:   "63d3ac90f9cd322b76543d7bf96eeb92417faf41",
+//								Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
+//								Md5:    "99bbb1e1035aea4d9150e4348f24e107",
+//							},
+//							Name:                   "sha256__33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
+//							Path:                   "multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
+//							OriginalDeploymentRepo: "docker-local",
+//						},
+//						{
+//							Checksum: buildinfo.Checksum{
+//								Sha1:   "9dceac352f990a3149ff97ab605c3c8833409abf",
+//								Sha256: "5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c",
+//								Md5:    "d6a694604c7e58b2c788dec5656a1add",
+//							},
+//							Name:                   "sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c",
+//							Path:                   "multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c",
+//							OriginalDeploymentRepo: "docker-local",
+//						},
+//					},
+//				},
+//				{
+//					Type:   "docker",
+//					Parent: "multiarch-image:1",
 //					Id:     "attestations/multiarch-image:1",
 //					Checksum: buildinfo.Checksum{
 //						Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
@@ -251,32 +284,6 @@ package commandsummary
 //						},
 //					},
 //				},
-//			},
-//		},
-//	}
-//	setPlatformUrl(testPlatformUrl)
-//	t.Run("Extended Summary", func(t *testing.T) {
-//		setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
-//	})
-//
-//	t.Run("Basic Summary", func(t *testing.T) {
-//		setExtendedSummary(false)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
-//	})
-//	cleanCommandSummaryValues()
-//}
-//
-//func TestDockerModuleView(t *testing.T) {
-//	buildInfoSummary := &BuildInfoSummary{}
-//	var builds = []*buildinfo.BuildInfo{
-//		{
-//			Name: "docker-image",
-//			Modules: []buildinfo.Module{
 //				{
 //					Type:   "docker",
 //					Parent: "image:2",
@@ -300,27 +307,40 @@ package commandsummary
 //			},
 //		},
 //	}
-//	setPlatformUrl(testPlatformUrl)
+//	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 //	t.Run("Extended Summary", func(t *testing.T) {
-//		setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, getTestDataFile(t, "docker-image-module.md"), result)
+//		StaticMarkdownConfig.setExtendedSummary(true)
+//		result := buildInfoSummary.buildInfoModules(builds)
+//		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
+//		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
 //	})
 //
 //	t.Run("Basic Summary", func(t *testing.T) {
-//		setExtendedSummary(false)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Equal(t, getTestDataFile(t, "docker-image-module.md"), result)
+//		StaticMarkdownConfig.setExtendedSummary(false)
+//		result := buildInfoSummary.buildInfoModules(builds)
+//		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
+//		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
 //	})
 //	cleanCommandSummaryValues()
+//}
+//
+//// Helper function to handle diffs in contains assertions
+//// As these tests handle markdown files, this function makes it easier to fix the necessary output.
+//func assertContainsWithInfo(t *testing.T, result, expected string) {
+//	contains := assert.Contains(t, result, expected)
+//	if !contains {
+//		t.Log("----------------------------------------------------------------------------------------------------------------")
+//		t.Log("The actual result does not contain the expected result.")
+//		t.Log("----------------------------------------------------------------------------------------------------------------")
+//		t.Log("\n\nExpected to be contained in the actual result:\n\n", expected)
+//		t.Log("\n\nActual result:\n\n", result)
+//	}
 //}
 //
 //// Tests data files are location artifactory/commands/testdata/command_summary
 //func getTestDataFile(t *testing.T, fileName string) string {
 //	var modulesPath string
-//	if isExtendedSummary() {
+//	if StaticMarkdownConfig.IsExtendedSummary() {
 //		modulesPath = filepath.Join("../", "testdata", "command_summaries", "extended", fileName)
 //	} else {
 //		modulesPath = filepath.Join("../", "testdata", "command_summaries", "basic", fileName)
@@ -335,8 +355,19 @@ package commandsummary
 //	return contentStr
 //}
 //
+//func TestParseBuildTime(t *testing.T) {
+//	// Test format
+//	actual := parseBuildTime("2006-01-02T15:04:05.000-0700")
+//	expected := "Jan 2, 2006 , 15:04:05"
+//	assert.Equal(t, expected, actual)
+//	// Test invalid format
+//	expected = "N/A"
+//	actual = parseBuildTime("")
+//	assert.Equal(t, expected, actual)
+//}
+//
 //// Return config values to the default state
 //func cleanCommandSummaryValues() {
-//	setExtendedSummary(false)
-//	setPlatformMajorVersion(0)
+//	StaticMarkdownConfig.setExtendedSummary(false)
+//	StaticMarkdownConfig.setPlatformMajorVersion(0)
 //}

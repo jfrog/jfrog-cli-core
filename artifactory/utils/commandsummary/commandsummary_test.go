@@ -332,13 +332,13 @@ func prepareTest(t *testing.T) (cs *CommandSummary, cleanUp func()) {
 	tempDir, err := fileutils.CreateTempDir()
 	assert.NoError(t, err)
 	// Set env
-	assert.NoError(t, os.Setenv(coreutils.OutputDirPathEnv, tempDir))
+	assert.NoError(t, os.Setenv(coreutils.SummaryOutputDirPathEnv, tempDir))
 	// Create the job summaries home directory
 	cs, err = New(&mockCommandSummary{}, "testsCommands")
 	assert.NoError(t, err)
 
 	cleanUp = func() {
-		assert.NoError(t, os.Unsetenv(coreutils.OutputDirPathEnv))
+		assert.NoError(t, os.Unsetenv(coreutils.SummaryOutputDirPathEnv))
 		assert.NoError(t, fileutils.RemoveTempDir(tempDir))
 	}
 	return

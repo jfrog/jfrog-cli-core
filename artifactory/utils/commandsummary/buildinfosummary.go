@@ -55,8 +55,7 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n|  Build Info |  Security Violations | Security Issues |\n")
-	tableBuilder.WriteString("|:---------|:------------|:------------|\n")
+	tableBuilder.WriteString(getBuildInfoTableHeader())
 	for _, build := range builds {
 		appendBuildRow(&tableBuilder, build)
 	}
@@ -91,35 +90,34 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
-		parentModulesMarkdown.WriteString(fmt.Sprintf("\n\n**%s**\n\n", parentModuleID))
-		parentModulesMarkdown.WriteString("\n\n|  Artifacts |  Security Violations | Security Issues |\n")
-		parentModulesMarkdown.WriteString("|:------------|:---------------------|:------------------|\n")
-
+		parentModulesMarkdown.WriteString(generateModuleHeader(parentModuleID))
+		parentModulesMarkdown.WriteString(generateModuleTableHeader())
 		isMultiModule := len(parentModules) > 1
-
-		var nestedModuleMarkdownTree strings.Builder
-		if !StaticMarkdownConfig.IsExtendedSummary() {
-			// The basic summary includes a notice to enable the linkage to Artifactory
-			// Notice the UI link has to be updated.
-			nestedModuleMarkdownTree.WriteString("|")
-			nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetPlatformUrl()))
-			nestedModuleMarkdownTree.WriteString("<pre>")
-		} else {
-			nestedModuleMarkdownTree.WriteString("|<pre>")
-		}
-		for _, module := range parentModules {
-			if isMultiModule && parentModuleID == module.Id {
-				// Skip the parent module if there are multiple modules, as it will be displayed as a header
-				continue
-			}
-			nestedModuleMarkdownTree.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
-		}
-		nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
-		nestedModuleMarkdownTree.WriteString("</pre>")
+		nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(parentModules, parentModuleID, isMultiModule)
 		scanResult := getScanResults(parentModuleID)
-		parentModulesMarkdown.WriteString(fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree.String()), appendSpacesToTableColumn(scanResult.GetViolations()), appendSpacesToTableColumn(scanResult.GetVulnerabilities())))
+		parentModulesMarkdown.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
 	}
 	return parentModulesMarkdown.String()
+}
+
+func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {
+	var nestedModuleMarkdownTree strings.Builder
+	if !StaticMarkdownConfig.IsExtendedSummary() {
+		nestedModuleMarkdownTree.WriteString("|")
+		nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetPlatformUrl()))
+		nestedModuleMarkdownTree.WriteString("<pre>")
+	} else {
+		nestedModuleMarkdownTree.WriteString("|<pre>")
+	}
+	for _, module := range parentModules {
+		if isMultiModule && parentModuleID == module.Id {
+			continue
+		}
+		nestedModuleMarkdownTree.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
+	}
+	nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
+	nestedModuleMarkdownTree.WriteString("</pre>")
+	return nestedModuleMarkdownTree.String()
 }
 
 func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
@@ -237,6 +235,22 @@ func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
 	} else {
 		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", buildName, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
 	}
+}
+
+func getBuildInfoTableHeader() string {
+	return "\n\n|  Build Info |  Security Violations | Security Issues |\n|:---------|:------------|:------------|\n"
+}
+
+func generateModuleHeader(parentModuleID string) string {
+	return fmt.Sprintf("\n\n**%s**\n\n", parentModuleID)
+}
+
+func generateModuleTableHeader() string {
+	return "\n\n|  Artifacts |  Security Violations | Security Issues |\n|:------------|:---------------------|:------------------|\n"
+}
+
+func generateTableRow(nestedModuleMarkdownTree string, scanResult ScanResult) string {
+	return fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree), appendSpacesToTableColumn(scanResult.GetViolations()), appendSpacesToTableColumn(scanResult.GetVulnerabilities()))
 }
 
 // To fit inside the Markdown table, replace new lines with <br>

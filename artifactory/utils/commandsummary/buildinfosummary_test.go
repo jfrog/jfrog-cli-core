@@ -1,39 +1,77 @@
 package commandsummary
 
-//
-//import (
-//	buildinfo "github.com/jfrog/build-info-go/entities"
-//	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-//	"github.com/stretchr/testify/assert"
-//	"os"
-//	"path/filepath"
-//	"strings"
-//	"testing"
-//)
-//
-//func TestBuildInfoTable(t *testing.T) {
-//	buildInfoSummary := &BuildInfoSummary{}
-//	var builds = []*buildinfo.BuildInfo{
-//		{
-//			Name:     "buildName",
-//			Number:   "123",
-//			Started:  "2024-05-05T12:47:20.803+0300",
-//			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
-//		},
-//	}
-//
-//	t.Run("Extended Summary", func(t *testing.T) {
-//		StaticMarkdownConfig.setExtendedSummary(true)
-//		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
-//	})
-//
-//	t.Run("Basic Summary", func(t *testing.T) {
-//		StaticMarkdownConfig.setExtendedSummary(true)
-//		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
-//	})
-//
-//	cleanCommandSummaryValues()
-//}
+import (
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/stretchr/testify/assert"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+type MockScanResult struct {
+	Violations      string
+	Vulnerabilities string
+}
+
+// GetViolations returns the mock violations
+func (m *MockScanResult) GetViolations() string {
+	return m.Violations
+}
+
+// GetVulnerabilities returns the mock vulnerabilities
+func (m *MockScanResult) GetVulnerabilities() string {
+	return m.Vulnerabilities
+}
+
+func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
+	// Mock the scan results defaults
+	ScanResultsMapping = make(map[string]ScanResult)
+	ScanResultsMapping["fallback"] = &MockScanResult{
+		Violations:      "Not scanned",
+		Vulnerabilities: "Not scanned",
+	}
+	// Mock config
+	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
+	StaticMarkdownConfig.setPlatformMajorVersion(7)
+	StaticMarkdownConfig.setExtendedSummary(false)
+	// Cleanup config
+	cleanup := func() {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		StaticMarkdownConfig.setPlatformMajorVersion(0)
+		StaticMarkdownConfig.setPlatformUrl("")
+	}
+	// Create build info instance
+	buildInfoSummary := &BuildInfoSummary{}
+	return buildInfoSummary, cleanup
+}
+
+func TestBuildInfoTable(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+		},
+	}
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res := buildInfoSummary.buildInfoTable(builds)
+		testMarkdownOutput(t, getTestDataFile(t, "build-info-table.md"), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoTable(builds)
+		testMarkdownOutput(t, getTestDataFile(t, "build-info-table.md"), res)
+	})
+}
+
 //
 //func TestBuildInfoModules(t *testing.T) {
 //	buildInfoSummary := &BuildInfoSummary{}
@@ -83,12 +121,14 @@ package commandsummary
 //	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 //	t.Run("Extended Summary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(true)
-//		result := buildInfoSummary.buildInfoModules(builds)
+//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		assert.NoError(t, err)
 //		verifyModulesResult(t, result)
 //	})
 //	t.Run("Basic Summary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(false)
-//		result := buildInfoSummary.buildInfoModules(builds)
+//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		assert.NoError(t, err)
 //		verifyModulesResult(t, result)
 //	})
 //	cleanCommandSummaryValues()
@@ -136,12 +176,16 @@ package commandsummary
 //
 //	t.Run("ExtendedSummary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(true)
-//		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
+//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		assert.NoError(t, err)
+//		assert.Empty(t, result)
 //	})
 //
 //	t.Run("BasicSummary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(true)
-//		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
+//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		assert.NoError(t, err)
+//		assert.Empty(t, result)
 //	})
 //}
 //
@@ -310,20 +354,22 @@ package commandsummary
 //	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 //	t.Run("Extended Summary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(true)
-//		result := buildInfoSummary.buildInfoModules(builds)
+//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		assert.NoError(t, err)
 //		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
 //		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
 //	})
 //
 //	t.Run("Basic Summary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(false)
-//		result := buildInfoSummary.buildInfoModules(builds)
+//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		assert.NoError(t, err)
 //		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
 //		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
 //	})
 //	cleanCommandSummaryValues()
 //}
-//
+
 //// Helper function to handle diffs in contains assertions
 //// As these tests handle markdown files, this function makes it easier to fix the necessary output.
 //func assertContainsWithInfo(t *testing.T, result, expected string) {
@@ -336,38 +382,47 @@ package commandsummary
 //		t.Log("\n\nActual result:\n\n", result)
 //	}
 //}
-//
-//// Tests data files are location artifactory/commands/testdata/command_summary
-//func getTestDataFile(t *testing.T, fileName string) string {
-//	var modulesPath string
-//	if StaticMarkdownConfig.IsExtendedSummary() {
-//		modulesPath = filepath.Join("../", "testdata", "command_summaries", "extended", fileName)
-//	} else {
-//		modulesPath = filepath.Join("../", "testdata", "command_summaries", "basic", fileName)
-//	}
-//
-//	content, err := os.ReadFile(modulesPath)
-//	assert.NoError(t, err)
-//	contentStr := string(content)
-//	if coreutils.IsWindows() {
-//		contentStr = strings.ReplaceAll(contentStr, "\r\n", "\n")
-//	}
-//	return contentStr
-//}
-//
-//func TestParseBuildTime(t *testing.T) {
-//	// Test format
-//	actual := parseBuildTime("2006-01-02T15:04:05.000-0700")
-//	expected := "Jan 2, 2006 , 15:04:05"
-//	assert.Equal(t, expected, actual)
-//	// Test invalid format
-//	expected = "N/A"
-//	actual = parseBuildTime("")
-//	assert.Equal(t, expected, actual)
-//}
-//
-//// Return config values to the default state
-//func cleanCommandSummaryValues() {
-//	StaticMarkdownConfig.setExtendedSummary(false)
-//	StaticMarkdownConfig.setPlatformMajorVersion(0)
-//}
+
+// Tests data files are location artifactory/commands/testdata/command_summary
+func getTestDataFile(t *testing.T, fileName string) string {
+	var modulesPath string
+	if StaticMarkdownConfig.IsExtendedSummary() {
+		modulesPath = filepath.Join("../", "testdata", "command_summaries", "extended", fileName)
+	} else {
+		modulesPath = filepath.Join("../", "testdata", "command_summaries", "basic", fileName)
+	}
+
+	content, err := os.ReadFile(modulesPath)
+	assert.NoError(t, err)
+	contentStr := string(content)
+	if coreutils.IsWindows() {
+		contentStr = strings.ReplaceAll(contentStr, "\r\n", "\n")
+	}
+	return contentStr
+}
+
+func normalizeMarkdown(md string) string {
+	// Normalize newlines to "\n"
+	md = strings.ReplaceAll(md, "\r\n", "\n")
+	md = strings.ReplaceAll(md, "\r", "\n")
+	md = strings.ReplaceAll(md, markdownSpaceFiller, "")
+
+	// Remove leading and trailing spaces and newlines
+	md = strings.TrimSpace(md)
+
+	// Normalize multiple spaces to a single space (if necessary)
+	md = strings.ReplaceAll(md, "  ", " ")
+
+	return md
+}
+
+func testMarkdownOutput(t *testing.T, expected string, actual string) {
+	expected = normalizeMarkdown(expected)
+	actual = normalizeMarkdown(actual)
+
+	if !assert.Equal(t, expected, actual) {
+		// Optionally, print the output for debugging
+		t.Logf("Expected:\n%s\n", expected)
+		t.Logf("Actual:\n%s\n", actual)
+	}
+}

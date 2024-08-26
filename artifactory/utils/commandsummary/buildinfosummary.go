@@ -259,9 +259,8 @@ func fitInsideMarkdownTable(str string) string {
 }
 
 func getScanResults(scannedEntity string) (sc ScanResult) {
-	sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]
-	if sc != nil {
-		return
+	if sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
+		return sc
 	}
 	return ScanResultsMapping["fallback"]
 }

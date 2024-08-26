@@ -3,45 +3,49 @@ package commandsummary
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"net/http"
 	"net/url"
 	"strings"
 )
 
-// Static variables used in the context of command summaries that affect their Markdown generation
-
-// Indicates if to generate a basic or extended summary
-var extendedSummary bool
-
-// The URL of the Artifactory instance
-var platformUrl string
-
-// The major version of the Artifactory instance which used to generate URLS.
-var platformMajorVersion int
-
-func setExtendedSummary(value bool) {
-	extendedSummary = value
+// Static struct to hold the Markdown configuration values
+type MarkdownConfig struct {
+	// Indicates if to generate a basic or extended summary
+	extendedSummary bool
+	// Base platform URL
+	platformUrl string
+	// The major version of the Artifactory instance
+	platformMajorVersion int
 }
 
-func setPlatformUrl(url string) {
-	platformUrl = clientUtils.AddTrailingSlashIfNeeded(url)
+var StaticMarkdownConfig = MarkdownConfig{}
+
+func (mg *MarkdownConfig) setExtendedSummary(value bool) {
+	mg.extendedSummary = value
 }
 
-func setPlatformMajorVersion(version int) {
-	platformMajorVersion = version
+func (mg *MarkdownConfig) setPlatformUrl(url string) {
+	mg.platformUrl = clientUtils.AddTrailingSlashIfNeeded(url)
 }
 
-func isExtendedSummary() bool {
-	return extendedSummary
+func (mg *MarkdownConfig) setPlatformMajorVersion(version int) {
+	mg.platformMajorVersion = version
 }
 
-func GetPlatformUrl() string {
-	return platformUrl
+func (mg *MarkdownConfig) IsExtendedSummary() bool {
+	return mg.extendedSummary
 }
 
-func GetPlatformMajorVersion() int {
-	return platformMajorVersion
+func (mg *MarkdownConfig) GetPlatformUrl() string {
+	return mg.platformUrl
+}
+
+func (mg *MarkdownConfig) GetPlatformMajorVersion() int {
+	return mg.platformMajorVersion
 }
 
 // Initializes the command summary values that effect Markdown generation
@@ -50,9 +54,9 @@ func InitMarkdownGenerationValues(serverUrl string, platformMajorVersion int) (e
 	if err != nil {
 		return
 	}
-	setExtendedSummary(entitled)
-	setPlatformMajorVersion(platformMajorVersion)
-	setPlatformUrl(serverUrl)
+	StaticMarkdownConfig.setExtendedSummary(entitled)
+	StaticMarkdownConfig.setPlatformMajorVersion(platformMajorVersion)
+	StaticMarkdownConfig.setPlatformUrl(serverUrl)
 	return
 }
 
@@ -65,17 +69,17 @@ func checkExtendedSummaryEntitled(serverUrl string) (bool, error) {
 
 	// Construct the full URL
 	fullUrl := fmt.Sprintf("%sui/api/v1/system/auth/screen/footer", parsedUrl.String())
-	// Suppress HTTP request security warning:
-	// URL is validated, and the request is internal
-	// #nosec G107
-	resp, err := http.Get(fullUrl)
+
+	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
+	if err != nil {
+		return false, errorutils.CheckError(err)
+	}
+
+	resp, body, _, err := client.SendGet(fullUrl, false, httputils.HttpClientDetails{}, "")
 	if err != nil {
 		fmt.Println("Error making HTTP request:", err)
 		return false, err
 	}
-	defer func() {
-		err = resp.Body.Close()
-	}()
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("Non-OK HTTP status:", resp.StatusCode)
@@ -86,9 +90,8 @@ func checkExtendedSummaryEntitled(serverUrl string) (bool, error) {
 		PlatformId string `json:"platformId"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		fmt.Println("Error decoding JSON response:", err)
-		return false, err
+	if err := json.Unmarshal(body, &result); err != nil {
+		return false, errorutils.CheckError(err)
 	}
 	entitled := strings.Contains(strings.ToLower(result.PlatformId), "enterprise")
 	return entitled, nil

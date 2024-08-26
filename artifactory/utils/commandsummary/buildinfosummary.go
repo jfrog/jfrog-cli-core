@@ -49,7 +49,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	tableBuilder.WriteString("|---------|------------| \n")
 	for _, build := range builds {
 		buildTime := parseBuildTime(build.Started)
-		if isExtendedSummary() {
+		if StaticMarkdownConfig.IsExtendedSummary() {
 			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
 		} else {
 			tableBuilder.WriteString(fmt.Sprintf("| %s | %s |\n", build.Name+" "+build.Number, buildTime))
@@ -88,10 +88,9 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		modulesMarkdown.WriteString(fmt.Sprintf("#### %s\n<pre>", parentModuleID))
 		isMultiModule := len(parentModules) > 1
 
-		if !isExtendedSummary() {
-			// The basic summary includes a notice to enable the linkage to Artifactory
-			// Notice the UI link has to be updated.
-			modulesMarkdown.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, GetPlatformUrl()))
+		if !StaticMarkdownConfig.IsExtendedSummary() {
+			// Adds a teaser message to upgrade to extend summary
+			modulesMarkdown.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetPlatformUrl()))
 		}
 		for _, module := range parentModules {
 			if isMultiModule && parentModuleID == module.Id {
@@ -116,7 +115,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Modul
 func (bis *BuildInfoSummary) generateModuleCollapsibleSection(module *buildInfo.Module, sectionContent string) string {
 	switch module.Type {
 	case buildInfo.Docker:
-		return createCollapsibleSection(createDockerMultiArchTitle(module, GetPlatformUrl(), isExtendedSummary()), sectionContent)
+		return createCollapsibleSection(createDockerMultiArchTitle(module), sectionContent)
 	default:
 		return createCollapsibleSection(module.Id, sectionContent)
 	}
@@ -126,7 +125,7 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) strin
 	artifactsTree := utils.NewFileTree()
 	for _, artifact := range module.Artifacts {
 		var artifactUrlInArtifactory string
-		if isExtendedSummary() {
+		if StaticMarkdownConfig.IsExtendedSummary() {
 			artifactUrlInArtifactory = bis.generateArtifactUrl(artifact)
 		}
 		if artifact.OriginalDeploymentRepo == "" {
@@ -186,7 +185,7 @@ func parseBuildTime(timestamp string) string {
 	return buildInfoTime.Format(timeFormat)
 }
 
-func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, isExtendedSummary bool) string {
+func createDockerMultiArchTitle(module *buildInfo.Module) string {
 	// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
 	parentImageName := strings.Split(module.Parent, ":")[0]
 
@@ -199,9 +198,9 @@ func createDockerMultiArchTitle(module *buildInfo.Module, platformUrl string, is
 		}
 	}
 
-	if isExtendedSummary {
+	if StaticMarkdownConfig.IsExtendedSummary() {
 		// Create a link to the Docker package in Artifactory UI
-		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(platformUrl, "/"), "%2F%2F"+parentImageName, sha256)
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetPlatformUrl(), "/"), "%2F%2F"+parentImageName, sha256)
 		return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 	}
 	return module.Id

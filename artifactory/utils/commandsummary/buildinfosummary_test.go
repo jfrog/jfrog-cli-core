@@ -22,12 +22,12 @@ func TestBuildInfoTable(t *testing.T) {
 	}
 
 	t.Run("Extended Summary", func(t *testing.T) {
-		setExtendedSummary(true)
+		StaticMarkdownConfig.setExtendedSummary(true)
 		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
 	})
 
 	t.Run("Basic Summary", func(t *testing.T) {
-		setExtendedSummary(true)
+		StaticMarkdownConfig.setExtendedSummary(true)
 		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
 	})
 
@@ -79,14 +79,14 @@ func TestBuildInfoModules(t *testing.T) {
 		},
 	}
 
-	setPlatformUrl(testPlatformUrl)
+	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 	t.Run("Extended Summary", func(t *testing.T) {
-		setExtendedSummary(true)
+		StaticMarkdownConfig.setExtendedSummary(true)
 		result := buildInfoSummary.buildInfoModules(builds)
 		verifyModulesResult(t, result)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
-		setExtendedSummary(false)
+		StaticMarkdownConfig.setExtendedSummary(false)
 		result := buildInfoSummary.buildInfoModules(builds)
 		verifyModulesResult(t, result)
 	})
@@ -134,12 +134,12 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 	}
 
 	t.Run("ExtendedSummary", func(t *testing.T) {
-		setExtendedSummary(true)
+		StaticMarkdownConfig.setExtendedSummary(true)
 		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 	})
 
 	t.Run("BasicSummary", func(t *testing.T) {
-		setExtendedSummary(true)
+		StaticMarkdownConfig.setExtendedSummary(true)
 		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
 	})
 }
@@ -306,16 +306,16 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 			},
 		},
 	}
-	setPlatformUrl(testPlatformUrl)
+	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 	t.Run("Extended Summary", func(t *testing.T) {
-		setExtendedSummary(true)
+		StaticMarkdownConfig.setExtendedSummary(true)
 		result := buildInfoSummary.buildInfoModules(builds)
 		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
 		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
 	})
 
 	t.Run("Basic Summary", func(t *testing.T) {
-		setExtendedSummary(false)
+		StaticMarkdownConfig.setExtendedSummary(false)
 		result := buildInfoSummary.buildInfoModules(builds)
 		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
 		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
@@ -324,7 +324,7 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 }
 
 // Helper function to handle diffs in contains assertions
-// As these tests handle markdown files, it easier to fix the necessary output
+// As these tests handle markdown files, this function makes it easier to fix the necessary output.
 func assertContainsWithInfo(t *testing.T, result, expected string) {
 	contains := assert.Contains(t, result, expected)
 	if !contains {
@@ -339,7 +339,7 @@ func assertContainsWithInfo(t *testing.T, result, expected string) {
 // Tests data files are location artifactory/commands/testdata/command_summary
 func getTestDataFile(t *testing.T, fileName string) string {
 	var modulesPath string
-	if isExtendedSummary() {
+	if StaticMarkdownConfig.IsExtendedSummary() {
 		modulesPath = filepath.Join("../", "testdata", "command_summaries", "extended", fileName)
 	} else {
 		modulesPath = filepath.Join("../", "testdata", "command_summaries", "basic", fileName)
@@ -367,6 +367,6 @@ func TestParseBuildTime(t *testing.T) {
 
 // Return config values to the default state
 func cleanCommandSummaryValues() {
-	setExtendedSummary(false)
-	setPlatformMajorVersion(0)
+	StaticMarkdownConfig.setExtendedSummary(false)
+	StaticMarkdownConfig.setPlatformMajorVersion(0)
 }

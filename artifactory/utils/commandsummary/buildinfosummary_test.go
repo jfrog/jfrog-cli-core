@@ -1,12 +1,12 @@
 package commandsummary
 
 import (
+	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -435,30 +435,8 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	return contentStr
 }
 
-// Sometimes there are inconsistencies in the Markdown output, this function normalizes the output for comparison
-// This allows easy debugging when tests fails
-func normalizeMarkdown(md string) string {
-	md = strings.ReplaceAll(md, markdownSpaceFiller, "")
-	md = strings.ReplaceAll(md, "\r\n", "\n")
-	md = strings.ReplaceAll(md, "\r", "\n")
-	md = strings.ReplaceAll(md, `\n`, "\n")
-	md = strings.ReplaceAll(md, "\n", "\n")
-	// Regular expression to match the table rows and header separators
-	re := regexp.MustCompile(`\s*\|\s*`)
-	// Normalize spaces around the pipes and colons in the Markdown
-	lines := strings.Split(md, "\n")
-	for i, line := range lines {
-		if strings.Contains(line, "|") {
-			// Remove extra spaces around pipes and colons
-			line = re.ReplaceAllString(line, " | ")
-			lines[i] = strings.TrimSpace(line)
-		}
-	}
-	return strings.Join(lines, "\n")
-}
-
 func testMarkdownOutput(t *testing.T, expected string, actual string) {
-	expected = normalizeMarkdown(expected)
-	actual = normalizeMarkdown(actual)
+	expected = fmt.Sprintf(`%s`, expected)
+	actual = fmt.Sprintf(`%s`, expected)
 	assert.Equal(t, expected, actual)
 }

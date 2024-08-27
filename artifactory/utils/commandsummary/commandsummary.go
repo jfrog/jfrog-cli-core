@@ -163,7 +163,6 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 	return createAndWriteToFile(cs.summaryOutputPath, finalMarkdownFileName, data)
 }
 
-// TODO encode file names before fetching them
 // Retrieve all the indexed data files paths in the given directory
 func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
 	entries, err := os.ReadDir(dirPath)

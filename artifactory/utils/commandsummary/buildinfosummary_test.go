@@ -344,6 +344,7 @@ func getTestDataFile(t *testing.T, fileName string) string {
 // Sometimes there are inconsistencies in the Markdown output, this function normalizes the output for comparison
 // This allows easy debugging when tests fails
 func normalizeMarkdown(md string) string {
+	// Remove the extra spaces added for equal table length
 	md = strings.ReplaceAll(md, markdownSpaceFiller, "")
 	md = strings.ReplaceAll(md, "\r\n", "\n")
 	md = strings.ReplaceAll(md, "\r", "\n")
@@ -366,6 +367,10 @@ func testMarkdownOutput(t *testing.T, expected, actual string) {
 	expected = normalizeMarkdown(expected)
 	actual = normalizeMarkdown(actual)
 
+	// If the compared string length exceeds the maximum length,
+	// the string is not formatted, leading to an unequal comparison.
+	// Ensure to test small units of Markdown for better unit testing
+	// and to facilitate testing.
 	maxCompareLength := 950
 	if len(expected) > maxCompareLength || len(actual) > maxCompareLength {
 		t.Fatalf("Markdown output is too long to compare, limit the length to %d chars", maxCompareLength)

@@ -19,8 +19,8 @@ func GenerateArtifactUrl(pathInRt string) string {
 	return fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 }
 
-func WrapCollapsableMarkdown(title, markdown string, headerSize int) (string, error) {
-	return fmt.Sprintf("\n\n\n<details open>\n\n<summary> <h%d> %s </h%d></summary><p></p>\n\n%s\n\n</details>\n\n\n", headerSize, title, headerSize, markdown), nil
+func WrapCollapsableMarkdown(title, markdown string, headerSize int) string {
+	return fmt.Sprintf("\n\n\n<details open>\n\n<summary> <h%d> %s </h%d></summary><p></p>\n\n%s\n\n</details>\n\n\n", headerSize, title, headerSize, markdown)
 }
 
 // Map containing indexed data recorded to the file system.

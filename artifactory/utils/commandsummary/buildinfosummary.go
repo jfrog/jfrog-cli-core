@@ -11,6 +11,7 @@ import (
 
 const (
 	basicSummaryUpgradeNotice = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
+	modulesTitle              = "📦 Artifacts Published to Artifactory by this workflow"
 	minTableColumnLength      = 350
 	markdownSpaceFiller       = "&nbsp;"
 )
@@ -43,13 +44,10 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 
 	if len(builds) > 0 {
 		tableInfo := bis.buildInfoTable(builds)
-		modulesMarkdown, err := bis.buildInfoModules(builds)
-		if err != nil {
-			return "", err
-		}
+		modulesMarkdown := WrapCollapsableMarkdown(modulesTitle, bis.buildInfoModules(builds), 2)
 		finalMarkdown = tableInfo + modulesMarkdown
 	}
-	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3)
+	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3), nil
 }
 
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
@@ -63,7 +61,7 @@ func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) strin
 	return tableBuilder.String()
 }
 
-func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (string, error) {
+func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
 	markdownBuilder.WriteString("\n\n<h3>Published Modules</h3>\n\n")
 	var shouldGenerate bool
@@ -76,10 +74,9 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) (st
 
 	// If no supported module with artifacts was found, avoid generating the markdown.
 	if !shouldGenerate {
-		return "", nil
+		return ""
 	}
-	finalString := markdownBuilder.String()
-	return WrapCollapsableMarkdown("📦 Artifacts Published to Artifactory by this workflow", finalString, 2)
+	return markdownBuilder.String()
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {

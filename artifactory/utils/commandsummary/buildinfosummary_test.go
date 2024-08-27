@@ -348,7 +348,6 @@ func normalizeMarkdown(md string) string {
 	md = strings.ReplaceAll(md, "\r\n", "\n")
 	md = strings.ReplaceAll(md, "\r", "\n")
 	md = strings.ReplaceAll(md, `\n`, "\n")
-	md = strings.ReplaceAll(md, "\n", "\n")
 	// Regular expression to match the table rows and header separators
 	re := regexp.MustCompile(`\s*\|\s*`)
 	// Normalize spaces around the pipes and colons in the Markdown
@@ -367,9 +366,9 @@ func testMarkdownOutput(t *testing.T, expected, actual string) {
 	expected = normalizeMarkdown(expected)
 	actual = normalizeMarkdown(actual)
 
-	//maxCompareLength := 950
-	//if len(expected) > maxCompareLength || len(actual) > maxCompareLength {
-	//	t.Fatalf("Markdown output is too long to compare, limit the length to %d chars", maxCompareLength)
-	//}
+	maxCompareLength := 950
+	if len(expected) > maxCompareLength || len(actual) > maxCompareLength {
+		t.Fatalf("Markdown output is too long to compare, limit the length to %d chars", maxCompareLength)
+	}
 	assert.Equal(t, expected, actual)
 }

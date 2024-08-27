@@ -306,33 +306,6 @@ func TestDockerMultiArchModule(t *testing.T) {
 						},
 					},
 				},
-				//{
-				//	Type:   "docker",
-				//	Parent: "multiarch-image:1",
-				//	Id:     "linux/arm64/multiarch-image:1",
-				//	Artifacts: []buildinfo.Artifact{
-				//		{
-				//			Checksum: buildinfo.Checksum{
-				//				Sha1:   "32",
-				//				Sha256: "sha256:552c",
-				//				Md5:    "f56",
-				//			},
-				//			Name:                   "manifest.json",
-				//			Path:                   "multiarch-image/sha256",
-				//			OriginalDeploymentRepo: "docker-local",
-				//		},
-				//		{
-				//			Checksum: buildinfo.Checksum{
-				//				Sha1:   "32c",
-				//				Sha256: "aae9",
-				//				Md5:    "f56",
-				//			},
-				//			Name:                   "sha256__aae9",
-				//			Path:                   "multiarch-image/sha256:552c/sha256",
-				//			OriginalDeploymentRepo: "docker-local",
-				//		},
-				//	},
-				//},
 			},
 		},
 	}

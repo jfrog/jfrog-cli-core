@@ -11,7 +11,7 @@ import (
 
 const (
 	basicSummaryUpgradeNotice = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
-	modulesTitle              = "📦 Artifacts Published to Artifactory by this workflow"
+	modulesTitle              = "📦 Artifacts published to Artifactory by this workflow"
 	minTableColumnLength      = 350
 	markdownSpaceFiller       = "&nbsp;"
 )
@@ -28,7 +28,7 @@ func NewBuildInfoSummary() (*CommandSummary, error) {
 }
 
 func (bis *BuildInfoSummary) GetSummaryTitle() string {
-	return "ℹ️ Published JFrog Build Infos"
+	return "🛠️️ Published JFrog Build Info"
 }
 
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {

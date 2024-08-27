@@ -376,5 +376,10 @@ func normalizeMarkdown(md string) string {
 func testMarkdownOutput(t *testing.T, expected, actual string) {
 	expected = normalizeMarkdown(expected)
 	actual = normalizeMarkdown(actual)
+
+	maxCompareLength := 950
+	if len(expected) > maxCompareLength || len(actual) > maxCompareLength {
+		t.Fatalf("Markdown output is too long to compare, limit the length to %d chars", maxCompareLength)
+	}
 	assert.Equal(t, expected, actual)
 }

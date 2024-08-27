@@ -228,7 +228,7 @@ func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
 	buildName := build.Name + " " + build.Number
 	buildScanResult := getScanResults(buildName)
 	if StaticMarkdownConfig.IsExtendedSummary() {
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, build.BuildUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetViolations())))
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, build.BuildUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
 	} else {
 		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", buildName, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
 	}
@@ -259,5 +259,5 @@ func getScanResults(scannedEntity string) (sc ScanResult) {
 	if sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
 		return sc
 	}
-	return ScanResultsMapping["fallback"]
+	return ScanResultsMapping["default"]
 }

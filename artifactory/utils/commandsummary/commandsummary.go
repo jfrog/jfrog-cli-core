@@ -42,8 +42,8 @@ type ScanResult interface {
 // This interface is used to accumulate scan results from different sources and generate a Markdown summary
 type ScanResultMarkdownInterface interface {
 	BuildScan(filePaths []string) (result ScanResult, err error)
-	DockerScanScan(filePaths []string) (result ScanResult, err error)
-	BinaryScanScan(filePaths []string) (result ScanResult, err error)
+	DockerScan(filePaths []string) (result ScanResult, err error)
+	BinaryScan(filePaths []string) (result ScanResult, err error)
 	// Should provide default Scan Results for non-scanned entities.
 	GetNonScannedResult() ScanResult
 }
@@ -120,7 +120,8 @@ func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...
 
 // Retrieve all the indexed data files in the current command directory.
 func (cs *CommandSummary) GetIndexedDataFilesPaths() (indexedFilePathsMap IndexedFilesMap, err error) {
-	return cs.getIndexedFileRecursively(cs.summaryOutputPath, true)
+	basePath := filepath.Join(os.Getenv(coreutils.SummaryOutputDirPathEnv), OutputDirName)
+	return cs.getIndexedFileRecursively(basePath, true)
 }
 
 func (cs *CommandSummary) GetDataFilesPaths() ([]string, error) {
@@ -165,6 +166,7 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 
 // Retrieve all the indexed data files paths in the given directory
 func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
+	allowedDirs := []Index{BuildScan, DockerScan, BinariesScan, SarifReport}
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -173,12 +175,15 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 	for _, entry := range entries {
 		fullPath := filepath.Join(dirPath, entry.Name())
 		if entry.IsDir() {
-			subNestedFilesMap, err := cs.getIndexedFileRecursively(fullPath, false)
-			if err != nil {
-				return nil, err
-			}
-			for subDir, files := range subNestedFilesMap {
-				nestedFilesMap[subDir] = files
+			// Check if the directory is in the allowedDirs list
+			if isRoot || contains(allowedDirs, entry.Name()) {
+				subNestedFilesMap, err := cs.getIndexedFileRecursively(fullPath, false)
+				if err != nil {
+					return nil, err
+				}
+				for subDir, files := range subNestedFilesMap {
+					nestedFilesMap[subDir] = files
+				}
 			}
 		} else if !isRoot {
 			base := filepath.Base(dirPath)
@@ -189,6 +194,16 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 		}
 	}
 	return nestedFilesMap, nil
+}
+
+// Helper function to check if a slice contains a string
+func contains(slice []Index, item string) bool {
+	for _, s := range slice {
+		if string(s) == item {
+			return true
+		}
+	}
+	return false
 }
 
 // This function creates the base dir for the command summary inside

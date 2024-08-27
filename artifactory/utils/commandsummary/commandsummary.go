@@ -44,8 +44,8 @@ type ScanResultMarkdownInterface interface {
 	BuildScan(filePaths []string) (result ScanResult)
 	DockerScan(filePaths []string) (result ScanResult)
 	BinaryScan(filePaths []string) (result ScanResult)
-	// Should provide default Scan Results for non-scanned entities.
-	GetNonScannedResult() ScanResult
+	// Default non scanned component view
+	GetNonScanned() (nonScanned ScanResult)
 }
 
 const (
@@ -54,8 +54,9 @@ const (
 	OutputDirName         = "jfrog-command-summary"
 	finalMarkdownFileName = "markdown.md"
 	// Filenames formats
-	SarifFileFormat = "*.sarif"
-	DataFileFormat  = "*-data"
+	SarifFileFormat   = "*.sarif"
+	DataFileFormat    = "*-data"
+	NoneScannedResult = "default"
 )
 
 type CommandSummary struct {

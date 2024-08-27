@@ -14,6 +14,7 @@ const (
 	modulesTitle              = "📦 Artifacts published to Artifactory by this workflow"
 	minTableColumnLength      = 350
 	markdownSpaceFiller       = "&nbsp;"
+	NonScannedResult          = "non-scanned"
 )
 
 // Static mapping of scan results to be used in the summary
@@ -259,5 +260,5 @@ func getScanResults(scannedEntity string) (sc ScanResult) {
 	if sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
 		return sc
 	}
-	return ScanResultsMapping["default"]
+	return ScanResultsMapping[NonScannedResult]
 }

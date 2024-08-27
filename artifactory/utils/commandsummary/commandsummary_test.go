@@ -260,8 +260,8 @@ func TestDetermineFileName(t *testing.T) {
 	}{
 		{"No arguments", "", nil, "*-data"},
 		{"With index", SarifReport, nil, "*.sarif"},
-		{"With index and args", BuildScan, []string{"buildName", "buildNumber"}, "392d285469e73e6ef6a086c5a06146f86e144905"},
-		{"With args", "", []string{"arg1", "arg2"}, "1a928c6c3487cea1ecfd510b65f06ed4018c8cea"},
+		{"With index and args", BuildScan, []string{"buildName", "buildNumber"}, "8de12c1cbb55e1f4e02b1b3a9bfc85494b6a4cca"},
+		{"With args", "", []string{"arg1", "arg2"}, "1e82492484091a6689c0c762fd69331360c39aac"},
 		{"Invalid characters /", "", []string{"arg1/arg2"}, "a375ac1939572005313081632204fc72c4ab5a35"},
 		{"Invalid characters :", "", []string{"arg1:arg2"}, "3d20cb681ddbfc8ead817a2910dbc5a1f65548a6"},
 	}

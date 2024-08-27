@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -291,7 +292,7 @@ func determineFileName(summaryIndex Index, args []string) string {
 		return DataFileFormat
 	}
 	// If there are arguments, they should be concatenated with a '-' separator.
-	fileName := strings.Join(args, "-")
+	fileName := strings.Join(args, " ")
 	// Specific filenames should be converted to sha1 hash to avoid invalid characters.
 	return fileNameToSha1(fileName)
 }
@@ -306,6 +307,7 @@ func determineFilePathAndName(summaryOutputPath string, index Index, args []stri
 		}
 	}
 	fileName = determineFileName(index, args)
+	log.Info("Saving data to file:", fileName)
 	return
 }
 

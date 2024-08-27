@@ -6,8 +6,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
+)
+
+const (
+	buildInfoTable        = "build-info-table.md"
+	dockerImageModule     = "docker-image-module.md"
+	genericModule         = "generic-module.md"
+	mavenModule           = "maven-module.md"
+	dockerMultiArchModule = "multiarch-docker-image.md"
 )
 
 type MockScanResult struct {
@@ -63,134 +72,142 @@ func TestBuildInfoTable(t *testing.T) {
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
 		res := buildInfoSummary.buildInfoTable(builds)
-		testMarkdownOutput(t, getTestDataFile(t, "build-info-table.md"), res)
+		testMarkdownOutput(t, getTestDataFile(t, buildInfoTable), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
 		res := buildInfoSummary.buildInfoTable(builds)
-		testMarkdownOutput(t, getTestDataFile(t, "build-info-table.md"), res)
+		testMarkdownOutput(t, getTestDataFile(t, buildInfoTable), res)
 	})
 }
 
-//
-//func TestBuildInfoModules(t *testing.T) {
-//	buildInfoSummary := &BuildInfoSummary{}
-//	var builds = []*buildinfo.BuildInfo{
-//		{
-//			Name:     "buildName",
-//			Number:   "123",
-//			Started:  "2024-05-05T12:47:20.803+0300",
-//			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
-//			Modules: []buildinfo.Module{
-//				{
-//					Id:   "gradle",
-//					Type: buildinfo.Gradle,
-//					Artifacts: []buildinfo.Artifact{
-//						{
-//							Name:                   "gradleArtifact",
-//							Path:                   "dir/gradleArtifact",
-//							OriginalDeploymentRepo: "gradle-local",
-//						},
-//					},
-//				},
-//				{
-//					Id:   "maven",
-//					Type: buildinfo.Maven,
-//					Artifacts: []buildinfo.Artifact{{
-//						Name:                   "artifact1",
-//						Path:                   "path/to/artifact1",
-//						OriginalDeploymentRepo: "libs-release",
-//					}},
-//					Dependencies: []buildinfo.Dependency{{
-//						Id: "dep1",
-//					}},
-//				},
-//				{
-//					Id:   "generic",
-//					Type: buildinfo.Generic,
-//					Artifacts: []buildinfo.Artifact{{
-//						Name:                   "artifact2",
-//						Path:                   "path/to/artifact2",
-//						OriginalDeploymentRepo: "generic-local",
-//					}},
-//				},
-//			},
-//		},
-//	}
-//
-//	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
-//	t.Run("Extended Summary", func(t *testing.T) {
-//		StaticMarkdownConfig.setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		verifyModulesResult(t, result)
-//	})
-//	t.Run("Basic Summary", func(t *testing.T) {
-//		StaticMarkdownConfig.setExtendedSummary(false)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		verifyModulesResult(t, result)
-//	})
-//	cleanCommandSummaryValues()
-//}
-//
-//func verifyModulesResult(t *testing.T, result string) {
-//	// Validate that the markdown contains the expected "generic" repo content as well as the "maven" repo content.
-//	assertContainsWithInfo(t, result, getTestDataFile(t, "generic-module.md"))
-//	assertContainsWithInfo(t, result, getTestDataFile(t, "maven-module.md"))
-//	// The build-info also contains a "gradle" module, but it should not be included in the markdown.
-//	assert.NotContains(t, result, "gradle")
-//}
-//
-//func TestBuildInfoModulesEmpty(t *testing.T) {
-//	buildInfoSummary := &BuildInfoSummary{}
-//	var builds = []*buildinfo.BuildInfo{
-//		{
-//			Name:     "buildName",
-//			Number:   "123",
-//			Started:  "2024-05-05T12:47:20.803+0300",
-//			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
-//			Modules: []buildinfo.Module{
-//				{
-//					Id:        "maven",
-//					Type:      buildinfo.Maven,
-//					Artifacts: []buildinfo.Artifact{},
-//					Dependencies: []buildinfo.Dependency{{
-//						Id: "dep1",
-//					}},
-//				},
-//				{
-//					Id:   "gradle",
-//					Type: buildinfo.Gradle,
-//					Artifacts: []buildinfo.Artifact{
-//						{
-//							Name:                   "gradleArtifact",
-//							Path:                   "dir/gradleArtifact",
-//							OriginalDeploymentRepo: "gradle-local",
-//						},
-//					},
-//				},
-//			},
-//		},
-//	}
-//
-//	t.Run("ExtendedSummary", func(t *testing.T) {
-//		StaticMarkdownConfig.setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Empty(t, result)
-//	})
-//
-//	t.Run("BasicSummary", func(t *testing.T) {
-//		StaticMarkdownConfig.setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
-//		assert.NoError(t, err)
-//		assert.Empty(t, result)
-//	})
-//}
-//
+func TestBuildInfoModulesMaven(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Id:   "maven",
+					Type: buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact1",
+						Path:                   "path/to/artifact1",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep1",
+					}},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
+	})
+}
+
+func TestBuildInfoModulesGradle(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Id:   "gradle",
+					Type: buildinfo.Gradle,
+					Artifacts: []buildinfo.Artifact{
+						{
+							Name:                   "gradleArtifact",
+							Path:                   "dir/gradleArtifact",
+							OriginalDeploymentRepo: "gradle-local",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		assert.Empty(t, res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		assert.Empty(t, res)
+	})
+}
+
+func TestBuildInfoModulesGeneric(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Id:   "generic",
+					Type: buildinfo.Generic,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact2",
+						Path:                   "path/to/artifact2",
+						OriginalDeploymentRepo: "generic-local",
+					}},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		testMarkdownOutput(t, getTestDataFile(t, genericModule), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		testMarkdownOutput(t, getTestDataFile(t, genericModule), res)
+	})
+}
+
 //func TestBuildInfoModulesWithGrouping(t *testing.T) {
-//	buildInfoSummary := &BuildInfoSummary{}
+//	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+//	defer func() {
+//		cleanUp()
+//	}()
 //	var builds = []*buildinfo.BuildInfo{
 //		{
 //			Name:    "dockerx",
@@ -351,23 +368,20 @@ func TestBuildInfoTable(t *testing.T) {
 //			},
 //		},
 //	}
-//	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
+//
 //	t.Run("Extended Summary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(true)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		res, err := buildInfoSummary.buildInfoModules(builds)
 //		assert.NoError(t, err)
-//		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
-//		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
+//		testMarkdownOutput(t, getTestDataFile(t, dockerImageModule), res)
 //	})
-//
 //	t.Run("Basic Summary", func(t *testing.T) {
 //		StaticMarkdownConfig.setExtendedSummary(false)
-//		result, err := buildInfoSummary.buildInfoModules(builds)
+//		res, err := buildInfoSummary.buildInfoModules(builds)
 //		assert.NoError(t, err)
-//		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
-//		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
+//		testMarkdownOutput(t, getTestDataFile(t, dockerImageModule), res)
 //	})
-//	cleanCommandSummaryValues()
+//
 //}
 
 //// Helper function to handle diffs in contains assertions
@@ -401,28 +415,27 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	return contentStr
 }
 
+// Sometimes there are inconsistencies in the Markdown output, this function normalizes the output for comparison
+// This allows easy debugging when tests fails
 func normalizeMarkdown(md string) string {
-	// Normalize newlines to "\n"
-	md = strings.ReplaceAll(md, "\r\n", "\n")
-	md = strings.ReplaceAll(md, "\r", "\n")
 	md = strings.ReplaceAll(md, markdownSpaceFiller, "")
+	// Regular expression to match the table rows and header separators
+	re := regexp.MustCompile(`\s*\|\s*`)
+	// Normalize spaces around the pipes and colons in the Markdown
+	lines := strings.Split(md, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "|") {
+			// Remove extra spaces around pipes and colons
+			line = re.ReplaceAllString(line, " | ")
+			lines[i] = strings.TrimSpace(line)
+		}
+	}
 
-	// Remove leading and trailing spaces and newlines
-	md = strings.TrimSpace(md)
-
-	// Normalize multiple spaces to a single space (if necessary)
-	md = strings.ReplaceAll(md, "  ", " ")
-
-	return md
+	return strings.Join(lines, "\n")
 }
 
 func testMarkdownOutput(t *testing.T, expected string, actual string) {
 	expected = normalizeMarkdown(expected)
 	actual = normalizeMarkdown(actual)
-
-	if !assert.Equal(t, expected, actual) {
-		// Optionally, print the output for debugging
-		t.Logf("Expected:\n%s\n", expected)
-		t.Logf("Actual:\n%s\n", actual)
-	}
+	assert.Equal(t, expected, actual)
 }

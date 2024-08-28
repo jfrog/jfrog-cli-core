@@ -22,7 +22,7 @@ type MarkdownConfig struct {
 	platformMajorVersion int
 }
 
-const extendedSummaryLandPage = "https://jfrog.com/"
+const extendedSummaryLandPage = "https://myplatform.com/"
 
 var StaticMarkdownConfig = MarkdownConfig{}
 
@@ -60,7 +60,8 @@ func InitMarkdownGenerationValues(serverUrl string, platformMajorVersion int) (e
 	if err != nil {
 		return
 	}
-	StaticMarkdownConfig.setExtendedSummary(entitled)
+	print(entitled)
+	StaticMarkdownConfig.setExtendedSummary(false)
 	StaticMarkdownConfig.setPlatformMajorVersion(platformMajorVersion)
 	StaticMarkdownConfig.setPlatformUrl(serverUrl)
 	return

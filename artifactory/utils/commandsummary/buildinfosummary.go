@@ -5,6 +5,7 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"strings"
 )
@@ -82,17 +83,21 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
 	var parentModulesMarkdown strings.Builder
-	parentToModulesMap := groupModulesByParent(modules)
+	parentToModulesMap, moduleType := groupModulesByParent(modules)
 	if len(parentToModulesMap) == 0 {
 		return ""
 	}
 
 	for parentModuleID, parentModules := range parentToModulesMap {
+		scansComponentName := parentModuleID
+		if moduleType == buildInfo.Docker {
+			scansComponentName = extractDockerImageTag(modules)
+		}
 		parentModulesMarkdown.WriteString(generateModuleHeader(parentModuleID))
 		parentModulesMarkdown.WriteString(generateModuleTableHeader())
 		isMultiModule := len(parentModules) > 1
 		nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(parentModules, parentModuleID, isMultiModule)
-		scanResult := getScanResults(parentModuleID)
+		scanResult := getScanResults(scansComponentName)
 		parentModulesMarkdown.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
 	}
 	return parentModulesMarkdown.String()
@@ -160,13 +165,14 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 }
 
 // groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.
-func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Module {
+func groupModulesByParent(modules []buildInfo.Module) (map[string][]buildInfo.Module, buildInfo.ModuleType) {
 	parentToModulesMap := make(map[string][]buildInfo.Module, len(modules))
+	var moduleType buildInfo.ModuleType
 	for _, module := range modules {
+		moduleType = module.Type
 		if len(module.Artifacts) == 0 || !isSupportedModule(&module) {
 			continue
 		}
-
 		parentID := module.Parent
 		// If the module has no parent, that means it is the parent module itself, so we can use its ID as the parent ID.
 		if parentID == "" {
@@ -174,7 +180,7 @@ func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Mod
 		}
 		parentToModulesMap[parentID] = append(parentToModulesMap[parentID], module)
 	}
-	return parentToModulesMap
+	return parentToModulesMap, moduleType
 }
 
 func isSupportedModule(module *buildInfo.Module) bool {
@@ -261,4 +267,17 @@ func getScanResults(scannedEntity string) (sc ScanResult) {
 		return sc
 	}
 	return ScanResultsMapping[NonScannedResult]
+}
+
+func extractDockerImageTag(modules []buildInfo.Module) string {
+	if properties, ok := modules[0].Properties.(map[string]interface{}); ok {
+		for key, value := range properties {
+			if key == "docker.image.tag" {
+				return value.(string)
+			}
+		}
+	} else {
+		log.Debug("No properties found for the docker image")
+	}
+	return ""
 }

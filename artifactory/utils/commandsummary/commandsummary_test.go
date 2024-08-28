@@ -2,6 +2,7 @@ package commandsummary
 
 import (
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
@@ -270,6 +271,62 @@ func TestDetermineFileName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fileName := determineFileName(tt.index, tt.args)
 			assert.Equal(t, tt.expectedName, fileName)
+		})
+	}
+}
+
+func TestExtractImageTag(t *testing.T) {
+	testCases := []struct {
+		name     string
+		modules  []buildinfo.Module
+		expected string
+	}{
+		{
+			name: "Valid docker.image.tag",
+			modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{
+						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
+					},
+				},
+			},
+			expected: "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
+		},
+		{
+			name: "No docker.image.tag",
+			modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{
+						"some.other.property": "some-value",
+					},
+				},
+			},
+			expected: "",
+		},
+		{
+			name: "Empty properties",
+			modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{},
+				},
+			},
+			expected: "",
+		},
+		{
+			name: "Properties not a map[string]interface{}",
+			modules: []buildinfo.Module{
+				{
+					Properties: "invalid-type",
+				},
+			},
+			expected: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := extractDockerImageTag(tc.modules)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }

@@ -130,7 +130,6 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth api.TargetAuth) error {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
 	httpDetails.SetContentTypeApplicationJson()
-	httpDetails.SetContentTypeApplicationJson()
 	content, err := json.Marshal(targetAuth)
 	if err != nil {
 		return errorutils.CheckError(err)

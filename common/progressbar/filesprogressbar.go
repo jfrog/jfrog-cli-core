@@ -282,7 +282,6 @@ func (p *filesProgressBarManager) ClearHeadlineMsg() {
 			p.headlineBar = nil
 		}
 	}
-	p.headlineBar = nil
 }
 
 // IncGeneralProgressTotalBy increments the general progress bar total count by given n.

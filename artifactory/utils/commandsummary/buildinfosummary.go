@@ -5,7 +5,6 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"strings"
 )
@@ -94,15 +93,15 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		parentModulesMarkdown.WriteString(generateModuleHeader(parentModuleID))
 		parentModulesMarkdown.WriteString(generateModuleTableHeader())
 		isMultiModule := len(parentModules) > 1
-		nestedModuleMarkdownTree, scanResult := bis.generateNestedModuleMarkdownTree(parentModules, parentModuleID, isMultiModule)
+		nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(parentModules, parentModuleID, isMultiModule)
+		scanResult := getScanResults(extractDockerImageTag(parentModules))
 		parentModulesMarkdown.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
 	}
 	return parentModulesMarkdown.String()
 }
 
-func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []buildInfo.Module, parentModuleID string, isMultiModule bool) (str string, scanResult ScanResult) {
+func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {
 	var nestedModuleMarkdownTree strings.Builder
-	scanResult = ScanResultsMapping[NonScannedResult]
 	if !StaticMarkdownConfig.IsExtendedSummary() {
 		nestedModuleMarkdownTree.WriteString("|")
 		nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
@@ -110,7 +109,7 @@ func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []bu
 	} else {
 		nestedModuleMarkdownTree.WriteString("|<pre>")
 	}
-	scanResult = getScanResults(extractDockerImageTag(parentModules[0]))
+
 	for _, module := range parentModules {
 		if isMultiModule && parentModuleID == module.Id {
 			continue
@@ -119,7 +118,7 @@ func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []bu
 	}
 	nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
 	nestedModuleMarkdownTree.WriteString("</pre>")
-	return nestedModuleMarkdownTree.String(), scanResult
+	return nestedModuleMarkdownTree.String()
 }
 
 func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
@@ -260,37 +259,37 @@ func fitInsideMarkdownTable(str string) string {
 }
 
 func getScanResults(scannedEntity string) (sc ScanResult) {
-	log.Info("scannedEntity: ", scannedEntity)
-	log.Info("SHA1:", fileNameToSha1(scannedEntity))
 	if sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
 		return sc
 	}
-	log.Info("Scan result not found for: ", scannedEntity)
 	return ScanResultsMapping[NonScannedResult]
 }
 
-func extractDockerImageTag(modules buildInfo.Module) string {
-	if modules.Type != buildInfo.Docker {
+func extractDockerImageTag(modules []buildInfo.Module) string {
+	if len(modules) == 0 {
 		return ""
 	}
-	if properties, ok := modules.Properties.(map[string]interface{}); ok {
-		for key, value := range properties {
-			if key == "docker.image.tag" {
-				return value.(string)
+	var dockerImageTagKeyName = "docker.image.tag"
+	// The image tag should be located in the first module
+	module := modules[0]
+	if module.Type != buildInfo.Docker {
+		return ""
+	}
+	// Check both map[string]interface{} and map[string]string
+	// As sometimes the property types change.
+	if properties, ok := module.Properties.(map[string]interface{}); ok {
+		if tag, found := properties[dockerImageTagKeyName]; found {
+			if tagStr, ok := tag.(string); ok {
+				return tagStr
 			}
 		}
-	} else {
-		log.Debug("Not map[string]interface")
 	}
-	if properties, ok := modules.Properties.(map[string]string); ok {
-		for key, value := range properties {
-			if key == "docker.image.tag" {
-				return value
-			}
+
+	if properties, ok := module.Properties.(map[string]string); ok {
+		if tag, found := properties[dockerImageTagKeyName]; found {
+			return tag
 		}
-	} else {
-		log.Debug("Not map[string]string")
 	}
-	log.Info("couldn't extract image name: ", modules)
+
 	return ""
 }

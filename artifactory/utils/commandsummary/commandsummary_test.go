@@ -326,7 +326,7 @@ func TestExtractImageTag(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := extractDockerImageTag(tc.modules[0])
+			result := extractDockerImageTag(tc.modules)
 			assert.Equal(t, tc.expected, result)
 		})
 	}

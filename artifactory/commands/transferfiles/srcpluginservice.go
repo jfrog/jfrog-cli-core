@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	commandsUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
-	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -49,7 +48,7 @@ func (sup *srcUserPluginService) syncChunks(ucStatus api.UploadChunksStatusBody)
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	utils.SetContentType("application/json", &httpDetails.Headers)
+	httpDetails.SetContentTypeApplicationJson()
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+syncChunks, content, &httpDetails)
 	if err != nil {
 		return api.UploadChunksStatusResponse{}, err
@@ -76,7 +75,7 @@ func (sup *srcUserPluginService) uploadChunk(chunk api.UploadChunk) (uploadChunk
 	}
 
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	utils.SetContentType("application/json", &httpDetails.Headers)
+	httpDetails.SetContentTypeApplicationJson()
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+uploadChunk, content, &httpDetails)
 	if err != nil {
 		return api.UploadChunkResponse{}, err
@@ -108,7 +107,7 @@ func (sup *srcUserPluginService) version() (string, error) {
 
 func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibilityResponse, error) {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	utils.SetContentType("application/json", &httpDetails.Headers)
+	httpDetails.SetContentTypeApplicationJson()
 	resp, body, err := sup.client.SendPost(sup.GetArtifactoryDetails().GetUrl()+commandsUtils.PluginsExecuteRestApi+"verifyCompatibility", []byte("{}"), &httpDetails)
 	if err != nil {
 		return nil, err
@@ -130,7 +129,7 @@ func (sup *srcUserPluginService) verifyCompatibilityRequest() (*VerifyCompatibil
 
 func (sup *srcUserPluginService) verifyConnectivityRequest(targetAuth api.TargetAuth) error {
 	httpDetails := sup.GetArtifactoryDetails().CreateHttpClientDetails()
-	utils.SetContentType("application/json", &httpDetails.Headers)
+	httpDetails.SetContentTypeApplicationJson()
 	content, err := json.Marshal(targetAuth)
 	if err != nil {
 		return errorutils.CheckError(err)

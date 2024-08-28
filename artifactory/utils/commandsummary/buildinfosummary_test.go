@@ -260,7 +260,7 @@ func TestDockerMultiArchModule(t *testing.T) {
 			Started: "2024-08-12T11:11:50.198+0300",
 			Modules: []buildinfo.Module{
 				{
-					Properties: map[string]string{
+					Properties: map[string]interface{}{
 						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
 					},
 					Type: "docker",

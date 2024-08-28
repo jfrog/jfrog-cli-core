@@ -118,6 +118,8 @@ func (cs *CommandSummary) Record(data any) (err error) {
 // SummaryIndex: The name of the index under which the data will be stored.
 // Args: Additional arguments used to determine the file name.
 func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...string) (err error) {
+	log.Info("Recording data with index:", summaryIndex)
+	log.Info("Args:", args)
 	return cs.recordInternal(data, summaryIndex, args)
 }
 

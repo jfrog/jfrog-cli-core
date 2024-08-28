@@ -22,6 +22,8 @@ type MarkdownConfig struct {
 	platformMajorVersion int
 }
 
+const extendedSummaryLandPage = "https://jfrog.com/"
+
 var StaticMarkdownConfig = MarkdownConfig{}
 
 func (mg *MarkdownConfig) setExtendedSummary(value bool) {
@@ -46,6 +48,10 @@ func (mg *MarkdownConfig) GetPlatformUrl() string {
 
 func (mg *MarkdownConfig) GetPlatformMajorVersion() int {
 	return mg.platformMajorVersion
+}
+
+func (mg *MarkdownConfig) GetExtendedSummaryLangPage() string {
+	return extendedSummaryLandPage
 }
 
 // Initializes the command summary values that effect Markdown generation

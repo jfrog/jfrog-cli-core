@@ -288,6 +288,7 @@ func TestExtractImageTag(t *testing.T) {
 					Properties: map[string]interface{}{
 						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
 					},
+					Type: buildinfo.Docker,
 				},
 			},
 			expected: "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
@@ -325,7 +326,7 @@ func TestExtractImageTag(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result := extractDockerImageTag(tc.modules)
+			result := extractDockerImageTag(tc.modules[0])
 			assert.Equal(t, tc.expected, result)
 		})
 	}

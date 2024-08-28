@@ -13,7 +13,7 @@ import (
 const (
 	basicSummaryUpgradeNotice = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
 	modulesTitle              = "📦 Artifacts published to Artifactory by this workflow"
-	minTableColumnLength      = 350
+	minTableColumnLength      = 400
 	markdownSpaceFiller       = "&nbsp;"
 	NonScannedResult          = "non-scanned"
 )
@@ -83,35 +83,34 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
 	var parentModulesMarkdown strings.Builder
-	parentToModulesMap, moduleType := groupModulesByParent(modules)
+	// Modules could have nested modules inside them
+	// Group them by their parent ID to allow tracing
+	// If a module has no parent, it is considered a parent module itself
+	parentToModulesMap := groupModulesByParent(modules)
 	if len(parentToModulesMap) == 0 {
 		return ""
 	}
-
 	for parentModuleID, parentModules := range parentToModulesMap {
-		scansComponentName := parentModuleID
-		if moduleType == buildInfo.Docker {
-			scansComponentName = extractDockerImageTag(modules)
-		}
 		parentModulesMarkdown.WriteString(generateModuleHeader(parentModuleID))
 		parentModulesMarkdown.WriteString(generateModuleTableHeader())
 		isMultiModule := len(parentModules) > 1
-		nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(parentModules, parentModuleID, isMultiModule)
-		scanResult := getScanResults(scansComponentName)
+		nestedModuleMarkdownTree, scanResult := bis.generateNestedModuleMarkdownTree(parentModules, parentModuleID, isMultiModule)
 		parentModulesMarkdown.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
 	}
 	return parentModulesMarkdown.String()
 }
 
-func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {
+func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []buildInfo.Module, parentModuleID string, isMultiModule bool) (str string, scanResult ScanResult) {
 	var nestedModuleMarkdownTree strings.Builder
+	scanResult = ScanResultsMapping[NonScannedResult]
 	if !StaticMarkdownConfig.IsExtendedSummary() {
 		nestedModuleMarkdownTree.WriteString("|")
-		nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetPlatformUrl()))
+		nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
 		nestedModuleMarkdownTree.WriteString("<pre>")
 	} else {
 		nestedModuleMarkdownTree.WriteString("|<pre>")
 	}
+	scanResult = getScanResults(extractDockerImageTag(parentModules[0]))
 	for _, module := range parentModules {
 		if isMultiModule && parentModuleID == module.Id {
 			continue
@@ -120,7 +119,7 @@ func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []bu
 	}
 	nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
 	nestedModuleMarkdownTree.WriteString("</pre>")
-	return nestedModuleMarkdownTree.String()
+	return nestedModuleMarkdownTree.String(), scanResult
 }
 
 func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
@@ -165,11 +164,9 @@ func (bis *BuildInfoSummary) generateArtifactUrl(artifact buildInfo.Artifact) st
 }
 
 // groupModulesByParent groups modules that share the same parent ID into a map where the key is the parent ID and the value is a slice of those modules.
-func groupModulesByParent(modules []buildInfo.Module) (map[string][]buildInfo.Module, buildInfo.ModuleType) {
+func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Module {
 	parentToModulesMap := make(map[string][]buildInfo.Module, len(modules))
-	var moduleType buildInfo.ModuleType
 	for _, module := range modules {
-		moduleType = module.Type
 		if len(module.Artifacts) == 0 || !isSupportedModule(&module) {
 			continue
 		}
@@ -180,7 +177,7 @@ func groupModulesByParent(modules []buildInfo.Module) (map[string][]buildInfo.Mo
 		}
 		parentToModulesMap[parentID] = append(parentToModulesMap[parentID], module)
 	}
-	return parentToModulesMap, moduleType
+	return parentToModulesMap
 }
 
 func isSupportedModule(module *buildInfo.Module) bool {
@@ -210,7 +207,7 @@ func createDockerMultiArchTitle(module *buildInfo.Module) string {
 
 	if StaticMarkdownConfig.IsExtendedSummary() {
 		// Create a link to the Docker package in Artifactory UI
-		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetPlatformUrl(), "/"), "%2F%2F"+parentImageName, sha256)
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetExtendedSummaryLangPage(), "/"), "%2F%2F"+parentImageName, sha256)
 		return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 	}
 	return module.Id
@@ -263,21 +260,37 @@ func fitInsideMarkdownTable(str string) string {
 }
 
 func getScanResults(scannedEntity string) (sc ScanResult) {
+	log.Info("scannedEntity: ", scannedEntity)
+	log.Info("SHA1:", fileNameToSha1(scannedEntity))
 	if sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
 		return sc
 	}
+	log.Info("Scan result not found for: ", scannedEntity)
 	return ScanResultsMapping[NonScannedResult]
 }
 
-func extractDockerImageTag(modules []buildInfo.Module) string {
-	if properties, ok := modules[0].Properties.(map[string]interface{}); ok {
+func extractDockerImageTag(modules buildInfo.Module) string {
+	if modules.Type != buildInfo.Docker {
+		return ""
+	}
+	if properties, ok := modules.Properties.(map[string]interface{}); ok {
 		for key, value := range properties {
 			if key == "docker.image.tag" {
 				return value.(string)
 			}
 		}
 	} else {
-		log.Debug("No properties found for the docker image")
+		log.Debug("Not map[string]interface")
 	}
+	if properties, ok := modules.Properties.(map[string]string); ok {
+		for key, value := range properties {
+			if key == "docker.image.tag" {
+				return value
+			}
+		}
+	} else {
+		log.Debug("Not map[string]string")
+	}
+	log.Info("couldn't extract image name: ", modules)
 	return ""
 }

@@ -102,6 +102,8 @@ var writersMap = map[string]ioutils.AnswerWriter{
 	SuppressPomConsistencyChecks:      ioutils.WriteBoolAnswer,
 	BlackedOut:                        ioutils.WriteBoolAnswer,
 	DownloadRedirect:                  ioutils.WriteBoolAnswer,
+	PriorityResolution:                ioutils.WriteBoolAnswer,
+	CdnRedirect:                       ioutils.WriteBoolAnswer,
 	BlockPushingSchema1:               ioutils.WriteBoolAnswer,
 	DebianTrivialLayout:               ioutils.WriteBoolAnswer,
 	ExternalDependenciesEnabled:       ioutils.WriteBoolAnswer,

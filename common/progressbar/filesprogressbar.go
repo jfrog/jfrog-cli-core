@@ -173,7 +173,9 @@ func (p *filesProgressBarManager) RemoveProgress(id int) {
 }
 
 func (p *filesProgressBarManager) ClearProgress() {
-	p.generalProgressBar.Abort(true)
+	if p.generalProgressBar != nil {
+		p.generalProgressBar.Abort(true)
+	}
 }
 
 // Increases general progress bar by 1

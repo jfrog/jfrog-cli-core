@@ -333,7 +333,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 			assert.NoError(t, err)
 			_, err = w.Write(bytes)
 			assert.NoError(t, err)
-		case "/api/repositories?type=local&packageType=":
+		case "/api/repositories?type=local":
 			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			response := &[]services.RepositoryDetails{{Key: "repo-1"}, {Key: "repo-2"}}
@@ -341,7 +341,7 @@ func TestGetAllLocalRepositories(t *testing.T) {
 			assert.NoError(t, err)
 			_, err = w.Write(bytes)
 			assert.NoError(t, err)
-		case "/api/repositories?type=federated&packageType=":
+		case "/api/repositories?type=federated":
 			// Response for GetWithFilter
 			w.WriteHeader(http.StatusOK)
 			// We add a build info repository to the response to cover cases whereby a federated build-info repository is returned

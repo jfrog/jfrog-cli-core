@@ -1,6 +1,7 @@
 package commandsummary
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -274,7 +275,7 @@ func convertDataToBytes(data interface{}) ([]byte, error) {
 	case []byte:
 		return v, nil
 	default:
-		return json.Marshal(data)
+		return JSONMarshal(data)
 	}
 }
 
@@ -328,4 +329,12 @@ func extractIndexAndArgs(args []interface{}) (Index, []string) {
 		}
 	}
 	return index, extraArgs
+}
+
+func JSONMarshal(t interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(t)
+	return buffer.Bytes(), err
 }

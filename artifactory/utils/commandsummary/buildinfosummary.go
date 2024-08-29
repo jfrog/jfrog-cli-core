@@ -17,9 +17,6 @@ const (
 	NonScannedResult          = "non-scanned"
 )
 
-// Static mapping of scan results to be used in the summary
-var ScanResultsMapping map[string]ScanResult
-
 type BuildInfoSummary struct {
 	CommandSummary
 }
@@ -263,34 +260,31 @@ func fitInsideMarkdownTable(str string) string {
 }
 
 func getScanResults(scannedEntity string) (sc ScanResult) {
-	if sc = ScanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
+	if sc = StaticMarkdownConfig.scanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
 		return sc
 	}
-	return ScanResultsMapping[NonScannedResult]
+	return StaticMarkdownConfig.scanResultsMapping[NonScannedResult]
 }
 
+// Extracts the docker image tag from a docker module
+// Docker modules have in their first index metadata, which contains the docker image tag
 func extractDockerImageTag(modules []buildInfo.Module) string {
-	if len(modules) == 0 {
+	if len(modules) == 0 || modules[0].Type != buildInfo.Docker {
 		return ""
 	}
-	var dockerImageTagKeyName = "docker.image.tag"
-	// The image tag should be located in the first module
-	module := modules[0]
-	if module.Type != buildInfo.Docker {
-		return ""
-	}
-	// Check both map[string]interface{} and map[string]string
-	// As sometimes the property types change.
-	if properties, ok := module.Properties.(map[string]interface{}); ok {
-		if tag, found := properties[dockerImageTagKeyName]; found {
+
+	const tagKey = "docker.image.tag"
+	properties := modules[0].Properties
+	// Handle both cases where the properties are a map[string]interface{} or map[string]string
+	switch props := properties.(type) {
+	case map[string]interface{}:
+		if tag, found := props[tagKey]; found {
 			if tagStr, ok := tag.(string); ok {
 				return tagStr
 			}
 		}
-	}
-
-	if properties, ok := module.Properties.(map[string]string); ok {
-		if tag, found := properties[dockerImageTagKeyName]; found {
+	case map[string]string:
+		if tag, found := props[tagKey]; found {
 			return tag
 		}
 	}

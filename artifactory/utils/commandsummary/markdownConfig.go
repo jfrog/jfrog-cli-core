@@ -20,6 +20,8 @@ type MarkdownConfig struct {
 	platformUrl string
 	// The major version of the Artifactory instance
 	platformMajorVersion int
+	// Static mapping of scan results to be used in the summary
+	scanResultsMapping map[string]ScanResult
 }
 
 const extendedSummaryLandPage = "https://myplatform.com/"
@@ -52,6 +54,10 @@ func (mg *MarkdownConfig) GetPlatformMajorVersion() int {
 
 func (mg *MarkdownConfig) GetExtendedSummaryLangPage() string {
 	return extendedSummaryLandPage
+}
+
+func (mg *MarkdownConfig) SetScanResultsMapping(resultsMap map[string]ScanResult) {
+	mg.scanResultsMapping = resultsMap
 }
 
 // Initializes the command summary values that effect Markdown generation

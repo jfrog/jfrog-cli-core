@@ -118,8 +118,7 @@ func (cs *CommandSummary) Record(data any) (err error) {
 // SummaryIndex: The name of the index under which the data will be stored.
 // Args: Additional arguments used to determine the file name.
 func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...string) (err error) {
-	log.Info("Recording data with index:", summaryIndex)
-	log.Info("Args:", args)
+	log.Debug("Recording data with index:", summaryIndex)
 	return cs.recordInternal(data, summaryIndex, args)
 }
 
@@ -277,7 +276,7 @@ func convertDataToBytes(data interface{}) ([]byte, error) {
 	case []byte:
 		return v, nil
 	default:
-		return JSONMarshal(data)
+		return jsonMarshalWithLinks(data)
 	}
 }
 
@@ -310,7 +309,6 @@ func determineFilePathAndName(summaryOutputPath string, index Index, args []stri
 		}
 	}
 	fileName = determineFileName(index, args)
-	log.Info("Saving data to file:", fileName)
 	return
 }
 
@@ -333,7 +331,8 @@ func extractIndexAndArgs(args []interface{}) (Index, []string) {
 	return index, extraArgs
 }
 
-func JSONMarshal(t interface{}) ([]byte, error) {
+// Special JSON marshal function that does not escape HTML characters.
+func jsonMarshalWithLinks(t interface{}) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)

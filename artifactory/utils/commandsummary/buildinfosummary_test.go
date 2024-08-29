@@ -36,8 +36,8 @@ func (m *MockScanResult) GetVulnerabilities() string {
 
 func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
 	// Mock the scan results defaults
-	ScanResultsMapping = make(map[string]ScanResult)
-	ScanResultsMapping[NonScannedResult] = &MockScanResult{
+	StaticMarkdownConfig.scanResultsMapping = make(map[string]ScanResult)
+	StaticMarkdownConfig.scanResultsMapping[NonScannedResult] = &MockScanResult{
 		Violations:      "Not scanned",
 		Vulnerabilities: "Not scanned",
 	}

@@ -42,12 +42,15 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 	if len(builds) == 0 {
 		return "", nil
 	}
-
+	// Creates the build info table
 	buildInfoTableMarkdown := bis.buildInfoTable(builds)
-	// Create the published modules
-	publishedModulesMarkdown := WrapCollapsableMarkdown(modulesTitle, bis.buildInfoModules(builds), 2)
-
+	// Creates the published modules
+	publishedModulesMarkdown := bis.buildInfoModules(builds)
+	if publishedModulesMarkdown != "" {
+		publishedModulesMarkdown = WrapCollapsableMarkdown(modulesTitle, publishedModulesMarkdown, 2)
+	}
 	finalMarkdown = buildInfoTableMarkdown + publishedModulesMarkdown
+
 	// Wrap the content under a collapsible section
 	finalMarkdown = WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3)
 	return
@@ -106,6 +109,9 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 
 func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {
 	var nestedModuleMarkdownTree strings.Builder
+	if len(parentModules) == 0 {
+		return ""
+	}
 	if !StaticMarkdownConfig.IsExtendedSummary() {
 		nestedModuleMarkdownTree.WriteString("|")
 		nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))

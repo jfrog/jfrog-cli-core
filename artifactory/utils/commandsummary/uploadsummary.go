@@ -1,16 +1,18 @@
-package commandssummaries
+package commandsummary
 
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
 )
 
 type UploadSummary struct {
+	CommandSummary
 	uploadTree        *utils.FileTree
 	uploadedArtifacts ResultsWrapper
-	platformUrl       string
-	majorVersion      int
+}
+
+func (us *UploadSummary) GetSummaryTitle() string {
+	return "📁 Files uploaded to Artifactory by this workflow"
 }
 
 type UploadResult struct {
@@ -23,19 +25,16 @@ type ResultsWrapper struct {
 	Results []UploadResult `json:"results"`
 }
 
-func NewUploadSummary(platformUrl string, majorVersion int) *UploadSummary {
-	return &UploadSummary{
-		platformUrl:  platformUrl,
-		majorVersion: majorVersion,
-	}
+func NewUploadSummary() (*CommandSummary, error) {
+	return New(&UploadSummary{}, "upload")
 }
 
 func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (markdown string, err error) {
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}
-	// Wrap the markdown in a <pre> tags to preserve spaces
-	markdown = fmt.Sprintf("\n<pre>\n\n\n" + us.generateFileTreeMarkdown() + "</pre>\n\n")
+	// Wrap the Markdown in a <pre> tags to preserve spaces
+	markdown = fmt.Sprintf("\n<pre>\n\n\n%s</pre>\n\n", us.generateFileTreeMarkdown())
 	return
 }
 
@@ -44,7 +43,7 @@ func (us *UploadSummary) loadResults(filePaths []string) error {
 	us.uploadedArtifacts = ResultsWrapper{}
 	for _, path := range filePaths {
 		var uploadResult ResultsWrapper
-		if err := commandsummary.UnmarshalFromFilePath(path, &uploadResult); err != nil {
+		if err := UnmarshalFromFilePath(path, &uploadResult); err != nil {
 			return err
 		}
 		us.uploadedArtifacts.Results = append(us.uploadedArtifacts.Results, uploadResult.Results...)
@@ -61,5 +60,9 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 }
 
 func (us *UploadSummary) buildUiUrl(targetPath string) string {
-	return generateArtifactUrl(us.platformUrl, targetPath, us.majorVersion)
+	// Only build URL if extended summary is enabled
+	if StaticMarkdownConfig.IsExtendedSummary() {
+		return GenerateArtifactUrl(targetPath)
+	}
+	return ""
 }

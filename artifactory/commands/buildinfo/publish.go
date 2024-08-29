@@ -3,8 +3,7 @@ package buildinfo
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 	"net/url"
 	"strconv"
 	"strings"
@@ -146,7 +145,7 @@ func (bpc *BuildPublishCommand) Run() error {
 		return err
 	}
 
-	if err = recordCommandSummary(buildInfo, buildLink, bpc.serverDetails.Url, majorVersion); err != nil {
+	if err = recordCommandSummary(buildInfo, buildLink); err != nil {
 		return err
 	}
 
@@ -232,12 +231,12 @@ func (bpc *BuildPublishCommand) getNextBuildNumber(buildName string, servicesMan
 	return strconv.Itoa(latestBuildNumber), nil
 }
 
-func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink, serverUrl string, majorVersion int) (err error) {
+func recordCommandSummary(buildInfo *buildinfo.BuildInfo, buildLink string) (err error) {
 	if !commandsummary.ShouldRecordSummary() {
 		return
 	}
 	buildInfo.BuildUrl = buildLink
-	buildInfoSummary, err := commandsummary.New(commandssummaries.NewBuildInfo(serverUrl, majorVersion), "build-info")
+	buildInfoSummary, err := commandsummary.NewBuildInfoSummary()
 	if err != nil {
 		return
 	}

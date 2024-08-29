@@ -54,12 +54,14 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 }
 
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
-	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
+	// Write table header
 	tableBuilder.WriteString(getBuildInfoTableHeader())
+	// Add rows
 	for _, build := range builds {
 		appendBuildRow(&tableBuilder, build)
 	}
+	// Add a new line after the table
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
 }

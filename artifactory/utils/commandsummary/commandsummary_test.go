@@ -332,6 +332,53 @@ func TestExtractImageTag(t *testing.T) {
 	}
 }
 
+func TestJsonMarshalWithLinks(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    interface{}
+		expected string
+	}{
+		{
+			name: "Simple string",
+			input: map[string]string{
+				"key": "value",
+			},
+			expected: `{"key":"value"}`,
+		},
+		{
+			name: "String with HTML characters",
+			input: map[string]string{
+				"key": "<div>value</div>",
+			},
+			expected: `{"key":"<div>value</div>"}`,
+		},
+		{
+			name: "Nested map",
+			input: map[string]interface{}{
+				"key": map[string]string{
+					"nestedKey": "nestedValue",
+				},
+			},
+			expected: `{"key":{"nestedKey":"nestedValue"}}`,
+		},
+		{
+			name: "String with a href tag",
+			input: map[string]string{
+				"key": `<a href="https://example.com">link</a>`,
+			},
+			expected: `{"key":"<a href=\"https://example.com\">link</a>"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := jsonMarshalWithLinks(tc.input)
+			assert.NoError(t, err)
+			assert.JSONEq(t, tc.expected, string(result))
+		})
+	}
+}
+
 // This function will verify that the actual map contains all the expected keys and sub-keys.
 // It will NOT check for key values as they are temp path values, which cannot be predicted.
 func verifyCurrentMapping(t *testing.T, expected, actual map[Index]map[string]string) {

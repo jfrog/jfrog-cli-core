@@ -35,6 +35,15 @@ const (
 	SarifReport  Index = "sarif-reports"
 )
 
+// List of allowed directories for searching indexed content
+// This should match the Index enum values.
+var allowedDirs = map[string]struct{}{
+	string(BuildScan):    {},
+	string(DockerScan):   {},
+	string(BinariesScan): {},
+	string(SarifReport):  {},
+}
+
 // Each scan result object can be used to generate violations or vulnerabilities.
 type ScanResult interface {
 	GetViolations() string
@@ -170,7 +179,6 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 
 // Retrieve all the indexed data files paths in the given directory
 func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
-	allowedDirs := []Index{BuildScan, DockerScan, BinariesScan, SarifReport}
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -180,7 +188,8 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 		fullPath := filepath.Join(dirPath, entry.Name())
 		if entry.IsDir() {
 			// Check if the directory is in the allowedDirs list
-			if isRoot || contains(allowedDirs, entry.Name()) {
+			_, allowed := allowedDirs[entry.Name()]
+			if isRoot || allowed {
 				subNestedFilesMap, err := cs.getIndexedFileRecursively(fullPath, false)
 				if err != nil {
 					return nil, err
@@ -198,16 +207,6 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 		}
 	}
 	return nestedFilesMap, nil
-}
-
-// Helper function to check if a slice contains a string
-func contains(slice []Index, item string) bool {
-	for _, s := range slice {
-		if string(s) == item {
-			return true
-		}
-	}
-	return false
 }
 
 // This function creates the base dir for the command summary inside

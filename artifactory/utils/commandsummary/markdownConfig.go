@@ -24,7 +24,7 @@ type MarkdownConfig struct {
 	scanResultsMapping map[string]ScanResult
 }
 
-const extendedSummaryLandPage = "https://myplatform.com/"
+const extendedSummaryLandPage = "https://jfrog.com/help/r/jfrog-and-github-integration-guide/jfrog-and-github-integration-features-matrix"
 
 var StaticMarkdownConfig = MarkdownConfig{}
 

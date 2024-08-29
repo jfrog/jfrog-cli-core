@@ -39,13 +39,18 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 		}
 		builds = append(builds, &publishBuildInfo)
 	}
-
-	if len(builds) > 0 {
-		tableInfo := bis.buildInfoTable(builds)
-		modulesMarkdown := WrapCollapsableMarkdown(modulesTitle, bis.buildInfoModules(builds), 2)
-		finalMarkdown = tableInfo + modulesMarkdown
+	if len(builds) == 0 {
+		return "", nil
 	}
-	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3), nil
+
+	buildInfoTableMarkdown := bis.buildInfoTable(builds)
+	// Create the published modules
+	publishedModulesMarkdown := WrapCollapsableMarkdown(modulesTitle, bis.buildInfoModules(builds), 2)
+
+	finalMarkdown = buildInfoTableMarkdown + publishedModulesMarkdown
+	// Wrap the content under a collapsible section
+	finalMarkdown = WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3)
+	return
 }
 
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {

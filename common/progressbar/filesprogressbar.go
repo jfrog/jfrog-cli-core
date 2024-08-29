@@ -172,6 +172,12 @@ func (p *filesProgressBarManager) RemoveProgress(id int) {
 	bar.Abort()
 }
 
+func (p *filesProgressBarManager) ClearProgress() {
+	if p.generalProgressBar != nil {
+		p.generalProgressBar.Abort(true)
+	}
+}
+
 // Increases general progress bar by 1
 func (p *filesProgressBarManager) IncrementGeneralProgress() {
 	p.generalProgressBar.Increment()
@@ -185,7 +191,7 @@ func (p *filesProgressBarManager) Quit() (err error) {
 		p.headlineBar = nil
 	}
 	if p.generalProgressBar != nil {
-		p.generalProgressBar.Abort(true)
+		p.ClearProgress()
 		p.barsWg.Done()
 		p.generalProgressBar = nil
 	}

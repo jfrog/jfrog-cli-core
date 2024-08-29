@@ -210,7 +210,7 @@ func createDockerMultiArchTitle(module *buildInfo.Module) string {
 
 	if StaticMarkdownConfig.IsExtendedSummary() {
 		// Create a link to the Docker package in Artifactory UI
-		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetExtendedSummaryLangPage(), "/"), "%2F%2F"+parentImageName, sha256)
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetPlatformUrl(), "/"), "%2F%2F"+parentImageName, sha256)
 		return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 	}
 	return module.Id

@@ -12,7 +12,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.5.9
-	github.com/jfrog/build-info-go v1.9.34
+	github.com/jfrog/build-info-go v1.9.35
 	github.com/jfrog/gofrog v1.7.5
 	github.com/jfrog/jfrog-client-go v1.45.0
 	github.com/magiconair/properties v1.8.7
@@ -22,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli v1.22.15
 	github.com/vbauerster/mpb/v8 v8.8.3
-	golang.org/x/exp v0.0.0-20240808152545-0cdaa3abc0fa
+	golang.org/x/exp v0.0.0-20240823005443-9b4947da3948
 	golang.org/x/mod v0.20.0
 	golang.org/x/sync v0.8.0
 	golang.org/x/term v0.23.0
@@ -96,7 +96,7 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/omerzi/jfrog-client-go v1.13.2-0.20240827134020-e8c9e9e27c37
+replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20240829083621-af9bf4a3042d
 
 // replace github.com/jfrog/build-info-go => github.com/asafambar/build-info-go v1.8.9-0.20240819133117-c3f52700927d
 

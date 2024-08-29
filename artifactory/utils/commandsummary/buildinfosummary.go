@@ -3,17 +3,18 @@ package commandsummary
 import (
 	"fmt"
 	buildInfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"path"
 	"strings"
-	"time"
 )
 
 const (
-	timeFormat                = "Jan 2, 2006 , 15:04:05"
-	basicSummaryUpgradeNotice = "\n<p> <a href=\"%s\">⏫ Enable the linkage to Artifactory</a> </p>\n"
+	basicSummaryUpgradeNotice = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
+	modulesTitle              = "📦 Artifacts published to Artifactory by this workflow"
+	minTableColumnLength      = 400
+	markdownSpaceFiller       = "&nbsp;"
+	NonScannedResult          = "non-scanned"
 )
 
 type BuildInfoSummary struct {
@@ -22,6 +23,10 @@ type BuildInfoSummary struct {
 
 func NewBuildInfoSummary() (*CommandSummary, error) {
 	return New(&BuildInfoSummary{}, "build-info")
+}
+
+func (bis *BuildInfoSummary) GetSummaryTitle() string {
+	return "🛠️️ Published JFrog Build Info"
 }
 
 func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
@@ -34,34 +39,39 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 		}
 		builds = append(builds, &publishBuildInfo)
 	}
-
-	if len(builds) > 0 {
-		finalMarkdown = bis.buildInfoTable(builds) + bis.buildInfoModules(builds)
+	if len(builds) == 0 {
+		return "", nil
 	}
+	// Creates the build info table
+	buildInfoTableMarkdown := bis.buildInfoTable(builds)
+	// Creates the published modules
+	publishedModulesMarkdown := bis.buildInfoModules(builds)
+	if publishedModulesMarkdown != "" {
+		publishedModulesMarkdown = WrapCollapsableMarkdown(modulesTitle, publishedModulesMarkdown, 2)
+	}
+	finalMarkdown = buildInfoTableMarkdown + publishedModulesMarkdown
+
+	// Wrap the content under a collapsible section
+	finalMarkdown = WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3)
 	return
 }
 
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
-	// Generate a string that represents a Markdown table
 	var tableBuilder strings.Builder
-	tableBuilder.WriteString("\n\n### Published Build Infos\n\n")
-	tableBuilder.WriteString("\n\n|  Build Info |  Time Stamp |\n")
-	tableBuilder.WriteString("|---------|------------| \n")
+	// Write table header
+	tableBuilder.WriteString(getBuildInfoTableHeader())
+	// Add rows
 	for _, build := range builds {
-		buildTime := parseBuildTime(build.Started)
-		if StaticMarkdownConfig.IsExtendedSummary() {
-			tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) | %s |\n", build.Name+" "+build.Number, build.BuildUrl, buildTime))
-		} else {
-			tableBuilder.WriteString(fmt.Sprintf("| %s | %s |\n", build.Name+" "+build.Number, buildTime))
-		}
+		appendBuildRow(&tableBuilder, build)
 	}
+	// Add a new line after the table
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
 }
 
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
-	markdownBuilder.WriteString("\n\n### Modules Published As Part of This Build\n\n")
+	markdownBuilder.WriteString("\n\n<h3>Published Modules</h3>\n\n")
 	var shouldGenerate bool
 	for _, build := range builds {
 		if modulesMarkdown := bis.generateModulesMarkdown(build.Modules...); modulesMarkdown != "" {
@@ -78,30 +88,47 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
-	var modulesMarkdown strings.Builder
+	var parentModulesMarkdown strings.Builder
+	// Modules could have nested modules inside them
+	// Group them by their parent ID to allow tracing
+	// If a module has no parent, it is considered a parent module itself
 	parentToModulesMap := groupModulesByParent(modules)
 	if len(parentToModulesMap) == 0 {
 		return ""
 	}
-
 	for parentModuleID, parentModules := range parentToModulesMap {
-		modulesMarkdown.WriteString(fmt.Sprintf("#### %s\n<pre>", parentModuleID))
+		parentModulesMarkdown.WriteString(generateModuleHeader(parentModuleID))
+		parentModulesMarkdown.WriteString(generateModuleTableHeader())
 		isMultiModule := len(parentModules) > 1
-
-		if !StaticMarkdownConfig.IsExtendedSummary() {
-			// Adds a teaser message to upgrade to extend summary
-			modulesMarkdown.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetPlatformUrl()))
-		}
-		for _, module := range parentModules {
-			if isMultiModule && parentModuleID == module.Id {
-				// Skip the parent module if there are multiple modules, as it will be displayed as a header
-				continue
-			}
-			modulesMarkdown.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
-		}
-		modulesMarkdown.WriteString("</pre>\n")
+		nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(parentModules, parentModuleID, isMultiModule)
+		scanResult := getScanResults(extractDockerImageTag(parentModules))
+		parentModulesMarkdown.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
 	}
-	return modulesMarkdown.String()
+	return parentModulesMarkdown.String()
+}
+
+func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(parentModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {
+	var nestedModuleMarkdownTree strings.Builder
+	if len(parentModules) == 0 {
+		return ""
+	}
+	if !StaticMarkdownConfig.IsExtendedSummary() {
+		nestedModuleMarkdownTree.WriteString("|")
+		nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
+		nestedModuleMarkdownTree.WriteString("<pre>")
+	} else {
+		nestedModuleMarkdownTree.WriteString("|<pre>")
+	}
+
+	for _, module := range parentModules {
+		if isMultiModule && parentModuleID == module.Id {
+			continue
+		}
+		nestedModuleMarkdownTree.WriteString(bis.generateModuleArtifactsTree(&module, isMultiModule))
+	}
+	nestedModuleMarkdownTree.WriteString(appendSpacesToTableColumn(""))
+	nestedModuleMarkdownTree.WriteString("</pre>")
+	return nestedModuleMarkdownTree.String()
 }
 
 func (bis *BuildInfoSummary) generateModuleArtifactsTree(module *buildInfo.Module, shouldCollapseArtifactsTree bool) string {
@@ -152,7 +179,6 @@ func groupModulesByParent(modules []buildInfo.Module) map[string][]buildInfo.Mod
 		if len(module.Artifacts) == 0 || !isSupportedModule(&module) {
 			continue
 		}
-
 		parentID := module.Parent
 		// If the module has no parent, that means it is the parent module itself, so we can use its ID as the parent ID.
 		if parentID == "" {
@@ -175,18 +201,8 @@ func isSupportedModule(module *buildInfo.Module) bool {
 	}
 }
 
-func parseBuildTime(timestamp string) string {
-	// Parse the timestamp string into a time.Time object
-	buildInfoTime, err := time.Parse(buildInfo.TimeFormat, timestamp)
-	if err != nil {
-		return "N/A"
-	}
-	// Format the time in a more human-readable format
-	return buildInfoTime.Format(timeFormat)
-}
-
 func createDockerMultiArchTitle(module *buildInfo.Module) string {
-	// Extract the parent image name from the module ID (e.g. my-image:1.0 -> my-image)
+	// Extract the parent image name from the module ID (e.g., my-image:1.0 -> my-image)
 	parentImageName := strings.Split(module.Parent, ":")[0]
 
 	// Get the relevant SHA256
@@ -208,4 +224,83 @@ func createDockerMultiArchTitle(module *buildInfo.Module) string {
 
 func createCollapsibleSection(title, content string) string {
 	return fmt.Sprintf("<details><summary>%s</summary>\n%s</details>", title, content)
+}
+
+func appendSpacesToTableColumn(str string) string {
+	const nbspLength = len(markdownSpaceFiller)
+	if len(str) < minTableColumnLength {
+		padding := minTableColumnLength - len(str)
+		if padding > 0 {
+			str += strings.Repeat(markdownSpaceFiller, padding/nbspLength)
+		}
+	}
+	return str
+}
+
+func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
+	buildName := build.Name + " " + build.Number
+	buildScanResult := getScanResults(buildName)
+	if StaticMarkdownConfig.IsExtendedSummary() {
+		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, build.BuildUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
+	} else {
+		// Get the URL to the extended summary page
+		upgradeMessage := fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage())
+		// Append to build name to fit inside the table
+		buildName = fmt.Sprintf(" %s %s", upgradeMessage, buildName)
+		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", fitInsideMarkdownTable(buildName), appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
+	}
+}
+
+func getBuildInfoTableHeader() string {
+	return "\n\n|  Build Info |  Security Violations | Security Issues |\n|:---------|:------------|:------------|\n"
+}
+
+func generateModuleHeader(parentModuleID string) string {
+	return fmt.Sprintf("\n\n**%s**\n\n", parentModuleID)
+}
+
+func generateModuleTableHeader() string {
+	return "\n\n|  Artifacts |  Security Violations | Security Issues |\n|:------------|:---------------------|:------------------|\n"
+}
+
+func generateTableRow(nestedModuleMarkdownTree string, scanResult ScanResult) string {
+	return fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree), appendSpacesToTableColumn(scanResult.GetViolations()), appendSpacesToTableColumn(scanResult.GetVulnerabilities()))
+}
+
+// To fit inside the Markdown table, replace new lines with <br>
+func fitInsideMarkdownTable(str string) string {
+	return strings.ReplaceAll(str, "\n", "<br>")
+}
+
+func getScanResults(scannedEntity string) (sc ScanResult) {
+	if sc = StaticMarkdownConfig.scanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
+		return sc
+	}
+	return StaticMarkdownConfig.scanResultsMapping[NonScannedResult]
+}
+
+// Extracts the docker image tag from a docker module
+// Docker modules have in their first index metadata, which contains the docker image tag
+func extractDockerImageTag(modules []buildInfo.Module) string {
+	if len(modules) == 0 || modules[0].Type != buildInfo.Docker {
+		return ""
+	}
+
+	const tagKey = "docker.image.tag"
+	properties := modules[0].Properties
+	// Handle both cases where the properties are a map[string]interface{} or map[string]string
+	switch props := properties.(type) {
+	case map[string]interface{}:
+		if tag, found := props[tagKey]; found {
+			if tagStr, ok := tag.(string); ok {
+				return tagStr
+			}
+		}
+	case map[string]string:
+		if tag, found := props[tagKey]; found {
+			return tag
+		}
+	}
+
+	return ""
 }

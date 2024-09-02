@@ -1,6 +1,7 @@
 package commandsummary
 
 import (
+	buildInfo "github.com/jfrog/build-info-go/entities"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
@@ -323,6 +324,87 @@ func TestDockerMultiArchModule(t *testing.T) {
 
 }
 
+func TestGroupModules(t *testing.T) {
+	tests := []struct {
+		name     string
+		modules  []buildInfo.Module
+		expected map[string][]buildInfo.Module
+	}{
+		{
+			name: "Single module",
+			modules: []buildInfo.Module{
+				{Id: "module1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"module1": {
+					{Id: "module1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+			},
+		},
+		{
+			name: "Module with subModules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root": {
+					{Id: "module1", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+					{Id: "module2", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Multiple Modules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root1": {
+					{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+				"root2": {
+					{Id: "module2", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Multiple Modules with subModules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module3", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				{Id: "module4", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root1": {
+					{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+					{Id: "module2", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+				"root2": {
+					{Id: "module3", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+					{Id: "module4", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Module with no artifacts",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1"},
+			},
+			expected: map[string][]buildInfo.Module{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := groupModules(tt.modules)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 // Tests data files are location artifactory/commands/testdata/command_summary
 func getTestDataFile(t *testing.T, fileName string) string {
 	var modulesPath string
@@ -371,7 +453,7 @@ func testMarkdownOutput(t *testing.T, expected, actual string) {
 	// the string is not formatted, leading to an unequal comparison.
 	// Ensure to test small units of Markdown for better unit testing
 	// and to facilitate testing.
-	maxCompareLength := 950
+	maxCompareLength := 5000
 	if len(expected) > maxCompareLength || len(actual) > maxCompareLength {
 		t.Fatalf("Markdown output is too long to compare, limit the length to %d chars", maxCompareLength)
 	}

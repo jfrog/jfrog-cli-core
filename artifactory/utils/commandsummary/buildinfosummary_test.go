@@ -520,7 +520,7 @@ func testMarkdownOutput(t *testing.T, expected, actual string) {
 	// the string is not formatted, leading to an unequal comparison.
 	// Ensure to test small units of Markdown for better unit testing
 	// and to facilitate testing.
-	maxCompareLength := 5000
+	maxCompareLength := 950
 	if len(expected) > maxCompareLength || len(actual) > maxCompareLength {
 		t.Fatalf("Markdown output is too long to compare, limit the length to %d chars", maxCompareLength)
 	}

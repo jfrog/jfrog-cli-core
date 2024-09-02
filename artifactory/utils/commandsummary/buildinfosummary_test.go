@@ -17,6 +17,7 @@ const (
 	dockerImageModule     = "docker-image-module.md"
 	genericModule         = "generic-module.md"
 	mavenModule           = "maven-module.md"
+	mavenNestedModule     = "maven-nested-module.md"
 	dockerMultiArchModule = "multiarch-docker-image.md"
 )
 
@@ -119,6 +120,72 @@ func TestBuildInfoModulesMaven(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
 		res := buildInfoSummary.buildInfoModules(builds)
 		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
+	})
+}
+
+func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Id:   "maven",
+					Type: buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact1",
+						Path:                   "path/to/artifact1",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep1",
+					}},
+				},
+				{
+					Id:     "submodule1",
+					Parent: "maven",
+					Type:   buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact2",
+						Path:                   "path/to/artifact2",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep2",
+					}},
+				},
+				{
+					Id:     "submodule2",
+					Parent: "maven",
+					Type:   buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact3",
+						Path:                   "path/to/artifact3",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep3",
+					}},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
 	})
 }
 

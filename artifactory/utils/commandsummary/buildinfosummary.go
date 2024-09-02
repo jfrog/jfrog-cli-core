@@ -115,7 +115,7 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		// Scan-enabled modules should be displayed in a table,
 		// Non scan-enabled modules should only display the artifacts tree.
 		if !scannedModuleTypes[subModules[0].Type] {
-			modulesMarkdown.WriteString(bis.generateModuleArtifactTree(subModules))
+			modulesMarkdown.WriteString(bis.generateModuleArtifactTree(rootModuleID, subModules))
 		} else {
 			modulesMarkdown.WriteString(bis.generateModuleTableView(rootModuleID, subModules))
 		}
@@ -124,14 +124,22 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 }
 
 // Create a markdown tree for the module artifacts.
-func (bis *BuildInfoSummary) generateModuleArtifactTree(modules []buildInfo.Module) string {
+func (bis *BuildInfoSummary) generateModuleArtifactTree(rootModuleID string, nestedModules []buildInfo.Module) string {
+	if len(nestedModules) == 0 {
+		return ""
+	}
 	var markdownBuilder strings.Builder
-	for _, module := range modules {
-		markdownBuilder.WriteString(generateModuleHeader(module.Id))
-		if !StaticMarkdownConfig.IsExtendedSummary() {
-			markdownBuilder.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
+	isMultiModule := len(nestedModules) > 1
+
+	markdownBuilder.WriteString(generateModuleHeader(rootModuleID))
+	if !StaticMarkdownConfig.IsExtendedSummary() {
+		markdownBuilder.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
+	}
+	for _, module := range nestedModules {
+		if isMultiModule && rootModuleID == module.Id {
+			continue
 		}
-		markdownBuilder.WriteString(fmt.Sprintf("\n\n<pre>%s</pre>\n\n", bis.createArtifactsTree(&module)))
+		markdownBuilder.WriteString(fmt.Sprintf("\n\n<pre>%s</pre>\n\n", bis.generateModuleArtifactsTree(&module, isMultiModule)))
 	}
 	return markdownBuilder.String()
 }
@@ -142,13 +150,13 @@ func (bis *BuildInfoSummary) generateModuleTableView(rootModuleID string, subMod
 	markdownBuilder.WriteString(generateModuleHeader(rootModuleID))
 	markdownBuilder.WriteString(generateModuleTableHeader())
 	isMultiModule := len(subModules) > 1
-	nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(subModules, rootModuleID, isMultiModule)
+	nestedModuleMarkdownTree := bis.generateTableModuleMarkdown(subModules, rootModuleID, isMultiModule)
 	scanResult := getScanResults(extractDockerImageTag(subModules))
 	markdownBuilder.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
 	return markdownBuilder.String()
 }
 
-func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(nestedModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {
+func (bis *BuildInfoSummary) generateTableModuleMarkdown(nestedModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {
 	var nestedModuleMarkdownTree strings.Builder
 	if len(nestedModules) == 0 {
 		return ""

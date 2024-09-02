@@ -103,33 +103,49 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 }
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
-	var parentModulesMarkdown strings.Builder
-	// Modules can contain nested submodules.
-	// Group them by their root module ID to facilitate tracing.
-	// If a module has no nested submodules, it is treated as a root module.
+	var modulesMarkdown strings.Builder
+	// Group a module with it's subModules
+	// If a module has no subModules, it will be grouped with itself as root.
 	groupedModuleMap := groupModules(modules)
 	if len(groupedModuleMap) == 0 {
 		return ""
 	}
 	for rootModuleID, subModules := range groupedModuleMap {
+		// A module is considered scan-enabled if it can be scanned via a CLI command.
+		// Scan-enabled modules should be displayed in a table,
+		// Non scan-enabled modules should only display the artifacts tree.
 		if !scannedModuleTypes[subModules[0].Type] {
-			var markdownBuilder strings.Builder
-			for _, module := range subModules {
-				markdownBuilder.WriteString(generateModuleHeader(module.Id))
-				markdownBuilder.WriteString(fmt.Sprintf("<pre>%s</pre>", bis.createArtifactsTree(&module)))
-			}
-			return markdownBuilder.String()
+			modulesMarkdown.WriteString(bis.generateModuleArtifactTree(subModules))
 		} else {
-			parentModulesMarkdown.WriteString(generateModuleHeader(rootModuleID))
-			parentModulesMarkdown.WriteString(generateModuleTableHeader())
-			isMultiModule := len(subModules) > 1
-			nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(subModules, rootModuleID, isMultiModule)
-			scanResult := getScanResults(extractDockerImageTag(subModules))
-			parentModulesMarkdown.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
+			modulesMarkdown.WriteString(bis.generateModuleTableView(rootModuleID, subModules))
 		}
-
 	}
-	return parentModulesMarkdown.String()
+	return modulesMarkdown.String()
+}
+
+// Create a markdown tree for the module artifacts.
+func (bis *BuildInfoSummary) generateModuleArtifactTree(modules []buildInfo.Module) string {
+	var markdownBuilder strings.Builder
+	for _, module := range modules {
+		markdownBuilder.WriteString(generateModuleHeader(module.Id))
+		if !StaticMarkdownConfig.IsExtendedSummary() {
+			markdownBuilder.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
+		}
+		markdownBuilder.WriteString(fmt.Sprintf("\n\n<pre>%s</pre>\n\n", bis.createArtifactsTree(&module)))
+	}
+	return markdownBuilder.String()
+}
+
+// Creates a table view for the module with possible scan results.
+func (bis *BuildInfoSummary) generateModuleTableView(rootModuleID string, subModules []buildInfo.Module) string {
+	var markdownBuilder strings.Builder
+	markdownBuilder.WriteString(generateModuleHeader(rootModuleID))
+	markdownBuilder.WriteString(generateModuleTableHeader())
+	isMultiModule := len(subModules) > 1
+	nestedModuleMarkdownTree := bis.generateNestedModuleMarkdownTree(subModules, rootModuleID, isMultiModule)
+	scanResult := getScanResults(extractDockerImageTag(subModules))
+	markdownBuilder.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
+	return markdownBuilder.String()
 }
 
 func (bis *BuildInfoSummary) generateNestedModuleMarkdownTree(nestedModules []buildInfo.Module, parentModuleID string, isMultiModule bool) string {

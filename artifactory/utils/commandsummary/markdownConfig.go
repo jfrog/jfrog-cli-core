@@ -67,7 +67,6 @@ func InitMarkdownGenerationValues(serverUrl string, platformMajorVersion int) (e
 		return
 	}
 	StaticMarkdownConfig.setExtendedSummary(entitled)
-	StaticMarkdownConfig.setExtendedSummary(false)
 	StaticMarkdownConfig.setPlatformMajorVersion(platformMajorVersion)
 	StaticMarkdownConfig.setPlatformUrl(serverUrl)
 	return

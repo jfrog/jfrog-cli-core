@@ -11,7 +11,7 @@ import (
 
 const (
 	basicSummaryUpgradeNotice = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
-	modulesTitle              = "📦 Artifacts published to Artifactory by this workflow"
+	modulesTitle              = "📦 Modules published to Artifactory by this workflow"
 	minTableColumnLength      = 400
 	markdownSpaceFiller       = "&nbsp;"
 	NonScannedResult          = "non-scanned"
@@ -67,16 +67,20 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3), nil
 }
 
+// Create a table with published builds and possible scan results.
 func (bis *BuildInfoSummary) buildInfoTable(builds []*buildInfo.BuildInfo) string {
 	var tableBuilder strings.Builder
 	tableBuilder.WriteString(getBuildInfoTableHeader())
 	for _, build := range builds {
-		appendBuildRow(&tableBuilder, build)
+		appendBuildInfoRow(&tableBuilder, build)
 	}
 	tableBuilder.WriteString("\n\n")
 	return tableBuilder.String()
 }
 
+// Generates a view for published modules within the build.
+// Modules are displayed as tables if they are scannable via CLI command,
+// otherwise, they are shown as an artifact tree.
 func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) string {
 	var markdownBuilder strings.Builder
 	markdownBuilder.WriteString("\n\n<h3>Published Modules</h3>\n\n")
@@ -268,7 +272,7 @@ func appendSpacesToTableColumn(str string) string {
 	return str
 }
 
-func appendBuildRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
+func appendBuildInfoRow(tableBuilder *strings.Builder, build *buildInfo.BuildInfo) {
 	buildName := build.Name + " " + build.Number
 	buildScanResult := getScanResults(buildName)
 	if StaticMarkdownConfig.IsExtendedSummary() {

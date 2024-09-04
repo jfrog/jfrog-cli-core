@@ -1,6 +1,7 @@
 package commandsummary
 
 import (
+	buildInfo "github.com/jfrog/build-info-go/entities"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,7 @@ const (
 	dockerImageModule     = "docker-image-module.md"
 	genericModule         = "generic-module.md"
 	mavenModule           = "maven-module.md"
+	mavenNestedModule     = "maven-nested-module.md"
 	dockerMultiArchModule = "multiarch-docker-image.md"
 )
 
@@ -118,6 +120,72 @@ func TestBuildInfoModulesMaven(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
 		res := buildInfoSummary.buildInfoModules(builds)
 		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
+	})
+}
+
+func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Id:   "maven",
+					Type: buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact1",
+						Path:                   "path/to/artifact1",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep1",
+					}},
+				},
+				{
+					Id:     "submodule1",
+					Parent: "maven",
+					Type:   buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact2",
+						Path:                   "path/to/artifact2",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep2",
+					}},
+				},
+				{
+					Id:     "submodule2",
+					Parent: "maven",
+					Type:   buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact3",
+						Path:                   "path/to/artifact3",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep3",
+					}},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
 	})
 }
 
@@ -323,6 +391,87 @@ func TestDockerMultiArchModule(t *testing.T) {
 
 }
 
+func TestGroupModules(t *testing.T) {
+	tests := []struct {
+		name     string
+		modules  []buildInfo.Module
+		expected map[string][]buildInfo.Module
+	}{
+		{
+			name: "Single module",
+			modules: []buildInfo.Module{
+				{Id: "module1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"module1": {
+					{Id: "module1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+			},
+		},
+		{
+			name: "Module with subModules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root": {
+					{Id: "module1", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+					{Id: "module2", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Multiple Modules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root1": {
+					{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+				"root2": {
+					{Id: "module2", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Multiple Modules with subModules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module3", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				{Id: "module4", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root1": {
+					{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+					{Id: "module2", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+				"root2": {
+					{Id: "module3", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+					{Id: "module4", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Module with no artifacts",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1"},
+			},
+			expected: map[string][]buildInfo.Module{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := groupModules(tt.modules)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 // Tests data files are location artifactory/commands/testdata/command_summary
 func getTestDataFile(t *testing.T, fileName string) string {
 	var modulesPath string
@@ -339,6 +488,124 @@ func getTestDataFile(t *testing.T, fileName string) string {
 		contentStr = strings.ReplaceAll(contentStr, "\r\n", "\n")
 	}
 	return contentStr
+}
+
+func TestIsSupportedModule(t *testing.T) {
+	tests := []struct {
+		name     string
+		module   buildInfo.Module
+		expected bool
+	}{
+		{
+			name: "Supported Maven Module",
+			module: buildInfo.Module{
+				Type: buildInfo.Maven,
+			},
+			expected: true,
+		},
+		{
+			name: "Supported Npm Module",
+			module: buildInfo.Module{
+				Type: buildInfo.Npm,
+			},
+			expected: true,
+		},
+		{
+			name: "Unsupported Module Type",
+			module: buildInfo.Module{
+				Type: buildInfo.ModuleType("unsupported"),
+			},
+			expected: false,
+		},
+		{
+			name: "Docker Module with Attestations Prefix",
+			module: buildInfo.Module{
+				Type: buildInfo.Docker,
+				Id:   "attestations-module",
+			},
+			expected: false,
+		},
+		{
+			name: "Docker Module without Attestations Prefix",
+			module: buildInfo.Module{
+				Type: buildInfo.Docker,
+				Id:   "docker-module",
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isSupportedModule(&tt.module)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFilterModules(t *testing.T) {
+	tests := []struct {
+		name     string
+		modules  []buildInfo.Module
+		expected []buildInfo.Module
+	}{
+		{
+			name: "All Supported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+				{Type: buildInfo.Go},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+				{Type: buildInfo.Go},
+			},
+		},
+		{
+			name: "Mixed Supported and Unsupported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.ModuleType("unsupported")},
+				{Type: buildInfo.Npm},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+			},
+		},
+		{
+			name: "All Unsupported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.ModuleType("unsupported1")},
+				{Type: buildInfo.ModuleType("unsupported2")},
+			},
+			expected: []buildInfo.Module{},
+		},
+		{
+			name: "Docker Module with Attestations Prefix",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "attestations-module"},
+			},
+			expected: []buildInfo.Module{},
+		},
+		{
+			name: "Docker Module without Attestations Prefix",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "docker-module"},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "docker-module"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterModules(tt.modules...)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
 // Sometimes there are inconsistencies in the Markdown output, this function normalizes the output for comparison

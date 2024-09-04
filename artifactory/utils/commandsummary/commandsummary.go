@@ -165,11 +165,11 @@ func (cs *CommandSummary) recordInternal(data any, args ...interface{}) (err err
 }
 
 func (cs *CommandSummary) saveDataFile(filePath, fileName string, data any) (err error) {
-	bytes, err := convertDataToBytes(data)
+	dataAsBytes, err := convertDataToBytes(data)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	return createAndWriteToFile(filePath, fileName, bytes)
+	return createAndWriteToFile(filePath, fileName, dataAsBytes)
 }
 
 func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {

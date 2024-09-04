@@ -134,6 +134,10 @@ func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...
 // Retrieve all the indexed data files in the current command directory.
 func GetIndexedDataFilesPaths() (indexedFilePathsMap IndexedFilesMap, err error) {
 	basePath := filepath.Join(os.Getenv(coreutils.SummaryOutputDirPathEnv), OutputDirName)
+	exists, err := fileutils.IsDirExists(basePath, false)
+	if err != nil || !exists {
+		return
+	}
 	return getIndexedFileRecursively(basePath, true)
 }
 

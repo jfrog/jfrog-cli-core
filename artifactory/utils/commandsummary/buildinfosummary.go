@@ -45,12 +45,13 @@ func (bis *BuildInfoSummary) GetSummaryTitle() string {
 	return "🛠️️ Published JFrog Build Info"
 }
 
-func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (string, error) {
+func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (finalMarkdown string, err error) {
+	// Aggregate all the build info files into a slice
 	var builds []*buildInfo.BuildInfo
 	for _, filePath := range dataFilePaths {
 		var publishBuildInfo buildInfo.BuildInfo
-		if err := UnmarshalFromFilePath(filePath, &publishBuildInfo); err != nil {
-			return "", err
+		if err = UnmarshalFromFilePath(filePath, &publishBuildInfo); err != nil {
+			return
 		}
 		builds = append(builds, &publishBuildInfo)
 	}
@@ -63,7 +64,8 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 	if publishedModulesMarkdown != "" {
 		publishedModulesMarkdown = WrapCollapsableMarkdown(modulesTitle, publishedModulesMarkdown, 2)
 	}
-	finalMarkdown := buildInfoTableMarkdown + publishedModulesMarkdown
+	finalMarkdown = buildInfoTableMarkdown + publishedModulesMarkdown
+
 	return WrapCollapsableMarkdown(bis.GetSummaryTitle(), finalMarkdown, 3), nil
 }
 

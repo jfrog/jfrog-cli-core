@@ -132,9 +132,9 @@ func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...
 }
 
 // Retrieve all the indexed data files in the current command directory.
-func (cs *CommandSummary) GetIndexedDataFilesPaths() (indexedFilePathsMap IndexedFilesMap, err error) {
+func GetIndexedDataFilesPaths() (indexedFilePathsMap IndexedFilesMap, err error) {
 	basePath := filepath.Join(os.Getenv(coreutils.SummaryOutputDirPathEnv), OutputDirName)
-	return cs.getIndexedFileRecursively(basePath, true)
+	return getIndexedFileRecursively(basePath, true)
 }
 
 func (cs *CommandSummary) GetDataFilesPaths() ([]string, error) {
@@ -178,7 +178,7 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 }
 
 // Retrieve all the indexed data files paths in the given directory
-func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
+func getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -190,7 +190,7 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 			// Check if the directory is in the allowedDirs list
 			_, allowed := allowedDirs[entry.Name()]
 			if isRoot || allowed {
-				subNestedFilesMap, err := cs.getIndexedFileRecursively(fullPath, false)
+				subNestedFilesMap, err := getIndexedFileRecursively(fullPath, false)
 				if err != nil {
 					return nil, err
 				}

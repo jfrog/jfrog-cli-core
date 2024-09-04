@@ -56,7 +56,7 @@ func (bis *BuildInfoSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (
 		builds = append(builds, &publishBuildInfo)
 	}
 	if len(builds) == 0 {
-		return "", nil
+		return
 	}
 
 	buildInfoTableMarkdown := bis.buildInfoTable(builds)

@@ -6,7 +6,7 @@
 
 **generic**
 
-<a href="https://jfrog.com/help/r/jfrog-and-github-integration-guide/jfrog-and-github-integration-features-matrix">🐸 Enable the linkage to Artifactory</a>
+<a href="https://jfrog.com/help/access?xinfo:appid=csh-gen-gitbook">🐸 Enable the linkage to Artifactory</a>
 
 
 

@@ -5,6 +5,7 @@ import (
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"path"
 	"strings"
 )
@@ -273,9 +274,11 @@ func fitInsideMarkdownTable(str string) string {
 }
 
 func getScanResults(scannedEntity string) (sc ScanResult) {
+	log.Debug("Getting scan results for: ", scannedEntity)
 	if sc = StaticMarkdownConfig.scanResultsMapping[fileNameToSha1(scannedEntity)]; sc != nil {
 		return sc
 	}
+	log.Debug("No scan results found for: ", scannedEntity)
 	return StaticMarkdownConfig.scanResultsMapping[NonScannedResult]
 }
 

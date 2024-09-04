@@ -102,7 +102,7 @@ func (bis *BuildInfoSummary) buildInfoModules(builds []*buildInfo.BuildInfo) str
 
 func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module) string {
 	var modulesMarkdown strings.Builder
-	// Modules could help nested modules inside of them
+	// Modules could include nested modules inside of them
 	// Group the modules by their root module ID
 	// If a module has no root, it is considered as a root module itself.
 	groupedModuleMap := groupModules(modules)
@@ -336,12 +336,14 @@ func extractDockerImageTag(modules []buildInfo.Module) string {
 	return ""
 }
 
-func filterModules(modules ...buildInfo.Module) (supportedModules []buildInfo.Module) {
+// Filter out unsupported modules, return empty list if no supported modules found.
+func filterModules(modules ...buildInfo.Module) []buildInfo.Module {
+	supportedModules := make([]buildInfo.Module, 0, len(modules))
 	for _, module := range modules {
 		if !isSupportedModule(&module) {
 			continue
 		}
 		supportedModules = append(supportedModules, module)
 	}
-	return
+	return supportedModules
 }

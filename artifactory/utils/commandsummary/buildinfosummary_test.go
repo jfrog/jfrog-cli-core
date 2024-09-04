@@ -490,6 +490,124 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	return contentStr
 }
 
+func TestIsSupportedModule(t *testing.T) {
+	tests := []struct {
+		name     string
+		module   buildInfo.Module
+		expected bool
+	}{
+		{
+			name: "Supported Maven Module",
+			module: buildInfo.Module{
+				Type: buildInfo.Maven,
+			},
+			expected: true,
+		},
+		{
+			name: "Supported Npm Module",
+			module: buildInfo.Module{
+				Type: buildInfo.Npm,
+			},
+			expected: true,
+		},
+		{
+			name: "Unsupported Module Type",
+			module: buildInfo.Module{
+				Type: buildInfo.ModuleType("unsupported"),
+			},
+			expected: false,
+		},
+		{
+			name: "Docker Module with Attestations Prefix",
+			module: buildInfo.Module{
+				Type: buildInfo.Docker,
+				Id:   "attestations-module",
+			},
+			expected: false,
+		},
+		{
+			name: "Docker Module without Attestations Prefix",
+			module: buildInfo.Module{
+				Type: buildInfo.Docker,
+				Id:   "docker-module",
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isSupportedModule(&tt.module)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFilterModules(t *testing.T) {
+	tests := []struct {
+		name     string
+		modules  []buildInfo.Module
+		expected []buildInfo.Module
+	}{
+		{
+			name: "All Supported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+				{Type: buildInfo.Go},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+				{Type: buildInfo.Go},
+			},
+		},
+		{
+			name: "Mixed Supported and Unsupported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.ModuleType("unsupported")},
+				{Type: buildInfo.Npm},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+			},
+		},
+		{
+			name: "All Unsupported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.ModuleType("unsupported1")},
+				{Type: buildInfo.ModuleType("unsupported2")},
+			},
+			expected: []buildInfo.Module{},
+		},
+		{
+			name: "Docker Module with Attestations Prefix",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "attestations-module"},
+			},
+			expected: []buildInfo.Module{},
+		},
+		{
+			name: "Docker Module without Attestations Prefix",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "docker-module"},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "docker-module"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterModules(tt.modules...)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 // Sometimes there are inconsistencies in the Markdown output, this function normalizes the output for comparison
 // This allows easy debugging when tests fails
 func normalizeMarkdown(md string) string {

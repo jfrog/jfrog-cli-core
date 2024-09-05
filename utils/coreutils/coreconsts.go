@@ -49,6 +49,7 @@ const (
 	CI                      = "CI"
 	ServerID                = "JFROG_CLI_SERVER_ID"
 	TransitiveDownload      = "JFROG_CLI_TRANSITIVE_DOWNLOAD"
+
 	// Deprecated and replaced with TransitiveDownload
 	TransitiveDownloadExperimental = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
 )

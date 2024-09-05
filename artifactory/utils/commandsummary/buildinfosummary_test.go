@@ -1,17 +1,68 @@
 package commandsummary
 
 import (
+	buildInfo "github.com/jfrog/build-info-go/entities"
 	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
 
-func TestBuildInfoTable(t *testing.T) {
+const (
+	buildInfoTable        = "build-info-table.md"
+	dockerImageModule     = "docker-image-module.md"
+	genericModule         = "generic-module.md"
+	mavenModule           = "maven-module.md"
+	mavenNestedModule     = "maven-nested-module.md"
+	dockerMultiArchModule = "multiarch-docker-image.md"
+)
+
+type MockScanResult struct {
+	Violations      string
+	Vulnerabilities string
+}
+
+// GetViolations returns the mock violations
+func (m *MockScanResult) GetViolations() string {
+	return m.Violations
+}
+
+// GetVulnerabilities returns the mock vulnerabilities
+func (m *MockScanResult) GetVulnerabilities() string {
+	return m.Vulnerabilities
+}
+
+func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
+	// Mock the scan results defaults
+	StaticMarkdownConfig.scanResultsMapping = make(map[string]ScanResult)
+	StaticMarkdownConfig.scanResultsMapping[NonScannedResult] = &MockScanResult{
+		Violations:      "Not scanned",
+		Vulnerabilities: "Not scanned",
+	}
+	// Mock config
+	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
+	StaticMarkdownConfig.setPlatformMajorVersion(7)
+	StaticMarkdownConfig.setExtendedSummary(false)
+	// Cleanup config
+	cleanup := func() {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		StaticMarkdownConfig.setPlatformMajorVersion(0)
+		StaticMarkdownConfig.setPlatformUrl("")
+	}
+	// Create build info instance
 	buildInfoSummary := &BuildInfoSummary{}
+	return buildInfoSummary, cleanup
+}
+
+func TestBuildInfoTable(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -20,22 +71,23 @@ func TestBuildInfoTable(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 		},
 	}
-
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
+		res := buildInfoSummary.buildInfoTable(builds)
+		testMarkdownOutput(t, getTestDataFile(t, buildInfoTable), res)
 	})
-
 	t.Run("Basic Summary", func(t *testing.T) {
-		StaticMarkdownConfig.setExtendedSummary(true)
-		assert.Equal(t, getTestDataFile(t, "build-info-table.md"), buildInfoSummary.buildInfoTable(builds))
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoTable(builds)
+		testMarkdownOutput(t, getTestDataFile(t, buildInfoTable), res)
 	})
-
-	cleanCommandSummaryValues()
 }
 
-func TestBuildInfoModules(t *testing.T) {
-	buildInfoSummary := &BuildInfoSummary{}
+func TestBuildInfoModulesMaven(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -44,16 +96,45 @@ func TestBuildInfoModules(t *testing.T) {
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 			Modules: []buildinfo.Module{
 				{
-					Id:   "gradle",
-					Type: buildinfo.Gradle,
-					Artifacts: []buildinfo.Artifact{
-						{
-							Name:                   "gradleArtifact",
-							Path:                   "dir/gradleArtifact",
-							OriginalDeploymentRepo: "gradle-local",
-						},
-					},
+					Id:   "maven",
+					Type: buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact1",
+						Path:                   "path/to/artifact1",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep1",
+					}},
 				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
+	})
+}
+
+func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
 				{
 					Id:   "maven",
 					Type: buildinfo.Maven,
@@ -67,42 +148,52 @@ func TestBuildInfoModules(t *testing.T) {
 					}},
 				},
 				{
-					Id:   "generic",
-					Type: buildinfo.Generic,
+					Id:     "submodule1",
+					Parent: "maven",
+					Type:   buildinfo.Maven,
 					Artifacts: []buildinfo.Artifact{{
 						Name:                   "artifact2",
 						Path:                   "path/to/artifact2",
-						OriginalDeploymentRepo: "generic-local",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep2",
+					}},
+				},
+				{
+					Id:     "submodule2",
+					Parent: "maven",
+					Type:   buildinfo.Maven,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact3",
+						Path:                   "path/to/artifact3",
+						OriginalDeploymentRepo: "libs-release",
+					}},
+					Dependencies: []buildinfo.Dependency{{
+						Id: "dep3",
 					}},
 				},
 			},
 		},
 	}
 
-	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		result := buildInfoSummary.buildInfoModules(builds)
-		verifyModulesResult(t, result)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		result := buildInfoSummary.buildInfoModules(builds)
-		verifyModulesResult(t, result)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
 	})
-	cleanCommandSummaryValues()
 }
 
-func verifyModulesResult(t *testing.T, result string) {
-	// Validate that the markdown contains the expected "generic" repo content as well as the "maven" repo content.
-	assertContainsWithInfo(t, result, getTestDataFile(t, "generic-module.md"))
-	assertContainsWithInfo(t, result, getTestDataFile(t, "maven-module.md"))
-	// The build-info also contains a "gradle" module, but it should not be included in the markdown.
-	assert.NotContains(t, result, "gradle")
-}
-
-func TestBuildInfoModulesEmpty(t *testing.T) {
-	buildInfoSummary := &BuildInfoSummary{}
+func TestBuildInfoModulesGradle(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:     "buildName",
@@ -110,14 +201,6 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 			Started:  "2024-05-05T12:47:20.803+0300",
 			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
 			Modules: []buildinfo.Module{
-				{
-					Id:        "maven",
-					Type:      buildinfo.Maven,
-					Artifacts: []buildinfo.Artifact{},
-					Dependencies: []buildinfo.Dependency{{
-						Id: "dep1",
-					}},
-				},
 				{
 					Id:   "gradle",
 					Type: buildinfo.Gradle,
@@ -133,19 +216,60 @@ func TestBuildInfoModulesEmpty(t *testing.T) {
 		},
 	}
 
-	t.Run("ExtendedSummary", func(t *testing.T) {
+	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
+		res := buildInfoSummary.buildInfoModules(builds)
+		assert.Empty(t, res)
 	})
-
-	t.Run("BasicSummary", func(t *testing.T) {
-		StaticMarkdownConfig.setExtendedSummary(true)
-		assert.Empty(t, buildInfoSummary.buildInfoModules(builds))
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoModules(builds)
+		assert.Empty(t, res)
 	})
 }
 
-func TestBuildInfoModulesWithGrouping(t *testing.T) {
-	buildInfoSummary := &BuildInfoSummary{}
+func TestBuildInfoModulesGeneric(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:     "buildName",
+			Number:   "123",
+			Started:  "2024-05-05T12:47:20.803+0300",
+			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			Modules: []buildinfo.Module{
+				{
+					Id:   "generic",
+					Type: buildinfo.Generic,
+					Artifacts: []buildinfo.Artifact{{
+						Name:                   "artifact2",
+						Path:                   "path/to/artifact2",
+						OriginalDeploymentRepo: "generic-local",
+					}},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, genericModule), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, genericModule), res)
+	})
+}
+
+func TestDockerModule(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
 	var builds = []*buildinfo.BuildInfo{
 		{
 			Name:    "dockerx",
@@ -153,7 +277,58 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 			Started: "2024-08-12T11:11:50.198+0300",
 			Modules: []buildinfo.Module{
 				{
-					Properties: map[string]string{
+					Properties: map[string]interface{}{
+						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
+					},
+					Type:   "docker",
+					Parent: "image:2",
+					Id:     "image:2",
+					Checksum: buildinfo.Checksum{
+						Sha256: "aae9",
+					},
+					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
+								Sha256: "aae9",
+								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+							},
+							Name:                   "sha256__aae9",
+							Path:                   "image2/sha256:552c/sha256__aae9",
+							OriginalDeploymentRepo: "docker-local",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, dockerImageModule), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, dockerImageModule), res)
+	})
+
+}
+
+func TestDockerMultiArchModule(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:    "dockerx",
+			Number:  "1",
+			Started: "2024-08-12T11:11:50.198+0300",
+			Modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{
 						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
 					},
 					Type: "docker",
@@ -162,9 +337,9 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 						{
 							Type: "json",
 							Checksum: buildinfo.Checksum{
-								Sha1:   "faf9824aca9d192e16c2f8a6670b149392465ce7",
-								Sha256: "2217c766cddcd2d24994caaf7713db556a0fa8de108a946ebe5b0369f784a59a",
-								Md5:    "ba0519ebb6feef0edefa03a7afb05406",
+								Sha1:   "fa",
+								Sha256: "2217",
+								Md5:    "ba0",
 							},
 							Name:                   "list.manifest.json",
 							Path:                   "multiarch-image/1/list.manifest.json",
@@ -179,126 +354,22 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 					Artifacts: []buildinfo.Artifact{
 						{
 							Checksum: buildinfo.Checksum{
-								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
-								Sha256: "sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21",
-								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+								Sha1:   "32",
+								Sha256: "sha256:552c",
+								Md5:    "f56",
 							},
 							Name:                   "manifest.json",
-							Path:                   "multiarch-image/sha256__552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21",
+							Path:                   "multiarch-image/sha256",
 							OriginalDeploymentRepo: "docker-local",
 						},
 						{
 							Checksum: buildinfo.Checksum{
-								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
-								Sha256: "aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
-								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
+								Sha1:   "32c",
+								Sha256: "aae9",
+								Md5:    "f56",
 							},
-							Name:                   "sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
-							Path:                   "multiarch-image/sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21/sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
-							OriginalDeploymentRepo: "docker-local",
-						},
-					},
-				},
-				{
-					Type:   "docker",
-					Parent: "multiarch-image:1",
-					Id:     "linux/arm64/multiarch-image:1",
-					Artifacts: []buildinfo.Artifact{
-						{
-							Checksum: buildinfo.Checksum{
-								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
-								Sha256: "sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92",
-								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
-							},
-							Name:                   "manifest.json",
-							Path:                   "multiarch-image/sha256__bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92",
-							OriginalDeploymentRepo: "docker-local",
-						},
-						{
-							Checksum: buildinfo.Checksum{
-								Sha1:   "82b6d4ae1f673c609469a0a84170390ecdff5a38",
-								Sha256: "1f17f9d95f85ba55773db30ac8e6fae894831be87f5c28f2b58d17f04ef65e93",
-								Md5:    "d178dd8c1e1fded51ade114136ebdaf2",
-							},
-							Name:                   "sha256__1f17f9d95f85ba55773db30ac8e6fae894831be87f5c28f2b58d17f04ef65e93",
-							Path:                   "multiarch-image/sha256:bee6dc0408dfd20c01e12e644d8bc1d60ff100a8c180d6c7e85d374c13ae4f92/sha256__1f17f9d95f85ba55773db30ac8e6fae894831be87f5c28f2b58d17f04ef65e93",
-							OriginalDeploymentRepo: "docker-local",
-						},
-					},
-				},
-				{
-					Type:   "docker",
-					Parent: "multiarch-image:1",
-					Id:     "linux/arm/multiarch-image:1",
-					Artifacts: []buildinfo.Artifact{
-						{
-							Checksum: buildinfo.Checksum{
-								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
-								Sha256: "sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
-								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
-							},
-							Name:                   "manifest.json",
-							Path:                   "multiarch-image/sha256__686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338",
-							OriginalDeploymentRepo: "docker-local",
-						},
-						{
-							Checksum: buildinfo.Checksum{
-								Sha1:   "63d3ac90f9cd322b76543d7bf96eeb92417faf41",
-								Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
-								Md5:    "99bbb1e1035aea4d9150e4348f24e107",
-							},
-							Name:                   "sha256__33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
-							Path:                   "multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
-							OriginalDeploymentRepo: "docker-local",
-						},
-						{
-							Checksum: buildinfo.Checksum{
-								Sha1:   "9dceac352f990a3149ff97ab605c3c8833409abf",
-								Sha256: "5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c",
-								Md5:    "d6a694604c7e58b2c788dec5656a1add",
-							},
-							Name:                   "sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c",
-							Path:                   "multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__5480d2ca1740c20ce17652e01ed2265cdc914458acd41256a2b1ccff28f2762c",
-							OriginalDeploymentRepo: "docker-local",
-						},
-					},
-				},
-				{
-					Type:   "docker",
-					Parent: "multiarch-image:1",
-					Id:     "attestations/multiarch-image:1",
-					Checksum: buildinfo.Checksum{
-						Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
-					},
-					Artifacts: []buildinfo.Artifact{
-						{
-							Checksum: buildinfo.Checksum{
-								Sha1:   "63d3ac90f9cd322b76543d7bf96eeb92417faf41",
-								Sha256: "33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
-								Md5:    "99bbb1e1035aea4d9150e4348f24e107",
-							},
-							Name:                   "sha256:67a5a1efd2df970568a17c1178ec5df786bbf627274f285c6dbce71fae9ebe57",
-							Path:                   "multiarch-image/sha256:686085b9972e0f7a432b934574e3dca27b4fa0a3d10d0ae7099010160db6d338/sha256__33b5b5485e88e63d3630e5dcb008f98f102b0f980a9daa31bd976efdec7a8e4c",
-							OriginalDeploymentRepo: "docker-local",
-						},
-					},
-				},
-				{
-					Type:   "docker",
-					Parent: "image:2",
-					Id:     "image:2",
-					Checksum: buildinfo.Checksum{
-						Sha256: "aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
-					},
-					Artifacts: []buildinfo.Artifact{
-						{
-							Checksum: buildinfo.Checksum{
-								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
-								Sha256: "aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
-								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
-							},
-							Name:                   "sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
-							Path:                   "image2/sha256:552ccb2628970ef526f13151a0269258589fc8b5701519a9c255c4dd224b9a21/sha256__aee9d258e62f0666e3286acca21be37d2e39f69f8dde74454b9f3cd8ef437e4e",
+							Name:                   "sha256__aae9",
+							Path:                   "multiarch-image/sha256:552c/sha256",
 							OriginalDeploymentRepo: "docker-local",
 						},
 					},
@@ -306,33 +377,98 @@ func TestBuildInfoModulesWithGrouping(t *testing.T) {
 			},
 		},
 	}
-	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
+
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		result := buildInfoSummary.buildInfoModules(builds)
-		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
-		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, dockerMultiArchModule), res)
 	})
-
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		result := buildInfoSummary.buildInfoModules(builds)
-		assertContainsWithInfo(t, result, getTestDataFile(t, "docker-image-module.md"))
-		assertContainsWithInfo(t, result, getTestDataFile(t, "multiarch-docker-image.md"))
+		res := buildInfoSummary.buildInfoModules(builds)
+		testMarkdownOutput(t, getTestDataFile(t, dockerMultiArchModule), res)
 	})
-	cleanCommandSummaryValues()
+
 }
 
-// Helper function to handle diffs in contains assertions
-// As these tests handle markdown files, this function makes it easier to fix the necessary output.
-func assertContainsWithInfo(t *testing.T, result, expected string) {
-	contains := assert.Contains(t, result, expected)
-	if !contains {
-		t.Log("----------------------------------------------------------------------------------------------------------------")
-		t.Log("The actual result does not contain the expected result.")
-		t.Log("----------------------------------------------------------------------------------------------------------------")
-		t.Log("\n\nExpected to be contained in the actual result:\n\n", expected)
-		t.Log("\n\nActual result:\n\n", result)
+func TestGroupModules(t *testing.T) {
+	tests := []struct {
+		name     string
+		modules  []buildInfo.Module
+		expected map[string][]buildInfo.Module
+	}{
+		{
+			name: "Single module",
+			modules: []buildInfo.Module{
+				{Id: "module1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"module1": {
+					{Id: "module1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+			},
+		},
+		{
+			name: "Module with subModules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root": {
+					{Id: "module1", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+					{Id: "module2", Parent: "root", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Multiple Modules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root1": {
+					{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+				"root2": {
+					{Id: "module2", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Multiple Modules with subModules",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module2", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				{Id: "module3", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				{Id: "module4", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+			},
+			expected: map[string][]buildInfo.Module{
+				"root1": {
+					{Id: "module1", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+					{Id: "module2", Parent: "root1", Artifacts: []buildInfo.Artifact{{Name: "artifact1"}}},
+				},
+				"root2": {
+					{Id: "module3", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+					{Id: "module4", Parent: "root2", Artifacts: []buildInfo.Artifact{{Name: "artifact2"}}},
+				},
+			},
+		},
+		{
+			name: "Module with no artifacts",
+			modules: []buildInfo.Module{
+				{Id: "module1", Parent: "root1"},
+			},
+			expected: map[string][]buildInfo.Module{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := groupModules(tt.modules)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
 }
 
@@ -354,19 +490,157 @@ func getTestDataFile(t *testing.T, fileName string) string {
 	return contentStr
 }
 
-func TestParseBuildTime(t *testing.T) {
-	// Test format
-	actual := parseBuildTime("2006-01-02T15:04:05.000-0700")
-	expected := "Jan 2, 2006 , 15:04:05"
-	assert.Equal(t, expected, actual)
-	// Test invalid format
-	expected = "N/A"
-	actual = parseBuildTime("")
-	assert.Equal(t, expected, actual)
+func TestIsSupportedModule(t *testing.T) {
+	tests := []struct {
+		name     string
+		module   buildInfo.Module
+		expected bool
+	}{
+		{
+			name: "Supported Maven Module",
+			module: buildInfo.Module{
+				Type: buildInfo.Maven,
+			},
+			expected: true,
+		},
+		{
+			name: "Supported Npm Module",
+			module: buildInfo.Module{
+				Type: buildInfo.Npm,
+			},
+			expected: true,
+		},
+		{
+			name: "Unsupported Module Type",
+			module: buildInfo.Module{
+				Type: buildInfo.ModuleType("unsupported"),
+			},
+			expected: false,
+		},
+		{
+			name: "Docker Module with Attestations Prefix",
+			module: buildInfo.Module{
+				Type: buildInfo.Docker,
+				Id:   "attestations-module",
+			},
+			expected: false,
+		},
+		{
+			name: "Docker Module without Attestations Prefix",
+			module: buildInfo.Module{
+				Type: buildInfo.Docker,
+				Id:   "docker-module",
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isSupportedModule(&tt.module)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
-// Return config values to the default state
-func cleanCommandSummaryValues() {
-	StaticMarkdownConfig.setExtendedSummary(false)
-	StaticMarkdownConfig.setPlatformMajorVersion(0)
+func TestFilterModules(t *testing.T) {
+	tests := []struct {
+		name     string
+		modules  []buildInfo.Module
+		expected []buildInfo.Module
+	}{
+		{
+			name: "All Supported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+				{Type: buildInfo.Go},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+				{Type: buildInfo.Go},
+			},
+		},
+		{
+			name: "Mixed Supported and Unsupported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.ModuleType("unsupported")},
+				{Type: buildInfo.Npm},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Maven},
+				{Type: buildInfo.Npm},
+			},
+		},
+		{
+			name: "All Unsupported Modules",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.ModuleType("unsupported1")},
+				{Type: buildInfo.ModuleType("unsupported2")},
+			},
+			expected: []buildInfo.Module{},
+		},
+		{
+			name: "Docker Module with Attestations Prefix",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "attestations-module"},
+			},
+			expected: []buildInfo.Module{},
+		},
+		{
+			name: "Docker Module without Attestations Prefix",
+			modules: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "docker-module"},
+			},
+			expected: []buildInfo.Module{
+				{Type: buildInfo.Docker, Id: "docker-module"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := filterModules(tt.modules...)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// Sometimes there are inconsistencies in the Markdown output, this function normalizes the output for comparison
+// This allows easy debugging when tests fails
+func normalizeMarkdown(md string) string {
+	// Remove the extra spaces added for equal table length
+	md = strings.ReplaceAll(md, markdownSpaceFiller, "")
+	md = strings.ReplaceAll(md, "\r\n", "\n")
+	md = strings.ReplaceAll(md, "\r", "\n")
+	md = strings.ReplaceAll(md, `\n`, "\n")
+	// Regular expression to match the table rows and header separators
+	re := regexp.MustCompile(`\s*\|\s*`)
+	// Normalize spaces around the pipes and colons in the Markdown
+	lines := strings.Split(md, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "|") {
+			// Remove extra spaces around pipes and colons
+			line = re.ReplaceAllString(line, " | ")
+			lines[i] = strings.TrimSpace(line)
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func testMarkdownOutput(t *testing.T, expected, actual string) {
+	expected = normalizeMarkdown(expected)
+	actual = normalizeMarkdown(actual)
+
+	// If the compared string length exceeds the maximum length,
+	// the string is not formatted, leading to an unequal comparison.
+	// Ensure to test small units of Markdown for better unit testing
+	// and to facilitate testing.
+	maxCompareLength := 950
+	if len(expected) > maxCompareLength || len(actual) > maxCompareLength {
+		t.Fatalf("Markdown output is too long to compare, limit the length to %d chars", maxCompareLength)
+	}
+	assert.Equal(t, expected, actual)
 }

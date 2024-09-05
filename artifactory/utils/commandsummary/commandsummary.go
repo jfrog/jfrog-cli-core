@@ -1,12 +1,14 @@
 package commandsummary
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,14 +35,39 @@ const (
 	SarifReport  Index = "sarif-reports"
 )
 
+// List of allowed directories for searching indexed content
+// This should match the Index enum values.
+var allowedDirs = map[string]struct{}{
+	string(BuildScan):    {},
+	string(DockerScan):   {},
+	string(BinariesScan): {},
+	string(SarifReport):  {},
+}
+
+// Each scan result object can be used to generate violations or vulnerabilities.
+type ScanResult interface {
+	GetViolations() string
+	GetVulnerabilities() string
+}
+
+// This interface is used to accumulate scan results from different sources and generate a Markdown summary
+type ScanResultMarkdownInterface interface {
+	BuildScan(filePaths []string) (result ScanResult)
+	DockerScan(filePaths []string) (result ScanResult)
+	BinaryScan(filePaths []string) (result ScanResult)
+	// Default non scanned component view
+	GetNonScanned() (nonScanned ScanResult)
+}
+
 const (
 	// The name of the directory where all the commands summaries will be stored.
 	// Inside this directory, each command will have its own directory.
 	OutputDirName         = "jfrog-command-summary"
 	finalMarkdownFileName = "markdown.md"
 	// Filenames formats
-	SarifFileFormat = "*.sarif"
-	DataFileFormat  = "*-data"
+	SarifFileFormat   = "*.sarif"
+	DataFileFormat    = "*-data"
+	NoneScannedResult = "default"
 )
 
 type CommandSummary struct {
@@ -100,12 +127,18 @@ func (cs *CommandSummary) Record(data any) (err error) {
 // SummaryIndex: The name of the index under which the data will be stored.
 // Args: Additional arguments used to determine the file name.
 func (cs *CommandSummary) RecordWithIndex(data any, summaryIndex Index, args ...string) (err error) {
+	log.Debug("Recording data with index:", summaryIndex, "and args:", args)
 	return cs.recordInternal(data, summaryIndex, args)
 }
 
 // Retrieve all the indexed data files in the current command directory.
-func (cs *CommandSummary) GetIndexedDataFilesPaths() (indexedFilePathsMap IndexedFilesMap, err error) {
-	return cs.getIndexedFileRecursively(cs.summaryOutputPath, true)
+func GetIndexedDataFilesPaths() (indexedFilePathsMap IndexedFilesMap, err error) {
+	basePath := filepath.Join(os.Getenv(coreutils.SummaryOutputDirPathEnv), OutputDirName)
+	exists, err := fileutils.IsDirExists(basePath, false)
+	if err != nil || !exists {
+		return
+	}
+	return getIndexedFileRecursively(basePath, true)
 }
 
 func (cs *CommandSummary) GetDataFilesPaths() ([]string, error) {
@@ -136,11 +169,11 @@ func (cs *CommandSummary) recordInternal(data any, args ...interface{}) (err err
 }
 
 func (cs *CommandSummary) saveDataFile(filePath, fileName string, data any) (err error) {
-	bytes, err := convertDataToBytes(data)
+	dataAsBytes, err := convertDataToBytes(data)
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	return createAndWriteToFile(filePath, fileName, bytes)
+	return createAndWriteToFile(filePath, fileName, dataAsBytes)
 }
 
 func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
@@ -149,7 +182,7 @@ func (cs *CommandSummary) saveMarkdownFile(markdown string) (err error) {
 }
 
 // Retrieve all the indexed data files paths in the given directory
-func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
+func getIndexedFileRecursively(dirPath string, isRoot bool) (nestedFilesMap IndexedFilesMap, err error) {
 	entries, err := os.ReadDir(dirPath)
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -158,12 +191,16 @@ func (cs *CommandSummary) getIndexedFileRecursively(dirPath string, isRoot bool)
 	for _, entry := range entries {
 		fullPath := filepath.Join(dirPath, entry.Name())
 		if entry.IsDir() {
-			subNestedFilesMap, err := cs.getIndexedFileRecursively(fullPath, false)
-			if err != nil {
-				return nil, err
-			}
-			for subDir, files := range subNestedFilesMap {
-				nestedFilesMap[subDir] = files
+			// Check if the directory is in the allowedDirs list
+			_, allowed := allowedDirs[entry.Name()]
+			if isRoot || allowed {
+				subNestedFilesMap, err := getIndexedFileRecursively(fullPath, false)
+				if err != nil {
+					return nil, err
+				}
+				for subDir, files := range subNestedFilesMap {
+					nestedFilesMap[subDir] = files
+				}
 			}
 		} else if !isRoot {
 			base := filepath.Base(dirPath)
@@ -242,7 +279,7 @@ func convertDataToBytes(data interface{}) ([]byte, error) {
 	case []byte:
 		return v, nil
 	default:
-		return json.Marshal(data)
+		return jsonMarshalWithLinks(data)
 	}
 }
 
@@ -260,7 +297,7 @@ func determineFileName(summaryIndex Index, args []string) string {
 		return DataFileFormat
 	}
 	// If there are arguments, they should be concatenated with a '-' separator.
-	fileName := strings.Join(args, "-")
+	fileName := strings.Join(args, " ")
 	// Specific filenames should be converted to sha1 hash to avoid invalid characters.
 	return fileNameToSha1(fileName)
 }
@@ -295,4 +332,13 @@ func extractIndexAndArgs(args []interface{}) (Index, []string) {
 		}
 	}
 	return index, extraArgs
+}
+
+// Special JSON marshal function that does not escape HTML characters.
+func jsonMarshalWithLinks(t interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(t)
+	return buffer.Bytes(), err
 }

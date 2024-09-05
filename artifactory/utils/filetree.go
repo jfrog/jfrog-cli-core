@@ -110,7 +110,7 @@ func (dn *dirNode) strings() []string {
 
 		var fullFileName string
 		if dn.fileNames[fileNameKey] != "" {
-			fullFileName = fmt.Sprintf("%s<a href=%s target=\"_blank\">%s</a>", filePrefix, dn.fileNames[fileNameKey], fileNameKey)
+			fullFileName = fmt.Sprintf("%s<a href='%s' target=\"_blank\">%s</a>", filePrefix, dn.fileNames[fileNameKey], fileNameKey)
 		} else {
 			fullFileName = filePrefix + "📄 " + fileNameKey
 		}

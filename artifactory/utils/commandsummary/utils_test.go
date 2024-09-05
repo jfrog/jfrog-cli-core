@@ -31,35 +31,6 @@ func TestGenerateArtifactUrl(t *testing.T) {
 	}
 }
 
-func TestIndexedFilesMap_Get(t *testing.T) {
-	indexedFiles := IndexedFilesMap{
-		BuildScan: {
-			// Sha1 value for "file1"
-			"60b27f004e454aca81b0480209cce5081ec52390": "data1",
-			// Sha1 value for "file2"
-			"cb99b709a1978bd205ab9dfd4c5aaa1fc91c7523": "data2",
-		},
-	}
-
-	tests := []struct {
-		index    Index
-		key      string
-		expected string
-		exists   bool
-	}{
-		{BuildScan, "file1", "data1", true},
-		{BuildScan, "file2", "data2", true},
-		{SarifReport, "file3", "", false},
-		{BinariesScan, "file1", "", false},
-	}
-
-	for _, test := range tests {
-		exists, value := indexedFiles.Get(test.index, test.key)
-		assert.Equal(t, test.exists, exists)
-		assert.Equal(t, test.expected, value)
-	}
-}
-
 func TestFileNameToSha1(t *testing.T) {
 	tests := []struct {
 		input    string

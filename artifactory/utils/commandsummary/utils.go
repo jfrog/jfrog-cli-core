@@ -19,20 +19,13 @@ func GenerateArtifactUrl(pathInRt string) string {
 	return fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 }
 
+func WrapCollapsableMarkdown(title, markdown string, headerSize int) string {
+	return fmt.Sprintf("\n\n\n<details open>\n\n<summary> <h%d> %s </h%d></summary><p></p>\n\n%s\n\n</details>\n\n\n", headerSize, title, headerSize, markdown)
+}
+
 // Map containing indexed data recorded to the file system.
 // The key is the index and the value is a map of file names as SHA1 to their full path.
 type IndexedFilesMap map[Index]map[string]string
-
-// Receives an index and a predicted file name, return the value if exists.
-func (nm IndexedFilesMap) Get(index Index, key string) (exists bool, value string) {
-	if _, exists := nm[index]; exists {
-		shaKey := fileNameToSha1(key)
-		if _, exists := nm[index][shaKey]; exists {
-			return true, nm[index][shaKey]
-		}
-	}
-	return
-}
 
 func fileNameToSha1(fileName string) string {
 	hash := sha1.New() // #nosec G401 - This is only used for encoding, not security.

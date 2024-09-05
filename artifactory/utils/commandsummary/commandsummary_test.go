@@ -2,6 +2,7 @@ package commandsummary
 
 import (
 	"fmt"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
@@ -155,7 +156,7 @@ func TestIndexedRecord(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			indexedFilesMap, err := cs.GetIndexedDataFilesPaths()
+			indexedFilesMap, err := GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
 
 			// Verify nested files
@@ -193,7 +194,7 @@ func TestSarifMultipleReports(t *testing.T) {
 			err = cs.RecordWithIndex(tc.originalData, tc.summaryIndex)
 			assert.NoError(t, err)
 			// Verify file has been saved
-			indexedFilesMap, err := cs.GetIndexedDataFilesPaths()
+			indexedFilesMap, err := GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
 			assert.Equal(t, 2, len(indexedFilesMap[SarifReport]))
 		})
@@ -260,8 +261,8 @@ func TestDetermineFileName(t *testing.T) {
 	}{
 		{"No arguments", "", nil, "*-data"},
 		{"With index", SarifReport, nil, "*.sarif"},
-		{"With index and args", BuildScan, []string{"buildName", "buildNumber"}, "392d285469e73e6ef6a086c5a06146f86e144905"},
-		{"With args", "", []string{"arg1", "arg2"}, "1a928c6c3487cea1ecfd510b65f06ed4018c8cea"},
+		{"With index and args", BuildScan, []string{"buildName", "buildNumber"}, "8de12c1cbb55e1f4e02b1b3a9bfc85494b6a4cca"},
+		{"With args", "", []string{"arg1", "arg2"}, "1e82492484091a6689c0c762fd69331360c39aac"},
 		{"Invalid characters /", "", []string{"arg1/arg2"}, "a375ac1939572005313081632204fc72c4ab5a35"},
 		{"Invalid characters :", "", []string{"arg1:arg2"}, "3d20cb681ddbfc8ead817a2910dbc5a1f65548a6"},
 	}
@@ -270,6 +271,110 @@ func TestDetermineFileName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			fileName := determineFileName(tt.index, tt.args)
 			assert.Equal(t, tt.expectedName, fileName)
+		})
+	}
+}
+
+func TestExtractImageTag(t *testing.T) {
+	testCases := []struct {
+		name     string
+		modules  []buildinfo.Module
+		expected string
+	}{
+		{
+			name: "Valid docker.image.tag",
+			modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{
+						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
+					},
+					Type: buildinfo.Docker,
+				},
+			},
+			expected: "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
+		},
+		{
+			name: "No docker.image.tag",
+			modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{
+						"some.other.property": "some-value",
+					},
+				},
+			},
+			expected: "",
+		},
+		{
+			name: "Empty properties",
+			modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{},
+				},
+			},
+			expected: "",
+		},
+		{
+			name: "Properties not a map[string]interface{}",
+			modules: []buildinfo.Module{
+				{
+					Properties: "invalid-type",
+				},
+			},
+			expected: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := extractDockerImageTag(tc.modules)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
+func TestJsonMarshalWithLinks(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    interface{}
+		expected string
+	}{
+		{
+			name: "Simple string",
+			input: map[string]string{
+				"key": "value",
+			},
+			expected: `{"key":"value"}`,
+		},
+		{
+			name: "String with HTML characters",
+			input: map[string]string{
+				"key": "<div>value</div>",
+			},
+			expected: `{"key":"<div>value</div>"}`,
+		},
+		{
+			name: "Nested map",
+			input: map[string]interface{}{
+				"key": map[string]string{
+					"nestedKey": "nestedValue",
+				},
+			},
+			expected: `{"key":{"nestedKey":"nestedValue"}}`,
+		},
+		{
+			name: "String with a href tag",
+			input: map[string]string{
+				"key": `<a href="https://example.com">link</a>`,
+			},
+			expected: `{"key":"<a href=\"https://example.com\">link</a>"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := jsonMarshalWithLinks(tc.input)
+			assert.NoError(t, err)
+			assert.JSONEq(t, tc.expected, string(result))
 		})
 	}
 }

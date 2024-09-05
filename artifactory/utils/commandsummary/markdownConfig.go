@@ -20,7 +20,11 @@ type MarkdownConfig struct {
 	platformUrl string
 	// The major version of the Artifactory instance
 	platformMajorVersion int
+	// Static mapping of scan results to be used in the summary
+	scanResultsMapping map[string]ScanResult
 }
+
+const extendedSummaryLandPage = "https://jfrog.com/help/access?xinfo:appid=csh-gen-gitbook"
 
 var StaticMarkdownConfig = MarkdownConfig{}
 
@@ -46,6 +50,14 @@ func (mg *MarkdownConfig) GetPlatformUrl() string {
 
 func (mg *MarkdownConfig) GetPlatformMajorVersion() int {
 	return mg.platformMajorVersion
+}
+
+func (mg *MarkdownConfig) GetExtendedSummaryLangPage() string {
+	return extendedSummaryLandPage
+}
+
+func (mg *MarkdownConfig) SetScanResultsMapping(resultsMap map[string]ScanResult) {
+	mg.scanResultsMapping = resultsMap
 }
 
 // Initializes the command summary values that effect Markdown generation

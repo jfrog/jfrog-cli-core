@@ -66,13 +66,13 @@ func (tem *TimeEstimationManager) addDataChunkStatus(chunkStatus api.ChunkStatus
 
 	// If no files were uploaded regularly (with no errors and not checksum-deployed), don't use this chunk for the time estimation calculation.
 	if chunkSizeBytes == 0 {
-		return
+		return nil
 	}
 
 	workingThreads, err := tem.stateManager.GetWorkingThreads()
 	if err != nil {
 		log.Error("Couldn't calculate time estimation:", err.Error())
-		return
+		return err
 	}
 	speed := calculateChunkSpeed(workingThreads, chunkSizeBytes, durationMillis)
 	tem.LastSpeeds = append(tem.LastSpeeds, speed)
@@ -85,10 +85,11 @@ func (tem *TimeEstimationManager) addDataChunkStatus(chunkStatus api.ChunkStatus
 	}
 	if len(tem.LastSpeeds) == 0 {
 		tem.SpeedsAverage = 0
-		return
+		return err
 	}
 	// Calculate speed in bytes/ms
 	tem.SpeedsAverage = tem.LastSpeedsSum / float64(len(tem.LastSpeeds))
+	return nil
 }
 
 func calculateChunkSpeed(workingThreads int, chunkSizeSum, chunkDuration int64) float64 {

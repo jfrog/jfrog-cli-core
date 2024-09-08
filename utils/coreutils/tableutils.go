@@ -373,6 +373,7 @@ type embeddedTableCell struct {
 func PrintMessageInsideFrame(message, paddingLeft string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
+	// Set padding left for the whole frame (for example, "  ").
 	tableWriter.Style().Box.PaddingLeft = paddingLeft
 	if log.IsStdOutTerminal() {
 		tableWriter.SetStyle(table.StyleLight)

@@ -19,8 +19,8 @@ func TestChecks(t *testing.T) {
 func TestRunChecks(t *testing.T) {
 	// Init
 	expectedErr := fmt.Errorf("CHECK_ERROR")
-	nSuccess := uint(3)
-	nFail := uint(2)
+	nSuccess := 3
+	nFail := 2
 	runner := NewPreChecksRunner()
 	successCheck := NewCheck("success", func(args RunArguments) (bool, error) {
 		return true, nil
@@ -34,15 +34,15 @@ func TestRunChecks(t *testing.T) {
 	// Empty
 	runAndAssert(t, 0, 0, nil, runner)
 	// With checks
-	for i := uint(0); i < nSuccess; i++ {
+	for i := 0; i < nSuccess; i++ {
 		runner.AddCheck(successCheck)
 	}
-	runAndAssert(t, nSuccess, 0, nil, runner)
+	runAndAssert(t, uint(nSuccess), 0, nil, runner)
 	// With failed checks
-	for i := uint(0); i < nFail; i++ {
+	for i := 0; i < nFail; i++ {
 		runner.AddCheck(failCheck)
 	}
-	runAndAssert(t, nSuccess, nFail, nil, runner)
+	runAndAssert(t, uint(nSuccess), uint(nFail), nil, runner)
 	// With check that has error
 	runner.AddCheck(errCheck)
 	runAndAssert(t, 0, 0, expectedErr, runner)

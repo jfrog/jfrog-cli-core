@@ -153,7 +153,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 
 	rowsSliceValue := reflect.ValueOf(rows)
 	if rowsSliceValue.Len() == 0 && emptyTableMessage != "" {
-		PrintMessage(emptyTableMessage)
+		PrintMessageInsideFrame(emptyTableMessage, "")
 		return nil, nil
 	}
 
@@ -370,9 +370,10 @@ type embeddedTableCell struct {
 // ┌─────────────────────────────────────────┐
 // │ An example of a message in a nice frame │
 // └─────────────────────────────────────────┘
-func PrintMessage(message string) {
+func PrintMessageInsideFrame(message, paddingLeft string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
+	tableWriter.Style().Box.PaddingLeft = paddingLeft
 	if log.IsStdOutTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}

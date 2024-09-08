@@ -1,6 +1,8 @@
 package progressbar
 
 import (
+	"fmt"
+	"github.com/jfrog/gofrog/safeconvert"
 	"sync"
 	"time"
 
@@ -306,7 +308,11 @@ func (tpm *TransferProgressMng) NewVisitedFoldersBar() *TasksProgressBar {
 		if tpm.ignoreState {
 			return 0, nil
 		}
-		return int(tpm.stateMng.VisitedFolders), nil
+		signedVisitedFolders, err := safeconvert.Uint64ToInt(tpm.stateMng.VisitedFolders)
+		if err != nil {
+			return 0, fmt.Errorf("failed to convert visited folders to int: %w", err)
+		}
+		return signedVisitedFolders, nil
 	}
 	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.VisitedFolders, nil)
 }
@@ -316,7 +322,11 @@ func (tpm *TransferProgressMng) NewDelayedBar() *TasksProgressBar {
 		if tpm.ignoreState {
 			return 0, nil
 		}
-		return int(tpm.stateMng.DelayedFiles), nil
+		signedDelayedFiles, err := safeconvert.Uint64ToInt(tpm.stateMng.DelayedFiles)
+		if err != nil {
+			return 0, fmt.Errorf("failed to convert delayed files to int: %w", err)
+		}
+		return signedDelayedFiles, nil
 	}
 	counterDescription := func() string { return DelayedFilesContentNote }
 	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.DelayedFiles, tpm.createCounterDescription(counterDescription))
@@ -327,7 +337,11 @@ func (tpm *TransferProgressMng) NewErrorBar() *TasksProgressBar {
 		if tpm.ignoreState {
 			return 0, nil
 		}
-		return int(tpm.stateMng.TransferFailures), nil
+		signedTransferFailures, err := safeconvert.Uint64ToInt(tpm.stateMng.TransferFailures)
+		if err != nil {
+			return 0, fmt.Errorf("failed to convert transfer failures to int: %w", err)
+		}
+		return signedTransferFailures, nil
 	}
 	counterDescription := func() string {
 		if tpm.ignoreState || tpm.stateMng.TransferFailures == 0 {

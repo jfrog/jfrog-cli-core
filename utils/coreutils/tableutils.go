@@ -370,14 +370,18 @@ type embeddedTableCell struct {
 // ┌─────────────────────────────────────────┐
 // │ An example of a message in a nice frame │
 // └─────────────────────────────────────────┘
-func PrintMessageInsideFrame(message, paddingLeft string) {
+func PrintMessageInsideFrame(message, marginLeft string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
-	// Set padding left for the whole frame (for example, "  ").
-	tableWriter.Style().Box.PaddingLeft = paddingLeft
 	if log.IsStdOutTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
+
+	// Set margin left for the whole frame (for example, "  ").
+	tableWriter.Style().Box.Left = marginLeft + tableWriter.Style().Box.Left
+	tableWriter.Style().Box.TopLeft = marginLeft + tableWriter.Style().Box.TopLeft
+	tableWriter.Style().Box.BottomLeft = marginLeft + tableWriter.Style().Box.BottomLeft
+
 	// Remove emojis from non-supported terminals
 	message = RemoveEmojisIfNonSupportedTerminal(message)
 	tableWriter.AppendRow(table.Row{message})

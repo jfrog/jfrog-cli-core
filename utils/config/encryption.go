@@ -193,7 +193,9 @@ func decrypt(encryptedSecret string, key string) (string, error) {
 		return "", errorutils.CheckErrorf(decryptErrorPrefix + "unexpected cipher text size")
 	}
 
+	//#nosec G407
 	nonce, cipherText := cipherText[:nonceSize], cipherText[nonceSize:]
+	//#nosec G407
 	plaintext, err := gcm.Open(nil, nonce, cipherText, nil)
 	if err != nil {
 		return "", errorutils.CheckError(err)

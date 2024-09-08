@@ -42,7 +42,7 @@ func TestRunChecks(t *testing.T) {
 	for i := uint(0); i < nFail; i++ {
 		runner.AddCheck(failCheck)
 	}
-	runAndAssert(t, nSuccess, uint(nFail), nil, runner)
+	runAndAssert(t, nSuccess, nFail, nil, runner)
 	// With check that has error
 	runner.AddCheck(errCheck)
 	runAndAssert(t, 0, 0, expectedErr, runner)

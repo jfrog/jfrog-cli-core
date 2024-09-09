@@ -2,6 +2,7 @@ package transferfiles
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/safeconvert"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -56,7 +57,9 @@ func TestProperty(t *testing.T) {
 }
 
 func testProperty(t *testing.T, property Property, isLong bool) {
-	assert.Len(t, property.Value, int(property.valueLength()))
+	signedValueLen, err := safeconvert.UintToInt(property.valueLength())
+	assert.NoError(t, err)
+	assert.Len(t, property.Value, signedValueLen)
 	long := isLongProperty(property)
 	assert.Equal(t, isLong, long)
 }

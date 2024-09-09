@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/jfrog/gofrog/safeconvert"
 	"sync"
 	"testing"
 	"time"
@@ -340,9 +341,15 @@ func TestStateConcurrency(t *testing.T) {
 	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase3Info.TransferredSizeBytes))
 	assert.Equal(t, 1000, int(stateManager.CurrentRepo.Phase3Info.TransferredUnits))
 	assert.Equal(t, 1000, int(stateManager.OverallTransfer.TransferredSizeBytes))
-	assert.Equal(t, 1000, int(stateManager.VisitedFolders))
-	assert.Equal(t, 1000, int(stateManager.DelayedFiles))
-	assert.Equal(t, 1000, int(stateManager.TransferFailures))
+	signedVisitedFolders, err := safeconvert.Uint64ToInt(stateManager.VisitedFolders)
+	assert.NoError(t, err)
+	assert.Equal(t, 1000, signedVisitedFolders)
+	signedDelayedFiles, err := safeconvert.Uint64ToInt(stateManager.DelayedFiles)
+	assert.NoError(t, err)
+	assert.Equal(t, 1000, signedDelayedFiles)
+	signedTransferFailures, err := safeconvert.Uint64ToInt(stateManager.TransferFailures)
+	assert.NoError(t, err)
+	assert.Equal(t, 1000, signedTransferFailures)
 
 	// Concurrently decrement delayed artifacts and transfer failures
 	for i := 0; i < 500; i++ {
@@ -356,6 +363,10 @@ func TestStateConcurrency(t *testing.T) {
 	wg.Wait()
 
 	// Assert 500 in delayed artifacts and transfer failures
-	assert.Equal(t, 500, int(stateManager.DelayedFiles))
-	assert.Equal(t, 500, int(stateManager.TransferFailures))
+	signedDelayedFiles, err = safeconvert.Uint64ToInt(stateManager.DelayedFiles)
+	assert.NoError(t, err)
+	assert.Equal(t, 500, signedDelayedFiles)
+	signedTransferFailures, err = safeconvert.Uint64ToInt(stateManager.TransferFailures)
+	assert.NoError(t, err)
+	assert.Equal(t, 500, signedTransferFailures)
 }

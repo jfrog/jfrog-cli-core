@@ -2,6 +2,7 @@ package reposnapshot
 
 import (
 	"encoding/json"
+	"github.com/jfrog/gofrog/safeconvert"
 	"os"
 	"path"
 	"path/filepath"
@@ -190,7 +191,9 @@ func createNodeBase(t *testing.T, name string, filesCount int, parent *Node) *No
 	node := CreateNewNode(name, parent)
 	node.NodeStatus = DoneExploring
 	for i := 0; i < filesCount; i++ {
-		assert.NoError(t, node.IncrementFilesCount(uint64(i)))
+		unsignedFileIndex, err := safeconvert.IntToUint(i)
+		assert.NoError(t, err)
+		assert.NoError(t, node.IncrementFilesCount(uint64(unsignedFileIndex)))
 	}
 	return node
 }

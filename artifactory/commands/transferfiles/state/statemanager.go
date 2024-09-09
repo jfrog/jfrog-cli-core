@@ -1,6 +1,8 @@
 package state
 
 import (
+	"fmt"
+	"github.com/jfrog/gofrog/safeconvert"
 	"path/filepath"
 	"time"
 
@@ -94,7 +96,11 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 			log.Info("Calculated transferred files from previous run:", transferredFiles)
 			log.Info("Calculated transferred bytes from previous run:", transferredSizeBytes)
 			transferState.CurrentRepo.Phase1Info.TransferredUnits = int64(transferredFiles)
-			transferState.CurrentRepo.Phase1Info.TransferredSizeBytes = int64(transferredSizeBytes)
+			signedTransferredSizeBytes, err := safeconvert.Uint64ToInt64(transferredSizeBytes)
+			if err != nil {
+				return fmt.Errorf("failed to set transferred size bytes: %w", err)
+			}
+			transferState.CurrentRepo.Phase1Info.TransferredSizeBytes = signedTransferredSizeBytes
 		}
 
 		ts.TransferState = transferState
@@ -110,7 +116,11 @@ func (ts *TransferStateManager) SetRepoState(repoKey string, totalSizeBytes, tot
 		transferRunStatus.VisitedFolders = 0
 
 		transferRunStatus.OverallTransfer.TransferredUnits += int64(transferredFiles)
-		transferRunStatus.OverallTransfer.TransferredSizeBytes += int64(transferredSizeBytes)
+		signedTransferredSizeBytes, err := safeconvert.Uint64ToInt64(transferredSizeBytes)
+		if err != nil {
+			return fmt.Errorf("failed to set transferred size bytes: %w", err)
+		}
+		transferRunStatus.OverallTransfer.TransferredSizeBytes += signedTransferredSizeBytes
 		return nil
 	})
 }

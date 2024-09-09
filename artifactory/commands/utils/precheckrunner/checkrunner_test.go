@@ -3,6 +3,7 @@ package precheckrunner
 import (
 	"context"
 	"fmt"
+	"github.com/jfrog/gofrog/safeconvert"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -19,8 +20,8 @@ func TestChecks(t *testing.T) {
 func TestRunChecks(t *testing.T) {
 	// Init
 	expectedErr := fmt.Errorf("CHECK_ERROR")
-	nSuccess := 3
-	nFail := 2
+	nSuccess := uint(3)
+	nFail := uint(2)
 	runner := NewPreChecksRunner()
 	successCheck := NewCheck("success", func(args RunArguments) (bool, error) {
 		return true, nil
@@ -34,15 +35,15 @@ func TestRunChecks(t *testing.T) {
 	// Empty
 	runAndAssert(t, 0, 0, nil, runner)
 	// With checks
-	for i := 0; i < nSuccess; i++ {
+	for i := uint(0); i < nSuccess; i++ {
 		runner.AddCheck(successCheck)
 	}
-	runAndAssert(t, uint(nSuccess), 0, nil, runner)
+	runAndAssert(t, nSuccess, 0, nil, runner)
 	// With failed checks
-	for i := 0; i < nFail; i++ {
+	for i := uint(0); i < nFail; i++ {
 		runner.AddCheck(failCheck)
 	}
-	runAndAssert(t, uint(nSuccess), uint(nFail), nil, runner)
+	runAndAssert(t, nSuccess, nFail, nil, runner)
 	// With check that has error
 	runner.AddCheck(errCheck)
 	runAndAssert(t, 0, 0, expectedErr, runner)
@@ -56,6 +57,10 @@ func runAndAssert(t *testing.T, expectedSuccess, expectedFail uint, shouldHaveEr
 		assert.NoError(t, err)
 		assert.Equal(t, expectedSuccess, runner.status.successes)
 		assert.Equal(t, expectedFail, runner.status.failures)
-		assert.Len(t, runner.checks, int(expectedSuccess+expectedFail))
+		signedExpectedSuccess, err := safeconvert.UintToInt(expectedSuccess)
+		assert.NoError(t, err)
+		signedExpectedFail, err := safeconvert.UintToInt(expectedFail)
+		assert.NoError(t, err)
+		assert.Len(t, runner.checks, signedExpectedSuccess+signedExpectedFail)
 	}
 }

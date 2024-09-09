@@ -1,6 +1,7 @@
 package state
 
 import (
+	"github.com/jfrog/gofrog/safeconvert"
 	"testing"
 	"time"
 
@@ -51,7 +52,9 @@ func TestGetSpeed(t *testing.T) {
 	addChunkStatus(t, timeEstMng, chunkStatus1, 3, true, 10*milliSecsInSecond)
 	assert.Equal(t, 7.5, timeEstMng.getSpeed())
 	assert.Equal(t, "7.500 MB/s", timeEstMng.GetSpeedString())
-	assert.NotZero(t, timeEstMng.getEstimatedRemainingSeconds())
+	estimatedRemainingSeconds, err := timeEstMng.getEstimatedRemainingSeconds()
+	assert.NoError(t, err)
+	assert.NotZero(t, estimatedRemainingSeconds)
 
 	// Chunk 2: the upload of one of the files failed and the files are not included in the repository's total size (includedInTotalSize == false)
 	chunkStatus2 := api.ChunkStatus{
@@ -63,20 +66,27 @@ func TestGetSpeed(t *testing.T) {
 	addChunkStatus(t, timeEstMng, chunkStatus2, 2, false, 5*milliSecsInSecond)
 	assert.Equal(t, float64(8), timeEstMng.getSpeed())
 	assert.Equal(t, "8.000 MB/s", timeEstMng.GetSpeedString())
-	assert.NotZero(t, timeEstMng.getEstimatedRemainingSeconds())
+	estimatedRemainingSeconds, err = timeEstMng.getEstimatedRemainingSeconds()
+	assert.NoError(t, err)
+	assert.NotZero(t, estimatedRemainingSeconds)
 }
 
 func TestGetEstimatedRemainingSeconds(t *testing.T) {
 	timeEstMng, cleanUp := initTimeEstimationDataTest(t)
 	defer cleanUp()
 
-	timeEstMng.CurrentTotalTransferredBytes = uint64(timeEstMng.stateManager.OverallTransfer.TotalSizeBytes)
+	unsignedTotalSizeBytes, err := safeconvert.Int64ToUint64(timeEstMng.stateManager.OverallTransfer.TotalSizeBytes)
+	assert.NoError(t, err)
+	timeEstMng.CurrentTotalTransferredBytes = unsignedTotalSizeBytes
 	timeEstMng.stateManager.OverallTransfer.TransferredSizeBytes = timeEstMng.stateManager.OverallTransfer.TotalSizeBytes
-	assert.Zero(t, timeEstMng.getEstimatedRemainingSeconds())
+	estimatedRemainingSeconds, err := timeEstMng.getEstimatedRemainingSeconds()
+	assert.NoError(t, err)
+	assert.Zero(t, estimatedRemainingSeconds)
 
-	timeEstMng.CurrentTotalTransferredBytes = uint64(timeEstMng.stateManager.OverallTransfer.TotalSizeBytes) / 2
+	timeEstMng.CurrentTotalTransferredBytes = unsignedTotalSizeBytes / 2
 	timeEstMng.stateManager.OverallTransfer.TransferredSizeBytes = timeEstMng.stateManager.OverallTransfer.TotalSizeBytes / 2
-	calculatedEstimatedSeconds := timeEstMng.getEstimatedRemainingSeconds()
+	calculatedEstimatedSeconds, err := timeEstMng.getEstimatedRemainingSeconds()
+	assert.NoError(t, err)
 	assert.NotZero(t, calculatedEstimatedSeconds)
 }
 
@@ -90,7 +100,9 @@ func TestGetEstimatedRemainingTimeStringNotAvailableYet(t *testing.T) {
 			createFileUploadStatusResponse(repo1Key, 8*rtServicesUtils.SizeMiB, true, api.Success),
 		},
 	}
-	assert.Equal(t, "Not available yet", timeEstMng.GetEstimatedRemainingTimeString())
+	estimatedRemainingTime, err := timeEstMng.GetEstimatedRemainingTimeString()
+	assert.NoError(t, err)
+	assert.Equal(t, "Not available yet", estimatedRemainingTime)
 	addChunkStatus(t, timeEstMng, chunkStatus1, 3, true, 10*milliSecsInSecond)
 	assert.Equal(t, "Not available yet", timeEstMng.GetSpeedString())
 }
@@ -101,17 +113,23 @@ func TestGetEstimatedRemainingTimeString(t *testing.T) {
 
 	// Test "Not available yet" by setting the TotalTransferredBytes to 0
 	timeEstMng.CurrentTotalTransferredBytes = 0
-	assert.Equal(t, "Not available yet", timeEstMng.GetEstimatedRemainingTimeString())
+	estimatedRemainingTime, err := timeEstMng.GetEstimatedRemainingTimeString()
+	assert.NoError(t, err)
+	assert.Equal(t, "Not available yet", estimatedRemainingTime)
 
 	// Test "About 1 minute" by setting the transferred bytes to 80%
 	timeEstMng.CurrentTotalTransferredBytes = uint64(float64(timeEstMng.stateManager.OverallTransfer.TotalSizeBytes) * 0.8)
 	timeEstMng.stateManager.OverallTransfer.TransferredSizeBytes = int64(float64(timeEstMng.stateManager.OverallTransfer.TotalSizeBytes) * 0.8)
-	assert.Equal(t, "About 1 minute", timeEstMng.GetEstimatedRemainingTimeString())
+	estimatedRemainingTime, err = timeEstMng.GetEstimatedRemainingTimeString()
+	assert.NoError(t, err)
+	assert.Equal(t, "About 1 minute", estimatedRemainingTime)
 
 	// Test "Less than a minute" by setting the transferred bytes to 90%
 	timeEstMng.CurrentTotalTransferredBytes = uint64(float64(timeEstMng.stateManager.OverallTransfer.TotalSizeBytes) * 0.9)
 	timeEstMng.stateManager.OverallTransfer.TransferredSizeBytes = int64(float64(timeEstMng.stateManager.OverallTransfer.TotalSizeBytes) * 0.9)
-	assert.Equal(t, "Less than a minute", timeEstMng.GetEstimatedRemainingTimeString())
+	estimatedRemainingTime, err = timeEstMng.GetEstimatedRemainingTimeString()
+	assert.NoError(t, err)
+	assert.Equal(t, "Less than a minute", estimatedRemainingTime)
 }
 
 func newDefaultTimeEstimationManager(t *testing.T, buildInfoRepos bool) *TimeEstimationManager {
@@ -220,7 +238,7 @@ func addChunkStatus(t *testing.T, timeEstMng *TimeEstimationManager, chunkStatus
 		assert.NoError(t, err)
 	}
 	assert.NoError(t, timeEstMng.stateManager.SetWorkingThreads(workingThreads))
-	timeEstMng.AddChunkStatus(chunkStatus, durationMillis)
+	assert.NoError(t, timeEstMng.AddChunkStatus(chunkStatus, durationMillis))
 }
 
 func assertTransferredSizes(t *testing.T, stateManager *TransferStateManager, repo1expected, repo2expected int64) {

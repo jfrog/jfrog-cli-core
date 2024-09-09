@@ -367,9 +367,15 @@ type embeddedTableCell struct {
 
 // PrintMessage prints message in a frame (which is actually a table with a single table).
 // For example:
+//
 // ┌─────────────────────────────────────────┐
 // │ An example of a message in a nice frame │
 // └─────────────────────────────────────────┘
+// With a margin left of 4 spaces:
+//
+//	    ┌─────────────────────────────────────────┐
+//		│ An example of a message in a nice frame │
+//		└─────────────────────────────────────────┘
 func PrintMessageInsideFrame(message, marginLeft string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)

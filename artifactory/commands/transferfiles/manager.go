@@ -416,7 +416,7 @@ func updateProgress(phase *phaseBase, timeEstMng *state.TimeEstimationManager,
 	}
 
 	if timeEstMng != nil {
-		timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())
+		return timeEstMng.AddChunkStatus(chunk, time.Since(chunkSentTime).Milliseconds())
 	}
 	return nil
 }

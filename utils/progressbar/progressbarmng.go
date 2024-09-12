@@ -320,7 +320,7 @@ func barStyle(isGeneral bool) mpb.BarStyleComposer {
 			filler = "🟩"
 		}
 	}
-	// Should look like this at the beginning: [🟩           ] and then [🟩🟩          ] and so on...
+	// Should look like this at the beginning: [🟦           ] and then [🟦🟦          ] and so on...
 	return mpb.BarStyle().Lbound("[" + filler).Filler(filler).Tip(filler).Padding(padding).Refiller("").Rbound("]")
 }
 

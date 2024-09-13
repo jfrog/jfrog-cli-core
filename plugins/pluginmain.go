@@ -72,7 +72,7 @@ func RunCliWithPlugin(jfrogApp components.App) func() error {
 		err = baseApp.Run(args)
 
 		if cleanupErr := fileutils.CleanOldDirs(); cleanupErr != nil {
-			clientLog.Warn(cleanupErr)
+			clientLog.Warn("failed while attempting to cleanup old CLI temp directories:", cleanupErr)
 		}
 
 		return err

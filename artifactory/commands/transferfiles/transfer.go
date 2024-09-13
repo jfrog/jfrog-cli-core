@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/safeconvert"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -240,13 +241,21 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 		if e != nil {
 			return e
 		}
-		tdc.stateManager.TransferFailures = uint64(numberInitialErrors)
+		unsignedNumberInitialErrors, err := safeconvert.IntToUint(numberInitialErrors)
+		if err != nil {
+			return fmt.Errorf("failed to convert number of initial errors to uint: %w", err)
+		}
+		tdc.stateManager.TransferFailures = uint64(unsignedNumberInitialErrors)
 
 		numberInitialDelays, e := getDelayedFilesCount(allSourceLocalRepos)
 		if e != nil {
 			return e
 		}
-		tdc.stateManager.DelayedFiles = uint64(numberInitialDelays)
+		unsignedNumberInitialDelay, err := safeconvert.IntToUint(numberInitialDelays)
+		if err != nil {
+			return err
+		}
+		tdc.stateManager.DelayedFiles = uint64(unsignedNumberInitialDelay)
 	} else {
 		tdc.stateManager.VisitedFolders = 0
 		tdc.stateManager.TransferFailures = 0

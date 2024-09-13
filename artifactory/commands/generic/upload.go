@@ -2,9 +2,7 @@ package generic
 
 import (
 	"errors"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/commandssummaries"
-	"github.com/jfrog/jfrog-cli-core/v2/commandsummary"
-	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
@@ -159,7 +157,7 @@ func (uc *UploadCommand) upload() (err error) {
 			successCount = summary.TotalSucceeded
 			failCount = summary.TotalFailed
 
-			if err = recordCommandSummary(servicesManager, summary, serverDetails.Url); err != nil {
+			if err = recordCommandSummary(summary); err != nil {
 				return
 			}
 		}
@@ -282,17 +280,11 @@ func createDeleteSpecForSync(deletePattern string, syncDeletesProp string) *spec
 		BuildSpec()
 }
 
-func recordCommandSummary(servicesManager artifactory.ArtifactoryServicesManager, summary *rtServicesUtils.OperationSummary, platformUrl string) (err error) {
+func recordCommandSummary(summary *rtServicesUtils.OperationSummary) (err error) {
 	if !commandsummary.ShouldRecordSummary() {
 		return
 	}
-
-	majorVersion, err := utils.GetRtMajorVersion(servicesManager)
-	if err != nil {
-		return err
-	}
-
-	uploadSummary, err := commandsummary.New(commandssummaries.NewUploadSummary(platformUrl, majorVersion), "upload")
+	uploadSummary, err := commandsummary.NewUploadSummary()
 	if err != nil {
 		return
 	}

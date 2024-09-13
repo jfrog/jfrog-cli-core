@@ -172,6 +172,12 @@ func (p *filesProgressBarManager) RemoveProgress(id int) {
 	bar.Abort()
 }
 
+func (p *filesProgressBarManager) ClearProgress() {
+	if p.generalProgressBar != nil {
+		p.generalProgressBar.Abort(true)
+	}
+}
+
 // Increases general progress bar by 1
 func (p *filesProgressBarManager) IncrementGeneralProgress() {
 	p.generalProgressBar.Increment()
@@ -185,7 +191,7 @@ func (p *filesProgressBarManager) Quit() (err error) {
 		p.headlineBar = nil
 	}
 	if p.generalProgressBar != nil {
-		p.generalProgressBar.Abort(true)
+		p.ClearProgress()
 		p.barsWg.Done()
 		p.generalProgressBar = nil
 	}
@@ -264,14 +270,7 @@ func (p *filesProgressBarManager) newHeadlineBar(headline string) {
 }
 
 func (p *filesProgressBarManager) SetHeadlineMsg(msg string) {
-	if p.headlineBar != nil {
-		current := p.headlineBar
-		p.barsRWMutex.RLock()
-		// First abort, then mark progress as done and finally release the lock.
-		defer p.barsRWMutex.RUnlock()
-		defer p.barsWg.Done()
-		defer current.Abort(true)
-	}
+	p.ClearHeadlineMsg()
 	// Remove emojis from non-supported terminals
 	msg = coreutils.RemoveEmojisIfNonSupportedTerminal(msg)
 	p.newHeadlineBar(msg)
@@ -280,13 +279,15 @@ func (p *filesProgressBarManager) SetHeadlineMsg(msg string) {
 func (p *filesProgressBarManager) ClearHeadlineMsg() {
 	if p.headlineBar != nil {
 		p.barsRWMutex.RLock()
-		p.headlineBar.Abort(true)
-		p.barsWg.Done()
-		p.barsRWMutex.RUnlock()
-		// Wait a refresh rate to make sure the abort has finished
-		time.Sleep(progressbar.ProgressRefreshRate)
+		defer p.barsRWMutex.RUnlock()
+		if p.headlineBar != nil {
+			p.headlineBar.Abort(true)
+			p.barsWg.Done()
+			// Wait a refresh rate to make sure the abort has finished
+			time.Sleep(progressbar.ProgressRefreshRate)
+			p.headlineBar = nil
+		}
 	}
-	p.headlineBar = nil
 }
 
 // IncGeneralProgressTotalBy increments the general progress bar total count by given n.

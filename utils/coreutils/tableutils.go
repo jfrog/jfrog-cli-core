@@ -153,7 +153,7 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 
 	rowsSliceValue := reflect.ValueOf(rows)
 	if rowsSliceValue.Len() == 0 && emptyTableMessage != "" {
-		PrintMessage(emptyTableMessage)
+		PrintMessageInsideFrame(emptyTableMessage, "")
 		return nil, nil
 	}
 
@@ -367,15 +367,27 @@ type embeddedTableCell struct {
 
 // PrintMessage prints message in a frame (which is actually a table with a single table).
 // For example:
+//
 // ┌─────────────────────────────────────────┐
 // │ An example of a message in a nice frame │
 // └─────────────────────────────────────────┘
-func PrintMessage(message string) {
+// With a margin left of 4 spaces:
+//
+//	    ┌─────────────────────────────────────────┐
+//		│ An example of a message in a nice frame │
+//		└─────────────────────────────────────────┘
+func PrintMessageInsideFrame(message, marginLeft string) {
 	tableWriter := table.NewWriter()
 	tableWriter.SetOutputMirror(os.Stdout)
 	if log.IsStdOutTerminal() {
 		tableWriter.SetStyle(table.StyleLight)
 	}
+
+	// Set margin left for the whole frame (for example, "  ").
+	tableWriter.Style().Box.Left = marginLeft + tableWriter.Style().Box.Left
+	tableWriter.Style().Box.TopLeft = marginLeft + tableWriter.Style().Box.TopLeft
+	tableWriter.Style().Box.BottomLeft = marginLeft + tableWriter.Style().Box.BottomLeft
+
 	// Remove emojis from non-supported terminals
 	message = RemoveEmojisIfNonSupportedTerminal(message)
 	tableWriter.AppendRow(table.Row{message})

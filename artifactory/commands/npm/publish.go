@@ -344,7 +344,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 				return err
 			}
 		}
-		summary, err := servicesManager.UploadFilesWithSummary(up)
+		summary, err := servicesManager.UploadFilesWithSummary(false, up)
 		if err != nil {
 			return err
 		}
@@ -367,7 +367,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			}
 		}
 	} else {
-		_, totalFailed, err = servicesManager.UploadFiles(up)
+		_, totalFailed, err = servicesManager.UploadFiles(false, up)
 		if err != nil {
 			return err
 		}

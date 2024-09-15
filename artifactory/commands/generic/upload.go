@@ -135,7 +135,7 @@ func (uc *UploadCommand) upload() (err error) {
 	var artifactsDetailsReader *content.ContentReader = nil
 	if uc.DetailedSummary() || toCollect {
 		var summary *rtServicesUtils.OperationSummary
-		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
+		summary, err = servicesManager.UploadFilesWithSummary(false, uploadParamsArray...)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -162,7 +162,7 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 		}
 	} else {
-		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
+		successCount, failCount, err = servicesManager.UploadFiles(false, uploadParamsArray...)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)

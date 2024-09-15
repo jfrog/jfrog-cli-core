@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gookit/color"
+	"github.com/jfrog/gofrog/safeconvert"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"
@@ -170,7 +171,15 @@ func (pcr *PreCheckRunner) cleanup() (err error) {
 		}
 	}
 	// Notify on final status of the run
-	if pcr.status.failures == 0 && len(pcr.checks) == int(pcr.status.successes+pcr.status.failures) && err == nil {
+	signedFailures, err := safeconvert.UintToInt(pcr.status.failures)
+	if err != nil {
+		return fmt.Errorf("failed to convert failures to int: %w", err)
+	}
+	signedSuccesses, err := safeconvert.UintToInt(pcr.status.successes)
+	if err != nil {
+		return fmt.Errorf("failed to convert successes to int: %w", err)
+	}
+	if pcr.status.failures == 0 && len(pcr.checks) == signedFailures+signedSuccesses && err == nil {
 		log.Info(coreutils.PrintTitle(fmt.Sprintf("All the checks passed 🐸 (elapsed time %s).", time.Since(pcr.status.startTime))))
 	} else {
 		log.Error(coreutils.PrintTitle(fmt.Sprintf("%d/%d checks passed (elapsed time %s), check the log for more information.",

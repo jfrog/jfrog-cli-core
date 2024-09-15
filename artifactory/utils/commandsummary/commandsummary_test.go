@@ -156,7 +156,7 @@ func TestIndexedRecord(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Verify file has been saved
-			indexedFilesMap, err := cs.GetIndexedDataFilesPaths()
+			indexedFilesMap, err := GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
 
 			// Verify nested files
@@ -194,7 +194,7 @@ func TestSarifMultipleReports(t *testing.T) {
 			err = cs.RecordWithIndex(tc.originalData, tc.summaryIndex)
 			assert.NoError(t, err)
 			// Verify file has been saved
-			indexedFilesMap, err := cs.GetIndexedDataFilesPaths()
+			indexedFilesMap, err := GetIndexedDataFilesPaths()
 			assert.NoError(t, err)
 			assert.Equal(t, 2, len(indexedFilesMap[SarifReport]))
 		})

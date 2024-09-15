@@ -320,7 +320,8 @@ func barStyle(isGeneral bool) mpb.BarStyleComposer {
 			filler = "🟩"
 		}
 	}
-	return mpb.BarStyle().Lbound("[").Filler(filler).Tip(filler).Padding(padding).Refiller("").Rbound("]")
+	// Should look like this at the beginning: [🟦           ] and then [🟦🟦          ] and so on. (Or for windows: [●..........] and then [●●.........])
+	return mpb.BarStyle().Lbound("[" + filler).Filler(filler).Tip(filler).Padding(padding).Refiller("").Rbound("]")
 }
 
 // The ShouldInitProgressBar func is used to determine whether the progress bar should be displayed.

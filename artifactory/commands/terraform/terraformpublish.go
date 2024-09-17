@@ -232,7 +232,7 @@ func createServiceManagerAndUpload(serverDetails *config.ServerDetails, uploadPa
 	if err != nil {
 		return nil, err
 	}
-	return serviceManager.UploadFilesWithSummary(*uploadParams)
+	return serviceManager.UploadFilesWithSummary(false, *uploadParams)
 }
 
 func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientUtils.ErrorsQueue, uploadSummary *[][]*servicesUtils.OperationSummary, produceTaskFunc ProduceTaskFunc) error {

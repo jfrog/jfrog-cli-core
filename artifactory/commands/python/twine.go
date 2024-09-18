@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
-	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -12,12 +11,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"os/exec"
-	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -170,13 +166,12 @@ func (tc *TwineCommand) uploadAndCollectBuildInfo() error {
 		pythonModule.SetName(tc.buildConfiguration.GetModule())
 	}
 
-	artifactsPaths, err := pythonModule.TwineUploadWithLogParsing(tc.args)
+	artifacts, err := pythonModule.TwineUploadWithLogParsing(tc.args)
 	if err != nil {
 		return err
 	}
-	artifacts, err := tc.createArtifactsFromPaths(artifactsPaths)
-	if err != nil {
-		return err
+	for _, artifact := range artifacts {
+		artifact.OriginalDeploymentRepo = tc.targetRepo
 	}
 	if err = pythonModule.AddArtifacts(artifacts); err != nil {
 		return err
@@ -198,30 +193,4 @@ func (tc *TwineCommand) isRepoConfigFlagProvided() bool {
 
 func (tc *TwineCommand) getRepoConfigFlagProvidedErr() string {
 	return "twine command must not be executed with the following flags: " + coreutils.ListToText(twineRepoConfigFlags)
-}
-
-// Create artifacts entities from the artifacts paths that were found during the upload.
-func (tc *TwineCommand) createArtifactsFromPaths(artifactsPaths []string) (artifacts []entities.Artifact, err error) {
-	projectName, projectVersion, err := pythonutils.GetPipProjectNameAndVersion("")
-	if err != nil {
-		return
-	}
-	var absPath string
-	var fileDetails *fileutils.FileDetails
-	for _, artifactPath := range artifactsPaths {
-		absPath, err = filepath.Abs(artifactPath)
-		if err != nil {
-			return nil, err
-		}
-		fileDetails, err = fileutils.GetFileDetails(absPath, true)
-		if err != nil {
-			return nil, err
-		}
-
-		artifact := entities.Artifact{Name: filepath.Base(absPath), Path: path.Join(projectName, projectVersion, filepath.Base(absPath)),
-			OriginalDeploymentRepo: tc.targetRepo, Type: strings.TrimPrefix(filepath.Ext(absPath), ".")}
-		artifact.Checksum = entities.Checksum{Sha1: fileDetails.Checksum.Sha1, Md5: fileDetails.Checksum.Md5}
-		artifacts = append(artifacts, artifact)
-	}
-	return
 }

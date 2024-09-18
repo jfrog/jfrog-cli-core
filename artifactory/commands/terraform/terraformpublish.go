@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -232,7 +233,7 @@ func createServiceManagerAndUpload(serverDetails *config.ServerDetails, uploadPa
 	if err != nil {
 		return nil, err
 	}
-	return serviceManager.UploadFilesWithSummary(*uploadParams)
+	return serviceManager.UploadFilesWithSummary(artifactory.UploadServiceOptions{}, *uploadParams)
 }
 
 func (tpc *TerraformPublishCommand) walkDirAndUploadTerraformModules(pwd string, producer parallel.Runner, errorsQueue *clientUtils.ErrorsQueue, uploadSummary *[][]*servicesUtils.OperationSummary, produceTaskFunc ProduceTaskFunc) error {

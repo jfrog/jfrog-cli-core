@@ -3,6 +3,7 @@ package generic
 import (
 	"errors"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	"os"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
@@ -135,7 +136,7 @@ func (uc *UploadCommand) upload() (err error) {
 	var artifactsDetailsReader *content.ContentReader = nil
 	if uc.DetailedSummary() || toCollect {
 		var summary *rtServicesUtils.OperationSummary
-		summary, err = servicesManager.UploadFilesWithSummary(uploadParamsArray...)
+		summary, err = servicesManager.UploadFilesWithSummary(artifactory.UploadServiceOptions{}, uploadParamsArray...)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)
@@ -162,7 +163,7 @@ func (uc *UploadCommand) upload() (err error) {
 			}
 		}
 	} else {
-		successCount, failCount, err = servicesManager.UploadFiles(uploadParamsArray...)
+		successCount, failCount, err = servicesManager.UploadFiles(artifactory.UploadServiceOptions{}, uploadParamsArray...)
 		if err != nil {
 			errorOccurred = true
 			log.Error(err)

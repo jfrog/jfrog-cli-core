@@ -141,8 +141,7 @@ func (tc *TwineCommand) runPlainTwineCommand() error {
 	cmd := exec.Command(_twineExecName, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
-	return err
+	return cmd.Run()
 }
 
 func (tc *TwineCommand) uploadAndCollectBuildInfo() error {
@@ -152,7 +151,7 @@ func (tc *TwineCommand) uploadAndCollectBuildInfo() error {
 	}
 
 	defer func() {
-		if buildInfo != nil && err != nil {
+		if buildInfo != nil {
 			err = errors.Join(err, buildInfo.Clean())
 		}
 	}()

@@ -87,7 +87,6 @@ func (tc *TwineCommand) Run() (err error) {
 	callbackFunc, err := tc.setAuthEnvVars()
 	defer func() {
 		err = errors.Join(err, callbackFunc())
-		return
 	}()
 
 	collectBuild, err := tc.buildConfiguration.IsCollectBuildInfo()

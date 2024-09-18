@@ -151,7 +151,7 @@ func (tc *TwineCommand) uploadAndCollectBuildInfo() error {
 	}
 
 	defer func() {
-		if buildInfo != nil {
+		if buildInfo != nil && err != nil {
 			err = errors.Join(err, buildInfo.Clean())
 		}
 	}()

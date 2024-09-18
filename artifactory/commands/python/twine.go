@@ -170,8 +170,8 @@ func (tc *TwineCommand) uploadAndCollectBuildInfo() error {
 	if err != nil {
 		return err
 	}
-	for _, artifact := range artifacts {
-		artifact.OriginalDeploymentRepo = tc.targetRepo
+	for i := range artifacts {
+		artifacts[i].OriginalDeploymentRepo = tc.targetRepo
 	}
 	if err = pythonModule.AddArtifacts(artifacts); err != nil {
 		return err

@@ -153,7 +153,9 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 	switch confType {
 	case project.Go:
 		return configFile.setDeployerResolver()
-	case project.Pip, project.Pipenv, project.Poetry:
+	case project.Pip, project.Pipenv:
+		return configFile.setDeployerResolver()
+	case project.Poetry:
 		return configFile.setResolver(false)
 	case project.Yarn:
 		return configFile.setResolver(false)

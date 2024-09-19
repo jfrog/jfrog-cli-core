@@ -338,15 +338,10 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 		return
 	}
 
-	var clientCertChecked bool
 	if cc.details.Password == "" && cc.details.AccessToken == "" {
-		clientCertChecked, err = cc.promptForCredentials(disallowUsingSavedPassword)
-		if err != nil {
+		if err = cc.promptForCredentials(disallowUsingSavedPassword); err != nil {
 			return err
 		}
-	}
-	if !clientCertChecked {
-		cc.checkClientCertForReverseProxy()
 	}
 	return
 }
@@ -410,7 +405,7 @@ func (cc *ConfigCommand) promptUrls(disallowUsingSavedPassword *bool) error {
 	})
 }
 
-func (cc *ConfigCommand) promptForCredentials(disallowUsingSavedPassword bool) (clientCertChecked bool, err error) {
+func (cc *ConfigCommand) promptForCredentials(disallowUsingSavedPassword bool) (err error) {
 	var authMethod AuthenticationMethod
 	authMethod, err = cc.promptAuthMethods()
 	if err != nil {
@@ -418,19 +413,17 @@ func (cc *ConfigCommand) promptForCredentials(disallowUsingSavedPassword bool) (
 	}
 	switch authMethod {
 	case BasicAuth:
-		return false, ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
+		return ioutils.ReadCredentialsFromConsole(cc.details, cc.defaultDetails, disallowUsingSavedPassword)
 	case AccessToken:
-		return false, cc.promptForAccessToken()
+		return cc.promptForAccessToken()
 	case MTLS:
 		cc.checkCertificateForMTLS()
 		log.Warn("Please notice that authentication using client certificates (mTLS) is not supported by commands which integrate with package managers.")
-		return true, nil
+		return nil
 	case WebLogin:
-		// Web login sends requests, so certificates must be obtained first if they are required.
-		cc.checkClientCertForReverseProxy()
-		return true, cc.handleWebLogin()
+		return cc.handleWebLogin()
 	default:
-		return false, errorutils.CheckErrorf("unexpected authentication method")
+		return errorutils.CheckErrorf("unexpected authentication method")
 	}
 }
 
@@ -462,15 +455,6 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	}
 	if cc.details.ClientCertKeyPath == "" {
 		ioutils.ScanFromConsole("Client certificate key path", &cc.details.ClientCertKeyPath, cc.defaultDetails.ClientCertKeyPath)
-	}
-}
-
-func (cc *ConfigCommand) checkClientCertForReverseProxy() {
-	if cc.details.ClientCertPath != "" && cc.details.ClientCertKeyPath != "" || cc.useWebLogin {
-		return
-	}
-	if coreutils.AskYesNo("Is the Artifactory reverse proxy configured to accept a client certificate?", false) {
-		cc.readClientCertInfoFromConsole()
 	}
 }
 

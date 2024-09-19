@@ -18,6 +18,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	specutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -344,7 +345,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 				return err
 			}
 		}
-		summary, err := servicesManager.UploadFilesWithSummary(up)
+		summary, err := servicesManager.UploadFilesWithSummary(artifactory.UploadServiceOptions{}, up)
 		if err != nil {
 			return err
 		}
@@ -367,7 +368,7 @@ func (npc *NpmPublishCommand) doDeploy(target string, artDetails *config.ServerD
 			}
 		}
 	} else {
-		_, totalFailed, err = servicesManager.UploadFiles(up)
+		_, totalFailed, err = servicesManager.UploadFiles(artifactory.UploadServiceOptions{}, up)
 		if err != nil {
 			return err
 		}

@@ -138,7 +138,7 @@ func FindFlagFirstMatch(flags, args []string) (flagIndex, flagValueIndex int, fl
 }
 
 func ExtractServerIdFromCommand(args []string) (cleanArgs []string, serverId string, err error) {
-	return extractStringOptionFromArgs(args, "server-id")
+	return ExtractStringOptionFromArgs(args, "server-id")
 }
 
 func ExtractThreadsFromArgs(args []string, defaultValue int) (cleanArgs []string, threads int, err error) {
@@ -181,12 +181,12 @@ func ExtractLicensesFromArgs(args []string) (cleanArgs []string, licenses bool, 
 
 // Used by docker scan (Xray)
 func ExtractRepoPathFromArgs(args []string) (cleanArgs []string, repoPath string, err error) {
-	return extractStringOptionFromArgs(args, "repo-path")
+	return ExtractStringOptionFromArgs(args, "repo-path")
 }
 
 // Used by docker scan (Xray)
 func ExtractWatchesFromArgs(args []string) (cleanArgs []string, watches string, err error) {
-	return extractStringOptionFromArgs(args, "watches")
+	return ExtractStringOptionFromArgs(args, "watches")
 }
 
 func ExtractDetailedSummaryFromArgs(args []string) (cleanArgs []string, detailedSummary bool, err error) {
@@ -198,14 +198,14 @@ func ExtractXrayScanFromArgs(args []string) (cleanArgs []string, xrayScan bool, 
 }
 
 func ExtractXrayOutputFormatFromArgs(args []string) (cleanArgs []string, format string, err error) {
-	return extractStringOptionFromArgs(args, "format")
+	return ExtractStringOptionFromArgs(args, "format")
 }
 
 func ExtractTagFromArgs(args []string) (cleanArgs []string, tag string, err error) {
-	return extractStringOptionFromArgs(args, "tag")
+	return ExtractStringOptionFromArgs(args, "tag")
 }
 
-func extractStringOptionFromArgs(args []string, optionName string) (cleanArgs []string, value string, err error) {
+func ExtractStringOptionFromArgs(args []string, optionName string) (cleanArgs []string, value string, err error) {
 	cleanArgs = append([]string(nil), args...)
 
 	flagIndex, valIndex, value, err := FindFlag("--"+optionName, cleanArgs)

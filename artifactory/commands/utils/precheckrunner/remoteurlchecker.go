@@ -3,6 +3,7 @@ package precheckrunner
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jfrog/gofrog/safeconvert"
 	"net/http"
 	"time"
 
@@ -165,7 +166,11 @@ func (rrc *RemoteRepositoryCheck) startCheckRemoteRepositories(rtDetails *httput
 	if args.ProgressMng == nil {
 		return nil, nil
 	}
-	return args.ProgressMng.NewTasksProgressBar(int64(response.TotalRepositories), "Remote repositories"), nil
+	signedTotalRepositories, err := safeconvert.UintToInt(response.TotalRepositories)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert total repositories count to int: %w", err)
+	}
+	return args.ProgressMng.NewTasksProgressBar(int64(signedTotalRepositories), "Remote repositories"), nil
 }
 
 func (rrc *RemoteRepositoryCheck) waitForRemoteReposCheckCompletion(rtDetails *httputils.HttpClientDetails, artifactoryUrl string, progressBar *progressbar.TasksProgressBar) (*[]inaccessibleRepository, error) {
@@ -207,7 +212,11 @@ func (rrc *RemoteRepositoryCheck) createImportPollingAction(rtDetails *httputils
 				return true, nil, err
 			}
 			if progressBar != nil {
-				delta := int64(response.CheckedRepositories) - progressBar.GetBar().Current()
+				signedCheckedRepositories, err := safeconvert.UintToInt(response.CheckedRepositories)
+				if err != nil {
+					return true, nil, fmt.Errorf("failed to convert checked repositories count to int: %w", err)
+				}
+				delta := int64(signedCheckedRepositories) - progressBar.GetBar().Current()
 				progressBar.GetBar().IncrInt64(delta)
 			}
 		}

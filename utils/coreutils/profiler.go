@@ -3,6 +3,7 @@ package coreutils
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/gofrog/safeconvert"
 	"os"
 	"runtime/pprof"
 	"time"
@@ -70,7 +71,11 @@ func (p *Profiler) threadDumpToFile() (outputFilePath string, err error) {
 		err = errors.Join(err, errorutils.CheckError(outputFile.Close()))
 	}()
 
-	for i := 0; i < int(p.repetitions); i++ {
+	signedRepetitions, err := safeconvert.UintToInt(p.repetitions)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert repetitions to int: %w", err)
+	}
+	for i := 0; i < signedRepetitions; i++ {
 		fmt.Fprintf(outputFile, "========== Thread dump #%d ==========\n", i)
 		prof := pprof.Lookup("goroutine")
 		if err = errorutils.CheckError(prof.WriteTo(outputFile, 1)); err != nil {

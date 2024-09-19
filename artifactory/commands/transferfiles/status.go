@@ -44,7 +44,9 @@ func ShowStatus() error {
 		return nil
 	}
 
-	addOverallStatus(stateManager, &output, stateManager.GetRunningTimeString())
+	if err = addOverallStatus(stateManager, &output, stateManager.GetRunningTimeString()); err != nil {
+		return err
+	}
 	if stateManager.CurrentRepoKey != "" {
 		transferState, exists, err := state.LoadTransferState(stateManager.CurrentRepoKey, false)
 		if err != nil {
@@ -71,7 +73,7 @@ func isStopping() (bool, error) {
 	return fileutils.IsFileExists(filepath.Join(transferDir, StopFileName), false)
 }
 
-func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) {
+func addOverallStatus(stateManager *state.TransferStateManager, output *strings.Builder, runningTime string) error {
 	addTitle(output, "Overall Transfer Status")
 	addString(output, coreutils.RemoveEmojisIfNonSupportedTerminal("🟢"), "Status", "Running", 3)
 	addString(output, "🏃", "Running for", runningTime, 3)
@@ -79,12 +81,17 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 	addString(output, "📦", "Repositories", fmt.Sprintf("%d / %d", stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits)+calcPercentageInt64(stateManager.TotalRepositories.TransferredUnits, stateManager.TotalRepositories.TotalUnits), 2)
 	addString(output, "🧵", "Working threads", strconv.Itoa(stateManager.WorkingThreads), 2)
 	addString(output, "⚡", "Transfer speed", stateManager.GetSpeedString(), 2)
-	addString(output, "⌛", "Estimated time remaining", stateManager.GetEstimatedRemainingTimeString(), 1)
+	estimatedRemainingTime, err := stateManager.GetEstimatedRemainingTimeString()
+	if err != nil {
+		return err
+	}
+	addString(output, "⌛", "Estimated time remaining", estimatedRemainingTime, 1)
 	failureTxt := strconv.FormatUint(stateManager.TransferFailures, 10)
 	if stateManager.TransferFailures > 0 {
 		failureTxt += " (" + progressbar.RetryFailureContentNote + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 2)
+	return nil
 }
 
 func calcPercentageInt64(transferred, total int64) string {

@@ -31,6 +31,7 @@ var (
 		buildInfo.Generic:   true,
 		buildInfo.Terraform: true,
 		buildInfo.Docker:    true,
+		buildInfo.Python:    true,
 	}
 )
 

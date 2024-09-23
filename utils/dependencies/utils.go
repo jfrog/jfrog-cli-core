@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	ChecksumFileName = "checksum.sha2"
+	ChecksumFileName  = "checksum.sha2"
+	jarsDocumentation = "https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/cli-for-jfrog-artifactory/package-managers-integration#downloading-the-maven-and-gradle-extractor-jars"
 )
 
 // Download the relevant build-info-extractor jar.
@@ -65,7 +66,7 @@ func GetExtractorsRemoteDetails(downloadPath string) (server *config.ServerDetai
 	// Download directly from https://releases.jfrog.io
 	log.Info("The build-info-extractor jar is not cached locally. Downloading it now...\n" +
 		"You can set the repository from which this jar is downloaded.\n" +
-		"Read more about it at " + coreutils.JFrogHelpUrl + "jfrog-cli/downloading-the-maven-and-gradle-extractor-jars")
+		"Read more about it at " + jarsDocumentation)
 	log.Debug("'" + coreutils.ReleasesRemoteEnv + "' environment variable is not configured. Downloading directly from releases.jfrog.io.")
 	// If not configured to download through a remote repository in Artifactory, download from releases.jfrog.io.
 	return &config.ServerDetails{ArtifactoryUrl: coreutils.JfrogReleasesUrl}, path.Join("oss-release-local", downloadPath), nil
@@ -82,8 +83,8 @@ func getExtractorsRemoteDetailsFromEnv(downloadPath string) (server *config.Serv
 func getExtractorsRemoteDetailsFromLegacyEnv(downloadPath string) (server *config.ServerDetails, remoteRepo string, err error) {
 	server, remoteRepo, err = GetRemoteDetails(coreutils.DeprecatedExtractorsRemoteEnv)
 	if remoteRepo != "" && err == nil {
-		log.Warn(fmt.Sprintf("You are using the deprecated %q environment variable. Use %q instead.\nRead more about it at %sjfrog-cli/downloading-the-maven-and-gradle-extractor-jars",
-			coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ReleasesRemoteEnv, coreutils.JFrogHelpUrl))
+		log.Warn(fmt.Sprintf("You are using the deprecated %q environment variable. Use %q instead.\nRead more about it at %s",
+			coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ReleasesRemoteEnv, jarsDocumentation))
 		remoteRepo = getFullExtractorsPathInArtifactory(remoteRepo, coreutils.DeprecatedExtractorsRemoteEnv, downloadPath)
 	}
 	return

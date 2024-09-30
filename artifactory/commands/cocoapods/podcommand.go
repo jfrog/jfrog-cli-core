@@ -24,8 +24,6 @@ const (
 
 type PodCommand struct {
 	cmdName          string
-	repo             string
-	podArgs          []string
 	serverDetails    *config.ServerDetails
 	podVersion       *version.Version
 	authArtDetails   auth.ServiceDetails
@@ -37,7 +35,7 @@ type PodCommand struct {
 func GetPodVersionAndExecPath() (*version.Version, string, error) {
 	podExecPath, err := exec.LookPath("pod")
 	if err != nil {
-		return nil, "", fmt.Errorf("could not find the 'pod' executable in the system PATH", err)
+		return nil, "", fmt.Errorf("errcould not find the 'pod' executable in the system PATH %w", err)
 	}
 	log.Debug("Using pod executable:", podExecPath)
 	versionData, _, err := RunPodCmd(podExecPath, "", []string{"--version"})

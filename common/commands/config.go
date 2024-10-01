@@ -36,7 +36,7 @@ type AuthenticationMethod string
 
 const (
 	AccessToken AuthenticationMethod = "Access Token"
-	BasicAuth   AuthenticationMethod = "Username and Password / API Key"
+	BasicAuth   AuthenticationMethod = "Username and Password / Reference token"
 	MTLS        AuthenticationMethod = "Mutual TLS"
 	WebLogin    AuthenticationMethod = "Web Login"
 )
@@ -375,10 +375,10 @@ func (cc *ConfigCommand) promptAuthMethods() (selectedMethod AuthenticationMetho
 
 	var selected string
 	authMethods := []AuthenticationMethod{
-		BasicAuth,
 		AccessToken,
-		MTLS,
 		WebLogin,
+		BasicAuth,
+		MTLS,
 	}
 	var selectableItems []ioutils.PromptItem
 	for _, curMethod := range authMethods {
@@ -820,7 +820,7 @@ func assertSingleAuthMethod(details *config.ServerDetails) error {
 		details.AccessToken != "" && details.ArtifactoryRefreshToken == "",
 		details.SshKeyPath != ""}
 	if coreutils.SumTrueValues(authMethods) > 1 {
-		return errorutils.CheckErrorf("Only one authentication method is allowed: Username + Password/API key, RSA Token (SSH) or Access Token")
+		return errorutils.CheckErrorf("Only one authentication method is allowed: Username + Password/Reference Token, RSA Token (SSH) or Access Token")
 	}
 	return nil
 }

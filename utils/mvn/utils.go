@@ -14,6 +14,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/dependencies"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
 )
 
@@ -102,6 +103,13 @@ func RunMvn(mu *MvnUtils) error {
 	if v, ok := props["buildInfoConfig.artifactoryResolutionEnabled"]; ok {
 		mvnOpts = append(mvnOpts, "-DbuildInfoConfig.artifactoryResolutionEnabled="+v)
 	}
+	projectRoot, exists, err := fileutils.FindUpstream(".mvn", fileutils.Dir)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if !exists {
+		projectRoot = ""
+	}
 	dependencyLocalPath, err := getMavenDependencyLocalPath()
 	if err != nil {
 		return err
@@ -114,6 +122,7 @@ func RunMvn(mu *MvnUtils) error {
 		useWrapper).
 		SetOutputWriter(mu.outputWriter)
 	mavenModule.SetMavenOpts(mvnOpts...)
+	mavenModule.SetRootProjectDir(projectRoot)
 	if err = coreutils.ConvertExitCodeError(mavenModule.CalcDependencies()); err != nil {
 		return err
 	}

@@ -26,7 +26,10 @@ func NewFileTree() *FileTree {
 // if UploadedFileUrl not provided, the file name will be displayed without a link.
 func (ft *FileTree) AddFile(path, uploadedFileUrl string) {
 	if ft.size >= maxFilesInTree {
-		log.Info("Exceeded maximum number of files in tree")
+		if !ft.exceedsMax {
+			// Log only once
+			log.Info("Exceeded maximum number of files in tree")
+		}
 		ft.exceedsMax = true
 		return
 	}

@@ -35,7 +35,7 @@ func (ft *FileTree) AddFile(path, uploadedFileUrl string) {
 
 func (ft *FileTree) IsTreeExceedsMax() bool {
 	if ft.size >= maxFilesInTree {
-		log.Info(fmt.Sprintf("Exceeded maximum number (%d) of files in files tree.", maxFilesInTree))
+		log.Debug(fmt.Sprintf("Exceeded maximum number (%d) of files in files tree.", maxFilesInTree))
 		return true
 	}
 	return false

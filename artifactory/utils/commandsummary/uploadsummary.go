@@ -55,6 +55,9 @@ func (us *UploadSummary) generateFileTreeMarkdown() string {
 	us.uploadTree = utils.NewFileTree()
 	for _, uploadResult := range us.uploadedArtifacts.Results {
 		us.uploadTree.AddFile(uploadResult.TargetPath, us.buildUiUrl(uploadResult.TargetPath))
+		if us.uploadTree.IsTreeExceedsMax() {
+			return ""
+		}
 	}
 	return us.uploadTree.String()
 }

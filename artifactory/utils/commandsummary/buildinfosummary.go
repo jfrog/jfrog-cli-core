@@ -209,6 +209,9 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) strin
 		}
 		artifactTreePath := path.Join(artifact.OriginalDeploymentRepo, artifact.Path)
 		artifactsTree.AddFile(artifactTreePath, artifactUrlInArtifactory)
+		if artifactsTree.IsTreeExceedsMax() {
+			return ""
+		}
 	}
 	return artifactsTree.String()
 }

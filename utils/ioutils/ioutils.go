@@ -40,7 +40,7 @@ func ReadCredentialsFromConsole(details, savedDetails coreutils.Credentials, dis
 }
 
 func ScanJFrogPasswordFromConsole() (string, error) {
-	return ScanPasswordFromConsole("JFrog password or API key: ")
+	return ScanPasswordFromConsole("JFrog password or Reference Token: ")
 }
 
 func ScanPasswordFromConsole(message string) (string, error) {

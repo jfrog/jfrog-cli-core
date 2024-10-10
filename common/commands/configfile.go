@@ -659,7 +659,7 @@ func getRepositories(serverId string, repoTypes ...utils.RepoType) ([]string, er
 	for _, repoType := range repoTypes {
 		filteredRepos, err := utils.GetFilteredRepositoriesWithFilterParams(sm, nil, nil, services.RepositoriesFilterParams{RepoType: repoType.String()})
 		if err != nil {
-			return nil, fmt.Errorf("failed getting %s repositories list: %w", repoType, err)
+			return nil, fmt.Errorf("failed getting %s repositories list: %w", repoType.String(), err)
 		}
 		repos = append(repos, filteredRepos...)
 	}

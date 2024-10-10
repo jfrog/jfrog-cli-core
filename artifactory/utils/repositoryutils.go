@@ -100,7 +100,13 @@ func GetFilteredRepositoriesWithFilterParams(servicesManager artifactory.Artifac
 	return filterRepositoryNames(repoKeys, includePatterns, excludePatterns)
 }
 
-// GetFilteredBuildInfoRepositories gets build info repositories and applies the include/exclude patterns to return the relevant repository names.
+// GetFilteredBuildInfoRepositories returns the names of all build-info repositories filtered by their names.
+// storageInfo - storage info response from Artifactory
+// includePatterns - patterns of repository names (can contain wildcards) to include in the results. A repository's name
+// must match at least one of these patterns in order to be included in the results. If includePatterns' length is zero,
+// all repositories are included.
+// excludePatterns - patterns of repository names (can contain wildcards) to exclude from the results. A repository's name
+// must NOT match any of these patterns in order to be included in the results.
 func GetFilteredBuildInfoRepositories(storageInfo *clientUtils.StorageInfo, includePatterns, excludePatterns []string) ([]string, error) {
 	repoKeys := make([]string, 0, len(storageInfo.RepositoriesSummaryList))
 

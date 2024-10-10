@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jfrog/gofrog/safeconvert"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -342,11 +343,11 @@ func (tdc *TransferFilesCommand) NewTransferDataPreChecksRunner() (runner *prech
 	if err != nil {
 		return
 	}
-	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Local)
+	localRepos, err := utils.GetFilteredRepositoriesWithFilterParams(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, services.RepositoriesFilterParams{RepoType: utils.Local.String()})
 	if err != nil {
 		return
 	}
-	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, utils.Federated)
+	federatedRepos, err := utils.GetFilteredRepositoriesWithFilterParams(serviceManager, tdc.includeReposPatterns, tdc.excludeReposPatterns, services.RepositoriesFilterParams{RepoType: utils.Federated.String()})
 	if err != nil {
 		return
 	}
@@ -586,11 +587,11 @@ func (tdc *TransferFilesCommand) getAllLocalRepos(serverDetails *config.ServerDe
 	}
 	excludeRepoPatternsWithBuildInfo := tdc.excludeReposPatterns
 	excludeRepoPatternsWithBuildInfo = append(excludeRepoPatternsWithBuildInfo, "*-build-info")
-	localRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, excludeRepoPatternsWithBuildInfo, utils.Local)
+	localRepos, err := utils.GetFilteredRepositoriesWithFilterParams(serviceManager, tdc.includeReposPatterns, excludeRepoPatternsWithBuildInfo, services.RepositoriesFilterParams{RepoType: utils.Local.String()})
 	if err != nil {
 		return []string{}, []string{}, err
 	}
-	federatedRepos, err := utils.GetFilteredRepositoriesByNameAndType(serviceManager, tdc.includeReposPatterns, excludeRepoPatternsWithBuildInfo, utils.Federated)
+	federatedRepos, err := utils.GetFilteredRepositoriesWithFilterParams(serviceManager, tdc.includeReposPatterns, excludeRepoPatternsWithBuildInfo, services.RepositoriesFilterParams{RepoType: utils.Federated.String()})
 	if err != nil {
 		return []string{}, []string{}, err
 	}

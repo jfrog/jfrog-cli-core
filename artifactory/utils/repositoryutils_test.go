@@ -26,7 +26,7 @@ func TestFilterRepositoryNames(t *testing.T) {
 		"jfrog-npm-local",
 		"jfrog-generic-remote",
 	}
-	actualRepoNames, err := filterRepositoryNames(&repos, includePatterns, excludePatterns)
+	actualRepoNames, err := filterRepositoryNames(repos, includePatterns, excludePatterns)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, expectedRepoNames, actualRepoNames)
 }

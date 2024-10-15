@@ -12,9 +12,8 @@ var maxFilesInTree = 200
 
 // FileTree is a UI components that displays a file-system tree view in the terminal.
 type FileTree struct {
-	repos      map[string]*dirNode
-	size       int
-	exceedsMax bool
+	repos map[string]*dirNode
+	size  int
 }
 
 func NewFileTree() *FileTree {
@@ -25,11 +24,6 @@ func NewFileTree() *FileTree {
 // UploadedFileUrl - URL to the uploaded file in Artifactory,
 // if UploadedFileUrl not provided, the file name will be displayed without a link.
 func (ft *FileTree) AddFile(path, uploadedFileUrl string) {
-	if ft.size >= maxFilesInTree {
-		log.Info("Exceeded maximum number of files in tree")
-		ft.exceedsMax = true
-		return
-	}
 	splitPath := strings.Split(path, "/")
 	if _, exist := ft.repos[splitPath[0]]; !exist {
 		ft.repos[splitPath[0]] = &dirNode{name: splitPath[0], prefix: "📦 ", subDirNodes: map[string]*dirNode{}, fileNames: map[string]string{}}
@@ -39,11 +33,16 @@ func (ft *FileTree) AddFile(path, uploadedFileUrl string) {
 	}
 }
 
+func (ft *FileTree) IsTreeExceedsMax() bool {
+	if ft.size >= maxFilesInTree {
+		log.Debug(fmt.Sprintf("Exceeded maximum number (%d) of files in files tree.", maxFilesInTree))
+		return true
+	}
+	return false
+}
+
 // Returns a string representation of the tree. If the number of files exceeded the maximum, an empty string will be returned.
 func (ft *FileTree) String() string {
-	if ft.exceedsMax {
-		return ""
-	}
 	treeStr := ""
 	for _, repo := range ft.repos {
 		treeStr += strings.Join(repo.strings(), "\n") + "\n\n"

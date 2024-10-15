@@ -19,10 +19,8 @@ func TestFileTree(t *testing.T) {
 	result, excpected := fileTree.String(), "📦 repoName\n└── 📁 path\n    └── 📁 to\n        └── 📁 first\n            └── 📄 artifact\n\n"
 	assert.Equal(t, excpected, result)
 
-	// If maxFileInTree has exceeded, Check String() returns an empty string
-	fileTree.AddFile("repoName/path/to/second/artifact", "")
-	result, excpected = fileTree.String(), ""
-	assert.Equal(t, excpected, result)
+	// If maxFileInTree has exceeded
+	assert.True(t, fileTree.IsTreeExceedsMax())
 }
 
 func TestFileTreeSort(t *testing.T) {

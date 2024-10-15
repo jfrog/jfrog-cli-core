@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -134,10 +136,10 @@ func createBuildConfig(global bool, confType project.ProjectType, configFile *Co
 	}
 	// Populate, validate and write the config file
 	configFilePath := filepath.Join(projectDir, confType.String()+".yaml")
-	if err := configFile.VerifyConfigFile(configFilePath); err != nil {
+	if err = configFile.VerifyConfigFile(configFilePath); err != nil {
 		return err
 	}
-	if err := handleInteractiveConfigCreation(configFile, confType); err != nil {
+	if err = handleInteractiveConfigCreation(configFile, confType); err != nil {
 		return err
 	}
 	if err = configFile.validateConfig(); err != nil {
@@ -651,7 +653,19 @@ func getRepositories(serverId string, repoTypes ...utils.RepoType) ([]string, er
 		return nil, err
 	}
 
-	return utils.GetRepositories(artDetails, repoTypes...)
+	sm, err := utils.CreateServiceManager(artDetails, 3, 0, false)
+	if err != nil {
+		return nil, err
+	}
+	repos := []string{}
+	for _, repoType := range repoTypes {
+		filteredRepos, err := utils.GetFilteredRepositoriesWithFilterParams(sm, nil, nil, services.RepositoriesFilterParams{RepoType: repoType.String()})
+		if err != nil {
+			return nil, fmt.Errorf("failed getting %s repositories list: %w", repoType.String(), err)
+		}
+		repos = append(repos, filteredRepos...)
+	}
+	return repos, nil
 }
 
 func defaultIfNotSet(c *cli.Context, flagName string, defaultValue string) string {

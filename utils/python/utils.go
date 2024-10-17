@@ -2,11 +2,12 @@ package utils
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
 	"github.com/jfrog/build-info-go/utils/pythonutils"
 	"github.com/jfrog/gofrog/io"
@@ -89,15 +90,15 @@ func ConfigPoetryRepo(url, username, password, configRepoName string) error {
 	if err = addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), configRepoName, url); err != nil {
 		return err
 	}
-	return poetryUpdate()
+	return regeneratePoetryLock()
 }
 
-func poetryUpdate() (err error) {
-	log.Info("Running Poetry update")
-	cmd := io.NewCommand("poetry", "update", []string{})
+func regeneratePoetryLock() (err error) {
+	log.Info("Syncing Poetry lock file")
+	cmd := io.NewCommand("poetry", "lock", []string{"--no-update"})
 	err = gofrogcmd.RunCmd(cmd)
 	if err != nil {
-		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
+		return errorutils.CheckErrorf("Poetry lock command failed with: %s", err.Error())
 	}
 	return
 }

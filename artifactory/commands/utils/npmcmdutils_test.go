@@ -140,7 +140,7 @@ func TestConfigureRegistry_Yarn(t *testing.T) {
 	// Verify that the correct .yarnrc entry was added
 	fileContent, err := os.ReadFile(yarnrcPath)
 	assert.NoError(t, err)
-	expectedRegistryLine := fmt.Sprintf("registry \"%sapi/npm/my-repo-virtual\"", testArtifactoryUrl)
+	expectedRegistryLine := fmt.Sprintf("registry \"%s/api/npm/my-repo-virtual\"", testArtifactoryUrl)
 	assert.Contains(t, string(fileContent), expectedRegistryLine)
 }
 
@@ -214,15 +214,12 @@ func TestHandleAnonymousAccess_Npm(t *testing.T) {
 	nm := setupNpmrcManager(project.Npm)
 	// Set basic auth credentials to be removed on the by the anonymous access method.
 	assert.NoError(t, nm.handleNpmrcBasicAuth("user", "password"))
+	assert.FileExists(t, tempNpmrcPath)
 
 	err := nm.handleNpmAnonymousAccess()
 	assert.NoError(t, err)
-
-	// Verify that the auth entries were removed from .npmrc
-	fileContent, err := os.ReadFile(tempNpmrcPath)
-	assert.NoError(t, err)
-	assert.NotContains(t, string(fileContent), "_auth")
-	assert.NotContains(t, string(fileContent), "_authToken")
+	// Verify that .npmrc was deleted because it should be empty.
+	assert.NoFileExists(t, tempNpmrcPath)
 }
 
 // Test for handling anonymous access in yarn.

@@ -1,7 +1,6 @@
 package yarn
 
 import (
-	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/repository"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -13,11 +12,9 @@ import (
 )
 
 type YarnLoginCommand struct {
-	commandName    string
-	npmVersion     *version.Version
-	executablePath string
-	repo           string
-	serverDetails  *config.ServerDetails
+	commandName   string
+	repo          string
+	serverDetails *config.ServerDetails
 }
 
 func NewYarnLoginCommand() *YarnLoginCommand {

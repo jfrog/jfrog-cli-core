@@ -217,6 +217,7 @@ func CreateServerDetailsWithConfigOffer(createServerDetails func() (*config.Serv
 	if err != nil {
 		return nil, err
 	}
+	log.Debug(fmt.Sprintf("Using <%s> server-id configuration", confDetails.ServerId))
 
 	// Take insecureTls value from options since it is not saved in config.
 	confDetails.InsecureTls = details.InsecureTls

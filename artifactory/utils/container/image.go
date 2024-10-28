@@ -86,6 +86,21 @@ func (image *Image) GetImageShortNameWithTag() (string, error) {
 	return imageName, nil
 }
 
+// GetImageLongNameWithoutRepoWithTag removes the registry hostname and repository name, returning the organization and image name with the tag.
+// e.g., "docker-local/myorg/hello-world:latest" -> "myorg/hello-world:latest"
+// e.g., "docker-local/hello-world:latest" -> "hello-world:latest"
+func (image *Image) GetImageLongNameWithoutRepoWithTag() (string, error) {
+	longName, err := image.GetImageLongNameWithTag()
+	if err != nil {
+		return "", err
+	}
+	parts := strings.Split(longName, "/")
+	if len(parts) > 1 {
+		return strings.Join(parts[1:], "/"), nil
+	}
+	return longName, nil
+}
+
 // Get image tag name of an image.
 // e.g.: https://my-registry/docker-local/hello-world:latest. -> latest
 func (image *Image) GetImageTag() (string, error) {

@@ -90,15 +90,15 @@ func (image *Image) GetImageShortNameWithTag() (string, error) {
 // e.g., "docker-local/myorg/hello-world:latest" -> "myorg/hello-world:latest"
 // e.g., "docker-local/hello-world:latest" -> "hello-world:latest"
 func (image *Image) GetImageLongNameWithoutRepoWithTag() (string, error) {
-	imageName, err := image.GetImageLongNameWithTag()
+	longName, err := image.GetImageLongNameWithTag()
 	if err != nil {
 		return "", err
 	}
-	parts := strings.Split(imageName, "/")
+	parts := strings.Split(longName, "/")
 	if len(parts) > 1 {
 		return strings.Join(parts[1:], "/"), nil
 	}
-	return parts[0], nil
+	return longName, nil
 }
 
 // Get image tag name of an image.

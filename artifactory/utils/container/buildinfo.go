@@ -362,6 +362,10 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 		Properties: imageProperties,
 		Artifacts:  []buildinfo.Artifact{getFatManifestArtifact(searchResultFatManifest)},
 	}}}
+	imageLongNameWithoutRepo, err := builder.image.GetImageLongNameWithoutRepoWithTag()
+	if err != nil {
+		return nil, err
+	}
 	// Create all image arch modules
 	for _, manifest := range fatManifest.Manifests {
 		image := candidateImages[manifest.Digest]
@@ -378,7 +382,7 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 			Id:        getModuleIdByManifest(manifest, baseModuleId),
 			Type:      buildinfo.Docker,
 			Artifacts: artifacts,
-			Parent:    baseModuleId,
+			Parent:    imageLongNameWithoutRepo,
 		})
 	}
 	return buildInfo, setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager)

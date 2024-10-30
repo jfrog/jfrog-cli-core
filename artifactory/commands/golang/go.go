@@ -413,3 +413,11 @@ func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, goProxyP
 
 	return goProxyParams.BuildUrl(rtUrl, repoName), nil
 }
+
+func GetModuleName(projectDir string) (string, error) {
+	path, err := biutils.GetModuleNameByDir(projectDir, log.Logger)
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return path, nil
+}

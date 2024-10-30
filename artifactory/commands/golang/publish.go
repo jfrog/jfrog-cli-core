@@ -34,7 +34,7 @@ func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectK
 	}
 
 	// Read module name
-	moduleName, err := getModuleName(projectPath)
+	moduleName, err := GetModuleName(projectPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -241,14 +241,6 @@ type goInfo struct {
 
 func getProjectRoot() (string, error) {
 	path, err := utils.GetProjectRoot()
-	if err != nil {
-		return "", errorutils.CheckError(err)
-	}
-	return path, nil
-}
-
-func getModuleName(projectDir string) (string, error) {
-	path, err := utils.GetModuleNameByDir(projectDir, log.Logger)
 	if err != nil {
 		return "", errorutils.CheckError(err)
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	rtutils "github.com/jfrog/jfrog-client-go/utils"
@@ -18,6 +17,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -135,7 +135,7 @@ func (gc *GoCommand) extractNoFallbackFromArgs() (cleanArgs []string, err error)
 }
 
 func (gc *GoCommand) run() (err error) {
-	err = goutils.LogGoVersion()
+	err = logGoVersion()
 	if err != nil {
 		return
 	}
@@ -154,7 +154,7 @@ func (gc *GoCommand) run() (err error) {
 		return
 	}
 	// If noFallback=false, missing packages will be fetched directly from VCS
-	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo(), goutils.GoProxyUrlParams{Direct: !gc.noFallback})
+	repoUrl, err := getArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo(), GoProxyUrlParams{Direct: !gc.noFallback})
 	if err != nil {
 		return
 	}
@@ -328,15 +328,15 @@ func buildPackageVersionRequest(name, branchName string) string {
 	return path.Join(packageVersionRequest, "latest.info")
 }
 
-func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, goProxyParams goutils.GoProxyUrlParams) (err error) {
+func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsRepo string, goProxyParams GoProxyUrlParams) (err error) {
 	if err = setGoProxy(serverDetails, depsRepo, goProxyParams); err != nil {
 		err = fmt.Errorf("failed while setting Artifactory as a dependencies resolution registry: %s", err.Error())
 	}
 	return
 }
 
-func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyParams goutils.GoProxyUrlParams) error {
-	repoUrl, err := goutils.GetArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyParams)
+func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyParams GoProxyUrlParams) error {
+	repoUrl, err := getArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyParams)
 	if err != nil {
 		return err
 	}
@@ -345,4 +345,71 @@ func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyParams
 
 func SetGoModCache(cacheFolder string) error {
 	return os.Setenv("GOMODCACHE", cacheFolder)
+}
+
+func logGoVersion() error {
+	version, err := biutils.GetParsedGoVersion()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	log.Info("Using go:", version.GetVersion())
+	return nil
+}
+
+type GoProxyUrlParams struct {
+	// Fallback to retrieve the modules directly from the source if
+	// the module failed to be retrieved from the proxy.
+	// add |direct to the end of the url.
+	// example: https://gocenter.io|direct
+	Direct bool
+	// The path from baseUrl to the standard Go repository path
+	// URL structure: <baseUrl>/<EndpointPrefix>/api/go/<repoName>
+	EndpointPrefix string
+}
+
+func (gdu *GoProxyUrlParams) BuildUrl(url *url.URL, repoName string) string {
+	url.Path = path.Join(url.Path, gdu.EndpointPrefix, "api/go/", repoName)
+
+	return gdu.addDirect(url.String())
+}
+
+func (gdu *GoProxyUrlParams) addDirect(url string) string {
+	if gdu.Direct && !strings.HasSuffix(url, "|direct") {
+		return url + "|direct"
+	}
+	return url
+}
+
+func getArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, goProxyParams GoProxyUrlParams) (string, error) {
+	authServerDetails, err := serverDetails.CreateArtAuthConfig()
+	if err != nil {
+		return "", err
+	}
+	return getArtifactoryApiUrl(repo, authServerDetails, goProxyParams)
+}
+
+// Gets the URL of the specified repository Go API in Artifactory.
+// The URL contains credentials (username and access token or password).
+func getArtifactoryApiUrl(repoName string, details auth.ServiceDetails, goProxyParams GoProxyUrlParams) (string, error) {
+	rtUrl, err := url.Parse(details.GetUrl())
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+
+	username := details.GetUser()
+	password := details.GetPassword()
+
+	// Get credentials from access-token if exists.
+	if details.GetAccessToken() != "" {
+		log.Debug("Using proxy with access-token.")
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(details.GetAccessToken())
+		}
+		password = details.GetAccessToken()
+	}
+	if password != "" {
+		rtUrl.User = url.UserPassword(username, password)
+	}
+
+	return goProxyParams.BuildUrl(rtUrl, repoName), nil
 }

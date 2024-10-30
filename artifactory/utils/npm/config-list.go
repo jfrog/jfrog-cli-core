@@ -3,7 +3,6 @@ package npm
 import (
 	"errors"
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"io"
 )
@@ -34,8 +33,8 @@ func GetConfigList(npmFlags []string, executablePath string) (data []byte, err e
 	return data, nil
 }
 
-func createConfigListCmdConfig(executablePath string, splitFlags []string, pipeWriter *io.PipeWriter) *npmutils.NpmConfig {
-	return &npmutils.NpmConfig{
+func createConfigListCmdConfig(executablePath string, splitFlags []string, pipeWriter *io.PipeWriter) *NpmConfig {
+	return &NpmConfig{
 		Npm:          executablePath,
 		Command:      []string{"c", "ls"},
 		CommandFlags: splitFlags,

@@ -11,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
@@ -126,12 +125,12 @@ func (pc *PoetryCommand) SetCommandName(commandName string) *PoetryCommand {
 }
 
 func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, username, password, err := python.GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository, false)
+	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository, false)
 	if err != nil {
 		return err
 	}
 	if password != "" {
-		return python.ConfigPoetryRepo(
+		return ConfigPoetryRepo(
 			rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path,
 			username,
 			password,

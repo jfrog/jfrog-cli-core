@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/url"
 	"path"
 	"strings"
 )
@@ -249,16 +250,16 @@ func isSupportedModule(module *buildInfo.Module) bool {
 }
 
 func createDockerMultiArchTitle(module *buildInfo.Module) string {
-	parentImageName := strings.Split(module.Parent, ":")[0]
-	var sha256 string
-	for _, artifact := range module.Artifacts {
-		if artifact.Name == container.ManifestJsonFile {
-			sha256 = artifact.Sha256
-			break
-		}
-	}
 	if StaticMarkdownConfig.IsExtendedSummary() {
-		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetPlatformUrl(), "/"), "%2F%2F"+parentImageName, sha256)
+		parentImageName := strings.Split(module.Parent, ":")[0]
+		var sha256 string
+		for _, artifact := range module.Artifacts {
+			if artifact.Name == container.ManifestJsonFile {
+				sha256 = artifact.Sha256
+				break
+			}
+		}
+		dockerModuleLink := fmt.Sprintf(artifactoryDockerPackagesUiFormat, strings.TrimSuffix(StaticMarkdownConfig.GetPlatformUrl(), "/"), "%2F%2F"+url.PathEscape(parentImageName), sha256)
 		return fmt.Sprintf("%s <a href=%s>(🐸 View)</a>", module.Id, dockerModuleLink)
 	}
 	return module.Id

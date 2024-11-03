@@ -5,18 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/http/httpclient"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 // To create a new command summary, the user must implement this interface.
@@ -275,43 +270,6 @@ func UnmarshalFromFilePath(dataFile string, target any) (err error) {
 		return errorutils.CheckError(err)
 	}
 	return
-}
-
-func CheckExtendedSummaryEntitled(serverUrl string) (bool, error) {
-	// Parse and validate the URL
-	parsedUrl, err := url.Parse(serverUrl)
-	if err != nil || !parsedUrl.IsAbs() {
-		return false, fmt.Errorf("invalid server URL: %s", serverUrl)
-	}
-
-	// Construct the full URL
-	fullUrl := fmt.Sprintf("%sui/api/v1/system/auth/screen/footer", parsedUrl.String())
-
-	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
-	if err != nil {
-		return false, errorutils.CheckError(err)
-	}
-
-	resp, body, _, err := client.SendGet(fullUrl, false, httputils.HttpClientDetails{}, "")
-	if err != nil {
-		fmt.Println("Error making HTTP request:", err)
-		return false, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Non-OK HTTP status:", resp.StatusCode)
-		return false, nil
-	}
-
-	var result struct {
-		PlatformId string `json:"platformId"`
-	}
-
-	if err := json.Unmarshal(body, &result); err != nil {
-		return false, errorutils.CheckError(err)
-	}
-	entitled := strings.Contains(strings.ToLower(result.PlatformId), "enterprise")
-	return entitled, nil
 }
 
 // Converts the given data into a byte array.

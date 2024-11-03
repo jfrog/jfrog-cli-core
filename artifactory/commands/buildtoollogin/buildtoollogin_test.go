@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -119,7 +120,7 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 	}{
 		{
 			name:        "Token Authentication",
-			accessToken: "test-token",
+			accessToken: dummyToken,
 		},
 		{
 			name:     "Basic Authentication",
@@ -201,7 +202,7 @@ func TestBuildToolLoginCommand_Pip(t *testing.T) {
 	}{
 		{
 			name:        "Token Authentication",
-			accessToken: "test-token",
+			accessToken: dummyToken,
 		},
 		{
 			name:     "Basic Authentication",
@@ -233,15 +234,16 @@ func TestBuildToolLoginCommand_Pip(t *testing.T) {
 			assert.NoError(t, err)
 			pipConfigContent := string(pipConfigContentBytes)
 
-			// Validate that the index URL was set correctly in pip.conf.
-			assert.Contains(t, pipConfigContent, fmt.Sprintf("index-url = https://%s:%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple", testCase.user, testCase.password))
-
-			// Validate token-based authentication.
-			if testCase.accessToken != "" {
-				assert.Contains(t, pipConfigContent, fmt.Sprintf("index-url = https://%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple", "test-token"))
-			} else if testCase.user != "" && testCase.password != "" {
+			switch {
+			case testCase.accessToken != "":
+				// Validate token-based authentication.
+				assert.Contains(t, pipConfigContent, fmt.Sprintf("index-url = https://%s:%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple", auth.ExtractUsernameFromAccessToken(testCase.accessToken), testCase.accessToken))
+			case testCase.user != "" && testCase.password != "":
 				// Validate basic authentication with user and password.
 				assert.Contains(t, pipConfigContent, fmt.Sprintf("index-url = https://%s:%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple", "myUser", "myPassword"))
+			default:
+				// Validate anonymous access.
+				assert.Contains(t, pipConfigContent, "index-url = https://acme.jfrog.io/artifactory/api/pypi/test-repo/simple")
 			}
 		})
 	}

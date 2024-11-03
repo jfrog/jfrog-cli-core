@@ -52,7 +52,7 @@ func GetPypiRemoteRegistryFlag(tool pythonutils.PythonTool) string {
 	return pipenvRemoteRegistryFlag
 }
 
-// Get the pypi repository embedded credentials URL (https://<user>:<token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple)
+// Get the pypi repository embedded credentials URL (https://<user>:<password/token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple)
 func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string, isCurationCmd bool) (string, error) {
 	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(serverDetails, repository, isCurationCmd)
 	if err != nil {

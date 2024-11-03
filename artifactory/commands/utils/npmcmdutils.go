@@ -1,10 +1,12 @@
 package utils
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
@@ -97,6 +99,27 @@ func getNpmAuthFromArtifactory(artDetails auth.ServiceDetails) (npmAuth string, 
 
 func GetNpmRepositoryUrl(repositoryName, artifactoryUrl string) string {
 	return strings.TrimSuffix(artifactoryUrl, "/") + "/api/npm/" + repositoryName
+}
+
+// GetNpmAuthKeyValue generates the correct authentication key and value for npm or Yarn, based on the repo URL.
+func GetNpmAuthKeyValue(serverDetails *config.ServerDetails, repoUrl string) (key, value string) {
+	keySuffix := ""
+	if serverDetails.GetAccessToken() != "" {
+		keySuffix = NpmConfigAuthTokenKey
+		value = serverDetails.GetAccessToken()
+	} else if serverDetails.GetUser() != "" && serverDetails.GetPassword() != "" {
+		keySuffix = NpmConfigAuthKey
+		value = basicAuthBase64Encode(serverDetails.GetUser(), serverDetails.GetPassword())
+	} else {
+		return "", ""
+	}
+
+	return fmt.Sprintf("//%s:%s", strings.TrimPrefix(repoUrl, "https://"), keySuffix), value
+}
+
+// basicAuthBase64Encode encodes user credentials in Base64 for basic authentication.
+func basicAuthBase64Encode(user, password string) string {
+	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, password)))
 }
 
 // Remove all the none npm CLI flags from args.

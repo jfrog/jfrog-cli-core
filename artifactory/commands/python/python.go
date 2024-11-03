@@ -11,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
@@ -118,11 +117,11 @@ func (pc *PythonCommand) SetCommandName(commandName string) *PythonCommand {
 }
 
 func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, err := python.GetPypiRepoUrl(pc.serverDetails, pc.repository, false)
+	rtUrl, err := GetPypiRepoUrl(pc.serverDetails, pc.repository, false)
 	if err != nil {
 		return err
 	}
-	pc.args = append(pc.args, python.GetPypiRemoteRegistryFlag(pc.pythonTool), rtUrl)
+	pc.args = append(pc.args, GetPypiRemoteRegistryFlag(pc.pythonTool), rtUrl)
 	return nil
 }
 

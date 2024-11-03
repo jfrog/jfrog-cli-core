@@ -81,8 +81,8 @@ func TestGetNpmAuth(t *testing.T) {
 	}
 }
 
-// Helper function to set up the NpmrcYarnrcManager.
-func setupNpmrcManager(buildTool project.ProjectType) *NpmrcYarnrcManager {
+// Helper function to set up the BuildToolLogin.
+func setupNpmrcManager(buildTool project.ProjectType) *BuildToolLogin {
 	serverDetails := &config.ServerDetails{
 		ArtifactoryUrl: testArtifactoryUrl,
 	}
@@ -184,7 +184,7 @@ func TestHandleNpmrcBasicAuth(t *testing.T) {
 	tempDir := t.TempDir()
 	t.Setenv("NPM_CONFIG_USERCONFIG", filepath.Join(tempDir, ".npmrc"))
 
-	// Set up the NpmrcYarnrcManager for npm build tool.
+	// Set up the BuildToolLogin for npm build tool.
 	nm := setupNpmrcManager(project.Npm)
 
 	// Actual username and password for testing.

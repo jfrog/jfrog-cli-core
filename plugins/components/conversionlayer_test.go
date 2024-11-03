@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli"
 )
@@ -20,11 +19,7 @@ func TestCreateCommandUsages(t *testing.T) {
 	strFlag := NewStringFlag("flag", "", SetMandatory())
 
 	override := []string{"usage override", "usage override 2", "usage override 3"}
-	expectedOverride := []string{
-		fmt.Sprintf("%s %s", coreutils.GetCliExecutableName(), "usage override"),
-		fmt.Sprintf("%s %s", coreutils.GetCliExecutableName(), "usage override 2"),
-		fmt.Sprintf("%s %s", coreutils.GetCliExecutableName(), "usage override 3"),
-	}
+	expectedOverride := override
 
 	tests := []struct {
 		name        string

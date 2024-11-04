@@ -229,10 +229,9 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 	default:
 		poetryConfigDir = filepath.Join(homeDir, ".config")
 	}
-	// Poetry uses keyring by default, we need to disable it so the password/token will be stored in the config file and could be tested.
-	t.Setenv("POETRY_NO_KEYRING", "1")
 
 	poetryConfigFilePath := filepath.Join(poetryConfigDir, "pypoetry", "config.toml")
+	// Poetry stores the auth in a separate file
 	poetryAuthFilePath := filepath.Join(poetryConfigDir, "pypoetry", "auth.toml")
 
 	// Back up the existing config.toml and auth.toml files and ensure restoration after the test.
@@ -249,9 +248,6 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			// Clean up the temporary Poetry config file.
-			assert.NoError(t, os.Remove(poetryConfigFilePath))
-
 			// Set up server details for the current test case's authentication type.
 			poetryLoginCmd.serverDetails.SetUser(testCase.user)
 			poetryLoginCmd.serverDetails.SetPassword(testCase.password)
@@ -262,22 +258,29 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 				t.FailNow()
 			}
 
+			// Validate that the repository URL was set correctly in config.toml.
 			// Read the contents of the temporary Poetry config file.
 			poetryConfigContentBytes, err := os.ReadFile(poetryConfigFilePath)
 			assert.NoError(t, err)
 			poetryConfigContent := string(poetryConfigContentBytes)
+			assert.Contains(t, poetryConfigContent, "[repositories.test-repo]\nurl = \"https://acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"")
 
-			switch {
-			case testCase.accessToken != "":
-				// Validate token-based authentication.
-				assert.Contains(t, poetryConfigContent, fmt.Sprintf("[repositories.test-repo]\nurl = \"https://%s:%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"", auth.ExtractUsernameFromAccessToken(testCase.accessToken), testCase.accessToken))
-			case testCase.user != "" && testCase.password != "":
-				// Validate basic authentication with user and password.
-				assert.Contains(t, poetryConfigContent, fmt.Sprintf("[repositories.test-repo]\nurl = \"https://%s:%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"", "myUser", "myPassword"))
-			default:
-				// Validate anonymous access.
-				assert.Contains(t, poetryConfigContent, "[repositories.test-repo]\nurl = \"https://acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"")
+			// Validate that the auth details were set correctly in auth.toml.
+			// Read the contents of the temporary Poetry config file.
+			poetryAuthContentBytes, err := os.ReadFile(poetryAuthFilePath)
+			assert.NoError(t, err)
+			poetryAuthContent := string(poetryAuthContentBytes)
+			if testCase.accessToken != "" {
+				// Validate token-based authentication (The token is stored in the keyring so we can't test it)
+				assert.Contains(t, poetryAuthContent, fmt.Sprintf("[http-basic.test-repo]\nusername = \"%s\"", auth.ExtractUsernameFromAccessToken(testCase.accessToken)))
+			} else if testCase.user != "" && testCase.password != "" {
+				// Validate basic authentication with user and password. (The password is stored in the keyring so we can't test it)
+				assert.Contains(t, poetryAuthContent, fmt.Sprintf("[http-basic.test-repo]\nusername = \"%s\"", "myUser"))
 			}
+
+			// Clean up the temporary Poetry config files.
+			assert.NoError(t, os.Remove(poetryConfigFilePath))
+			assert.NoError(t, os.Remove(poetryAuthFilePath))
 		})
 	}
 }

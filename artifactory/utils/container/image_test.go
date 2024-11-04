@@ -82,6 +82,28 @@ func TestGetImageLongNameWithTag(t *testing.T) {
 	_, err := NewImage("domain").GetImageLongNameWithTag()
 	assert.Error(t, err)
 }
+
+func TestGetImageLongNameWithoutRepoWithTag(t *testing.T) {
+	var imageTags = []struct {
+		in       string
+		expected string
+	}{
+		{"domain:8080/repo-name/hello-world:latest", "hello-world:latest"},
+		{"domain/repo-name/hello-world:latest", "hello-world:latest"},
+		{"domain/repo-name/org-name/hello-world:latest", "org-name/hello-world:latest"},
+		{"domain/repo-name/org-name/hello-world", "org-name/hello-world:latest"},
+	}
+
+	for _, v := range imageTags {
+		result, err := NewImage(v.in).GetImageLongNameWithoutRepoWithTag()
+		assert.NoError(t, err)
+		assert.Equal(t, v.expected, result)
+	}
+	// Validate failure upon missing image name
+	_, err := NewImage("domain").GetImageLongNameWithoutRepoWithTag()
+	assert.Error(t, err)
+}
+
 func TestGetImageShortNameWithTag(t *testing.T) {
 	var imageTags = []struct {
 		in       string

@@ -39,6 +39,7 @@ const (
 	Dotnet
 	Build
 	Terraform
+	Cocoapods
 )
 
 type ConfigType string
@@ -62,6 +63,7 @@ var ProjectTypes = []string{
 	"dotnet",
 	"build",
 	"terraform",
+	"cocoapods",
 }
 
 func (projectType ProjectType) String() string {

@@ -51,17 +51,15 @@ func (btlc *BuildToolLoginCommand) Run() (err error) {
 		err = btlc.configureNpm()
 	case project.Yarn:
 		err = btlc.configureYarn()
-	case project.Pip:
+	case project.Pip, project.Pipenv:
 		err = btlc.configurePip()
-	case project.Pipenv:
-		err = btlc.configurePipenv()
 	case project.Poetry:
 		err = btlc.configurePoetry()
 	default:
 		err = errorutils.CheckErrorf("unsupported build tool: %s", btlc.buildTool)
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to configure %s: %w", btlc.buildTool.String(), err)
 	}
 
 	log.Info(fmt.Sprintf("Successfully configured %s to use JFrog Artifactory repository '%s'.", btlc.buildTool.String(), btlc.repoName))
@@ -86,7 +84,7 @@ func (btlc *BuildToolLoginCommand) SetVirtualRepoNameInteractively() error {
 	return err
 }
 
-// configurePip sets the global index-url for pip to use Artifactory.
+// configurePip sets the global index-url for pip/pipenv to use Artifactory.
 // Running the following commands:
 //
 //	pip config set global index-url https://<user>:<token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
@@ -96,18 +94,6 @@ func (btlc *BuildToolLoginCommand) configurePip() error {
 		return err
 	}
 	return pythoncommands.RunConfigCommand(btlc.buildTool, []string{"set", "global.index-url", repoWithCredsUrl})
-}
-
-// configurePipenv sets the PyPI URL for pipenv to use Artifactory.
-// Running the following commands:
-//
-//	pipenv config set pypi.url https://<user>:<password/token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
-func (btlc *BuildToolLoginCommand) configurePipenv() error {
-	repoWithCredsUrl, err := pythoncommands.GetPypiRepoUrl(btlc.serverDetails, btlc.repoName, false)
-	if err != nil {
-		return err
-	}
-	return pythoncommands.RunConfigCommand(btlc.buildTool, []string{"set", "pypi.url", repoWithCredsUrl})
 }
 
 // configurePoetry configures a Poetry repository and basic auth credentials.

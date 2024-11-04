@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
@@ -16,6 +17,26 @@ import (
 
 // #nosec G101 -- Dummy token for tests
 var dummyToken = "eyJ2ZXIiOiIyIiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYiLCJraWQiOiJIcnU2VHctZk1yOTV3dy12TDNjV3ZBVjJ3Qm9FSHpHdGlwUEFwOE1JdDljIn0.eyJzdWIiOiJqZnJ0QDAxYzNnZmZoZzJlOHc2MTQ5ZTNhMnEwdzk3XC91c2Vyc1wvYWRtaW4iLCJzY3AiOiJtZW1iZXItb2YtZ3JvdXBzOnJlYWRlcnMgYXBpOioiLCJhdWQiOiJqZnJ0QDAxYzNnZmZoZzJlOHc2MTQ5ZTNhMnEwdzk3IiwiaXNzIjoiamZydEAwMWMzZ2ZmaGcyZTh3NjE0OWUzYTJxMHc5NyIsImV4cCI6MTU1NjAzNzc2NSwiaWF0IjoxNTU2MDM0MTY1LCJqdGkiOiI1M2FlMzgyMy05NGM3LTQ0OGItOGExOC1iZGVhNDBiZjFlMjAifQ.Bp3sdvppvRxysMlLgqT48nRIHXISj9sJUCXrm7pp8evJGZW1S9hFuK1olPmcSybk2HNzdzoMcwhUmdUzAssiQkQvqd_HanRcfFbrHeg5l1fUQ397ECES-r5xK18SYtG1VR7LNTVzhJqkmRd3jzqfmIK2hKWpEgPfm8DRz3j4GGtDRxhb3oaVsT2tSSi_VfT3Ry74tzmO0GcCvmBE2oh58kUZ4QfEsalgZ8IpYHTxovsgDx_M7ujOSZx_hzpz-iy268-OkrU22PQPCfBmlbEKeEUStUO9n0pj4l1ODL31AGARyJRy46w4yzhw7Fk5P336WmDMXYs5LAX2XxPFNLvNzA"
+
+var testCases = []struct {
+	name        string
+	user        string
+	password    string
+	accessToken string
+}{
+	{
+		name:        "Token Authentication",
+		accessToken: dummyToken,
+	},
+	{
+		name:     "Basic Authentication",
+		user:     "myUser",
+		password: "myPassword",
+	},
+	{
+		name: "Anonymous Access",
+	},
+}
 
 func createTestBuildToolLoginCommand(buildTool project.ProjectType) *BuildToolLoginCommand {
 	cmd := NewBuildToolLoginCommand(buildTool)
@@ -35,27 +56,6 @@ func TestBuildToolLoginCommand_Npm(t *testing.T) {
 
 	npmLoginCmd := createTestBuildToolLoginCommand(project.Npm)
 
-	// Define test cases for different authentication types.
-	testCases := []struct {
-		name        string
-		user        string
-		password    string
-		accessToken string
-	}{
-		{
-			name:        "Token Authentication",
-			accessToken: dummyToken,
-		},
-		{
-			name:     "Basic Authentication",
-			user:     "myUser",
-			password: "myPassword",
-		},
-		{
-			name: "Anonymous Access",
-		},
-	}
-
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Set up server details for the current test case's authentication type.
@@ -64,7 +64,7 @@ func TestBuildToolLoginCommand_Npm(t *testing.T) {
 			npmLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if npmLoginCmd.Run() != nil {
+			if !assert.NoError(t, npmLoginCmd.Run()) {
 				t.FailNow()
 			}
 
@@ -111,27 +111,6 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 
 	yarnLoginCmd := createTestBuildToolLoginCommand(project.Yarn)
 
-	// Define test cases for different authentication types.
-	testCases := []struct {
-		name        string
-		user        string
-		password    string
-		accessToken string
-	}{
-		{
-			name:        "Token Authentication",
-			accessToken: dummyToken,
-		},
-		{
-			name:     "Basic Authentication",
-			user:     "myUser",
-			password: "myPassword",
-		},
-		{
-			name: "Anonymous Access",
-		},
-	}
-
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Set up server details for the current test case's authentication type.
@@ -140,7 +119,7 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 			yarnLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if yarnLoginCmd.Run() != nil {
+			if !assert.NoError(t, yarnLoginCmd.Run()) {
 				t.FailNow()
 			}
 
@@ -174,6 +153,16 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 }
 
 func TestBuildToolLoginCommand_Pip(t *testing.T) {
+	// pip and pipenv share the same configuration file.
+	testBuildToolLoginCommandPip(t, project.Pip)
+}
+
+func TestBuildToolLoginCommand_Pipenv(t *testing.T) {
+	// pip and pipenv share the same configuration file.
+	testBuildToolLoginCommandPip(t, project.Pipenv)
+}
+
+func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
 	// Retrieve the home directory and construct the pip.conf file path.
 	homeDir, err := os.UserHomeDir()
 	assert.NoError(t, err)
@@ -191,28 +180,7 @@ func TestBuildToolLoginCommand_Pip(t *testing.T) {
 		assert.NoError(t, restorePipConfFunc())
 	}()
 
-	pipLoginCmd := createTestBuildToolLoginCommand(project.Pip)
-
-	// Define test cases for different authentication types.
-	testCases := []struct {
-		name        string
-		user        string
-		password    string
-		accessToken string
-	}{
-		{
-			name:        "Token Authentication",
-			accessToken: dummyToken,
-		},
-		{
-			name:     "Basic Authentication",
-			user:     "myUser",
-			password: "myPassword",
-		},
-		{
-			name: "Anonymous Access",
-		},
-	}
+	pipLoginCmd := createTestBuildToolLoginCommand(buildTool)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -225,7 +193,7 @@ func TestBuildToolLoginCommand_Pip(t *testing.T) {
 			pipLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if pipLoginCmd.Run() != nil {
+			if !assert.NoError(t, pipLoginCmd.Run()) {
 				t.FailNow()
 			}
 
@@ -248,11 +216,68 @@ func TestBuildToolLoginCommand_Pip(t *testing.T) {
 		})
 	}
 }
-
-func TestBuildToolLoginCommand_configurePipenv(t *testing.T) {
-	// todo
-}
-
 func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
-	// todo
+	// Retrieve the home directory and construct the .yarnrc file path.
+	homeDir, err := os.UserHomeDir()
+	assert.NoError(t, err)
+	var poetryConfigDir string
+	switch {
+	case io.IsWindows():
+		poetryConfigDir = filepath.Join(homeDir, "AppData", "Roaming")
+	case io.IsMacOS():
+		poetryConfigDir = filepath.Join(homeDir, "Library", "Application Support")
+	default:
+		poetryConfigDir = filepath.Join(homeDir, ".config")
+	}
+	// Poetry uses keyring by default, we need to disable it so the password/token will be stored in the config file and could be tested.
+	t.Setenv("POETRY_NO_KEYRING", "1")
+
+	poetryConfigFilePath := filepath.Join(poetryConfigDir, "pypoetry", "config.toml")
+	poetryAuthFilePath := filepath.Join(poetryConfigDir, "pypoetry", "auth.toml")
+
+	// Back up the existing config.toml and auth.toml files and ensure restoration after the test.
+	restorePoetryConfigFunc, err := ioutils.BackupFile(poetryConfigFilePath, ".poetry.config.backup")
+	assert.NoError(t, err)
+	restorePoetryAuthFunc, err := ioutils.BackupFile(poetryAuthFilePath, ".poetry-auth.backup")
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, restorePoetryConfigFunc())
+		assert.NoError(t, restorePoetryAuthFunc())
+	}()
+
+	poetryLoginCmd := createTestBuildToolLoginCommand(project.Poetry)
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			// Clean up the temporary Poetry config file.
+			assert.NoError(t, os.Remove(poetryConfigFilePath))
+
+			// Set up server details for the current test case's authentication type.
+			poetryLoginCmd.serverDetails.SetUser(testCase.user)
+			poetryLoginCmd.serverDetails.SetPassword(testCase.password)
+			poetryLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
+
+			// Run the login command and ensure no errors occur.
+			if !assert.NoError(t, poetryLoginCmd.Run()) {
+				t.FailNow()
+			}
+
+			// Read the contents of the temporary Poetry config file.
+			poetryConfigContentBytes, err := os.ReadFile(poetryConfigFilePath)
+			assert.NoError(t, err)
+			poetryConfigContent := string(poetryConfigContentBytes)
+
+			switch {
+			case testCase.accessToken != "":
+				// Validate token-based authentication.
+				assert.Contains(t, poetryConfigContent, fmt.Sprintf("[repositories.test-repo]\nurl = \"https://%s:%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"", auth.ExtractUsernameFromAccessToken(testCase.accessToken), testCase.accessToken))
+			case testCase.user != "" && testCase.password != "":
+				// Validate basic authentication with user and password.
+				assert.Contains(t, poetryConfigContent, fmt.Sprintf("[repositories.test-repo]\nurl = \"https://%s:%s@acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"", "myUser", "myPassword"))
+			default:
+				// Validate anonymous access.
+				assert.Contains(t, poetryConfigContent, "[repositories.test-repo]\nurl = \"https://acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"")
+			}
+		})
+	}
 }

@@ -3,13 +3,14 @@ package commandsummary
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
-	"net/http"
-	"net/url"
-	"strings"
 )
 
 // Static struct to hold the Markdown configuration values
@@ -62,7 +63,7 @@ func (mg *MarkdownConfig) SetScanResultsMapping(resultsMap map[string]ScanResult
 
 // Initializes the command summary values that effect Markdown generation
 func InitMarkdownGenerationValues(serverUrl string, platformMajorVersion int) (err error) {
-	entitled, err := checkExtendedSummaryEntitled(serverUrl)
+	entitled, err := CheckExtendedSummaryEntitled(serverUrl)
 	if err != nil {
 		return
 	}
@@ -72,7 +73,7 @@ func InitMarkdownGenerationValues(serverUrl string, platformMajorVersion int) (e
 	return
 }
 
-func checkExtendedSummaryEntitled(serverUrl string) (bool, error) {
+func CheckExtendedSummaryEntitled(serverUrl string) (bool, error) {
 	// Parse and validate the URL
 	parsedUrl, err := url.Parse(serverUrl)
 	if err != nil || !parsedUrl.IsAbs() {

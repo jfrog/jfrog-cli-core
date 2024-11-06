@@ -9,8 +9,10 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/io"
+	clientTestUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 )
@@ -278,8 +280,11 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 }
 
 func TestBuildToolLoginCommand_Go(t *testing.T) {
-	// todo: Implement this test
-	t.Skip()
+	goProxyEnv := "GOPROXY"
+	// Restore the original value of the GOPROXY environment variable after the test.
+	restoreGoProxy := clientTestUtils.SetEnvWithCallbackAndAssert(t, goProxyEnv, "")
+	defer restoreGoProxy()
+
 	// Assuming createTestBuildToolLoginCommand initializes your Go login command
 	goLoginCmd := createTestBuildToolLoginCommand(project.Go)
 
@@ -295,7 +300,10 @@ func TestBuildToolLoginCommand_Go(t *testing.T) {
 				t.FailNow()
 			}
 
-			goProxy := os.Getenv("GOPROXY")
+			// Get the value of the GOPROXY environment variable.
+			outputBytes, err := exec.Command("go", "env", "GOPROXY").Output()
+			assert.NoError(t, err)
+			goProxy := string(outputBytes)
 
 			switch {
 			case testCase.accessToken != "":

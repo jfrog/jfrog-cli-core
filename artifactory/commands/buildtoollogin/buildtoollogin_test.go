@@ -267,6 +267,9 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 			poetryAuthContentBytes, err := os.ReadFile(poetryAuthFilePath)
 			assert.NoError(t, err)
 			poetryAuthContent := string(poetryAuthContentBytes)
+			// Normalize line endings for comparison.(For Windows)
+			poetryConfigContent = strings.ReplaceAll(poetryConfigContent, "\r\n", "\n")
+
 			if testCase.accessToken != "" {
 				// Validate token-based authentication (The token is stored in the keyring so we can't test it)
 				assert.Contains(t, poetryAuthContent, fmt.Sprintf("[http-basic.test-repo]\nusername = \"%s\"", auth.ExtractUsernameFromAccessToken(testCase.accessToken)))

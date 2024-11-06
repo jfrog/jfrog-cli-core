@@ -134,7 +134,7 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 			} else if testCase.user != "" && testCase.password != "" {
 				// Validate basic authentication with encoded credentials.
 				// Base64 encoding of "myUser:myPassword"
-				assert.Contains(t, yarnrcContent, fmt.Sprintf("\"//acme.jfrog.io/artifactory/api/npm/test-repo:%s\"bXlVc2VyOm15UGFzc3dvcmQ=", cmdutils.NpmConfigAuthKey))
+				assert.Contains(t, yarnrcContent, fmt.Sprintf("\"//acme.jfrog.io/artifactory/api/npm/test-repo:%s\" bXlVc2VyOm15UGFzc3dvcmQ=", cmdutils.NpmConfigAuthKey))
 			}
 
 			// Clean up the temporary npmrc file.

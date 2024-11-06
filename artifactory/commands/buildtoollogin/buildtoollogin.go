@@ -125,7 +125,7 @@ func (btlc *BuildToolLoginCommand) configurePip() error {
 	if err != nil {
 		return err
 	}
-	return pythoncommands.RunConfigCommand(btlc.buildTool, []string{"set", "global.index-url", repoWithCredsUrl})
+	return pythoncommands.RunConfigCommand(project.Pip, []string{"set", "global.index-url", repoWithCredsUrl})
 }
 
 // configurePoetry configures Poetry to use the specified repository and authentication credentials.

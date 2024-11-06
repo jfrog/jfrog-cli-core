@@ -76,17 +76,13 @@ func TestBuildToolLoginCommand_Npm(t *testing.T) {
 			// Validate that the registry URL was set correctly in .npmrc.
 			assert.Contains(t, npmrcContent, fmt.Sprintf("%s=%s", cmdutils.NpmConfigRegistryKey, "https://acme.jfrog.io/artifactory/api/npm/test-repo"))
 
-			// Define expected keys for basic and token auth in the .npmrc.
-			basicAuthKey := fmt.Sprintf("//acme.jfrog.io/artifactory/api/npm/test-repo:%s=", cmdutils.NpmConfigAuthKey)
-			tokenAuthKey := fmt.Sprintf("//acme.jfrog.io/artifactory/api/npm/test-repo:%s=", cmdutils.NpmConfigAuthTokenKey)
-
 			// Validate token-based authentication.
 			if testCase.accessToken != "" {
-				assert.Contains(t, npmrcContent, tokenAuthKey+"test-token")
+				assert.Contains(t, npmrcContent, fmt.Sprintf("//acme.jfrog.io/artifactory/api/npm/test-repo:%s=%s", cmdutils.NpmConfigAuthTokenKey, dummyToken))
 			} else if testCase.user != "" && testCase.password != "" {
 				// Validate basic authentication with encoded credentials.
 				// Base64 encoding of "myUser:myPassword"
-				expectedBasicAuth := basicAuthKey + "\"bXlVc2VyOm15UGFzc3dvcmQ=\""
+				expectedBasicAuth := fmt.Sprintf("//acme.jfrog.io/artifactory/api/npm/test-repo:%s=\"bXlVc2VyOm15UGFzc3dvcmQ=\"", cmdutils.NpmConfigAuthKey)
 				assert.Contains(t, npmrcContent, expectedBasicAuth)
 			}
 
@@ -131,19 +127,14 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 			// Check that the registry URL is correctly set in .yarnrc.
 			assert.Contains(t, yarnrcContent, fmt.Sprintf("%s \"%s\"", cmdutils.NpmConfigRegistryKey, "https://acme.jfrog.io/artifactory/api/npm/test-repo"))
 
-			// Define expected keys for basic auth and token-based auth in .yarnrc.
-			basicAuthKey := fmt.Sprintf("\"//acme.jfrog.io/artifactory/api/npm/test-repo:%s\" ", cmdutils.NpmConfigAuthKey)
-			tokenAuthKey := fmt.Sprintf("\"//acme.jfrog.io/artifactory/api/npm/test-repo:%s\" ", cmdutils.NpmConfigAuthTokenKey)
-
 			// Validate token-based authentication.
 			if testCase.accessToken != "" {
-				assert.Contains(t, yarnrcContent, tokenAuthKey+"test-token")
+				assert.Contains(t, yarnrcContent, fmt.Sprintf("\"//acme.jfrog.io/artifactory/api/npm/test-repo:%s\" %s", cmdutils.NpmConfigAuthTokenKey, dummyToken))
 
 			} else if testCase.user != "" && testCase.password != "" {
 				// Validate basic authentication with encoded credentials.
 				// Base64 encoding of "myUser:myPassword"
-				expectedBasicAuth := basicAuthKey + "bXlVc2VyOm15UGFzc3dvcmQ="
-				assert.Contains(t, yarnrcContent, expectedBasicAuth)
+				assert.Contains(t, yarnrcContent, fmt.Sprintf("\"//acme.jfrog.io/artifactory/api/npm/test-repo:%s\"bXlVc2VyOm15UGFzc3dvcmQ=", cmdutils.NpmConfigAuthKey))
 			}
 
 			// Clean up the temporary npmrc file.
@@ -216,6 +207,7 @@ func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
 		})
 	}
 }
+
 func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 	// Retrieve the home directory and construct the .yarnrc file path.
 	homeDir, err := os.UserHomeDir()
@@ -281,6 +273,39 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 			// Clean up the temporary Poetry config files.
 			assert.NoError(t, os.Remove(poetryConfigFilePath))
 			assert.NoError(t, os.Remove(poetryAuthFilePath))
+		})
+	}
+}
+
+func TestBuildToolLoginCommand_Go(t *testing.T) {
+	// Assuming createTestBuildToolLoginCommand initializes your Go login command
+	goLoginCmd := createTestBuildToolLoginCommand(project.Go)
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			// Set up server details for the current test case's authentication type.
+			goLoginCmd.serverDetails.SetUser(testCase.user)
+			goLoginCmd.serverDetails.SetPassword(testCase.password)
+			goLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
+
+			// Run the login command and ensure no errors occur.
+			if !assert.NoError(t, goLoginCmd.Run()) {
+				t.FailNow()
+			}
+
+			goProxy := os.Getenv("GOPROXY")
+
+			switch {
+			case testCase.accessToken != "":
+				// Validate token-based authentication.
+				assert.Contains(t, goProxy, fmt.Sprintf("https://%s:%s@acme.jfrog.io/artifactory/api/go/test-repo", auth.ExtractUsernameFromAccessToken(testCase.accessToken), testCase.accessToken))
+			case testCase.user != "" && testCase.password != "":
+				// Validate basic authentication with user and password.
+				assert.Contains(t, goProxy, fmt.Sprintf("https://%s:%s@acme.jfrog.io/artifactory/api/go/test-repo", "myUser", "myPassword"))
+			default:
+				// Validate anonymous access.
+				assert.Contains(t, goProxy, "https://acme.jfrog.io/artifactory/api/go/test-repo")
+			}
 		})
 	}
 }

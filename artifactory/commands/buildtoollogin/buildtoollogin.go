@@ -2,6 +2,7 @@ package buildtoollogin
 
 import (
 	"fmt"
+	biutils "github.com/jfrog/build-info-go/utils"
 	pythoncommands "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/repository"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -10,26 +11,27 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/yarn"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-// BuildToolLoginCommand configures npm, Yarn, Pip, Pipenv, and Poetry registries and authentication
+// BuildToolLoginCommand configures registries and authentication for various build tools (npm, Yarn, Pip, Pipenv, Poetry, Go)
 // based on the specified project type.
 type BuildToolLoginCommand struct {
-	// buildTool represents the project type, either NPM or Yarn.
+	// buildTool represents the type of project (e.g., NPM, Yarn).
 	buildTool project.ProjectType
-	// repoName holds the name of the repository.
+	// repoName is the name of the repository used for configuration.
 	repoName string
-	// serverDetails contains configuration details for the Artifactory server.
+	// serverDetails contains Artifactory server configuration.
 	serverDetails *config.ServerDetails
-	// commandName holds the name of the command.
+	// commandName specifies the command for this instance.
 	commandName string
 }
 
-// NewBuildToolLogin initializes a new BuildToolLogin with the given project type,
-// repository name, and Artifactory server details.
+// NewBuildToolLoginCommand initializes a new BuildToolLoginCommand for the specified project type
+// and automatically sets a command name for the login operation.
 func NewBuildToolLoginCommand(buildTool project.ProjectType) *BuildToolLoginCommand {
 	return &BuildToolLoginCommand{
 		buildTool:   buildTool,
@@ -37,15 +39,44 @@ func NewBuildToolLoginCommand(buildTool project.ProjectType) *BuildToolLoginComm
 	}
 }
 
-// Run executes the appropriate configuration method based on the project type.
+// buildToolToPackageType maps project types to corresponding Artifactory package types (e.g., npm, pypi).
+func buildToolToPackageType(buildTool project.ProjectType) (string, error) {
+	switch buildTool {
+	case project.Npm, project.Yarn:
+		return repository.Npm, nil
+	case project.Pip, project.Pipenv, project.Poetry:
+		return repository.Pypi, nil
+	default:
+		return "", errorutils.CheckError(fmt.Errorf("unsupported build tool: %s", buildTool))
+	}
+}
+
+// CommandName returns the name of the login command.
+func (btlc *BuildToolLoginCommand) CommandName() string {
+	return btlc.commandName
+}
+
+// SetServerDetails assigns the server configuration details to the command.
+func (btlc *BuildToolLoginCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildToolLoginCommand {
+	btlc.serverDetails = serverDetails
+	return btlc
+}
+
+// ServerDetails returns the stored server configuration details.
+func (btlc *BuildToolLoginCommand) ServerDetails() (*config.ServerDetails, error) {
+	return btlc.serverDetails, nil
+}
+
+// Run executes the configuration method corresponding to the project type specified for the command.
 func (btlc *BuildToolLoginCommand) Run() (err error) {
-	// If no repository is specified, prompt the user to select a compatible repository.
+	// Prompt the user to select a repository if none has been specified.
 	if btlc.repoName == "" {
 		if err = btlc.SetVirtualRepoNameInteractively(); err != nil {
 			return err
 		}
 	}
 
+	// Configure the appropriate tool based on the project type.
 	switch btlc.buildTool {
 	case project.Npm:
 		err = btlc.configureNpm()
@@ -55,6 +86,8 @@ func (btlc *BuildToolLoginCommand) Run() (err error) {
 		err = btlc.configurePip()
 	case project.Poetry:
 		err = btlc.configurePoetry()
+	case project.Go:
+		err = btlc.configureGo()
 	default:
 		err = errorutils.CheckErrorf("unsupported build tool: %s", btlc.buildTool)
 	}
@@ -66,28 +99,27 @@ func (btlc *BuildToolLoginCommand) Run() (err error) {
 	return nil
 }
 
-// SetVirtualRepoNameInteractively prompts the user to select a virtual repository
+// SetVirtualRepoNameInteractively prompts the user to select a compatible virtual repository.
 func (btlc *BuildToolLoginCommand) SetVirtualRepoNameInteractively() error {
-	// Get the package type that corresponds to the build tool.
+	// Map the build tool to its corresponding package type.
 	packageType, err := buildToolToPackageType(btlc.buildTool)
 	if err != nil {
 		return err
 	}
-	// Define filter parameters to select virtual repositories of npm package type.
 	repoFilterParams := services.RepositoriesFilterParams{
 		RepoType:    utils.Virtual.String(),
 		PackageType: packageType,
 	}
 
-	// Select repository interactively based on filter parameters and server details.
+	// Prompt for repository selection based on filter parameters.
 	btlc.repoName, err = utils.SelectRepositoryInteractively(btlc.serverDetails, repoFilterParams)
 	return err
 }
 
-// configurePip sets the global index-url for pip/pipenv to use Artifactory.
-// Running the following commands:
+// configurePip sets the global index-url for pip and pipenv to use the Artifactory PyPI repository.
+// Runs the following command:
 //
-//	pip config set global index-url https://<user>:<token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
+//	pip config set global.index-url https://<user>:<token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
 func (btlc *BuildToolLoginCommand) configurePip() error {
 	repoWithCredsUrl, err := pythoncommands.GetPypiRepoUrl(btlc.serverDetails, btlc.repoName, false)
 	if err != nil {
@@ -96,8 +128,8 @@ func (btlc *BuildToolLoginCommand) configurePip() error {
 	return pythoncommands.RunConfigCommand(btlc.buildTool, []string{"set", "global.index-url", repoWithCredsUrl})
 }
 
-// configurePoetry configures a Poetry repository and basic auth credentials.
-// Running the following commands:
+// configurePoetry configures Poetry to use the specified repository and authentication credentials.
+// Runs the following commands:
 //
 //	poetry config repositories.<repo-name> https://<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
 //	poetry config http-basic.<repo-name> <user> <password/token>
@@ -109,8 +141,8 @@ func (btlc *BuildToolLoginCommand) configurePoetry() error {
 	return pythoncommands.RunPoetryConfig(repoUrl.String(), username, password, btlc.repoName)
 }
 
-// configureNpm sets the registry URL and auth for npm to use Artifactory.
-// Running the following commands:
+// configureNpm configures npm to use the Artifactory repository URL and sets authentication.
+// Runs the following commands:
 //
 //	npm config set registry https://<your-artifactory-url>/artifactory/api/npm/<repo-name>
 //
@@ -118,7 +150,7 @@ func (btlc *BuildToolLoginCommand) configurePoetry() error {
 //
 //	npm config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_authToken "<token>"
 //
-// For basic auth (username:password):
+// For basic auth:
 //
 //	npm config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
 func (btlc *BuildToolLoginCommand) configureNpm() error {
@@ -135,8 +167,8 @@ func (btlc *BuildToolLoginCommand) configureNpm() error {
 	return nil
 }
 
-// configureYarn sets the registry URL and auth for Yarn to use Artifactory.
-// Running the following commands:
+// configureYarn configures Yarn to use the specified Artifactory repository and sets authentication.
+// Runs the following commands:
 //
 //	yarn config set registry https://<your-artifactory-url>/artifactory/api/npm/<repo-name>
 //
@@ -144,7 +176,7 @@ func (btlc *BuildToolLoginCommand) configureNpm() error {
 //
 //	yarn config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_authToken "<token>"
 //
-// For basic auth (username:password):
+// For basic auth:
 //
 //	yarn config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
 func (btlc *BuildToolLoginCommand) configureYarn() error {
@@ -161,26 +193,14 @@ func (btlc *BuildToolLoginCommand) configureYarn() error {
 	return nil
 }
 
-// buildToolToPackageType maps the project type to the corresponding package type.
-func buildToolToPackageType(buildTool project.ProjectType) (string, error) {
-	switch buildTool {
-	case project.Npm, project.Yarn:
-		return repository.Npm, nil
-	case project.Pip, project.Pipenv, project.Poetry:
-		return repository.Pypi, nil
-	default:
-		return "", errorutils.CheckError(fmt.Errorf("unsupported build tool: %s", buildTool))
+// configureGo configures Go to use the Artifactory repository for GOPROXY.
+// Runs the following command:
+//
+//	go env -w GOPROXY=https://<user>:<token>@<your-artifactory-url>/artifactory/go/<repo-name>,direct
+func (btlc *BuildToolLoginCommand) configureGo() error {
+	repoWithCredsUrl, err := goutils.GetArtifactoryRemoteRepoUrl(btlc.serverDetails, btlc.repoName, goutils.GoProxyUrlParams{Direct: true})
+	if err != nil {
+		return err
 	}
-}
-
-func (btlc *BuildToolLoginCommand) CommandName() string {
-	return btlc.commandName
-}
-
-func (btlc *BuildToolLoginCommand) SetServerDetails(serverDetails *config.ServerDetails) *BuildToolLoginCommand {
-	btlc.serverDetails = serverDetails
-	return btlc
-}
-func (btlc *BuildToolLoginCommand) ServerDetails() (*config.ServerDetails, error) {
-	return btlc.serverDetails, nil
+	return biutils.RunGo([]string{"env", "-w", "GOPROXY=" + repoWithCredsUrl}, "")
 }

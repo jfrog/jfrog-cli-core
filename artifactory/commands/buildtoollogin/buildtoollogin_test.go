@@ -156,13 +156,14 @@ func TestBuildToolLoginCommand_Pipenv(t *testing.T) {
 }
 
 func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
-	// Retrieve the home directory and construct the pip.conf file path.
-	homeDir, err := os.UserHomeDir()
-	assert.NoError(t, err)
+
 	var pipConfFilePath string
 	if coreutils.IsWindows() {
-		pipConfFilePath = filepath.Join(homeDir, "pip", "pip.ini")
+		pipConfFilePath = filepath.Join(os.Getenv("APPDATA"), "pip", "pip.ini")
 	} else {
+		// Retrieve the home directory and construct the pip.conf file path.
+		homeDir, err := os.UserHomeDir()
+		assert.NoError(t, err)
 		pipConfFilePath = filepath.Join(homeDir, ".config", "pip", "pip.conf")
 	}
 

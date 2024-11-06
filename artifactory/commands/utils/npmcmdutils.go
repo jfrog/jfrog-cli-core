@@ -103,14 +103,15 @@ func GetNpmRepositoryUrl(repositoryName, artifactoryUrl string) string {
 
 // GetNpmAuthKeyValue generates the correct authentication key and value for npm or Yarn, based on the repo URL.
 func GetNpmAuthKeyValue(serverDetails *config.ServerDetails, repoUrl string) (key, value string) {
-	keySuffix := ""
-	if serverDetails.GetAccessToken() != "" {
+	var keySuffix string
+	switch {
+	case serverDetails.GetAccessToken() != "":
 		keySuffix = NpmConfigAuthTokenKey
 		value = serverDetails.GetAccessToken()
-	} else if serverDetails.GetUser() != "" && serverDetails.GetPassword() != "" {
+	case serverDetails.GetUser() != "" && serverDetails.GetPassword() != "":
 		keySuffix = NpmConfigAuthKey
 		value = basicAuthBase64Encode(serverDetails.GetUser(), serverDetails.GetPassword())
-	} else {
+	default:
 		return "", ""
 	}
 

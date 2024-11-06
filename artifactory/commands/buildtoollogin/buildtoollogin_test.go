@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -156,7 +157,6 @@ func TestBuildToolLoginCommand_Pipenv(t *testing.T) {
 }
 
 func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
-
 	var pipConfFilePath string
 	if coreutils.IsWindows() {
 		pipConfFilePath = filepath.Join(os.Getenv("APPDATA"), "pip", "pip.ini")
@@ -166,7 +166,6 @@ func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
 		assert.NoError(t, err)
 		pipConfFilePath = filepath.Join(homeDir, ".config", "pip", "pip.conf")
 	}
-
 	// Back up the existing .pip.conf file and ensure restoration after the test.
 	restorePipConfFunc, err := ioutils.BackupFile(pipConfFilePath, ".pipconf.backup")
 	assert.NoError(t, err)
@@ -258,6 +257,9 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 			poetryConfigContentBytes, err := os.ReadFile(poetryConfigFilePath)
 			assert.NoError(t, err)
 			poetryConfigContent := string(poetryConfigContentBytes)
+			// Normalize line endings for comparison.(For Windows)
+			poetryConfigContent = strings.ReplaceAll(poetryConfigContent, "\r\n", "\n")
+
 			assert.Contains(t, poetryConfigContent, "[repositories.test-repo]\nurl = \"https://acme.jfrog.io/artifactory/api/pypi/test-repo/simple\"")
 
 			// Validate that the auth details were set correctly in auth.toml.

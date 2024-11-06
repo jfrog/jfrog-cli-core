@@ -175,9 +175,6 @@ func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			// Clean up the temporary pip config file.
-			assert.NoError(t, os.Remove(pipConfFilePath))
-
 			// Set up server details for the current test case's authentication type.
 			pipLoginCmd.serverDetails.SetUser(testCase.user)
 			pipLoginCmd.serverDetails.SetPassword(testCase.password)
@@ -204,6 +201,9 @@ func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
 				// Validate anonymous access.
 				assert.Contains(t, pipConfigContent, "index-url = https://acme.jfrog.io/artifactory/api/pypi/test-repo/simple")
 			}
+
+			// Clean up the temporary pip config file.
+			assert.NoError(t, os.Remove(pipConfFilePath))
 		})
 	}
 }

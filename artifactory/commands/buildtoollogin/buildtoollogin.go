@@ -49,7 +49,7 @@ func buildToolToPackageType(buildTool project.ProjectType) (string, error) {
 	case project.Go:
 		return repository.Go, nil
 	default:
-		return "", errorutils.CheckError(fmt.Errorf("unsupported build tool: %s", buildTool))
+		return "", errorutils.CheckErrorf("unsupported build tool: %s", buildTool)
 	}
 }
 

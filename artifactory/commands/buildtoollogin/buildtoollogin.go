@@ -46,6 +46,8 @@ func buildToolToPackageType(buildTool project.ProjectType) (string, error) {
 		return repository.Npm, nil
 	case project.Pip, project.Pipenv, project.Poetry:
 		return repository.Pypi, nil
+	case project.Go:
+		return repository.Go, nil
 	default:
 		return "", errorutils.CheckError(fmt.Errorf("unsupported build tool: %s", buildTool))
 	}
@@ -69,9 +71,9 @@ func (btlc *BuildToolLoginCommand) ServerDetails() (*config.ServerDetails, error
 
 // Run executes the configuration method corresponding to the project type specified for the command.
 func (btlc *BuildToolLoginCommand) Run() (err error) {
-	// Prompt the user to select a repository if none has been specified.
 	if btlc.repoName == "" {
-		if err = btlc.SetVirtualRepoNameInteractively(); err != nil {
+		// Prompt the user to select a virtual repository that matches the project type.
+		if err = btlc.GetRepositoryNameFromUserInteractively(); err != nil {
 			return err
 		}
 	}
@@ -99,8 +101,8 @@ func (btlc *BuildToolLoginCommand) Run() (err error) {
 	return nil
 }
 
-// SetVirtualRepoNameInteractively prompts the user to select a compatible virtual repository.
-func (btlc *BuildToolLoginCommand) SetVirtualRepoNameInteractively() error {
+// GetRepositoryNameFromUserInteractively prompts the user to select a compatible virtual repository.
+func (btlc *BuildToolLoginCommand) GetRepositoryNameFromUserInteractively() error {
 	// Map the build tool to its corresponding package type.
 	packageType, err := buildToolToPackageType(btlc.buildTool)
 	if err != nil {

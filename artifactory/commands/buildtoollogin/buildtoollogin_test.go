@@ -44,7 +44,8 @@ var testCases = []struct {
 func createTestBuildToolLoginCommand(buildTool project.ProjectType) *BuildToolLoginCommand {
 	cmd := NewBuildToolLoginCommand(buildTool)
 	cmd.repoName = "test-repo"
-	cmd.serverDetails = &config.ServerDetails{ArtifactoryUrl: "https://acme.jfrog.io/artifactory"}
+	dummyUrl := "https://acme.jfrog.io"
+	cmd.serverDetails = &config.ServerDetails{Url: dummyUrl, ArtifactoryUrl: dummyUrl + "/artifactory"}
 
 	return cmd
 }

@@ -4,9 +4,17 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"github.com/jfrog/build-info-go/entities"
+	gofrogio "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
+	"github.com/jfrog/jfrog-client-go/artifactory"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/jfrog/build-info-go/build"
@@ -78,7 +86,7 @@ func (yc *YarnCommand) Run() (err error) {
 	}
 
 	var filteredYarnArgs []string
-	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = commandUtils.ExtractYarnOptionsFromArgs(yc.yarnArgs)
+	yc.threads, _, _, _, filteredYarnArgs, yc.buildConfiguration, err = extractYarnOptionsFromArgs(yc.yarnArgs)
 	if err != nil {
 		return
 	}
@@ -117,7 +125,7 @@ func (yc *YarnCommand) Run() (err error) {
 
 	if yc.collectBuildInfo {
 		close(missingDepsChan)
-		commandUtils.PrintMissingDependencies(missingDependencies)
+		printMissingDependencies(missingDependencies)
 	}
 
 	if err = RestoreConfigurationsFromBackup(backupEnvMap, restoreYarnrcFunc); err != nil {
@@ -226,12 +234,12 @@ func (yc *YarnCommand) prepareBuildInfo() (missingDepsChan chan string, err erro
 	if err != nil {
 		return
 	}
-	previousBuildDependencies, err := commandUtils.GetDependenciesFromLatestBuild(servicesManager, buildName)
+	previousBuildDependencies, err := getDependenciesFromLatestBuild(servicesManager, buildName)
 	if err != nil {
 		return
 	}
 	missingDepsChan = make(chan string)
-	collectChecksumsFunc := commandUtils.CreateCollectChecksumsFunc(previousBuildDependencies, servicesManager, missingDepsChan)
+	collectChecksumsFunc := createCollectChecksumsFunc(previousBuildDependencies, servicesManager, missingDepsChan)
 	yc.buildInfoModule.SetTraverseDependenciesFunc(collectChecksumsFunc)
 	yc.buildInfoModule.SetThreads(yc.threads)
 	return
@@ -375,4 +383,114 @@ func extractAuthValFromNpmAuth(npmAuth string) (authIndent, authToken string, er
 	}
 
 	return "", "", errorutils.CheckErrorf("failed while retrieving npm auth details from Artifactory")
+}
+
+type aqlResult struct {
+	Results []*servicesUtils.ResultItem `json:"results,omitempty"`
+}
+
+func getDependenciesFromLatestBuild(servicesManager artifactory.ArtifactoryServicesManager, buildName string) (map[string]*entities.Dependency, error) {
+	buildDependencies := make(map[string]*entities.Dependency)
+	previousBuild, found, err := servicesManager.GetBuildInfo(services.BuildInfoParams{BuildName: buildName, BuildNumber: servicesUtils.LatestBuildNumberKey})
+	if err != nil || !found {
+		return buildDependencies, err
+	}
+	for _, module := range previousBuild.BuildInfo.Modules {
+		for _, dependency := range module.Dependencies {
+			buildDependencies[dependency.Id] = &entities.Dependency{Id: dependency.Id, Type: dependency.Type,
+				Checksum: entities.Checksum{Md5: dependency.Md5, Sha1: dependency.Sha1}}
+		}
+	}
+	return buildDependencies, nil
+}
+
+// Get dependency's checksum and type.
+func getDependencyInfo(name, ver string, previousBuildDependencies map[string]*entities.Dependency,
+	servicesManager artifactory.ArtifactoryServicesManager) (checksum entities.Checksum, fileType string, err error) {
+	id := name + ":" + ver
+	if dep, ok := previousBuildDependencies[id]; ok {
+		// Get checksum from previous build.
+		checksum = dep.Checksum
+		fileType = dep.Type
+		return
+	}
+
+	// Get info from Artifactory.
+	log.Debug("Fetching checksums for", id)
+	var stream io.ReadCloser
+	stream, err = servicesManager.Aql(servicesUtils.CreateAqlQueryForYarn(name, ver))
+	if err != nil {
+		return
+	}
+	defer gofrogio.Close(stream, &err)
+	var result []byte
+	result, err = io.ReadAll(stream)
+	if err != nil {
+		return
+	}
+	parsedResult := new(aqlResult)
+	if err = json.Unmarshal(result, parsedResult); err != nil {
+		return entities.Checksum{}, "", errorutils.CheckError(err)
+	}
+	if len(parsedResult.Results) == 0 {
+		log.Debug(id, "could not be found in Artifactory.")
+		return
+	}
+	if i := strings.LastIndex(parsedResult.Results[0].Name, "."); i != -1 {
+		fileType = parsedResult.Results[0].Name[i+1:]
+	}
+	log.Debug(id, "was found in Artifactory. Name:", parsedResult.Results[0].Name,
+		"SHA-1:", parsedResult.Results[0].Actual_Sha1,
+		"MD5:", parsedResult.Results[0].Actual_Md5)
+
+	checksum = entities.Checksum{Sha1: parsedResult.Results[0].Actual_Sha1, Md5: parsedResult.Results[0].Actual_Md5, Sha256: parsedResult.Results[0].Sha256}
+	return
+}
+
+func extractYarnOptionsFromArgs(args []string) (threads int, detailedSummary, xrayScan bool, scanOutputFormat format.OutputFormat, cleanArgs []string, buildConfig *buildUtils.BuildConfiguration, err error) {
+	threads = 3
+	// Extract threads information from the args.
+	flagIndex, valueIndex, numOfThreads, err := coreutils.FindFlag("--threads", args)
+	if err != nil {
+		return
+	}
+	coreutils.RemoveFlagFromCommand(&args, flagIndex, valueIndex)
+	if numOfThreads != "" {
+		threads, err = strconv.Atoi(numOfThreads)
+		if err != nil {
+			err = errorutils.CheckError(err)
+			return
+		}
+	}
+	detailedSummary, xrayScan, scanOutputFormat, cleanArgs, buildConfig, err = commandUtils.ExtractNpmOptionsFromArgs(args)
+	return
+}
+
+func printMissingDependencies(missingDependencies []string) {
+	if len(missingDependencies) == 0 {
+		return
+	}
+
+	log.Warn(strings.Join(missingDependencies, "\n"), "\nThe npm dependencies above could not be found in Artifactory and therefore are not included in the build-info.\n"+
+		"Deleting the local cache will force populating Artifactory with these dependencies.")
+}
+
+func createCollectChecksumsFunc(previousBuildDependencies map[string]*entities.Dependency, servicesManager artifactory.ArtifactoryServicesManager, missingDepsChan chan string) func(dependency *entities.Dependency) (bool, error) {
+	return func(dependency *entities.Dependency) (bool, error) {
+		splitDepId := strings.SplitN(dependency.Id, ":", 2)
+		name := splitDepId[0]
+		ver := splitDepId[1]
+
+		// Get dependency info.
+		checksum, fileType, err := getDependencyInfo(name, ver, previousBuildDependencies, servicesManager)
+		if err != nil || checksum.IsEmpty() {
+			missingDepsChan <- dependency.Id
+			return false, err
+		}
+
+		// Update dependency.
+		dependency.Type = fileType
+		dependency.Checksum = checksum
+		return true, nil
+	}
 }

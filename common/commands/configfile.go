@@ -171,6 +171,10 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 		return configFile.configGradle()
 	case project.Terraform:
 		return configFile.setDeployer(false)
+	case project.Cocoapods:
+		return configFile.setDeployerResolver()
+	case project.Swift:
+		return configFile.setDeployerResolver()
 	}
 	return
 }

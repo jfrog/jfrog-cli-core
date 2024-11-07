@@ -183,7 +183,7 @@ func RunConfigCommand(buildTool project.ProjectType, args []string) error {
 	configCmd := gofrogcmd.NewCommand(buildTool.String(), "config", args)
 	err := gofrogcmd.RunCmd(configCmd)
 	if err != nil {
-		return errorutils.CheckErrorf(buildTool.String()+" config command failed with: %s", err.Error())
+		return errorutils.CheckErrorf("%s config command failed with: %q", buildTool.String(), err)
 	}
 	return nil
 }

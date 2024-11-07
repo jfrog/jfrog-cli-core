@@ -7,15 +7,25 @@ import (
 	"github.com/jfrog/build-info-go/entities"
 	buildInfoUtils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
+	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"io"
+	"net/url"
 	"os"
 	"os/exec"
+)
+
+const (
+	pipenvRemoteRegistryFlag = "--pypi-mirror"
+	pipRemoteRegistryFlag    = "-i"
 )
 
 type PythonCommand struct {
@@ -122,6 +132,59 @@ func (pc *PythonCommand) SetPypiRepoUrlWithCredentials() error {
 		return err
 	}
 	pc.args = append(pc.args, GetPypiRemoteRegistryFlag(pc.pythonTool), rtUrl)
+	return nil
+}
+
+// Get the pypi repository url and the credentials.
+func GetPypiRepoUrlWithCredentials(serverDetails *config.ServerDetails, repository string, isCurationCmd bool) (*url.URL, string, string, error) {
+	rtUrl, err := url.Parse(serverDetails.GetArtifactoryUrl())
+	if err != nil {
+		return nil, "", "", errorutils.CheckError(err)
+	}
+
+	username := serverDetails.GetUser()
+	password := serverDetails.GetPassword()
+
+	// Get credentials from access-token if exists.
+	if serverDetails.GetAccessToken() != "" {
+		if username == "" {
+			username = auth.ExtractUsernameFromAccessToken(serverDetails.GetAccessToken())
+		}
+		password = serverDetails.GetAccessToken()
+	}
+	if isCurationCmd {
+		rtUrl = rtUrl.JoinPath(coreutils.CurationPassThroughApi)
+	}
+	rtUrl = rtUrl.JoinPath("api/pypi", repository, "simple")
+	return rtUrl, username, password, err
+}
+
+func GetPypiRemoteRegistryFlag(tool pythonutils.PythonTool) string {
+	if tool == pythonutils.Pip {
+		return pipRemoteRegistryFlag
+	}
+	return pipenvRemoteRegistryFlag
+}
+
+// Get the pypi repository embedded credentials URL (https://<user>:<password/token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple)
+func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string, isCurationCmd bool) (string, error) {
+	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(serverDetails, repository, isCurationCmd)
+	if err != nil {
+		return "", err
+	}
+	if password != "" {
+		rtUrl.User = url.UserPassword(username, password)
+	}
+	return rtUrl.String(), err
+}
+
+func RunConfigCommand(buildTool project.ProjectType, args []string) error {
+	log.Debug("Running", buildTool.String(), "config command...")
+	configCmd := gofrogcmd.NewCommand(buildTool.String(), "config", args)
+	err := gofrogcmd.RunCmd(configCmd)
+	if err != nil {
+		return errorutils.CheckErrorf(buildTool.String()+" config command failed with: %s", err.Error())
+	}
 	return nil
 }
 

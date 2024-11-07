@@ -22,6 +22,12 @@ import (
 	"path/filepath"
 )
 
+const (
+	poetryConfigAuthPrefix = "http-basic."
+	poetryConfigRepoPrefix = "repositories."
+	pyproject              = "pyproject.toml"
+)
+
 type PoetryCommand struct {
 	PythonCommand
 }

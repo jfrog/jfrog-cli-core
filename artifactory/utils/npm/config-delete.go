@@ -2,7 +2,6 @@ package npm
 
 import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -15,8 +14,8 @@ func ConfigDelete(key, executablePath string) error {
 	return nil
 }
 
-func createConfigDeleteCmdConfig(executablePath, key string) *npmutils.NpmConfig {
-	return &npmutils.NpmConfig{
+func createConfigDeleteCmdConfig(executablePath, key string) *NpmConfig {
+	return &NpmConfig{
 		Npm:       executablePath,
 		Command:   []string{"config", "delete", key},
 		StrWriter: nil,

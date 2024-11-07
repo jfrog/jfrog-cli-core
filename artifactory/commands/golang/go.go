@@ -154,7 +154,7 @@ func (gc *GoCommand) run() (err error) {
 		return
 	}
 	// If noFallback=false, missing packages will be fetched directly from VCS
-	repoUrl, err := getArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo(), GoProxyUrlParams{Direct: !gc.noFallback})
+	repoUrl, err := GetArtifactoryRemoteRepoUrl(resolverDetails, gc.resolverParams.TargetRepo(), GoProxyUrlParams{Direct: !gc.noFallback})
 	if err != nil {
 		return
 	}
@@ -336,7 +336,7 @@ func SetArtifactoryAsResolutionServer(serverDetails *config.ServerDetails, depsR
 }
 
 func setGoProxy(server *config.ServerDetails, remoteGoRepo string, goProxyParams GoProxyUrlParams) error {
-	repoUrl, err := getArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyParams)
+	repoUrl, err := GetArtifactoryRemoteRepoUrl(server, remoteGoRepo, goProxyParams)
 	if err != nil {
 		return err
 	}
@@ -380,7 +380,7 @@ func (gdu *GoProxyUrlParams) addDirect(url string) string {
 	return url
 }
 
-func getArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, goProxyParams GoProxyUrlParams) (string, error) {
+func GetArtifactoryRemoteRepoUrl(serverDetails *config.ServerDetails, repo string, goProxyParams GoProxyUrlParams) (string, error) {
 	authServerDetails, err := serverDetails.CreateArtAuthConfig()
 	if err != nil {
 		return "", err

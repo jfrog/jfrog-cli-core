@@ -3,6 +3,7 @@ package buildtoollogin
 import (
 	"fmt"
 	biutils "github.com/jfrog/build-info-go/utils"
+	gocommands "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/golang"
 	pythoncommands "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/repository"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -11,7 +12,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/yarn"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -200,7 +200,7 @@ func (btlc *BuildToolLoginCommand) configureYarn() error {
 //
 //	go env -w GOPROXY=https://<user>:<token>@<your-artifactory-url>/artifactory/go/<repo-name>,direct
 func (btlc *BuildToolLoginCommand) configureGo() error {
-	repoWithCredsUrl, err := goutils.GetArtifactoryRemoteRepoUrl(btlc.serverDetails, btlc.repoName, goutils.GoProxyUrlParams{Direct: true})
+	repoWithCredsUrl, err := gocommands.GetArtifactoryRemoteRepoUrl(btlc.serverDetails, btlc.repoName, gocommands.GoProxyUrlParams{Direct: true})
 	if err != nil {
 		return err
 	}

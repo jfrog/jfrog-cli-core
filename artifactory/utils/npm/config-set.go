@@ -2,7 +2,6 @@ package npm
 
 import (
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -15,8 +14,8 @@ func ConfigSet(key, value, executablePath string) error {
 	return nil
 }
 
-func createConfigSetCmdConfig(executablePath, key, value string) *npmutils.NpmConfig {
-	return &npmutils.NpmConfig{
+func createConfigSetCmdConfig(executablePath, key, value string) *NpmConfig {
+	return &NpmConfig{
 		Npm:       executablePath,
 		Command:   []string{"config", "set", key, value},
 		StrWriter: nil,

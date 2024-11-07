@@ -20,16 +20,11 @@ import (
 
 type PoetryCommand struct {
 	PythonCommand
-	// The uniq Artifactory repository name for poetry config file.
-	poetryConfigRepoName string
 }
-
-const baseConfigRepoName = "jfrog-server"
 
 func NewPoetryCommand() *PoetryCommand {
 	return &PoetryCommand{
-		PythonCommand:        *NewPythonCommand(pythonutils.Poetry),
-		poetryConfigRepoName: baseConfigRepoName,
+		PythonCommand: *NewPythonCommand(pythonutils.Poetry),
 	}
 }
 
@@ -89,7 +84,7 @@ func (pc *PoetryCommand) install(buildConfiguration *buildUtils.BuildConfigurati
 }
 
 func (pc *PoetryCommand) publish(buildConfiguration *buildUtils.BuildConfiguration, pythonBuildInfo *build.Build) error {
-	publishCmdArgs := append(slices.Clone(pc.args), "-r "+pc.poetryConfigRepoName)
+	publishCmdArgs := append(slices.Clone(pc.args), "-r "+pc.repository)
 	// Collect build info by running the jf poetry install cmd
 	pc.args = []string{}
 	err := pc.install(buildConfiguration, pythonBuildInfo)
@@ -134,7 +129,7 @@ func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
 			rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path,
 			username,
 			password,
-			pc.poetryConfigRepoName)
+			pc.repository)
 	}
 	return nil
 }

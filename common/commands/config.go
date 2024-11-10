@@ -150,10 +150,10 @@ func (cc *ConfigCommand) CommandName() string {
 	return "config"
 }
 
-// Exec runs the ConfigCommand and then triggers a usage report,
+// ExecAndReportUsage runs the ConfigCommand and then triggers a usage report,
 // which requires the Artifactory URL initialized by cc.Run().
 // A channel ensures usage reporting completes before returning.
-func (cc *ConfigCommand) Exec() error {
+func (cc *ConfigCommand) ExecAndReportUsage() error {
 	err := cc.Run()
 	channel := make(chan bool)
 	// Triggers the report usage.

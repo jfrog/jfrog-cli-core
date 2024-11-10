@@ -41,6 +41,11 @@ const (
 	WebLogin    AuthenticationMethod = "Web Login"
 )
 
+const (
+	ConfigOIDCConfiguredCommandName = "config_OIDC"
+	ConfigCommandName               = "config"
+)
+
 // Internal golang locking for the same process.
 var mutex sync.Mutex
 
@@ -143,23 +148,25 @@ func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (cc *ConfigCommand) CommandName() string {
-	isOidc, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
-	if err == nil && isOidc {
-		return "config_oidc"
+	oidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
+	if err == nil && oidcConfigured {
+		return ConfigOIDCConfiguredCommandName
 	}
-	return "config"
+	return ConfigCommandName
 }
 
-// ExecAndReportUsage runs the ConfigCommand and then triggers a usage report,
-// which requires the Artifactory URL initialized by cc.Run().
-// A channel ensures usage reporting completes before returning.
+// ExecAndReportUsage runs the ConfigCommand and then triggers a usage report if needed,
+// Report usage only if OIDC integration was used
+// Usage must be sent after command execution as we need the server details to be set.
 func (cc *ConfigCommand) ExecAndReportUsage() error {
 	err := cc.Run()
-	channel := make(chan bool)
-	// Triggers the report usage.
-	go reportUsage(cc, channel)
-	// Waits for the signal from the report usage to be done.
-	<-channel
+	if cc.CommandName() == ConfigOIDCConfiguredCommandName {
+		channel := make(chan bool)
+		// Triggers the report usage.
+		go reportUsage(cc, channel)
+		// Waits for the signal from the report usage to be done.
+		<-channel
+	}
 	return err
 }
 

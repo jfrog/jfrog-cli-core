@@ -363,9 +363,21 @@ func TestCommandName(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// Test both cases of the ExecAndReportUsage function
+// Usage should be sent only when the environment variable is set
+// Validate no errors
 func TestConfigCommand_ExecAndReportUsage(t *testing.T) {
+	// With usage report
+	err := os.Setenv(coreutils.UsageOidcConfigured, "TRUE")
+	assert.NoError(t, err)
 	cc := NewConfigCommand(AddOrEdit, testServerId)
-	err := cc.ExecAndReportUsage()
+	err = cc.ExecAndReportUsage()
+	assert.NoError(t, err)
+	// Without usage report
+	err = os.Unsetenv(coreutils.UsageOidcConfigured)
+	assert.NoError(t, err)
+	cc = NewConfigCommand(AddOrEdit, testServerId)
+	err = cc.ExecAndReportUsage()
 	assert.NoError(t, err)
 }
 

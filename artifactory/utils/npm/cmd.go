@@ -1,4 +1,4 @@
-package npmutils
+package npm
 
 import (
 	"io"

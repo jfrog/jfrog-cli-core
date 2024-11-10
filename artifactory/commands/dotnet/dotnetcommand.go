@@ -159,23 +159,8 @@ func changeWorkingDir(newWorkingDir string) (string, error) {
 	return newWorkingDir, errorutils.CheckError(err)
 }
 
-// Set Artifactory repo as source using the toolchain's `add source` command
-func (dc *DotnetCommand) AddNugetAuthToConfig(cmdType dotnet.ToolchainType, configFile *os.File, sourceUrl, user, password string) error {
-	content := dotnet.ConfigFileTemplate
-	_, err := configFile.WriteString(content)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	// We need to close the config file to let the toolchain modify it.
-	err = configFile.Close()
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	return addSourceToNugetConfig(cmdType, configFile.Name(), sourceUrl, user, password)
-}
-
 // Runs nuget sources add command
-func addSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, sourceUrl, user, password string) error {
+func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, sourceUrl, user, password string) error {
 	cmd, err := dotnet.CreateDotnetAddSourceCmd(cmdType, sourceUrl)
 	if err != nil {
 		return err

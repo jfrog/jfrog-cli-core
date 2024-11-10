@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/crypto"
 	"github.com/jfrog/gofrog/version"
 	"io"
@@ -17,7 +18,6 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
-	goutils "github.com/jfrog/jfrog-cli-core/v2/utils/golang"
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	_go "github.com/jfrog/jfrog-client-go/artifactory/services/go"
 	servicesutils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -28,13 +28,13 @@ import (
 
 // Publish go project to Artifactory.
 func publishPackage(packageVersion, targetRepo, buildName, buildNumber, projectKey string, excludedPatterns []string, servicesManager artifactory.ArtifactoryServicesManager) (summary *servicesutils.OperationSummary, artifacts []buildinfo.Artifact, err error) {
-	projectPath, err := goutils.GetProjectRoot()
+	projectPath, err := getProjectRoot()
 	if err != nil {
 		return nil, nil, errorutils.CheckError(err)
 	}
 
 	// Read module name
-	moduleName, err := goutils.GetModuleName(projectPath)
+	moduleName, err := GetModuleName(projectPath)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -237,4 +237,12 @@ func createInfoFileArtifact(infoFilePath, packageVersion, targetRepo, relPathInR
 type goInfo struct {
 	Version string `json:"Version"`
 	Time    string `json:"Time"`
+}
+
+func getProjectRoot() (string, error) {
+	path, err := utils.GetProjectRoot()
+	if err != nil {
+		return "", errorutils.CheckError(err)
+	}
+	return path, nil
 }

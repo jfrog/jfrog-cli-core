@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
-	npmutils "github.com/jfrog/jfrog-cli-core/v2/utils/npm"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
@@ -23,8 +22,8 @@ func Pack(npmFlags []string, executablePath string) ([]string, error) {
 	return getPackageFileNameFromOutput(output)
 }
 
-func createPackCmdConfig(executablePath string, splitFlags []string) *npmutils.NpmConfig {
-	return &npmutils.NpmConfig{
+func createPackCmdConfig(executablePath string, splitFlags []string) *NpmConfig {
+	return &NpmConfig{
 		Npm:          executablePath,
 		Command:      []string{"pack"},
 		CommandFlags: append(splitFlags, "--json=false"),

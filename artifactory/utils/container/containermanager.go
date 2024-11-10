@@ -250,7 +250,7 @@ func (versionCmd *VersionCmd) RunCmd() (string, error) {
 
 func ValidateClientApiVersion() error {
 	cmd := &VersionCmd{}
-	// 'docker version' may return 1 in case of errors from daemon. We should ignore this kind of errors.
+	// 'docker version' may return 1 in case of errors from daemon. We should ignore this kind of error.
 	content, err := cmd.RunCmd()
 	content = strings.TrimSpace(content)
 	if !ApiVersionRegex.Match([]byte(content)) {

@@ -11,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	python "github.com/jfrog/jfrog-cli-core/v2/utils/python"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
@@ -21,16 +20,11 @@ import (
 
 type PoetryCommand struct {
 	PythonCommand
-	// The uniq Artifactory repository name for poetry config file.
-	poetryConfigRepoName string
 }
-
-const baseConfigRepoName = "jfrog-server"
 
 func NewPoetryCommand() *PoetryCommand {
 	return &PoetryCommand{
-		PythonCommand:        *NewPythonCommand(pythonutils.Poetry),
-		poetryConfigRepoName: baseConfigRepoName,
+		PythonCommand: *NewPythonCommand(pythonutils.Poetry),
 	}
 }
 
@@ -90,7 +84,7 @@ func (pc *PoetryCommand) install(buildConfiguration *buildUtils.BuildConfigurati
 }
 
 func (pc *PoetryCommand) publish(buildConfiguration *buildUtils.BuildConfiguration, pythonBuildInfo *build.Build) error {
-	publishCmdArgs := append(slices.Clone(pc.args), "-r "+pc.poetryConfigRepoName)
+	publishCmdArgs := append(slices.Clone(pc.args), "-r "+pc.repository)
 	// Collect build info by running the jf poetry install cmd
 	pc.args = []string{}
 	err := pc.install(buildConfiguration, pythonBuildInfo)
@@ -126,16 +120,16 @@ func (pc *PoetryCommand) SetCommandName(commandName string) *PoetryCommand {
 }
 
 func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
-	rtUrl, username, password, err := python.GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository, false)
+	rtUrl, username, password, err := GetPypiRepoUrlWithCredentials(pc.serverDetails, pc.repository, false)
 	if err != nil {
 		return err
 	}
 	if password != "" {
-		return python.ConfigPoetryRepo(
+		return ConfigPoetryRepo(
 			rtUrl.Scheme+"://"+rtUrl.Host+rtUrl.Path,
 			username,
 			password,
-			pc.poetryConfigRepoName)
+			pc.repository)
 	}
 	return nil
 }

@@ -350,13 +350,13 @@ func TestCommandName(t *testing.T) {
 	// Test when the environment variable is not set
 	err := os.Unsetenv(coreutils.UsageOidcConfigured)
 	assert.NoError(t, err)
-	assert.Equal(t, "config", cc.CommandName())
+	assert.Equal(t, ConfigCommandName, cc.CommandName())
 
 	// Test when the environment variable is set
 	err = os.Setenv(coreutils.UsageOidcConfigured, "true")
 	assert.NoError(t, err)
 
-	assert.Equal(t, "config_oidc", cc.CommandName())
+	assert.Equal(t, ConfigOIDCConfiguredCommandName, cc.CommandName())
 
 	// Clean up
 	err = os.Unsetenv(coreutils.UsageOidcConfigured)

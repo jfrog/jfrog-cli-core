@@ -56,7 +56,7 @@ func TestDefaultServerId(t *testing.T) {
 	outputConfig, err := GetConfig(config.DefaultServerId, false)
 	assert.NoError(t, err)
 	assert.Equal(t, config.DefaultServerId, outputConfig.ServerId)
-	assert.NoError(t, NewConfigCommand(Delete, config.DefaultServerId).Run())
+	assert.NoError(t, NewConfigCommand(Delete, config.DefaultServerId).Exec())
 }
 
 func TestArtifactorySshKey(t *testing.T) {
@@ -94,12 +94,12 @@ func TestApiKeyInAccessToken(t *testing.T) {
 	// Should throw error if access token is API key and no username
 	configCmd := NewConfigCommand(AddOrEdit, testServerId).SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
 	configCmd.disablePrompts = true
-	assert.ErrorContains(t, configCmd.Run(), "the provided Access Token is an API key")
+	assert.ErrorContains(t, configCmd.Exec(), "the provided Access Token is an API key")
 
 	// Should work without error if access token is API key but username exists
 	inputDetails.User = "ADMIN"
 	configCmd.SetDetails(inputDetails)
-	assert.NoError(t, configCmd.Run())
+	assert.NoError(t, configCmd.Exec())
 }
 
 func TestMTLS(t *testing.T) {
@@ -181,13 +181,13 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be disabled")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
+	assert.NoError(t, NewConfigCommand(Delete, testServerId).Exec())
 
 	// Verify setting the option enables refreshable tokens.
 	outputConfig, err = configAndGetTestServer(t, inputDetails, false, false)
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be enabled")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
+	assert.NoError(t, NewConfigCommand(Delete, testServerId).Exec())
 }
 
 func TestMakeDefaultOption(t *testing.T) {
@@ -219,7 +219,7 @@ func configAndAssertDefault(t *testing.T, inputDetails *config.ServerDetails, ma
 }
 
 func deleteServer(t *testing.T, serverId string) {
-	assert.NoError(t, NewConfigCommand(Delete, serverId).Run())
+	assert.NoError(t, NewConfigCommand(Delete, serverId).Exec())
 }
 
 type unsafeUrlTest struct {
@@ -252,7 +252,7 @@ func TestAssertUrlsSafe(t *testing.T) {
 			// Test interactive - should fail with an error
 			configCmd := NewConfigCommand(AddOrEdit, testServerId).SetDetails(inputDetails).SetInteractive(true)
 			configCmd.disablePrompts = true
-			err := configCmd.Run()
+			err := configCmd.Exec()
 			if testCase.isSafe {
 				assert.NoError(t, err)
 			} else {
@@ -314,7 +314,7 @@ func TestKeyDecryptionError(t *testing.T) {
 	// Configure server with JFROG_CLI_ENCRYPTION_KEY set
 	configCmd := NewConfigCommand(AddOrEdit, testServerId).SetDetails(inputDetails).SetUseBasicAuthOnly(true).SetInteractive(false)
 	configCmd.disablePrompts = true
-	assert.NoError(t, configCmd.Run())
+	assert.NoError(t, configCmd.Exec())
 
 	// Get the server details when JFROG_CLI_ENCRYPTION_KEY is not set and expect an error
 	assert.NoError(t, os.Unsetenv(coreutils.EncryptionKey))
@@ -344,6 +344,25 @@ func TestImport(t *testing.T) {
 	assert.Equal(t, "password", serverDetails.GetPassword())
 }
 
+func TestCommandName(t *testing.T) {
+	cc := NewConfigCommand(AddOrEdit, testServerId)
+
+	// Test when the environment variable is not set
+	err := os.Unsetenv(coreutils.UsageOidcConfigured)
+	assert.NoError(t, err)
+	assert.Equal(t, "config", cc.CommandName())
+
+	// Test when the environment variable is set
+	err = os.Setenv(coreutils.UsageOidcConfigured, "true")
+	assert.NoError(t, err)
+
+	assert.Equal(t, "config_oidc", cc.CommandName())
+
+	// Clean up
+	err = os.Unsetenv(coreutils.UsageOidcConfigured)
+	assert.NoError(t, err)
+}
+
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {
 	configToken, err := config.Export(inputDetails)
 	assert.NoError(t, err)
@@ -356,7 +375,7 @@ func configAndTest(t *testing.T, inputDetails *config.ServerDetails, interactive
 	outputConfig, err := configAndGetTestServer(t, inputDetails, true, interactive)
 	assert.NoError(t, err)
 	assert.Equal(t, configStructToString(t, inputDetails), configStructToString(t, outputConfig), "unexpected configuration was saved to file")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
+	assert.NoError(t, NewConfigCommand(Delete, testServerId).Exec())
 	testExportImport(t, inputDetails)
 }
 
@@ -373,7 +392,7 @@ func doConfig(t *testing.T, serverId string, inputDetails *config.ServerDetails,
 	configCmd := NewConfigCommand(AddOrEdit, serverId).SetDetails(inputDetails).SetUseBasicAuthOnly(basicAuthOnly).
 		SetInteractive(interactive).SetMakeDefault(makeDefault)
 	configCmd.disablePrompts = true
-	assert.NoError(t, configCmd.Run())
+	assert.NoError(t, configCmd.Exec())
 }
 
 func configStructToString(t *testing.T, artConfig *config.ServerDetails) string {

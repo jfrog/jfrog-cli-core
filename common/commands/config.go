@@ -143,7 +143,24 @@ func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (cc *ConfigCommand) CommandName() string {
+	isOidc, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
+	if err == nil && isOidc {
+		return "config_oidc"
+	}
 	return "config"
+}
+
+// Exec runs the ConfigCommand and then triggers a usage report,
+// which requires the Artifactory URL initialized by cc.Run().
+// A channel ensures usage reporting completes before returning.
+func (cc *ConfigCommand) Exec() error {
+	err := cc.Run()
+	channel := make(chan bool)
+	// Triggers the report usage.
+	go reportUsage(cc, channel)
+	// Waits for the signal from the report usage to be done.
+	<-channel
+	return err
 }
 
 func (cc *ConfigCommand) config() error {

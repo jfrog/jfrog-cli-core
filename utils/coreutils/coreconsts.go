@@ -49,6 +49,9 @@ const (
 	CI                      = "CI"
 	ServerID                = "JFROG_CLI_SERVER_ID"
 	TransitiveDownload      = "JFROG_CLI_TRANSITIVE_DOWNLOAD"
+	// Envs used to determine command types for usage reports
+	UsageAutoPublishedBuild = "JFROG_CLI_USAGE_BUILD_PUBLISHED_AUTO"
+	UsageOidcConfigured     = "JFROG_CLI_USAGE_CONFIG_OIDC"
 
 	// Deprecated and replaced with TransitiveDownload
 	TransitiveDownloadExperimental = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"

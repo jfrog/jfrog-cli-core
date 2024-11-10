@@ -1,4 +1,4 @@
-package mvnutils
+package mvn
 
 import (
 	"io"

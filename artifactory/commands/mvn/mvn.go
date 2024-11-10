@@ -11,7 +11,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
-	mvnutils "github.com/jfrog/jfrog-cli-core/v2/utils/mvn"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
@@ -141,7 +140,7 @@ func (mc *MvnCommand) Run() error {
 		return err
 	}
 
-	mvnParams := mvnutils.NewMvnUtils().
+	mvnParams := NewMvnUtils().
 		SetConfig(vConfig).
 		SetBuildArtifactsDetailsFile(mc.buildArtifactsDetailsFile).
 		SetBuildConf(mc.configuration).
@@ -149,7 +148,7 @@ func (mc *MvnCommand) Run() error {
 		SetInsecureTls(mc.insecureTls).
 		SetDisableDeploy(mc.deploymentDisabled).
 		SetThreads(mc.threads)
-	if err = mvnutils.RunMvn(mvnParams); err != nil {
+	if err = RunMvn(mvnParams); err != nil {
 		return err
 	}
 

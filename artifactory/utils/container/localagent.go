@@ -14,7 +14,7 @@ import (
 )
 
 // Build-info builder for local agents tools such as: Docker or Podman.
-type localAgentbuildInfoBuilder struct {
+type localAgentBuildInfoBuilder struct {
 	buildInfoBuilder *buildInfoBuilder
 	// Name of the container CLI tool e.g. docker
 	containerManager ContainerManager
@@ -22,7 +22,7 @@ type localAgentbuildInfoBuilder struct {
 }
 
 // Create new build info builder container CLI tool
-func NewLocalAgentBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (*localAgentbuildInfoBuilder, error) {
+func NewLocalAgentBuildInfoBuilder(image *Image, repository, buildName, buildNumber, project string, serviceManager artifactory.ArtifactoryServicesManager, commandType CommandType, containerManager ContainerManager) (*localAgentBuildInfoBuilder, error) {
 	imageSha2, err := containerManager.Id(image)
 	if err != nil {
 		return nil, err
@@ -32,23 +32,23 @@ func NewLocalAgentBuildInfoBuilder(image *Image, repository, buildName, buildNum
 		return nil, err
 	}
 	builder.setImageSha2(imageSha2)
-	return &localAgentbuildInfoBuilder{
+	return &localAgentBuildInfoBuilder{
 		buildInfoBuilder: builder,
 		containerManager: containerManager,
 		commandType:      commandType,
 	}, err
 }
 
-func (labib *localAgentbuildInfoBuilder) GetLayers() *[]utils.ResultItem {
+func (labib *localAgentBuildInfoBuilder) GetLayers() *[]utils.ResultItem {
 	return &labib.buildInfoBuilder.imageLayers
 }
 
-func (labib *localAgentbuildInfoBuilder) SetSkipTaggingLayers(skipTaggingLayers bool) {
+func (labib *localAgentBuildInfoBuilder) SetSkipTaggingLayers(skipTaggingLayers bool) {
 	labib.buildInfoBuilder.skipTaggingLayers = skipTaggingLayers
 }
 
 // Create build-info for a docker image.
-func (labib *localAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
+func (labib *localAgentBuildInfoBuilder) Build(module string) (*buildinfo.BuildInfo, error) {
 	// Search for image build-info.
 	candidateLayers, manifest, err := labib.searchImage()
 	if err != nil {
@@ -63,7 +63,7 @@ func (labib *localAgentbuildInfoBuilder) Build(module string) (*buildinfo.BuildI
 }
 
 // Search an image in Artifactory and validate its sha2 with local image.
-func (labib *localAgentbuildInfoBuilder) searchImage() (map[string]*utils.ResultItem, *manifest, error) {
+func (labib *localAgentBuildInfoBuilder) searchImage() (map[string]*utils.ResultItem, *manifest, error) {
 	longImageName, err := labib.buildInfoBuilder.image.GetImageLongNameWithTag()
 	if err != nil {
 		return nil, nil, err
@@ -90,7 +90,7 @@ func (labib *localAgentbuildInfoBuilder) searchImage() (map[string]*utils.Result
 
 // Search image layers in artifactory by the provided image path in artifactory.
 // If fat-manifest is found, use it to find our image in Artifactory.
-func (labib *localAgentbuildInfoBuilder) search(imagePathPattern string) (resultMap map[string]*utils.ResultItem, err error) {
+func (labib *localAgentBuildInfoBuilder) search(imagePathPattern string) (resultMap map[string]*utils.ResultItem, err error) {
 	resultMap, err = performSearch(imagePathPattern, labib.buildInfoBuilder.serviceManager)
 	if err != nil {
 		log.Debug("Failed to search  marker layer. Error:", err.Error())
@@ -130,7 +130,7 @@ func (labib *localAgentbuildInfoBuilder) search(imagePathPattern string) (result
 }
 
 // Verify manifest by comparing sha256, which references to the image digest. If there is no match, return nil.
-func (labib *localAgentbuildInfoBuilder) isVerifiedManifest(imageManifest *manifest) bool {
+func (labib *localAgentBuildInfoBuilder) isVerifiedManifest(imageManifest *manifest) bool {
 	if imageManifest.Config.Digest != labib.buildInfoBuilder.imageSha2 {
 		log.Debug(`Found incorrect manifest.json file. Expects digest "` + labib.buildInfoBuilder.imageSha2 + `" found "` + imageManifest.Config.Digest)
 		return false
@@ -138,7 +138,7 @@ func (labib *localAgentbuildInfoBuilder) isVerifiedManifest(imageManifest *manif
 	return true
 }
 
-func (labib *localAgentbuildInfoBuilder) getImageDigestFromFatManifest(fatManifest utils.ResultItem) (string, error) {
+func (labib *localAgentBuildInfoBuilder) getImageDigestFromFatManifest(fatManifest utils.ResultItem) (string, error) {
 	var fatManifestContent *FatManifest
 	if err := downloadLayer(fatManifest, &fatManifestContent, labib.buildInfoBuilder.serviceManager, labib.buildInfoBuilder.repositoryDetails.key); err != nil {
 		log.Debug(`failed to unmarshal fat-manifest`)

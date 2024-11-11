@@ -17,10 +17,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-// PackageManagerLoginCommand configures registries and authentication for various package managers (npm, Yarn, Pip, Pipenv, Poetry, Go)
-// based on the specified project type.
+// PackageManagerLoginCommand configures registries and authentication for various package manager (npm, Yarn, Pip, Pipenv, Poetry, Go)
 type PackageManagerLoginCommand struct {
-	// packageManager represents the type of project (e.g., NPM, Yarn).
+	// packageManager represents the type of package manager (e.g., NPM, Yarn).
 	packageManager project.ProjectType
 	// repoName is the name of the repository used for configuration.
 	repoName string
@@ -30,7 +29,7 @@ type PackageManagerLoginCommand struct {
 	commandName string
 }
 
-// NewPackageManagerLoginCommand initializes a new PackageManagerLoginCommand for the specified project type
+// NewPackageManagerLoginCommand initializes a new PackageManagerLoginCommand for the specified package manager
 // and automatically sets a command name for the login operation.
 func NewPackageManagerLoginCommand(packageManager project.ProjectType) *PackageManagerLoginCommand {
 	return &PackageManagerLoginCommand{
@@ -69,16 +68,16 @@ func (pmlc *PackageManagerLoginCommand) ServerDetails() (*config.ServerDetails, 
 	return pmlc.serverDetails, nil
 }
 
-// Run executes the configuration method corresponding to the project type specified for the command.
+// Run executes the configuration method corresponding to the package manager specified for the command.
 func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 	if pmlc.repoName == "" {
-		// Prompt the user to select a virtual repository that matches the project type.
+		// Prompt the user to select a virtual repository that matches the package manager.
 		if err = pmlc.getRepositoryNameFromUserInteractively(); err != nil {
 			return err
 		}
 	}
 
-	// Configure the appropriate package manager based on the project type.
+	// Configure the appropriate package manager based on the package manager.
 	switch pmlc.packageManager {
 	case project.Npm:
 		err = pmlc.configureNpm()

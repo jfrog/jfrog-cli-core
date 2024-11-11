@@ -70,9 +70,9 @@ func (bpc *BuildPublishCommand) IsDetailedSummary() bool {
 }
 
 func (bpc *BuildPublishCommand) CommandName() string {
-	isOidc, err := clientutils.GetBoolEnvValue(coreutils.UsageAutoPublishedBuild, false)
-	if err == nil && isOidc {
-		return "rt_build_publish_auto"
+	isAutoPublishedTriggered, err := clientutils.GetBoolEnvValue(coreutils.UsageAutoPublishedBuild, false)
+	if err == nil && isAutoPublishedTriggered {
+		return "rt_auto_build_publish"
 	}
 	return "rt_build_publish"
 }

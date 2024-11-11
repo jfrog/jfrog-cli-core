@@ -356,7 +356,7 @@ func TestCommandName(t *testing.T) {
 	err = os.Setenv(coreutils.UsageOidcConfigured, "true")
 	assert.NoError(t, err)
 
-	assert.Equal(t, ConfigOIDCConfiguredCommandName, cc.CommandName())
+	assert.Equal(t, ConfigOidcCommandName, cc.CommandName())
 
 	// Clean up
 	err = os.Unsetenv(coreutils.UsageOidcConfigured)
@@ -374,7 +374,7 @@ func TestConfigCommand_ExecAndReportUsage(t *testing.T) {
 		{
 			name:         "With usage report",
 			envVarValue:  "TRUE",
-			expectedName: ConfigOIDCConfiguredCommandName,
+			expectedName: ConfigOidcCommandName,
 		},
 		{
 			name:         "Without usage report",

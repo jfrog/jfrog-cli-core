@@ -42,8 +42,10 @@ const (
 )
 
 const (
-	ConfigOIDCConfiguredCommandName = "config_OIDC"
-	ConfigCommandName               = "config"
+	// Indicates that the config command uses OIDC authentication.
+	ConfigOidcCommandName = "config_OIDC"
+	// Default config command name.
+	ConfigCommandName = "config"
 )
 
 // Internal golang locking for the same process.
@@ -148,9 +150,9 @@ func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (cc *ConfigCommand) CommandName() string {
-	oidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
-	if err == nil && oidcConfigured {
-		return ConfigOIDCConfiguredCommandName
+	isOidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
+	if err == nil && isOidcConfigured {
+		return ConfigOidcCommandName
 	}
 	return ConfigCommandName
 }
@@ -160,7 +162,7 @@ func (cc *ConfigCommand) CommandName() string {
 // Usage must be sent after command execution as we need the server details to be set.
 func (cc *ConfigCommand) ExecAndReportUsage() error {
 	err := cc.Run()
-	if cc.CommandName() == ConfigOIDCConfiguredCommandName {
+	if cc.CommandName() == ConfigOidcCommandName {
 		channel := make(chan bool)
 		// Triggers the report usage.
 		go reportUsage(cc, channel)

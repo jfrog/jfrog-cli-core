@@ -1,4 +1,4 @@
-package buildtoollogin
+package packagemanagerlogin
 
 import (
 	"fmt"
@@ -41,8 +41,8 @@ var testCases = []struct {
 	},
 }
 
-func createTestBuildToolLoginCommand(buildTool project.ProjectType) *BuildToolLoginCommand {
-	cmd := NewBuildToolLoginCommand(buildTool)
+func createTestPackageManagerLoginCommand(packageManager project.ProjectType) *PackageManagerLoginCommand {
+	cmd := NewPackageManagerLoginCommand(packageManager)
 	cmd.repoName = "test-repo"
 	dummyUrl := "https://acme.jfrog.io"
 	cmd.serverDetails = &config.ServerDetails{Url: dummyUrl, ArtifactoryUrl: dummyUrl + "/artifactory"}
@@ -50,7 +50,7 @@ func createTestBuildToolLoginCommand(buildTool project.ProjectType) *BuildToolLo
 	return cmd
 }
 
-func TestBuildToolLoginCommand_Npm(t *testing.T) {
+func TestPackageManagerLoginCommand_Npm(t *testing.T) {
 	// Create a temporary directory to act as the environment's npmrc file location.
 	tempDir := t.TempDir()
 	npmrcFilePath := filepath.Join(tempDir, ".npmrc")
@@ -58,7 +58,7 @@ func TestBuildToolLoginCommand_Npm(t *testing.T) {
 	// Set NPM_CONFIG_USERCONFIG to point to the temporary npmrc file path.
 	t.Setenv("NPM_CONFIG_USERCONFIG", npmrcFilePath)
 
-	npmLoginCmd := createTestBuildToolLoginCommand(project.Npm)
+	npmLoginCmd := createTestPackageManagerLoginCommand(project.Npm)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestBuildToolLoginCommand_Npm(t *testing.T) {
 	}
 }
 
-func TestBuildToolLoginCommand_Yarn(t *testing.T) {
+func TestPackageManagerLoginCommand_Yarn(t *testing.T) {
 	// Retrieve the home directory and construct the .yarnrc file path.
 	homeDir, err := os.UserHomeDir()
 	assert.NoError(t, err)
@@ -109,7 +109,7 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 		assert.NoError(t, restoreYarnrcFunc())
 	}()
 
-	yarnLoginCmd := createTestBuildToolLoginCommand(project.Yarn)
+	yarnLoginCmd := createTestPackageManagerLoginCommand(project.Yarn)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -147,17 +147,17 @@ func TestBuildToolLoginCommand_Yarn(t *testing.T) {
 	}
 }
 
-func TestBuildToolLoginCommand_Pip(t *testing.T) {
+func TestPackageManagerLoginCommand_Pip(t *testing.T) {
 	// pip and pipenv share the same configuration file.
-	testBuildToolLoginCommandPip(t, project.Pip)
+	testPackageManagerLoginCommandPip(t, project.Pip)
 }
 
-func TestBuildToolLoginCommand_Pipenv(t *testing.T) {
+func TestPackageManagerLoginCommand_Pipenv(t *testing.T) {
 	// pip and pipenv share the same configuration file.
-	testBuildToolLoginCommandPip(t, project.Pipenv)
+	testPackageManagerLoginCommandPip(t, project.Pipenv)
 }
 
-func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
+func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.ProjectType) {
 	var pipConfFilePath string
 	if coreutils.IsWindows() {
 		pipConfFilePath = filepath.Join(os.Getenv("APPDATA"), "pip", "pip.ini")
@@ -174,7 +174,7 @@ func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
 		assert.NoError(t, restorePipConfFunc())
 	}()
 
-	pipLoginCmd := createTestBuildToolLoginCommand(buildTool)
+	pipLoginCmd := createTestPackageManagerLoginCommand(packageManager)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -211,7 +211,7 @@ func testBuildToolLoginCommandPip(t *testing.T, buildTool project.ProjectType) {
 	}
 }
 
-func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
+func TestPackageManagerLoginCommand_configurePoetry(t *testing.T) {
 	// Retrieve the home directory and construct the .yarnrc file path.
 	homeDir, err := os.UserHomeDir()
 	assert.NoError(t, err)
@@ -239,7 +239,7 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 		assert.NoError(t, restorePoetryAuthFunc())
 	}()
 
-	poetryLoginCmd := createTestBuildToolLoginCommand(project.Poetry)
+	poetryLoginCmd := createTestPackageManagerLoginCommand(project.Poetry)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -286,14 +286,14 @@ func TestBuildToolLoginCommand_configurePoetry(t *testing.T) {
 	}
 }
 
-func TestBuildToolLoginCommand_Go(t *testing.T) {
+func TestPackageManagerLoginCommand_Go(t *testing.T) {
 	goProxyEnv := "GOPROXY"
 	// Restore the original value of the GOPROXY environment variable after the test.
 	restoreGoProxy := clientTestUtils.SetEnvWithCallbackAndAssert(t, goProxyEnv, "")
 	defer restoreGoProxy()
 
-	// Assuming createTestBuildToolLoginCommand initializes your Go login command
-	goLoginCmd := createTestBuildToolLoginCommand(project.Go)
+	// Assuming createTestPackageManagerLoginCommand initializes your Go login command
+	goLoginCmd := createTestPackageManagerLoginCommand(project.Go)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

@@ -1,4 +1,4 @@
-package buildtoollogin
+package packagemanagerlogin
 
 import (
 	"fmt"

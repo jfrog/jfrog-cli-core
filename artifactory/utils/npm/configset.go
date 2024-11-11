@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
+// This method runs "npm config set" command and sets the npm configuration.
 func ConfigSet(key, value, executablePath string) error {
 	configGetCmdConfig := createConfigSetCmdConfig(executablePath, key, value)
 	_, err := gofrogcmd.RunCmdOutput(configGetCmdConfig)

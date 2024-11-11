@@ -187,17 +187,16 @@ func poetryUpdate() (err error) {
 func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {
 	viper.SetConfigType("toml")
 	viper.SetConfigFile(filepath)
-	err := viper.ReadInConfig()
-	if err != nil {
+	if err := viper.ReadInConfig(); err != nil {
 		return errorutils.CheckErrorf("Failed to read pyproject.toml: %s", err.Error())
 	}
 	viper.Set("tool.poetry.source", []map[string]string{{"name": poetryRepoName, "url": repoUrl}})
-	err = viper.WriteConfig()
-	if err != nil {
+	if err := viper.WriteConfig(); err != nil {
 		return errorutils.CheckErrorf("Failed to add tool.poetry.source to pyproject.toml: %s", err.Error())
+
 	}
 	log.Info(fmt.Sprintf("Added tool.poetry.source name:%q url:%q", poetryRepoName, repoUrl))
-	return err
+	return nil
 }
 
 func (pc *PoetryCommand) CommandName() string {

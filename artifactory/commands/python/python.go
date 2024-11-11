@@ -181,8 +181,7 @@ func GetPypiRepoUrl(serverDetails *config.ServerDetails, repository string, isCu
 func RunConfigCommand(buildTool project.ProjectType, args []string) error {
 	log.Debug("Running", buildTool.String(), "config command...")
 	configCmd := gofrogcmd.NewCommand(buildTool.String(), "config", args)
-	err := gofrogcmd.RunCmd(configCmd)
-	if err != nil {
+	if err := gofrogcmd.RunCmd(configCmd); err != nil {
 		return errorutils.CheckErrorf("%s config command failed with: %q", buildTool.String(), err)
 	}
 	return nil

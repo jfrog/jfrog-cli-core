@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
-	"github.com/jfrog/gofrog/io"
+	frogio "github.com/jfrog/gofrog/io"
 	commonBuild "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	SourceName        = "JFrogCli"
+	SourceName        = "JFrogArtifactory"
 	configFilePattern = "jfrog.cli.nuget."
 
 	dotnetTestError = `the command failed with an error.
@@ -159,21 +159,44 @@ func changeWorkingDir(newWorkingDir string) (string, error) {
 	return newWorkingDir, errorutils.CheckError(err)
 }
 
-// Runs nuget sources add command
-func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, sourceUrl, user, password string) error {
+// Runs nuget/dotnet source add command
+func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, password string) error {
 	cmd, err := dotnet.CreateDotnetAddSourceCmd(cmdType, sourceUrl)
 	if err != nil {
 		return err
 	}
 
 	flagPrefix := cmdType.GetTypeFlagPrefix()
-	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"configfile", configFileName)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"name", SourceName)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"username", user)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"password", password)
-	output, err := io.RunCmdOutput(cmd)
-	log.Debug("'Add sources' command executed. Output:", output)
-	return err
+	stdOut, errorOut, _, err := frogio.RunCmdWithOutputParser(cmd, false)
+	if err != nil {
+		return fmt.Errorf("failed to add source: %w\n%s", err, strings.TrimSpace(stdOut+errorOut))
+	}
+	return nil
+}
+
+// Runs nuget/dotnet source remove command
+func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType) error {
+	cmd, err := dotnet.NewToolchainCmd(cmdType)
+	if err != nil {
+		return err
+	}
+	if cmdType == dotnet.DotnetCore {
+		cmd.Command = append(cmd.Command, "nuget", "remove", "source", SourceName)
+	} else {
+		cmd.Command = append(cmd.Command, "sources", "remove")
+		cmd.CommandFlags = append(cmd.CommandFlags, "-name", SourceName)
+	}
+	stdOut, stdErr, _, err := frogio.RunCmdWithOutputParser(cmd, false)
+	if err != nil {
+		if strings.Contains(stdOut+stdErr, "Unable to find") {
+			return nil
+		}
+		return fmt.Errorf("failed to remove source: %w\n%s", err, strings.TrimSpace(stdOut+stdErr))
+	}
+	return nil
 }
 
 // Checks if the user provided input such as -configfile flag or -Source flag.
@@ -266,7 +289,7 @@ func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails,
 
 // Adds a source to the nuget config template
 func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails, useNugetV2 bool, repoName string) error {
-	sourceUrl, user, password, err := getSourceDetails(server, repoName, useNugetV2)
+	sourceUrl, user, password, err := GetSourceDetails(server, repoName, useNugetV2)
 	if err != nil {
 		return err
 	}
@@ -282,7 +305,7 @@ func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails,
 	return err
 }
 
-func getSourceDetails(details *config.ServerDetails, repoName string, useNugetV2 bool) (sourceURL, user, password string, err error) {
+func GetSourceDetails(details *config.ServerDetails, repoName string, useNugetV2 bool) (sourceURL, user, password string, err error) {
 	var u *url.URL
 	u, err = url.Parse(details.ArtifactoryUrl)
 	if errorutils.CheckError(err) != nil {

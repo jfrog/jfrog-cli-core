@@ -2,6 +2,7 @@ package packagemanagerlogin
 
 import (
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/dotnet"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -322,6 +323,68 @@ func TestPackageManagerLoginCommand_Go(t *testing.T) {
 			default:
 				// Validate anonymous access.
 				assert.Contains(t, goProxy, "https://acme.jfrog.io/artifactory/api/go/test-repo")
+			}
+		})
+	}
+}
+
+func TestBuildToolLoginCommand_configureNuget(t *testing.T) {
+	testBuildToolLoginCommandConfigureDotnetNuget(t, project.Nuget)
+}
+
+func TestBuildToolLoginCommand_configureDotnet(t *testing.T) {
+	testBuildToolLoginCommandConfigureDotnetNuget(t, project.Dotnet)
+}
+
+func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager project.ProjectType) {
+	// Retrieve the home directory and construct the NuGet.config file path.
+	homeDir, err := os.UserHomeDir()
+	assert.NoError(t, err)
+	var nugetConfigDir string
+	if io.IsWindows() {
+		nugetConfigDir = "AppData"
+	} else if packageManager == project.Nuget {
+		nugetConfigDir = ".config"
+	} else if packageManager == project.Dotnet {
+		nugetConfigDir = ".nuget"
+	}
+	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.config")
+
+	// Back up the existing NuGet.config and ensure restoration after the test.
+	restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, ".nuget.config.backup")
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, restoreNugetConfigFunc())
+	}()
+
+	nugetLoginCmd := createTestPackageManagerLoginCommand(packageManager)
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			// Set up server details for the current test case's authentication type.
+			nugetLoginCmd.serverDetails.SetUser(testCase.user)
+			nugetLoginCmd.serverDetails.SetPassword(testCase.password)
+			nugetLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
+
+			// Run the login command and ensure no errors occur.
+			if !assert.NoError(t, nugetLoginCmd.Run()) {
+				t.FailNow()
+			}
+
+			// Validate that the repository URL was set correctly in Nuget.config.
+			// Read the contents of the temporary Poetry config file.
+			nugetConfigContentBytes, err := os.ReadFile(nugetConfigFilePath)
+			assert.NoError(t, err)
+			nugetConfigContent := string(nugetConfigContentBytes)
+
+			assert.Contains(t, nugetConfigContent, fmt.Sprintf("add key=\"%s\" value=\"https://acme.jfrog.io/artifactory/api/nuget/v3/test-repo\"", dotnet.SourceName))
+
+			if testCase.accessToken != "" {
+				// Validate token-based authentication (The token is encoded so we can't test it)
+				assert.Contains(t, nugetConfigContent, fmt.Sprintf("<add key=\"Username\" value=\"%s\" />", auth.ExtractUsernameFromAccessToken(testCase.accessToken)))
+			} else if testCase.user != "" && testCase.password != "" {
+				// Validate basic nugetConfigContent with user and password. (The password is encoded so we can't test it)
+				assert.Contains(t, nugetConfigContent, fmt.Sprintf("<add key=\"Username\" value=\"%s\" />", testCase.user))
 			}
 		})
 	}

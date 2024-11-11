@@ -2,7 +2,9 @@ package packagemanagerlogin
 
 import (
 	"fmt"
+	bidotnet "github.com/jfrog/build-info-go/build/utils/dotnet"
 	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/dotnet"
 	gocommands "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/golang"
 	pythoncommands "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/repository"
@@ -47,6 +49,8 @@ func packageManagerToPackageType(packageManager project.ProjectType) (string, er
 		return repository.Pypi, nil
 	case project.Go:
 		return repository.Go, nil
+	case project.Nuget, project.Dotnet:
+		return repository.Nuget, nil
 	default:
 		return "", errorutils.CheckErrorf("unsupported package manager: %s", packageManager)
 	}
@@ -89,6 +93,8 @@ func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 		err = pmlc.configurePoetry()
 	case project.Go:
 		err = pmlc.configureGo()
+	case project.Nuget, project.Dotnet:
+		err = pmlc.configureDotnetNuget()
 	default:
 		err = errorutils.CheckErrorf("unsupported package manager: %s", pmlc.packageManager)
 	}
@@ -204,4 +210,33 @@ func (pmlc *PackageManagerLoginCommand) configureGo() error {
 		return err
 	}
 	return biutils.RunGo([]string{"env", "-w", "GOPROXY=" + repoWithCredsUrl}, "")
+}
+
+// configureDotnetNuget configures NuGet or .NET Core to use the specified Artifactory repository with credentials.
+// Adds the repository source to the NuGet configuration file, using appropriate credentials for authentication.
+// The following command is run for dotnet:
+//
+//	dotnet nuget add source --name <JFrog-Artifactory> "https://acme.jfrog.io/artifactory/api/nuget/{repository-name}" --username <your-username> --password <your-password>
+//
+// For NuGet:
+//
+//	nuget sources add -Name <JFrog-Artifactory> -Source "https://acme.jfrog.io/artifactory/api/nuget/{repository-name}" -Username <your-username> -Password <your-password>
+func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
+	// Retrieve repository URL and credentials for NuGet or .NET Core.
+	sourceUrl, user, password, err := dotnet.GetSourceDetails(pmlc.serverDetails, pmlc.repoName, false)
+	if err != nil {
+		return err
+	}
+
+	// Determine the appropriate toolchain type (NuGet or .NET Core).
+	toolchainType := bidotnet.DotnetCore
+	if pmlc.packageManager == project.Nuget {
+		toolchainType = bidotnet.Nuget
+	}
+	err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType)
+	if err != nil {
+		return err
+	}
+	// Add the repository as a source in the NuGet configuration with credentials for authentication.
+	return dotnet.AddSourceToNugetConfig(toolchainType, sourceUrl, user, password)
 }

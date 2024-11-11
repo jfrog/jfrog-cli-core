@@ -363,22 +363,46 @@ func TestCommandName(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// Test both cases of the ExecAndReportUsage function
-// Usage should be sent only when the environment variable is set
-// Validate no errors
 func TestConfigCommand_ExecAndReportUsage(t *testing.T) {
-	// With usage report
-	err := os.Setenv(coreutils.UsageOidcConfigured, "TRUE")
-	assert.NoError(t, err)
-	cc := NewConfigCommand(AddOrEdit, testServerId)
-	err = cc.ExecAndReportUsage()
-	assert.NoError(t, err)
-	// Without usage report
-	err = os.Unsetenv(coreutils.UsageOidcConfigured)
-	assert.NoError(t, err)
-	cc = NewConfigCommand(AddOrEdit, testServerId)
-	err = cc.ExecAndReportUsage()
-	assert.NoError(t, err)
+	// Define test scenarios
+	testCases := []struct {
+		name         string
+		envVarValue  string // Environment variable value to set (or empty to unset)
+		expectedName string // Expected command name
+		expectError  bool   // Whether an error is expected
+	}{
+		{
+			name:         "With usage report",
+			envVarValue:  "TRUE",
+			expectedName: ConfigOIDCConfiguredCommandName,
+		},
+		{
+			name:         "Without usage report",
+			envVarValue:  "", // Empty to unset the environment variable
+			expectedName: ConfigCommandName,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set or unset the environment variable
+			if tc.envVarValue != "" {
+				err := os.Setenv(coreutils.UsageOidcConfigured, tc.envVarValue)
+				assert.NoError(t, err)
+			} else {
+				err := os.Unsetenv(coreutils.UsageOidcConfigured)
+				assert.NoError(t, err)
+			}
+
+			// Initialize the command and check the expected command name
+			cc := NewConfigCommand(AddOrEdit, testServerId)
+			assert.Equal(t, tc.expectedName, cc.CommandName())
+
+			// Execute and validate no errors
+			err := cc.ExecAndReportUsage()
+			assert.NoError(t, err)
+		})
+	}
 }
 
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {

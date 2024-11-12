@@ -12,6 +12,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io"
 	clientTestUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -69,9 +70,7 @@ func TestPackageManagerLoginCommand_Npm(t *testing.T) {
 			npmLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if !assert.NoError(t, npmLoginCmd.Run()) {
-				t.FailNow()
-			}
+			require.NoError(t, npmLoginCmd.Run())
 
 			// Read the contents of the temporary npmrc file.
 			npmrcContentBytes, err := os.ReadFile(npmrcFilePath)
@@ -120,9 +119,7 @@ func TestPackageManagerLoginCommand_Yarn(t *testing.T) {
 			yarnLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if !assert.NoError(t, yarnLoginCmd.Run()) {
-				t.FailNow()
-			}
+			require.NoError(t, yarnLoginCmd.Run())
 
 			// Read the contents of the temporary npmrc file.
 			yarnrcContentBytes, err := os.ReadFile(yarnrcFilePath)
@@ -185,9 +182,7 @@ func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.Proj
 			pipLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if !assert.NoError(t, pipLoginCmd.Run()) {
-				t.FailNow()
-			}
+			require.NoError(t, pipLoginCmd.Run())
 
 			// Read the contents of the temporary pip config file.
 			pipConfigContentBytes, err := os.ReadFile(pipConfFilePath)
@@ -250,9 +245,7 @@ func TestPackageManagerLoginCommand_configurePoetry(t *testing.T) {
 			poetryLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if !assert.NoError(t, poetryLoginCmd.Run()) {
-				t.FailNow()
-			}
+			require.NoError(t, poetryLoginCmd.Run())
 
 			// Validate that the repository URL was set correctly in config.toml.
 			// Read the contents of the temporary Poetry config file.
@@ -304,9 +297,7 @@ func TestPackageManagerLoginCommand_Go(t *testing.T) {
 			goLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if !assert.NoError(t, goLoginCmd.Run()) {
-				t.FailNow()
-			}
+			require.NoError(t, goLoginCmd.Run())
 
 			// Get the value of the GOPROXY environment variable.
 			outputBytes, err := exec.Command("go", "env", "GOPROXY").Output()
@@ -369,9 +360,7 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 			nugetLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			if !assert.NoError(t, nugetLoginCmd.Run()) {
-				t.FailNow()
-			}
+			require.NoError(t, nugetLoginCmd.Run())
 			found := ""
 			err = filepath.WalkDir(homeDir, func(path string, d os.DirEntry, err error) error {
 				if err != nil {
@@ -392,7 +381,9 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 			// Validate that the repository URL was set correctly in Nuget.config.
 			// Read the contents of the temporary Poetry config file.
 			nugetConfigContentBytes, err := os.ReadFile(nugetConfigFilePath)
-			assert.NoError(t, err)
+			require.NoError(t, err)
+			assert.FileExists(t, nugetConfigFilePath)
+
 			nugetConfigContent := string(nugetConfigContentBytes)
 
 			assert.Contains(t, nugetConfigContent, fmt.Sprintf("add key=\"%s\" value=\"https://acme.jfrog.io/artifactory/api/nuget/v3/test-repo\"", dotnet.SourceName))

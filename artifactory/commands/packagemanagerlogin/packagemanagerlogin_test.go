@@ -343,16 +343,17 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 	var nugetConfigDir string
 	switch {
 	case io.IsWindows():
-		nugetConfigDir = os.Getenv("APPDATA")
-	case io.IsMacOS() && packageManager == project.Nuget:
-		nugetConfigDir = filepath.Join(homeDir, ".config")
+		nugetConfigDir = filepath.Join("AppData", "Roaming")
+	case packageManager == project.Nuget:
+		nugetConfigDir = ".config"
 	default:
-		nugetConfigDir = filepath.Join(homeDir, ".nuget")
+		nugetConfigDir = ".nuget"
 	}
-	nugetConfigFilePath := filepath.Join(nugetConfigDir, "NuGet", "NuGet.config")
+
+	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.config")
 
 	// Back up the existing NuGet.config and ensure restoration after the test.
-	restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, ".nuget.config.backup")
+	restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, packageManager.String()+".config.backup")
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, restoreNugetConfigFunc())
@@ -388,7 +389,6 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 			assert.NoError(t, err)
 			assert.FileExists(t, found)
 
-			t.FailNow()
 			// Validate that the repository URL was set correctly in Nuget.config.
 			// Read the contents of the temporary Poetry config file.
 			nugetConfigContentBytes, err := os.ReadFile(nugetConfigFilePath)

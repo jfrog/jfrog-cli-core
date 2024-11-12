@@ -345,11 +345,11 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 	case io.IsWindows():
 		nugetConfigDir = os.Getenv("APPDATA")
 	case io.IsMacOS() && packageManager == project.Nuget:
-		nugetConfigDir = ".config"
+		nugetConfigDir = filepath.Join(homeDir, ".config")
 	default:
-		nugetConfigDir = ".nuget"
+		nugetConfigDir = filepath.Join(homeDir, ".nuget")
 	}
-	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.config")
+	nugetConfigFilePath := filepath.Join(nugetConfigDir, "NuGet", "NuGet.config")
 
 	// Back up the existing NuGet.config and ensure restoration after the test.
 	restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, ".nuget.config.backup")
@@ -371,9 +371,22 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 			if !assert.NoError(t, nugetLoginCmd.Run()) {
 				t.FailNow()
 			}
-			assert.FileExists(t, filepath.Join(homeDir, ".config", "NuGet", "NuGet.config"))
-			assert.FileExists(t, filepath.Join(homeDir, ".nuget", "NuGet", "NuGet.config"))
-			assert.FileExists(t, filepath.Join("etc", "opt", "NuGet", "NuGet.config"))
+			found := ""
+			err = filepath.WalkDir(homeDir, func(path string, d os.DirEntry, err error) error {
+				if err != nil {
+					return err
+				}
+
+				// Check if the file name is "NuGet.Config"
+				if d.Type().IsRegular() && d.Name() == "NuGet.Config" {
+					fmt.Printf("Found NuGet.Config at: %s\n", path)
+					found = path
+				}
+
+				return nil
+			})
+			assert.NoError(t, err)
+			assert.FileExists(t, found)
 
 			t.FailNow()
 			// Validate that the repository URL was set correctly in Nuget.config.

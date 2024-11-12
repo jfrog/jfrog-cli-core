@@ -371,16 +371,14 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 			if !assert.NoError(t, nugetLoginCmd.Run()) {
 				t.FailNow()
 			}
+			assert.FileExists(t, filepath.Join(homeDir, ".config", "NuGet", "NuGet.config"))
+			assert.FileExists(t, filepath.Join(homeDir, ".nuget", "NuGet", "NuGet.config"))
+			assert.FileExists(t, filepath.Join("etc", "opt", "NuGet", "NuGet.config"))
 
+			t.FailNow()
 			// Validate that the repository URL was set correctly in Nuget.config.
 			// Read the contents of the temporary Poetry config file.
 			nugetConfigContentBytes, err := os.ReadFile(nugetConfigFilePath)
-			assert.NoError(t, err)
-			nugetConfigContentBytes, err = os.ReadFile(filepath.Join(homeDir, ".config", "NuGet", "NuGet.config"))
-			assert.NoError(t, err)
-			nugetConfigContentBytes, err = os.ReadFile(filepath.Join(homeDir, ".nuget", "NuGet", "NuGet.config"))
-			assert.NoError(t, err)
-			nugetConfigContentBytes, err = os.ReadFile(filepath.Join("etc", "opt", "NuGet", "NuGet.config"))
 			assert.NoError(t, err)
 			nugetConfigContent := string(nugetConfigContentBytes)
 

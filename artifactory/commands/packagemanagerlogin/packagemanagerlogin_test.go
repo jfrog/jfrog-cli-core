@@ -343,10 +343,10 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 	var nugetConfigDir string
 	switch {
 	case io.IsWindows():
-		nugetConfigDir = "AppData"
-	case packageManager == project.Nuget:
+		nugetConfigDir = os.Getenv("APPDATA")
+	case io.IsMacOS() && packageManager == project.Nuget:
 		nugetConfigDir = ".config"
-	case packageManager == project.Dotnet:
+	default:
 		nugetConfigDir = ".nuget"
 	}
 	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.config")

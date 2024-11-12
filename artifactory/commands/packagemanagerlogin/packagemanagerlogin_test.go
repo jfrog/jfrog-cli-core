@@ -376,6 +376,12 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 			// Read the contents of the temporary Poetry config file.
 			nugetConfigContentBytes, err := os.ReadFile(nugetConfigFilePath)
 			assert.NoError(t, err)
+			nugetConfigContentBytes, err = os.ReadFile(filepath.Join(homeDir, ".config", "NuGet", "NuGet.config"))
+			assert.NoError(t, err)
+			nugetConfigContentBytes, err = os.ReadFile(filepath.Join(homeDir, ".nuget", "NuGet", "NuGet.config"))
+			assert.NoError(t, err)
+			nugetConfigContentBytes, err = os.ReadFile(filepath.Join("etc", "opt", "NuGet", "NuGet.config"))
+			assert.NoError(t, err)
 			nugetConfigContent := string(nugetConfigContentBytes)
 
 			assert.Contains(t, nugetConfigContent, fmt.Sprintf("add key=\"%s\" value=\"https://acme.jfrog.io/artifactory/api/nuget/v3/test-repo\"", dotnet.SourceName))

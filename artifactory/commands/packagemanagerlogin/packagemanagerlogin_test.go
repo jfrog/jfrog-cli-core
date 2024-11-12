@@ -341,14 +341,14 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 		nugetConfigDir = ".nuget"
 	}
 
-	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.config")
+	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.Config")
 
-	//// Back up the existing NuGet.config and ensure restoration after the test.
-	//restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, packageManager.String()+".config.backup")
-	//assert.NoError(t, err)
-	//defer func() {
-	//	assert.NoError(t, restoreNugetConfigFunc())
-	//}()
+	// Back up the existing NuGet.config and ensure restoration after the test.
+	restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, packageManager.String()+".config.backup")
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, restoreNugetConfigFunc())
+	}()
 
 	nugetLoginCmd := createTestPackageManagerLoginCommand(packageManager)
 
@@ -361,27 +361,10 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 
 			// Run the login command and ensure no errors occur.
 			require.NoError(t, nugetLoginCmd.Run())
-			found := ""
-			err = filepath.WalkDir(homeDir, func(path string, d os.DirEntry, err error) error {
-				if err != nil {
-					return err
-				}
-
-				// Check if the file name is "NuGet.Config"
-				if d.Type().IsRegular() && d.Name() == "NuGet.Config" {
-					fmt.Printf("Found NuGet.Config at: %s\n", path)
-					found = path
-				}
-
-				return nil
-			})
-			assert.NoError(t, err)
-			assert.NotEmpty(t, found)
 
 			// Validate that the repository URL was set correctly in Nuget.config.
 			// Read the contents of the temporary Poetry config file.
 			nugetConfigContentBytes, err := os.ReadFile(nugetConfigFilePath)
-			assert.FileExists(t, nugetConfigFilePath)
 			require.NoError(t, err)
 
 			nugetConfigContent := string(nugetConfigContentBytes)

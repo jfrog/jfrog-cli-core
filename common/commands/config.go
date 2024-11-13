@@ -43,9 +43,9 @@ const (
 
 const (
 	// Indicates that the config command uses OIDC authentication.
-	ConfigOidcCommandName = "config_OIDC"
+	configOidcCommandName = "config_oidc"
 	// Default config command name.
-	ConfigCommandName = "config"
+	configCommandName = "config"
 )
 
 // Internal golang locking for the same process.
@@ -150,26 +150,25 @@ func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (cc *ConfigCommand) CommandName() string {
-	isOidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
-	if err == nil && isOidcConfigured {
-		return ConfigOidcCommandName
+	OidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
+	if err != nil {
+		log.Warn("Failed to get the value of the environment variable: " + coreutils.UsageAutoPublishedBuild + ". " + err.Error())
 	}
-	return ConfigCommandName
+	if OidcConfigured {
+		return configOidcCommandName
+	}
+	return configCommandName
 }
 
 // ExecAndReportUsage runs the ConfigCommand and then triggers a usage report if needed,
 // Report usage only if OIDC integration was used
 // Usage must be sent after command execution as we need the server details to be set.
-func (cc *ConfigCommand) ExecAndReportUsage() error {
-	err := cc.Run()
-	if cc.CommandName() == ConfigOidcCommandName {
-		channel := make(chan bool)
-		// Triggers the report usage.
-		go reportUsage(cc, channel)
-		// Waits for the signal from the report usage to be done.
-		<-channel
+func (cc *ConfigCommand) ExecAndReportUsage() (err error) {
+	if err = cc.Run(); err != nil {
+		return
 	}
-	return err
+	reportUsage(cc, nil)
+	return
 }
 
 func (cc *ConfigCommand) config() error {

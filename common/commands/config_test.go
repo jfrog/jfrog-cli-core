@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"testing"
 
@@ -345,25 +346,22 @@ func TestImport(t *testing.T) {
 }
 
 func TestCommandName(t *testing.T) {
-	cc := NewConfigCommand(AddOrEdit, testServerId)
-
-	// Test when the environment variable is not set
-	err := os.Unsetenv(coreutils.UsageOidcConfigured)
-	assert.NoError(t, err)
-	assert.Equal(t, ConfigCommandName, cc.CommandName())
-
-	// Test when the environment variable is set
-	err = os.Setenv(coreutils.UsageOidcConfigured, "true")
-	assert.NoError(t, err)
-
-	assert.Equal(t, ConfigOidcCommandName, cc.CommandName())
-
 	// Clean up
-	err = os.Unsetenv(coreutils.UsageOidcConfigured)
-	assert.NoError(t, err)
+	defer func() {
+		testsUtils.UnSetEnvAndAssert(t, coreutils.UsageOidcConfigured)
+	}()
+	cc := NewConfigCommand(AddOrEdit, testServerId)
+	// Test when the environment variable is not set
+	assert.Equal(t, configCommandName, cc.CommandName())
+	// Test when the environment variable is set
+	testsUtils.SetEnvWithCallbackAndAssert(t, coreutils.UsageOidcConfigured, "true")
+	assert.Equal(t, configOidcCommandName, cc.CommandName())
 }
 
 func TestConfigCommand_ExecAndReportUsage(t *testing.T) {
+	defer func() {
+		testsUtils.UnSetEnvAndAssert(t, coreutils.UsageOidcConfigured)
+	}()
 	// Define test scenarios
 	testCases := []struct {
 		name         string
@@ -374,12 +372,12 @@ func TestConfigCommand_ExecAndReportUsage(t *testing.T) {
 		{
 			name:         "With usage report",
 			envVarValue:  "TRUE",
-			expectedName: ConfigOidcCommandName,
+			expectedName: configOidcCommandName,
 		},
 		{
 			name:         "Without usage report",
 			envVarValue:  "", // Empty to unset the environment variable
-			expectedName: ConfigCommandName,
+			expectedName: configCommandName,
 		},
 	}
 

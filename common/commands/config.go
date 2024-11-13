@@ -41,6 +41,13 @@ const (
 	WebLogin    AuthenticationMethod = "Web Login"
 )
 
+const (
+	// Indicates that the config command uses OIDC authentication.
+	configOidcCommandName = "config_oidc"
+	// Default config command name.
+	configCommandName = "config"
+)
+
 // Internal golang locking for the same process.
 var mutex sync.Mutex
 
@@ -143,7 +150,25 @@ func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (cc *ConfigCommand) CommandName() string {
-	return "config"
+	oidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
+	if err != nil {
+		log.Warn("Failed to get the value of the environment variable: " + coreutils.UsageAutoPublishedBuild + ". " + err.Error())
+	}
+	if oidcConfigured {
+		return configOidcCommandName
+	}
+	return configCommandName
+}
+
+// ExecAndReportUsage runs the ConfigCommand and then triggers a usage report if needed,
+// Report usage only if OIDC integration was used
+// Usage must be sent after command execution as we need the server details to be set.
+func (cc *ConfigCommand) ExecAndReportUsage() (err error) {
+	if err = cc.Run(); err != nil {
+		return
+	}
+	reportUsage(cc, nil)
+	return
 }
 
 func (cc *ConfigCommand) config() error {

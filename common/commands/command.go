@@ -58,5 +58,7 @@ func reportUsage(command Command, channel chan<- bool) {
 
 // Set to true when the report usage func exits
 func signalReportUsageFinished(ch chan<- bool) {
-	ch <- true
+	if ch != nil {
+		ch <- true
+	}
 }

@@ -75,7 +75,7 @@ func (bpc *BuildPublishCommand) CommandName() string {
 		log.Warn("Failed to get the value of the environment variable: " + coreutils.UsageAutoPublishedBuild + ". " + err.Error())
 	}
 	if autoPublishedTriggered {
-		return "rt_auto_build_publish"
+		return "rt_build_publish_auto"
 	}
 	return "rt_build_publish"
 }

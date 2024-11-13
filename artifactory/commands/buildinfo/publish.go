@@ -70,11 +70,11 @@ func (bpc *BuildPublishCommand) IsDetailedSummary() bool {
 }
 
 func (bpc *BuildPublishCommand) CommandName() string {
-	AutoPublishedTriggered, err := clientutils.GetBoolEnvValue(coreutils.UsageAutoPublishedBuild, false)
+	autoPublishedTriggered, err := clientutils.GetBoolEnvValue(coreutils.UsageAutoPublishedBuild, false)
 	if err != nil {
 		log.Warn("Failed to get the value of the environment variable: " + coreutils.UsageAutoPublishedBuild + ". " + err.Error())
 	}
-	if AutoPublishedTriggered {
+	if autoPublishedTriggered {
 		return "rt_auto_build_publish"
 	}
 	return "rt_build_publish"

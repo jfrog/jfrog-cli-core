@@ -74,7 +74,7 @@ func TestInitNewConfig(t *testing.T) {
 		User:           "user",
 		Password:       "pass",
 	}
-	configFile, err := InitNewConfig(tmpDir, repoName, server, false)
+	configFile, err := InitNewConfig(tmpDir, repoName, server, false, true)
 	assert.NoError(t, err)
 	f, err := os.Open(configFile.Name())
 	assert.NoError(t, err)
@@ -87,7 +87,7 @@ func TestInitNewConfig(t *testing.T) {
 	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/v3/test-repo" protocolVersion="3" />
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/v3/test-repo" protocolVersion="3" allowInsecureConnections="true"/>
   </packageSources>
   <packageSourceCredentials>
     <JFrogCli>
@@ -98,7 +98,7 @@ func TestInitNewConfig(t *testing.T) {
 </configuration>`, string(buf[:n]))
 	server.Password = ""
 	server.AccessToken = "abc123"
-	configFile, err = InitNewConfig(tmpDir, repoName, server, true)
+	configFile, err = InitNewConfig(tmpDir, repoName, server, true, false)
 	assert.NoError(t, err)
 	updatedConfigFile, err := os.Open(configFile.Name())
 	assert.NoError(t, err)
@@ -111,7 +111,7 @@ func TestInitNewConfig(t *testing.T) {
 	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/test-repo" protocolVersion="2" />
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/test-repo" protocolVersion="2" allowInsecureConnections="false"/>
   </packageSources>
   <packageSourceCredentials>
     <JFrogCli>
@@ -164,11 +164,12 @@ func testPrepareDotnetBuildInfoModule(t *testing.T, subCommand string, flags []s
 	}()
 	module := createNewDotnetModule(t, tmpDir)
 	cmd := DotnetCommand{
-		toolchainType:      dotnet.DotnetCore,
-		subCommand:         subCommand,
-		argAndFlags:        flags,
-		buildConfiguration: buildUtils.NewBuildConfiguration("", "", "mod", ""),
-		serverDetails:      &config.ServerDetails{ArtifactoryUrl: "https://my-instance.jfrog.io"},
+		toolchainType:            dotnet.DotnetCore,
+		subCommand:               subCommand,
+		argAndFlags:              flags,
+		buildConfiguration:       buildUtils.NewBuildConfiguration("", "", "mod", ""),
+		serverDetails:            &config.ServerDetails{ArtifactoryUrl: "https://my-instance.jfrog.io"},
+		allowInsecureConnections: true,
 	}
 	callbackFunc, err := cmd.prepareDotnetBuildInfoModule(module)
 	if !assert.NoError(t, err) {

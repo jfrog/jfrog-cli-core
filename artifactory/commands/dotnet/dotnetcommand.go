@@ -30,14 +30,16 @@ The initial error is:
 )
 
 type DotnetCommand struct {
-	toolchainType      dotnet.ToolchainType
-	subCommand         string
-	argAndFlags        []string
-	repoName           string
-	solutionPath       string
-	useNugetV2         bool
-	buildConfiguration *commonBuild.BuildConfiguration
-	serverDetails      *config.ServerDetails
+	toolchainType dotnet.ToolchainType
+	subCommand    string
+	argAndFlags   []string
+	repoName      string
+	solutionPath  string
+	useNugetV2    bool
+	// Used mostly for testings, allow insecured conntions sources.
+	allowInsecureConnections bool
+	buildConfiguration       *commonBuild.BuildConfiguration
+	serverDetails            *config.ServerDetails
 }
 
 func (dc *DotnetCommand) SetServerDetails(serverDetails *config.ServerDetails) *DotnetCommand {
@@ -67,6 +69,11 @@ func (dc *DotnetCommand) SetRepoName(repoName string) *DotnetCommand {
 
 func (dc *DotnetCommand) SetUseNugetV2(useNugetV2 bool) *DotnetCommand {
 	dc.useNugetV2 = useNugetV2
+	return dc
+}
+
+func (dc *DotnetCommand) SetAllowInsecureConnections(allowInsecureConnections bool) *DotnetCommand {
+	dc.allowInsecureConnections = allowInsecureConnections
 	return dc
 }
 
@@ -219,7 +226,7 @@ func (dc *DotnetCommand) prepareConfigFileIfNeeded() (cleanup func() error, err 
 		return fileutils.RemoveTempDir(tempDirPath)
 	}
 
-	configFile, err := InitNewConfig(tempDirPath, dc.repoName, dc.serverDetails, dc.useNugetV2)
+	configFile, err := InitNewConfig(tempDirPath, dc.repoName, dc.serverDetails, dc.useNugetV2, dc.allowInsecureConnections)
 	if err == nil {
 		dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
@@ -246,7 +253,7 @@ func getFlagValueIfExists(cmdFlag string, argAndFlags []string) (string, error) 
 }
 
 // InitNewConfig is used when neither of the flags were provided, and we need to init our own config.
-func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails, useNugetV2 bool) (configFile *os.File, err error) {
+func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails, useNugetV2, allowInsecureConnections bool) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
 	configFile, err = os.CreateTemp(configDirPath, configFilePattern)
 	if errorutils.CheckError(err) != nil {
@@ -260,12 +267,12 @@ func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails,
 	// We would prefer to write the NuGet configuration using the `nuget add source` command,
 	// but the NuGet configuration utility doesn't currently allow setting protocolVersion.
 	// Until that is supported, the templated method must be used.
-	err = addSourceToNugetTemplate(configFile, server, useNugetV2, repoName)
+	err = addSourceToNugetTemplate(configFile, server, useNugetV2, repoName, allowInsecureConnections)
 	return
 }
 
 // Adds a source to the nuget config template
-func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails, useNugetV2 bool, repoName string) error {
+func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails, useNugetV2 bool, repoName string, allowInsecureConnections bool) error {
 	sourceUrl, user, password, err := getSourceDetails(server, repoName, useNugetV2)
 	if err != nil {
 		return err
@@ -278,7 +285,7 @@ func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails,
 	}
 
 	// Format the templates
-	_, err = fmt.Fprintf(configFile, dotnet.ConfigFileFormat, sourceUrl, protoVer, user, password)
+	_, err = fmt.Fprintf(configFile, dotnet.ConfigFileFormat, sourceUrl, protoVer, allowInsecureConnections, user, password)
 	return err
 }
 

@@ -36,7 +36,7 @@ type DotnetCommand struct {
 	repoName      string
 	solutionPath  string
 	useNugetV2    bool
-	// Used mostly for testings, allow insecured conntions sources.
+	// By default, package sources are required to use HTTPS. This option allows sources to use HTTP.
 	allowInsecureConnections bool
 	buildConfiguration       *commonBuild.BuildConfiguration
 	serverDetails            *config.ServerDetails

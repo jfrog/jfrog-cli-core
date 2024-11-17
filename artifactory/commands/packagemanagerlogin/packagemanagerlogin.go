@@ -76,7 +76,7 @@ func (pmlc *PackageManagerLoginCommand) ServerDetails() (*config.ServerDetails, 
 func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 	if pmlc.repoName == "" {
 		// Prompt the user to select a virtual repository that matches the package manager.
-		if err = pmlc.getRepositoryNameFromUserInteractively(); err != nil {
+		if err = pmlc.promptUserToSelectRepository(); err != nil {
 			return err
 		}
 	}
@@ -106,8 +106,8 @@ func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 	return nil
 }
 
-// getRepositoryNameFromUserInteractively prompts the user to select a compatible virtual repository.
-func (pmlc *PackageManagerLoginCommand) getRepositoryNameFromUserInteractively() error {
+// promptUserToSelectRepository prompts the user to select a compatible virtual repository.
+func (pmlc *PackageManagerLoginCommand) promptUserToSelectRepository() error {
 	// Map the package manager to its corresponding package type.
 	packageType, err := packageManagerToPackageType(pmlc.packageManager)
 	if err != nil {
@@ -233,8 +233,7 @@ func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
 	if pmlc.packageManager == project.Nuget {
 		toolchainType = bidotnet.Nuget
 	}
-	err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType)
-	if err != nil {
+	if err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType); err != nil {
 		return err
 	}
 	// Add the repository as a source in the NuGet configuration with credentials for authentication.

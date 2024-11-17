@@ -50,6 +50,13 @@ const (
 	ServerID                = "JFROG_CLI_SERVER_ID"
 	TransitiveDownload      = "JFROG_CLI_TRANSITIVE_DOWNLOAD"
 
+	// These environment variables are used to adjust command names for more detailed tracking in the usage report.
+	// Set by the setup-jfrog-cli GitHub Action to identify specific command usage scenarios.
+	// True if an automatic build publication was triggered.
+	UsageAutoPublishedBuild = "JFROG_CLI_USAGE_AUTO_BUILD_PUBLISHED"
+	// True if the JFrog platform was configured using OIDC integration.
+	UsageOidcConfigured = "JFROG_CLI_USAGE_CONFIG_OIDC"
+
 	// Deprecated and replaced with TransitiveDownload
 	TransitiveDownloadExperimental = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
 )

@@ -86,7 +86,7 @@ func TestGetArtifactoryRemoteRepoUrl(t *testing.T) {
 		AccessToken:    "eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA",
 	}
 	repoName := "test-repo"
-	repoUrl, err := getArtifactoryRemoteRepoUrl(server, repoName, GoProxyUrlParams{})
+	repoUrl, err := GetArtifactoryRemoteRepoUrl(server, repoName, GoProxyUrlParams{})
 	assert.NoError(t, err)
 	assert.Equal(t, "https://test:eyJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmYWtlXC91c2Vyc1wvdGVzdCJ9.MTIzNDU2Nzg5MA@server.com/artifactory/api/go/test-repo", repoUrl)
 }

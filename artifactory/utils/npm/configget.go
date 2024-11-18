@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
+// This method runs "npm config get" command and returns the value of the specified npm configuration.
 func ConfigGet(npmFlags []string, confName, executablePath string) (string, error) {
 	configGetCmdConfig := createConfigGetCmdConfig(executablePath, confName, npmFlags)
 	output, err := gofrogcmd.RunCmdOutput(configGetCmdConfig)

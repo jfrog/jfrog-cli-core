@@ -10,12 +10,22 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python/dependencies"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/spf13/viper"
 	"golang.org/x/exp/slices"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
+)
+
+const (
+	poetryConfigAuthPrefix = "http-basic."
+	poetryConfigRepoPrefix = "repositories."
+	pyproject              = "pyproject.toml"
 )
 
 type PoetryCommand struct {
@@ -131,6 +141,61 @@ func (pc *PoetryCommand) SetPypiRepoUrlWithCredentials() error {
 			password,
 			pc.repository)
 	}
+	return nil
+}
+
+func ConfigPoetryRepo(url, username, password, configRepoName string) error {
+	err := RunPoetryConfig(url, username, password, configRepoName)
+	if err != nil {
+		return err
+	}
+
+	// Add the repository config to the pyproject.toml
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if err = addRepoToPyprojectFile(filepath.Join(currentDir, pyproject), configRepoName, url); err != nil {
+		return err
+	}
+	return poetryUpdate()
+}
+
+func RunPoetryConfig(url, username, password, configRepoName string) error {
+	// Add the poetry repository config
+	// poetry config repositories.<repo-name> https://<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
+	err := RunConfigCommand(project.Poetry, []string{poetryConfigRepoPrefix + configRepoName, url})
+	if err != nil {
+		return err
+	}
+
+	// Set the poetry repository credentials
+	// poetry config http-basic.<repo-name> <user> <password/token>
+	return RunConfigCommand(project.Poetry, []string{poetryConfigAuthPrefix + configRepoName, username, password})
+}
+
+func poetryUpdate() (err error) {
+	log.Info("Running Poetry update")
+	cmd := gofrogcmd.NewCommand("poetry", "update", []string{})
+	err = gofrogcmd.RunCmd(cmd)
+	if err != nil {
+		return errorutils.CheckErrorf("Poetry config command failed with: %s", err.Error())
+	}
+	return
+}
+
+func addRepoToPyprojectFile(filepath, poetryRepoName, repoUrl string) error {
+	viper.SetConfigType("toml")
+	viper.SetConfigFile(filepath)
+	if err := viper.ReadInConfig(); err != nil {
+		return errorutils.CheckErrorf("Failed to read pyproject.toml: %s", err.Error())
+	}
+	viper.Set("tool.poetry.source", []map[string]string{{"name": poetryRepoName, "url": repoUrl}})
+	if err := viper.WriteConfig(); err != nil {
+		return errorutils.CheckErrorf("Failed to add tool.poetry.source to pyproject.toml: %s", err.Error())
+
+	}
+	log.Info(fmt.Sprintf("Added tool.poetry.source name:%q url:%q", poetryRepoName, repoUrl))
 	return nil
 }
 

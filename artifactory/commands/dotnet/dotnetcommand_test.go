@@ -129,14 +129,14 @@ func TestGetSourceDetails(t *testing.T) {
 		Password:       "pass",
 	}
 	repoName := "repo-name"
-	url, user, pass, err := getSourceDetails(server, repoName, false)
+	url, user, pass, err := GetSourceDetails(server, repoName, false)
 	assert.NoError(t, err)
 	assert.Equal(t, "user", user)
 	assert.Equal(t, "pass", pass)
 	assert.Equal(t, "https://server.com/artifactory/api/nuget/v3/repo-name", url)
 	server.Password = ""
 	server.AccessToken = "abc123"
-	url, user, pass, err = getSourceDetails(server, repoName, true)
+	url, user, pass, err = GetSourceDetails(server, repoName, true)
 	assert.Equal(t, "user", user)
 	assert.Equal(t, "abc123", pass)
 	assert.NoError(t, err)

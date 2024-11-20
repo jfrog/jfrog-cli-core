@@ -10,14 +10,39 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/repository"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/npm"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/yarn"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/url"
 )
+
+// PackageManagerToRepositoryPackageType maps project types to corresponding Artifactory repository package types.
+var PackageManagerToRepositoryPackageType = map[project.ProjectType]string{
+	// Npm package managers
+	project.Npm:  repository.Npm,
+	project.Yarn: repository.Npm,
+
+	// Python (pypi) package managers
+	project.Pip:    repository.Pypi,
+	project.Pipenv: repository.Pypi,
+	project.Poetry: repository.Pypi,
+
+	// Nuget package managers
+	project.Nuget:  repository.Nuget,
+	project.Dotnet: repository.Nuget,
+
+	// Docker package managers
+	project.Docker: repository.Docker,
+	project.Podman: repository.Docker,
+
+	project.Go: repository.Go,
+}
 
 // PackageManagerLoginCommand configures registries and authentication for various package manager (npm, Yarn, Pip, Pipenv, Poetry, Go)
 type PackageManagerLoginCommand struct {
@@ -42,18 +67,12 @@ func NewPackageManagerLoginCommand(packageManager project.ProjectType) *PackageM
 
 // packageManagerToPackageType maps project types to corresponding Artifactory package types (e.g., npm, pypi).
 func packageManagerToPackageType(packageManager project.ProjectType) (string, error) {
-	switch packageManager {
-	case project.Npm, project.Yarn:
-		return repository.Npm, nil
-	case project.Pip, project.Pipenv, project.Poetry:
-		return repository.Pypi, nil
-	case project.Go:
-		return repository.Go, nil
-	case project.Nuget, project.Dotnet:
-		return repository.Nuget, nil
-	default:
-		return "", errorutils.CheckErrorf("unsupported package manager: %s", packageManager)
+	// Retrieve the package type from the map.
+	if packageType, exists := PackageManagerToRepositoryPackageType[packageManager]; exists {
+		return packageType, nil
 	}
+	// Return an error if the package manager is unsupported.
+	return "", errorutils.CheckErrorf("unsupported package manager: %s", packageManager)
 }
 
 // CommandName returns the name of the login command.
@@ -95,6 +114,8 @@ func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 		err = pmlc.configureGo()
 	case project.Nuget, project.Dotnet:
 		err = pmlc.configureDotnetNuget()
+	case project.Docker, project.Podman:
+		err = pmlc.configureContainer()
 	default:
 		err = errorutils.CheckErrorf("unsupported package manager: %s", pmlc.packageManager)
 	}
@@ -102,7 +123,7 @@ func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 		return fmt.Errorf("failed to configure %s: %w", pmlc.packageManager.String(), err)
 	}
 
-	log.Info(fmt.Sprintf("Successfully configured %s to use JFrog Artifactory repository '%s'.", pmlc.packageManager.String(), pmlc.repoName))
+	log.Output(fmt.Sprintf("Successfully configured %s to use JFrog Artifactory repository '%s'.", coreutils.PrintBoldTitle(pmlc.packageManager.String()), coreutils.PrintBoldTitle(pmlc.repoName)))
 	return nil
 }
 
@@ -238,4 +259,37 @@ func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
 	}
 	// Add the repository as a source in the NuGet configuration with credentials for authentication.
 	return dotnet.AddSourceToNugetConfig(toolchainType, sourceUrl, user, password)
+}
+
+// configureContainer configures container managers like Docker or Podman to authenticate with JFrog Artifactory.
+// It performs a login using the container manager's CLI command.
+//
+// For Docker:
+//
+//	docker login <artifactory-url-without-scheme> -u <username> -p <password>
+//
+// For Podman:
+//
+//	podman login <artifactory-url-without-scheme> -u <username> -p <password>
+func (pmlc *PackageManagerLoginCommand) configureContainer() error {
+	var containerManagerType container.ContainerManagerType
+	switch pmlc.packageManager {
+	case project.Docker:
+		containerManagerType = container.DockerClient
+	case project.Podman:
+		containerManagerType = container.Podman
+	default:
+		return errorutils.CheckErrorf("unsupported container manager: %s", pmlc.packageManager)
+	}
+	// Parse the URL to remove the scheme (https:// or http://)
+	parsedURL, err := url.Parse(pmlc.serverDetails.GetUrl())
+	if err != nil {
+		return err
+	}
+	urlWithoutScheme := parsedURL.Host + parsedURL.Path
+	return container.ContainerManagerLogin(
+		urlWithoutScheme,
+		&container.ContainerManagerLoginConfig{ServerDetails: pmlc.serverDetails},
+		containerManagerType,
+	)
 }

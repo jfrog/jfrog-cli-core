@@ -1,6 +1,8 @@
 package ioutils
 
 import (
+	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -82,7 +84,9 @@ func interruptKeyBind() prompt.Option {
 	interrupt := prompt.KeyBind{
 		Key: prompt.ControlC,
 		Fn: func(buf *prompt.Buffer) {
-			panic("Interrupted")
+			// Gracefully exit the program
+			fmt.Println("\nOperation interrupted. Exiting...")
+			os.Exit(0)
 		},
 	}
 	return prompt.OptionAddKeyBind(interrupt)
@@ -177,7 +181,7 @@ func validateAnswer(answer string, options []prompt.Suggest, allowVars bool) boo
 // If the provided answer does not appear in list, confirm the choice.
 func AskFromListWithMismatchConfirmation(promptPrefix, misMatchMsg string, options []prompt.Suggest) string {
 	for {
-		answer := prompt.Input(promptPrefix+" ", prefixCompleter(options), interruptKeyBind())
+		answer := prompt.Input(promptPrefix+" ", prefixCompleter(options), interruptKeyBind(), prompt.OptionShowCompletionAtStart(), prompt.OptionCompletionOnDown())
 		if answer == "" {
 			log.Output(EmptyValueMsg)
 		}

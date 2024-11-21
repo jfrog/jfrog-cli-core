@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// SourceName should match the one in the NuGet config file template.
+	// SourceName should match the one in the config file template.
 	SourceName        = "JFrogCli"
 	configFilePattern = "jfrog.cli.nuget."
 

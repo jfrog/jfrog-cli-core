@@ -19,7 +19,8 @@ import (
 )
 
 const (
-	SourceName        = "JFrogArtifactory"
+	// SourceName should match the one in the config file template.
+	SourceName        = "JFrogCli"
 	configFilePattern = "jfrog.cli.nuget."
 
 	dotnetTestError = `the command failed with an error.

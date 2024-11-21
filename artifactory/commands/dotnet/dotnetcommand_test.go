@@ -98,7 +98,7 @@ func TestInitNewConfig(t *testing.T) {
 </configuration>`, string(buf[:n]))
 	server.Password = ""
 	server.AccessToken = "abc123"
-	configFile, err = InitNewConfig(tmpDir, repoName, server, true, false)
+	configFile, err = InitNewConfig(tmpDir, repoName, server, true, true)
 	assert.NoError(t, err)
 	updatedConfigFile, err := os.Open(configFile.Name())
 	assert.NoError(t, err)
@@ -111,7 +111,7 @@ func TestInitNewConfig(t *testing.T) {
 	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/test-repo" protocolVersion="2" allowInsecureConnections="false"/>
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/test-repo" protocolVersion="2" allowInsecureConnections="true"/>
   </packageSources>
   <packageSourceCredentials>
     <JFrogCli>

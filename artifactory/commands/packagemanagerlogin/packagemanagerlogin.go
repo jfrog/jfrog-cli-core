@@ -19,11 +19,13 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/exp/maps"
 	"net/url"
+	"sort"
 )
 
-// PackageManagerToRepositoryPackageType maps project types to corresponding Artifactory repository package types.
-var PackageManagerToRepositoryPackageType = map[project.ProjectType]string{
+// packageManagerToRepositoryPackageType maps project types to corresponding Artifactory repository package types.
+var packageManagerToRepositoryPackageType = map[project.ProjectType]string{
 	// Npm package managers
 	project.Npm:  repository.Npm,
 	project.Yarn: repository.Npm,
@@ -65,10 +67,19 @@ func NewPackageManagerLoginCommand(packageManager project.ProjectType) *PackageM
 	}
 }
 
+// GetSupportedPackageManagersList returns a sorted list of supported package managers.
+func GetSupportedPackageManagersList() []project.ProjectType {
+	allSupportedPackageManagers := maps.Keys(packageManagerToRepositoryPackageType)
+	sort.Slice(allSupportedPackageManagers, func(i, j int) bool {
+		return allSupportedPackageManagers[i] < allSupportedPackageManagers[j]
+	})
+	return allSupportedPackageManagers
+}
+
 // packageManagerToPackageType maps project types to corresponding Artifactory package types (e.g., npm, pypi).
 func packageManagerToPackageType(packageManager project.ProjectType) (string, error) {
 	// Retrieve the package type from the map.
-	if packageType, exists := PackageManagerToRepositoryPackageType[packageManager]; exists {
+	if packageType, exists := packageManagerToRepositoryPackageType[packageManager]; exists {
 		return packageType, nil
 	}
 	// Return an error if the package manager is unsupported.

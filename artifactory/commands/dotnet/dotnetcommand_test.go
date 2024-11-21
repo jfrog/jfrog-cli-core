@@ -98,7 +98,7 @@ func TestInitNewConfig(t *testing.T) {
 </configuration>`, string(buf[:n]))
 	server.Password = ""
 	server.AccessToken = "abc123"
-	configFile, err = InitNewConfig(tmpDir, repoName, server, true, false)
+	configFile, err = InitNewConfig(tmpDir, repoName, server, true, true)
 	assert.NoError(t, err)
 	updatedConfigFile, err := os.Open(configFile.Name())
 	assert.NoError(t, err)

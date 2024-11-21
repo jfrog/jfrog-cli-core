@@ -4,8 +4,6 @@ github.com/BurntSushi/toml v1.4.0 h1:kuoIxZQy2WRRk1pttg9asf+WVv6tWQuBNVmK8+nqPr0
 github.com/BurntSushi/toml v1.4.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/CycloneDX/cyclonedx-go v0.9.0 h1:inaif7qD8bivyxp7XLgxUYtOXWtDez7+j72qKTMQTb8=
 github.com/CycloneDX/cyclonedx-go v0.9.0/go.mod h1:NE/EWvzELOFlG6+ljX/QeMlVt9VKcTwu8u0ccsACEsw=
-github.com/EyalDelarea/build-info-go v0.0.0-20241114092335-1c47774e5ded h1:GMCP2b4v6N/tKZBQIwtneO2CJEOmt741VGse5288Im4=
-github.com/EyalDelarea/build-info-go v0.0.0-20241114092335-1c47774e5ded/go.mod h1:JcISnovFXKx3wWf3p1fcMmlPdt6adxScXvoJN4WXqIE=
 github.com/Microsoft/go-winio v0.5.2/go.mod h1:WpS1mjBmmwHBEWmogvA2mj8546UReBk4v8QkMxJ6pZY=
 github.com/Microsoft/go-winio v0.6.1 h1:9/kr64B9VUZrLm5YYwbGtUJnMgqWVOdUAXu6Migciow=
 github.com/Microsoft/go-winio v0.6.1/go.mod h1:LRdKpFKfdobln8UmuiYcKPot9D2v6svN5+sAH+4kjUM=
@@ -91,6 +89,8 @@ github.com/jedib0t/go-pretty/v6 v6.6.1 h1:iJ65Xjb680rHcikRj6DSIbzCex2huitmc7bDtx
 github.com/jedib0t/go-pretty/v6 v6.6.1/go.mod h1:zbn98qrYlh95FIhwwsbIip0LYpwSG8SUOScs+v9/t0E=
 github.com/jfrog/archiver/v3 v3.6.1 h1:LOxnkw9pOn45DzCbZNFV6K0+6dCsQ0L8mR3ZcujO5eI=
 github.com/jfrog/archiver/v3 v3.6.1/go.mod h1:VgR+3WZS4N+i9FaDwLZbq+jeU4B4zctXL+gL4EMzfLw=
+github.com/jfrog/build-info-go v1.8.9-0.20241121100855-e7a75ceee2bd h1:PzxnJ1mjHIL4bAC4RPm87WnJ1TZXFBicyOhtIHRQH6g=
+github.com/jfrog/build-info-go v1.8.9-0.20241121100855-e7a75ceee2bd/go.mod h1:JcISnovFXKx3wWf3p1fcMmlPdt6adxScXvoJN4WXqIE=
 github.com/jfrog/gofrog v1.7.6 h1:QmfAiRzVyaI7JYGsB7cxfAJePAZTzFz0gRWZSE27c6s=
 github.com/jfrog/gofrog v1.7.6/go.mod h1:ntr1txqNOZtHplmaNd7rS4f8jpA5Apx8em70oYEe7+4=
 github.com/jfrog/jfrog-client-go v1.48.0 h1:hx5B7+Wnobmzq4aFVZtALtbEVDFcjpn0Wb4q2m6H4KU=

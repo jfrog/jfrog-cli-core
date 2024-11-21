@@ -21,8 +21,8 @@ func TestGetRegistry(t *testing.T) {
 	}
 
 	for _, testCase := range getRegistryTest {
-		if getNpmRepositoryUrl(testCase.repo, testCase.url) != testCase.expected {
-			t.Errorf("The expected output of getRegistry(\"%s\", \"%s\") is %s. But the actual result is:%s", testCase.repo, testCase.url, testCase.expected, getNpmRepositoryUrl(testCase.repo, testCase.url))
+		if GetNpmRepositoryUrl(testCase.repo, testCase.url) != testCase.expected {
+			t.Errorf("The expected output of getRegistry(\"%s\", \"%s\") is %s. But the actual result is:%s", testCase.repo, testCase.url, testCase.expected, GetNpmRepositoryUrl(testCase.repo, testCase.url))
 		}
 	}
 }

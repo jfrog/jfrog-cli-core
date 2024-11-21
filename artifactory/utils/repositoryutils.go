@@ -2,6 +2,8 @@ package utils
 
 import (
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"golang.org/x/exp/slices"
 	"path"
 	"strings"
@@ -75,6 +77,31 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 		return false, errorutils.CheckErrorf("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error())
 	}
 	return repoDetails.GetRepoType() == "remote", nil
+}
+
+// SelectRepositoryInteractively prompts the user to select a repository from a list of repositories that match the given filter parameters.
+func SelectRepositoryInteractively(serverDetails *config.ServerDetails, repoFilterParams services.RepositoriesFilterParams) (string, error) {
+	sm, err := CreateServiceManager(serverDetails, 3, 0, false)
+	if err != nil {
+		return "", err
+	}
+
+	filteredRepos, err := GetFilteredRepositoriesWithFilterParams(sm, nil, nil,
+		repoFilterParams)
+	if err != nil {
+		return "", err
+	}
+
+	if len(filteredRepos) == 0 {
+		return "", errorutils.CheckErrorf("no repositories were found that match the following criteria: %v", repoFilterParams)
+	}
+
+	if len(filteredRepos) == 1 {
+		// Automatically select the repository if only one exists.
+		return filteredRepos[0], nil
+	}
+	// Prompt the user to select a repository.
+	return ioutils.AskFromListWithMismatchConfirmation("Please select a repository to login to:", "Repository not found.", ioutils.ConvertToSuggests(filteredRepos)), nil
 }
 
 // GetFilteredRepositoriesWithFilterParams returns the names of local, remote, virtual, and federated repositories filtered by their names and type.

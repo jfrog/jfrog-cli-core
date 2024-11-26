@@ -2,7 +2,6 @@ package spec
 
 import (
 	"encoding/json"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
@@ -37,6 +36,23 @@ func CreateSpecFromFile(specFilePath string, specVars map[string]string) (spec *
 		return
 	}
 	return
+}
+
+func CreateSpecFromBuildNameAndNumber(buildName, buildNumber string) (*SpecFiles, error) {
+	if buildName == "" || buildNumber == "" {
+		return nil, errorutils.CheckErrorf("build name and build number must be provided")
+	}
+
+	buildString := buildName + "/" + buildNumber
+	specFile := &SpecFiles{
+		Files: []File{
+			{
+				Build: buildString,
+			},
+		},
+	}
+
+	return specFile, nil
 }
 
 type File struct {

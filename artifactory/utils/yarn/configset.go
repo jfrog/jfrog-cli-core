@@ -5,6 +5,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
+// This method runs "yarn config set" command and sets the yarn configuration.
 func ConfigSet(key, value, executablePath string, jsonInput bool) error {
 	var flags []string = nil
 	if jsonInput {

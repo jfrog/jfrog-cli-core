@@ -6,6 +6,7 @@ import (
 	"strings"
 )
 
+// This method runs "yarn config set" command and sets the yarn configuration.
 func ConfigGet(key, executablePath string, jsonOutput bool) (string, error) {
 	var flags []string = nil
 	if jsonOutput {

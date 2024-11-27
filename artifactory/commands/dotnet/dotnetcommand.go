@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/jfrog/build-info-go/build"
 	"github.com/jfrog/build-info-go/build/utils/dotnet"
-	"github.com/jfrog/gofrog/io"
+	frogio "github.com/jfrog/gofrog/io"
 	commonBuild "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/auth"
@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	// SourceName should match the one in the config file template.
 	SourceName        = "JFrogCli"
 	configFilePattern = "jfrog.cli.nuget."
 
@@ -30,14 +31,16 @@ The initial error is:
 )
 
 type DotnetCommand struct {
-	toolchainType      dotnet.ToolchainType
-	subCommand         string
-	argAndFlags        []string
-	repoName           string
-	solutionPath       string
-	useNugetV2         bool
-	buildConfiguration *commonBuild.BuildConfiguration
-	serverDetails      *config.ServerDetails
+	toolchainType dotnet.ToolchainType
+	subCommand    string
+	argAndFlags   []string
+	repoName      string
+	solutionPath  string
+	useNugetV2    bool
+	// By default, package sources are required to use HTTPS. This option allows sources to use HTTP.
+	allowInsecureConnections bool
+	buildConfiguration       *commonBuild.BuildConfiguration
+	serverDetails            *config.ServerDetails
 }
 
 func (dc *DotnetCommand) SetServerDetails(serverDetails *config.ServerDetails) *DotnetCommand {
@@ -67,6 +70,11 @@ func (dc *DotnetCommand) SetRepoName(repoName string) *DotnetCommand {
 
 func (dc *DotnetCommand) SetUseNugetV2(useNugetV2 bool) *DotnetCommand {
 	dc.useNugetV2 = useNugetV2
+	return dc
+}
+
+func (dc *DotnetCommand) SetAllowInsecureConnections(allowInsecureConnections bool) *DotnetCommand {
+	dc.allowInsecureConnections = allowInsecureConnections
 	return dc
 }
 
@@ -159,21 +167,44 @@ func changeWorkingDir(newWorkingDir string) (string, error) {
 	return newWorkingDir, errorutils.CheckError(err)
 }
 
-// Runs nuget sources add command
-func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, configFileName, sourceUrl, user, password string) error {
+// Runs nuget/dotnet source add command
+func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, password string) error {
 	cmd, err := dotnet.CreateDotnetAddSourceCmd(cmdType, sourceUrl)
 	if err != nil {
 		return err
 	}
 
 	flagPrefix := cmdType.GetTypeFlagPrefix()
-	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"configfile", configFileName)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"name", SourceName)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"username", user)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"password", password)
-	output, err := io.RunCmdOutput(cmd)
-	log.Debug("'Add sources' command executed. Output:", output)
-	return err
+	stdOut, errorOut, _, err := frogio.RunCmdWithOutputParser(cmd, false)
+	if err != nil {
+		return fmt.Errorf("failed to add source: %w\n%s", err, strings.TrimSpace(stdOut+errorOut))
+	}
+	return nil
+}
+
+// Runs nuget/dotnet source remove command
+func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType) error {
+	cmd, err := dotnet.NewToolchainCmd(cmdType)
+	if err != nil {
+		return err
+	}
+	if cmdType == dotnet.DotnetCore {
+		cmd.Command = append(cmd.Command, "nuget", "remove", "source", SourceName)
+	} else {
+		cmd.Command = append(cmd.Command, "sources", "remove")
+		cmd.CommandFlags = append(cmd.CommandFlags, "-name", SourceName)
+	}
+	stdOut, stdErr, _, err := frogio.RunCmdWithOutputParser(cmd, false)
+	if err != nil {
+		if strings.Contains(stdOut+stdErr, "Unable to find") {
+			return nil
+		}
+		return fmt.Errorf("failed to remove source: %w\n%s", err, strings.TrimSpace(stdOut+stdErr))
+	}
+	return nil
 }
 
 // Checks if the user provided input such as -configfile flag or -Source flag.
@@ -219,7 +250,7 @@ func (dc *DotnetCommand) prepareConfigFileIfNeeded() (cleanup func() error, err 
 		return fileutils.RemoveTempDir(tempDirPath)
 	}
 
-	configFile, err := InitNewConfig(tempDirPath, dc.repoName, dc.serverDetails, dc.useNugetV2)
+	configFile, err := InitNewConfig(tempDirPath, dc.repoName, dc.serverDetails, dc.useNugetV2, dc.allowInsecureConnections)
 	if err == nil {
 		dc.argAndFlags = append(dc.argAndFlags, dc.GetToolchain().GetTypeFlagPrefix()+"configfile", configFile.Name())
 	}
@@ -246,7 +277,7 @@ func getFlagValueIfExists(cmdFlag string, argAndFlags []string) (string, error) 
 }
 
 // InitNewConfig is used when neither of the flags were provided, and we need to init our own config.
-func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails, useNugetV2 bool) (configFile *os.File, err error) {
+func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails, useNugetV2, allowInsecureConnections bool) (configFile *os.File, err error) {
 	// Initializing a new NuGet config file that NuGet will use into a temp file
 	configFile, err = os.CreateTemp(configDirPath, configFilePattern)
 	if errorutils.CheckError(err) != nil {
@@ -260,13 +291,13 @@ func InitNewConfig(configDirPath, repoName string, server *config.ServerDetails,
 	// We would prefer to write the NuGet configuration using the `nuget add source` command,
 	// but the NuGet configuration utility doesn't currently allow setting protocolVersion.
 	// Until that is supported, the templated method must be used.
-	err = addSourceToNugetTemplate(configFile, server, useNugetV2, repoName)
+	err = addSourceToNugetTemplate(configFile, server, useNugetV2, repoName, allowInsecureConnections)
 	return
 }
 
 // Adds a source to the nuget config template
-func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails, useNugetV2 bool, repoName string) error {
-	sourceUrl, user, password, err := getSourceDetails(server, repoName, useNugetV2)
+func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails, useNugetV2 bool, repoName string, allowInsecureConnections bool) error {
+	sourceUrl, user, password, err := GetSourceDetails(server, repoName, useNugetV2)
 	if err != nil {
 		return err
 	}
@@ -278,11 +309,11 @@ func addSourceToNugetTemplate(configFile *os.File, server *config.ServerDetails,
 	}
 
 	// Format the templates
-	_, err = fmt.Fprintf(configFile, dotnet.ConfigFileFormat, sourceUrl, protoVer, user, password)
+	_, err = fmt.Fprintf(configFile, dotnet.ConfigFileFormat, sourceUrl, protoVer, allowInsecureConnections, user, password)
 	return err
 }
 
-func getSourceDetails(details *config.ServerDetails, repoName string, useNugetV2 bool) (sourceURL, user, password string, err error) {
+func GetSourceDetails(details *config.ServerDetails, repoName string, useNugetV2 bool) (sourceURL, user, password string, err error) {
 	var u *url.URL
 	u, err = url.Parse(details.ArtifactoryUrl)
 	if errorutils.CheckError(err) != nil {

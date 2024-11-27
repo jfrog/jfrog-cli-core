@@ -1,26 +1,30 @@
 package utils
 
 import (
+	"encoding/base64"
 	"fmt"
-	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
-	"net/http"
-	"strings"
-
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
+	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"net/http"
+	"strings"
 )
 
 const (
 	minSupportedArtifactoryVersionForNpmCmds = "5.5.2"
-	NpmConfigAuthKey                         = "_auth"
-	NpmConfigAuthTokenKey                    = "_authToken"
-	npmAuthRestApi                           = "api/npm/auth"
+
+	NpmConfigAuthKey = "_auth"
+	// Supported only in npm version 9 and above.
+	NpmConfigAuthTokenKey = "_authToken"
+	NpmConfigRegistryKey  = "registry"
+	npmAuthRestApi        = "api/npm/auth"
 )
 
 // Constructs npm auth config and registry, manually or by requesting the Artifactory /npm/auth endpoint.
@@ -37,7 +41,7 @@ func GetArtifactoryNpmRepoDetails(repo string, authArtDetails auth.ServiceDetail
 		return "", "", err
 	}
 
-	registry = getNpmRepositoryUrl(repo, authArtDetails.GetUrl())
+	registry = GetNpmRepositoryUrl(repo, authArtDetails.GetUrl())
 	return
 }
 
@@ -59,7 +63,7 @@ func getNpmAuth(authArtDetails auth.ServiceDetails, isNpmAuthLegacyVersion bool)
 
 // Manually constructs the npm authToken config data.
 func constructNpmAuthToken(token string) string {
-	return fmt.Sprintf("%s = %s\nalways-auth = true", NpmConfigAuthTokenKey, token)
+	return fmt.Sprintf("%s = %s", NpmConfigAuthTokenKey, token)
 }
 
 func validateArtifactoryVersionForNpmCmds(artDetails auth.ServiceDetails) error {
@@ -93,12 +97,30 @@ func getNpmAuthFromArtifactory(artDetails auth.ServiceDetails) (npmAuth string, 
 	return string(body), nil
 }
 
-func getNpmRepositoryUrl(repo, url string) string {
-	if !strings.HasSuffix(url, "/") {
-		url += "/"
+func GetNpmRepositoryUrl(repositoryName, artifactoryUrl string) string {
+	return strings.TrimSuffix(artifactoryUrl, "/") + "/api/npm/" + repositoryName
+}
+
+// GetNpmAuthKeyValue generates the correct authentication key and value for npm or Yarn, based on the repo URL.
+func GetNpmAuthKeyValue(serverDetails *config.ServerDetails, repoUrl string) (key, value string) {
+	var keySuffix string
+	switch {
+	case serverDetails.GetAccessToken() != "":
+		keySuffix = NpmConfigAuthTokenKey
+		value = serverDetails.GetAccessToken()
+	case serverDetails.GetUser() != "" && serverDetails.GetPassword() != "":
+		keySuffix = NpmConfigAuthKey
+		value = basicAuthBase64Encode(serverDetails.GetUser(), serverDetails.GetPassword())
+	default:
+		return "", ""
 	}
-	url += "api/npm/" + repo
-	return url
+
+	return fmt.Sprintf("//%s:%s", strings.TrimPrefix(repoUrl, "https://"), keySuffix), value
+}
+
+// basicAuthBase64Encode encodes user credentials in Base64 for basic authentication.
+func basicAuthBase64Encode(user, password string) string {
+	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, password)))
 }
 
 // Remove all the none npm CLI flags from args.

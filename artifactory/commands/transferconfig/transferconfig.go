@@ -18,6 +18,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
+	general "github.com/jfrog/jfrog-cli-core/v2/general"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -43,6 +44,7 @@ type TransferConfigCommand struct {
 	force            bool
 	verbose          bool
 	preChecks        bool
+	interactive      bool
 	sourceWorkingDir string
 	targetWorkingDir string
 }
@@ -53,6 +55,11 @@ func NewTransferConfigCommand(sourceServer, targetServer *config.ServerDetails) 
 
 func (tcc *TransferConfigCommand) CommandName() string {
 	return "rt_transfer_config"
+}
+
+func (tcc *TransferConfigCommand) SetInteractive(value bool) *TransferConfigCommand {
+	tcc.interactive = value
+	return tcc
 }
 
 func (tcc *TransferConfigCommand) SetDryRun(dryRun bool) *TransferConfigCommand {
@@ -135,6 +142,36 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	archiveConfig, err := archiveConfig(exportPath, configXml)
 	if err != nil {
 		return
+	}
+
+	if tcc.interactive {
+		tcc.LogTitle("Phase 3.5/5 - Modify configuration (press any key to continue...)")
+
+		filename := "config_" + time.Now().Format(general.SafeDateFileFormat) + ".xml"
+
+		// open output file
+		fo, err2 := os.Create(filename)
+		if err2 != nil {
+			return
+		}
+
+		// close fo on exit and check for its returned error
+		defer func() {
+			if err := fo.Close(); err != nil {
+				return
+			}
+
+			err := os.Remove(filename)
+			if err != nil {
+				return
+			}
+		}()
+
+		log.Info("Waiting for you to modify the file:")
+		log.Info(filename)
+		log.Info("Press any key to continue...")
+		// TODO: yield execution back
+		//        or separate the phases and add two calls in the consumer
 	}
 
 	// Import the archive to the target Artifactory

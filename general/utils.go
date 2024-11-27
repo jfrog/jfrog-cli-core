@@ -1,15 +1,17 @@
 package general
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"net"
 	"net/url"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 const defaultServerId = "default-server"
+const SafeDateFileFormat = "2006-01-02_15-04-05"
 
 // Deduce the server ID from the URL and add server details to config.
 func ConfigServerWithDeducedId(server *config.ServerDetails, interactive, webLogin bool) error {

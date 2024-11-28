@@ -33,15 +33,12 @@ func (lc *LoginCommand) Run() error {
 }
 
 func newConfLogin() error {
-	platformUrl, err := promptPlatformUrl()
-	if err != nil {
-		return err
-	}
+	platformUrl := promptPlatformUrl()
 	newServer := config.ServerDetails{Url: platformUrl}
 	return general.ConfigServerWithDeducedId(&newServer, true, true)
 }
 
-func promptPlatformUrl() (string, error) {
+func promptPlatformUrl() string {
 	var platformUrl string
 	// Loop until a non-empty platformUrl is entered
 	for {
@@ -51,7 +48,7 @@ func promptPlatformUrl() (string, error) {
 		}
 		fmt.Println("The JFrog Platform URL cannot be empty. Please try again.")
 	}
-	return platformUrl, nil
+	return platformUrl
 }
 
 func existingConfLogin(configurations []*config.ServerDetails) error {

@@ -1,6 +1,7 @@
 package login
 
 import (
+	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/general"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -42,9 +43,13 @@ func newConfLogin() error {
 
 func promptPlatformUrl() (string, error) {
 	var platformUrl string
-	ioutils.ScanFromConsole("Enter your JFrog Platform URL", &platformUrl, "")
-	if platformUrl == "" {
-		return "", errorutils.CheckErrorf("providing JFrog Platform URL is mandatory")
+	// Loop until a non-empty platformUrl is entered
+	for {
+		ioutils.ScanFromConsole("Enter your JFrog Platform URL", &platformUrl, "")
+		if platformUrl != "" {
+			break
+		}
+		fmt.Println("The JFrog Platform URL cannot be empty. Please try again.")
 	}
 	return platformUrl, nil
 }

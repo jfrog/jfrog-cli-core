@@ -145,7 +145,7 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	}
 
 	if tcc.interactive {
-		tcc.LogTitle("Phase 3.5/5 - Modify configuration (press any key to continue...)")
+		tcc.LogTitle("Phase 3.5/5 - Modify configuration interactively")
 
 		// filename := "config_" + time.Now().Format(general.SafeDateFileFormat) + ".zip"
 		filename := "config_*.zip"
@@ -153,23 +153,33 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 		// open output file
 		fo, err2 := os.CreateTemp("", filename)
 		if err2 != nil {
+			log.Error("Failed to create temporary file ", filename, " ", err2)
 			return
 		}
 
 		// close fo on exit and check for its returned error
 		defer func() {
 			if err := fo.Close(); err != nil {
+				// log.Error(err)
 				return
 			}
 
 			err := os.Remove(filename)
 			if err != nil {
+				log.Error("Failed to remove temporary file ", filename, " ", err)
 				return
 			}
 		}()
 
 		// write file to disk
-		fo.Write(archiveConfig.Bytes())
+		writtenToDisk, err3 := fo.Write(archiveConfig.Bytes())
+
+		if err3 != nil {
+			log.Error("Failed to write temporary file ", filename, " ", err3)
+			return
+		}
+
+		log.Debug("Wrote ", writtenToDisk, " bytes ", len(archiveConfig.Bytes()))
 		fo.Sync()
 
 		log.Info("Waiting for you to modify the file:")
@@ -182,13 +192,14 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 
 		// Read file from disk
 		buf := bytes.NewBuffer(nil)
-		written, err3 := io.Copy(buf, fo)
+		readFromDisk, err3 := io.Copy(buf, fo)
 
 		if err3 != nil {
+			log.Error("Failed to read temporary file ", filename, " ", err3)
 			return
 		}
 
-		log.Debug("Copied ", written, " bytes ", len(buf.Bytes()), len(archiveConfig.Bytes()))
+		log.Debug("Read ", readFromDisk, " bytes ", len(buf.Bytes()), " ", len(archiveConfig.Bytes()))
 		archiveConfig = buf
 	}
 

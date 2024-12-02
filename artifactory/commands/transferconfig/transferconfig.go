@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -18,7 +19,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils/precheckrunner"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
-	general "github.com/jfrog/jfrog-cli-core/v2/general"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -147,10 +147,11 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 	if tcc.interactive {
 		tcc.LogTitle("Phase 3.5/5 - Modify configuration (press any key to continue...)")
 
-		filename := "config_" + time.Now().Format(general.SafeDateFileFormat) + ".xml"
+		// filename := "config_" + time.Now().Format(general.SafeDateFileFormat) + ".zip"
+		filename := "config_*.zip"
 
 		// open output file
-		fo, err2 := os.Create(filename)
+		fo, err2 := os.CreateTemp("", filename)
 		if err2 != nil {
 			return
 		}
@@ -167,11 +168,28 @@ func (tcc *TransferConfigCommand) Run() (err error) {
 			}
 		}()
 
+		// write file to disk
+		fo.Write(archiveConfig.Bytes())
+		fo.Sync()
+
 		log.Info("Waiting for you to modify the file:")
 		log.Info(filename)
 		log.Info("Press any key to continue...")
-		// TODO: yield execution back
+
+		// TODO: yield execution back?
 		//        or separate the phases and add two calls in the consumer
+		fmt.Scanln()
+
+		// Read file from disk
+		buf := bytes.NewBuffer(nil)
+		written, err3 := io.Copy(buf, fo)
+
+		if err3 != nil {
+			return
+		}
+
+		log.Debug("Copied ", written, " bytes ", len(buf.Bytes()), len(archiveConfig.Bytes()))
+		archiveConfig = buf
 	}
 
 	// Import the archive to the target Artifactory

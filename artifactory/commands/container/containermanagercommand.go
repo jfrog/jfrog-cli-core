@@ -41,7 +41,11 @@ func (cm *ContainerCommand) PerformLogin(serverDetails *config.ServerDetails, co
 			}
 		}
 		loginConfig := &container.ContainerManagerLoginConfig{ServerDetails: serverDetails}
-		return container.ContainerManagerLogin(cm.image, loginConfig, containerManagerType)
+		imageRegistry, err := cm.image.GetRegistry()
+		if err != nil {
+			return err
+		}
+		return container.ContainerManagerLogin(imageRegistry, loginConfig, containerManagerType)
 	}
 	return nil
 }

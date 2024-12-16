@@ -189,11 +189,7 @@ func (loginCmd *LoginCmd) RunCmd() error {
 
 // First we'll try to log in assuming a proxy-less tag (e.g. "registry-address/docker-repo/image:ver").
 // If fails, we will try assuming a reverse proxy tag (e.g. "registry-address-docker-repo/image:ver").
-func ContainerManagerLogin(image *Image, config *ContainerManagerLoginConfig, containerManager ContainerManagerType) error {
-	imageRegistry, err := image.GetRegistry()
-	if err != nil {
-		return err
-	}
+func ContainerManagerLogin(imageRegistry string, config *ContainerManagerLoginConfig, containerManager ContainerManagerType) error {
 	username := config.ServerDetails.User
 	password := config.ServerDetails.Password
 	// If access-token exists, perform login with it.
@@ -206,7 +202,7 @@ func ContainerManagerLogin(image *Image, config *ContainerManagerLoginConfig, co
 	}
 	// Perform login.
 	cmd := &LoginCmd{DockerRegistry: imageRegistry, Username: username, Password: password, containerManager: containerManager}
-	err = cmd.RunCmd()
+	err := cmd.RunCmd()
 	if exitCode := coreutils.GetExitCode(err, 0, 0, false); exitCode == coreutils.ExitCodeNoError {
 		// Login succeeded
 		return nil

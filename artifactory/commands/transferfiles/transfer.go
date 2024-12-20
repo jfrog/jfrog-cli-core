@@ -5,14 +5,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/safeconvert"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/jfrog/gofrog/safeconvert"
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -266,7 +267,7 @@ func (tdc *TransferFilesCommand) initStateManager(allSourceLocalRepos, sourceBui
 }
 
 func (tdc *TransferFilesCommand) reportTransferFilesUsage() {
-	log.Debug(usageReporter.ReportUsagePrefix, "Sending Transfer Files info...")
+	log.Debug(usageReporter.ArtifactoryCallHomePrefix, "Sending Transfer Files info...")
 	sourceStorageInfo, err := tdc.sourceStorageInfoManager.GetStorageInfo()
 	if err != nil {
 		log.Debug(err.Error())
@@ -288,8 +289,7 @@ func (tdc *TransferFilesCommand) reportTransferFilesUsage() {
 			AttributeValue: sourceStorageInfo.BinariesSize,
 		},
 	}
-	err = usage.SendReportUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.targetStorageInfoManager.GetServiceManager(), reportUsageAttributes...)
-	if err != nil {
+	if err = usage.NewArtifactoryCallHome().SendUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.targetStorageInfoManager.GetServiceManager(), reportUsageAttributes...); err != nil {
 		log.Debug(err.Error())
 	}
 }

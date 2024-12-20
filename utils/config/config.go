@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/buger/jsonparser"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -22,11 +28,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	xrayAuth "github.com/jfrog/jfrog-client-go/xray/auth"
 	xscAuth "github.com/jfrog/jfrog-client-go/xsc/auth"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 func init() {
@@ -744,6 +745,12 @@ func (serverDetails *ServerDetails) CreatePipelinesAuthConfig() (auth.ServiceDet
 func (serverDetails *ServerDetails) CreateAccessAuthConfig() (auth.ServiceDetails, error) {
 	pAuth := accessAuth.NewAccessDetails()
 	pAuth.SetUrl(utils.AddTrailingSlashIfNeeded(serverDetails.Url) + "access/")
+	return serverDetails.createAuthConfig(pAuth)
+}
+
+func (serverDetails *ServerDetails) CreateJfConnectAuthConfig() (auth.ServiceDetails, error) {
+	pAuth := accessAuth.NewAccessDetails()
+	pAuth.SetUrl(utils.AddTrailingSlashIfNeeded(serverDetails.Url) + "jfconnect/")
 	return serverDetails.createAuthConfig(pAuth)
 }
 

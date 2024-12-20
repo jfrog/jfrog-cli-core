@@ -1,10 +1,10 @@
-package usage_test
+package usage
 
 import (
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/testsutils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +29,7 @@ func TestCreateMetric(t *testing.T) {
 	}()
 
 	commandName := "testCommand"
-	metric, err := createMetric(commandName)
+	metric, err := NewVisibilitySystemManager(nil).createMetric(commandName)
 	assert.NoError(t, err)
 
 	// Define the expected JSON structure
@@ -42,7 +42,7 @@ func TestCreateMetric(t *testing.T) {
 			"oidc_used": "true",
 			"job_id": "job123",
 			"run_id": "run456",
-			"git_repo": "https://github.com/jfrog/test-repo",
+			"git_repo": "test-repo",
 			"gh_token_for_code_scanning_alerts_provided": "true"
 		}
 	}`

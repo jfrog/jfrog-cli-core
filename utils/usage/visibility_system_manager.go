@@ -35,7 +35,7 @@ type visibilityMetric struct {
 	Labels      labels `json:"labels"`
 }
 
-func createMetric(commandName string) ([]byte, error) {
+func (vsm *VisibilitySystemManager) createMetric(commandName string) ([]byte, error) {
 	metricLabels := labels{
 		ProductID:                            coreutils.GetCliUserAgentName(),
 		FeatureID:                            commandName,
@@ -60,7 +60,7 @@ func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
 	if err != nil {
 		return err
 	}
-	metric, err := createMetric(commandName)
+	metric, err := vsm.createMetric(commandName)
 	if err != nil {
 		return err
 	}

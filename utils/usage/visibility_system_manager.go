@@ -48,7 +48,7 @@ func (vsm *VisibilitySystemManager) createMetric(commandName string) ([]byte, er
 
 	metric := visibilityMetric{
 		Value:       1,
-		MetricsName: "jfcli_commands_countaa",
+		MetricsName: "jfcli_commands_count",
 		Labels:      metricLabels,
 	}
 
@@ -64,5 +64,5 @@ func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
 	if err != nil {
 		return err
 	}
-	return manager.LogMetric(metric)
+	return manager.PostMetric(metric)
 }

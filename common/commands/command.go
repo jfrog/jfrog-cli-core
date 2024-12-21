@@ -33,7 +33,7 @@ func Exec(command Command) error {
 }
 
 func reportUsage(command Command, channel chan<- bool) {
-	// When the usage reporting is donw, signal to the channel.
+	// When the usage reporting is done, signal to the channel.
 	defer signalReportUsageFinished(channel)
 
 	if !usageReporter.ShouldReportUsage() {
@@ -50,7 +50,7 @@ func reportUsage(command Command, channel chan<- bool) {
 	if serverDetails != nil {
 		var wg sync.WaitGroup
 
-		// Repotr the usage to Artifactory's Call Home API.
+		// Report the usage to Artifactory's Call Home API.
 		if serverDetails.ArtifactoryUrl != "" {
 			wg.Add(1)
 			go func() {
@@ -59,7 +59,7 @@ func reportUsage(command Command, channel chan<- bool) {
 			}()
 		}
 
-		// Repotr the usage to the Visibility System.
+		// Report the usage to the Visibility System.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

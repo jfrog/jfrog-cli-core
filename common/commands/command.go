@@ -59,7 +59,7 @@ func reportUsage(command Command, channel chan<- bool) {
 			}()
 		}
 
-		// Repotr the usage to the Visibility System.
+		// Report the usage to the Visibility System.
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

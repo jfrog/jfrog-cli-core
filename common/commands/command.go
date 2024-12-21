@@ -33,7 +33,7 @@ func Exec(command Command) error {
 }
 
 func reportUsage(command Command, channel chan<- bool) {
-	// When the usage reporting is donw, signal to the channel.
+	// When the usage reporting is done, signal to the channel.
 	defer signalReportUsageFinished(channel)
 
 	if !usageReporter.ShouldReportUsage() {

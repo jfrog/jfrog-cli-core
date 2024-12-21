@@ -60,6 +60,10 @@ func (c *Context) GetStringFlagValue(flagName string) string {
 	return c.stringFlags[flagName]
 }
 
+func (c *Context) AddStringFlag(key, value string) {
+	c.stringFlags[key] = value
+}
+
 func (c *Context) GetIntFlagValue(flagName string) (value int, err error) {
 	parsed, err := strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
 	if err != nil {

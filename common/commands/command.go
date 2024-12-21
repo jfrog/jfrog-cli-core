@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"sync"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	coreusage "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
 	usageReporter "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -30,29 +33,59 @@ func Exec(command Command) error {
 }
 
 func reportUsage(command Command, channel chan<- bool) {
+	// When the usage reporting is done, signal to the channel.
 	defer signalReportUsageFinished(channel)
-	reportUsage := usageReporter.ShouldReportUsage()
-	if reportUsage {
-		serverDetails, err := command.ServerDetails()
-		if err != nil {
-			log.Debug(usageReporter.ReportUsagePrefix, err.Error())
-			return
+
+	if !usageReporter.ShouldReportUsage() {
+		log.Debug("Usage reporting is disabled")
+		return
+	}
+
+	serverDetails, err := command.ServerDetails()
+	if err != nil {
+		log.Debug("Usage reporting:", err.Error())
+		return
+	}
+
+	if serverDetails != nil {
+		var wg sync.WaitGroup
+
+		// Report the usage to Artifactory's Call Home API.
+		if serverDetails.ArtifactoryUrl != "" {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				reportUsageToArtifactoryCallHome(command, serverDetails)
+			}()
 		}
-		if serverDetails != nil && serverDetails.ArtifactoryUrl != "" {
-			log.Debug(usageReporter.ReportUsagePrefix, "Sending info...")
-			serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
-			if err != nil {
-				log.Debug(usageReporter.ReportUsagePrefix, err.Error())
-				return
-			}
-			err = usage.SendReportUsage(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager)
-			if err != nil {
-				log.Debug(err.Error())
-				return
-			}
-		}
-	} else {
-		log.Debug("Usage info is disabled.")
+
+		// Report the usage to the Visibility System.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			reportUsageToVisibilitySystem(command, serverDetails)
+		}()
+
+		// Wait for the two report actions to finish.
+		wg.Wait()
+	}
+}
+
+func reportUsageToVisibilitySystem(command Command, serverDetails *config.ServerDetails) {
+	if err := coreusage.NewVisibilitySystemManager(serverDetails).SendUsage(command.CommandName()); err != nil {
+		log.Debug("Visibility System Usage reporting:", err.Error())
+	}
+}
+
+func reportUsageToArtifactoryCallHome(command Command, serverDetails *config.ServerDetails) {
+	log.Debug(usageReporter.ArtifactoryCallHomePrefix, "Sending info...")
+	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
+	if err != nil {
+		log.Debug(usageReporter.ArtifactoryCallHomePrefix, err.Error())
+		return
+	}
+	if err = usage.NewArtifactoryCallHome().SendUsage(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager); err != nil {
+		log.Debug(err.Error())
 	}
 }
 

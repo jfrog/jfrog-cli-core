@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	ioutils "github.com/jfrog/gofrog/io"
-	"github.com/jfrog/jfrog-client-go/evidence"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,6 +14,9 @@ import (
 	"strings"
 	"time"
 
+	ioutils "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-client-go/evidence"
+
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
@@ -24,6 +25,7 @@ import (
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/distribution"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
+	"github.com/jfrog/jfrog-client-go/jfconnect"
 	"github.com/jfrog/jfrog-client-go/lifecycle"
 	"github.com/jfrog/jfrog-client-go/metadata"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
@@ -258,6 +260,26 @@ func CreateMetadataServiceManager(serviceDetails *config.ServerDetails, isDryRun
 		return nil, err
 	}
 	return metadata.NewManager(serviceConfig)
+}
+
+func CreateJfConnectServiceManager(serverDetails *config.ServerDetails) (jfconnect.Manager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	jfConnectAuth, err := serverDetails.CreateJfConnectAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(jfConnectAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serverDetails.InsecureTls).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return jfconnect.NewManager(serviceConfig)
 }
 
 // This error indicates that the build was scanned by Xray, but Xray found issues with the build.

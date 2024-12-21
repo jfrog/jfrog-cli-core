@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	ReportUsagePrefix     = "Usage Report:"
-	clientIdAttributeName = "clientId"
+	ArtifactoryCallHomePrefix = "Artifactory Call Home:"
+	clientIdAttributeName     = "clientId"
 )
 
 type UsageReporter struct {
@@ -57,7 +57,7 @@ func NewUsageReporter(productId string, serverDetails *config.ServerDetails) *Us
 func ShouldReportUsage() (reportUsage bool) {
 	reportUsage, err := clientutils.GetBoolEnvValue(coreutils.ReportUsage, true)
 	if err != nil {
-		log.Debug(ReportUsagePrefix + err.Error())
+		log.Debug(ArtifactoryCallHomePrefix + err.Error())
 		return false
 	}
 	return reportUsage
@@ -85,10 +85,10 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 		return
 	}
 	if len(features) == 0 {
-		log.Debug(ReportUsagePrefix, "Nothing to send.")
+		log.Debug(ArtifactoryCallHomePrefix, "Nothing to send.")
 		return
 	}
-	log.Debug(ReportUsagePrefix, "Sending info...")
+	log.Debug(ArtifactoryCallHomePrefix, "Sending info...")
 	if ur.sendToEcosystem {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToEcosystem(features...); err != nil {
@@ -117,7 +117,7 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 
 func (ur *UsageReporter) WaitForResponses() (err error) {
 	if err = ur.reportWaitGroup.Wait(); err != nil {
-		err = fmt.Errorf("%s %s", ReportUsagePrefix, err.Error())
+		err = fmt.Errorf("%s %s", ArtifactoryCallHomePrefix, err.Error())
 	}
 	return
 }
@@ -169,7 +169,7 @@ func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err err
 	if err != nil {
 		return
 	}
-	return usage.ReportUsageToArtifactory(ur.ProductId, serviceManager, converted...)
+	return usage.NewArtifactoryCallHome().SendUsageToArtifactory(ur.ProductId, serviceManager, converted...)
 }
 
 func convertAttributesToMap(reportFeature ReportFeature) (converted map[string]string) {

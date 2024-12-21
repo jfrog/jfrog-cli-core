@@ -50,7 +50,7 @@ func reportUsage(command Command, channel chan<- bool) {
 	if serverDetails != nil {
 		var wg sync.WaitGroup
 
-		// Repotr the usage to Artifactory's Call Home API.
+		// Report the usage to Artifactory's Call Home API.
 		if serverDetails.ArtifactoryUrl != "" {
 			wg.Add(1)
 			go func() {

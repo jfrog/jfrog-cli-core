@@ -35,7 +35,7 @@ func TestCreateMetric(t *testing.T) {
 	// Define the expected JSON structure
 	expectedJSON := `{
 		"value": 1,
-		"metrics_name": "jfcli_commands_countaa",
+		"metrics_name": "jfcli_commands_count",
 		"labels": {
 			"product_id": "` + coreutils.GetCliUserAgentName() + `",
 			"feature_id": "testCommand",

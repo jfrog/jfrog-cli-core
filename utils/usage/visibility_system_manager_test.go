@@ -1,6 +1,7 @@
 package usage
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -29,7 +30,8 @@ func TestCreateMetric(t *testing.T) {
 	}()
 
 	commandName := "testCommand"
-	metric, err := NewVisibilitySystemManager(nil).createMetric(commandName)
+	metric := NewVisibilitySystemManager(nil).createMetric(commandName)
+	metricJSON, err := json.Marshal(metric)
 	assert.NoError(t, err)
 
 	// Define the expected JSON structure
@@ -48,5 +50,5 @@ func TestCreateMetric(t *testing.T) {
 	}`
 
 	// Compare the generated JSON to the expected JSON
-	assert.JSONEq(t, expectedJSON, string(metric))
+	assert.JSONEq(t, expectedJSON, string(metricJSON))
 }

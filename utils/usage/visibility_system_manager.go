@@ -42,5 +42,5 @@ func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
 	if err != nil {
 		return err
 	}
-	return manager.PostMetric(vsm.createMetric(commandName))
+	return manager.PostVisibilityMetric(vsm.createMetric(commandName))
 }

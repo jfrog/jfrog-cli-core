@@ -4,6 +4,11 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+
 	"github.com/jfrog/build-info-go/build"
 	biUtils "github.com/jfrog/build-info-go/build/utils"
 	"github.com/jfrog/gofrog/version"
@@ -18,10 +23,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/spf13/viper"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -31,7 +32,7 @@ const (
 
 	// Scoped authentication env var that sets the _auth or _authToken npm config variables.
 	npmConfigAuthEnv                  = "npm_config_%s:%s"
-	npmVersionSupportingScopedAuthEnv = "9.3.1"
+	npmVersionSupportingScopedAuthEnv = "9.2.0"
 	// Legacy un-scoped auth env vars doesn't support access tokens (with _authToken suffix).
 	npmLegacyConfigAuthEnv = "npm_config__auth"
 )

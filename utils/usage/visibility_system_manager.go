@@ -22,6 +22,7 @@ func NewVisibilitySystemManager(serverDetails *config.ServerDetails) *Visibility
 func (vsm *VisibilitySystemManager) createMetric(commandName string) services.VisibilityMetric {
 	metricLabels := services.Labels{
 		ProductID:                            coreutils.GetCliUserAgentName(),
+		ProductVersion:                       coreutils.GetCliUserAgentVersion(),
 		FeatureID:                            commandName,
 		OIDCUsed:                             os.Getenv("JFROG_CLI_USAGE_OIDC_USED"),
 		JobID:                                os.Getenv("JFROG_CLI_USAGE_JOB_ID"),

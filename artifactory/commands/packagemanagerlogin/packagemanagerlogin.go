@@ -76,14 +76,22 @@ func GetSupportedPackageManagersList() []project.ProjectType {
 	return allSupportedPackageManagers
 }
 
+func IsSupportedPackageManager(packageManager project.ProjectType) bool {
+	_, exists := packageManagerToRepositoryPackageType[packageManager]
+	return exists
+}
+
 // packageManagerToPackageType maps project types to corresponding Artifactory package types (e.g., npm, pypi).
 func packageManagerToPackageType(packageManager project.ProjectType) (string, error) {
 	// Retrieve the package type from the map.
 	if packageType, exists := packageManagerToRepositoryPackageType[packageManager]; exists {
 		return packageType, nil
 	}
+	if !IsSupportedPackageManager(packageManager) {
+		return "", errorutils.CheckErrorf("unsupported package type for package manager: %s", packageManager)
+	}
 	// Return an error if the package manager is unsupported.
-	return "", errorutils.CheckErrorf("unsupported package manager: %s", packageManager)
+	return packageManagerToRepositoryPackageType[packageManager], nil
 }
 
 // CommandName returns the name of the login command.

@@ -1,12 +1,12 @@
 package usage
 
 import (
-	"encoding/json"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/jfconnect/services"
 )
 
 type VisibilitySystemManager struct {
@@ -19,25 +19,10 @@ func NewVisibilitySystemManager(serverDetails *config.ServerDetails) *Visibility
 	}
 }
 
-type labels struct {
-	ProductID                            string `json:"product_id"`
-	FeatureID                            string `json:"feature_id"`
-	OIDCUsed                             string `json:"oidc_used"`
-	JobID                                string `json:"job_id"`
-	RunID                                string `json:"run_id"`
-	GitRepo                              string `json:"git_repo"`
-	GhTokenForCodeScanningAlertsProvided string `json:"gh_token_for_code_scanning_alerts_provided"`
-}
-
-type visibilityMetric struct {
-	Value       int    `json:"value"`
-	MetricsName string `json:"metrics_name"`
-	Labels      labels `json:"labels"`
-}
-
-func (vsm *VisibilitySystemManager) createMetric(commandName string) ([]byte, error) {
-	metricLabels := labels{
+func (vsm *VisibilitySystemManager) createMetric(commandName string) services.VisibilityMetric {
+	metricLabels := services.Labels{
 		ProductID:                            coreutils.GetCliUserAgentName(),
+		ProductVersion:                       coreutils.GetCliUserAgentVersion(),
 		FeatureID:                            commandName,
 		OIDCUsed:                             os.Getenv("JFROG_CLI_USAGE_OIDC_USED"),
 		JobID:                                os.Getenv("JFROG_CLI_USAGE_JOB_ID"),
@@ -46,13 +31,11 @@ func (vsm *VisibilitySystemManager) createMetric(commandName string) ([]byte, er
 		GhTokenForCodeScanningAlertsProvided: os.Getenv("JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED"),
 	}
 
-	metric := visibilityMetric{
+	return services.VisibilityMetric{
 		Value:       1,
 		MetricsName: "jfcli_commands_count",
 		Labels:      metricLabels,
 	}
-
-	return json.Marshal(metric)
 }
 
 func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
@@ -60,9 +43,5 @@ func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
 	if err != nil {
 		return err
 	}
-	metric, err := vsm.createMetric(commandName)
-	if err != nil {
-		return err
-	}
-	return manager.PostMetric(metric)
+	return manager.PostVisibilityMetric(vsm.createMetric(commandName))
 }

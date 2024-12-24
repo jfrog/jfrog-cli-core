@@ -59,6 +59,8 @@ func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
 	return buildInfoSummary, cleanup
 }
 
+const buildUrl = "http://myJFrogPlatform/builds/buildName/123?gh_job_id=JFrog+CLI+Core+Tests&gh_section=buildInfo"
+
 func TestBuildInfoTable(t *testing.T) {
 	buildInfoSummary, cleanUp := prepareBuildInfoTest()
 	defer func() {
@@ -69,7 +71,7 @@ func TestBuildInfoTable(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 		},
 	}
 	t.Run("Extended Summary", func(t *testing.T) {
@@ -96,7 +98,7 @@ func TestBuildInfoModulesMaven(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "maven",
@@ -138,7 +140,7 @@ func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "maven",
@@ -206,7 +208,7 @@ func TestBuildInfoModulesGradle(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "gradle",
@@ -247,7 +249,7 @@ func TestBuildInfoModulesGeneric(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "generic",

@@ -19,15 +19,15 @@ func TestGenerateArtifactUrl(t *testing.T) {
 		majorVersion int
 		expected     string
 	}{
-		{"artifactory 7 without project", "", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true"},
-		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true"},
-		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/#/artifacts/browse/tree/General/repo/path/file"},
+		{"artifactory 7 without project", "", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
+		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
+		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/#/artifacts/browse/tree/General/repo/path/file&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
 	}
 	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 	for _, testCase := range cases {
 		t.Run(testCase.testName, func(t *testing.T) {
 			StaticMarkdownConfig.setPlatformMajorVersion(testCase.majorVersion)
-			artifactUrl, err := GenerateArtifactUrl(fullPath, "")
+			artifactUrl, err := GenerateArtifactUrl(fullPath, "test-section")
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expected, artifactUrl)
 		})

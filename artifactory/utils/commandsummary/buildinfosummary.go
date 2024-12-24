@@ -6,6 +6,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/jfrog/build-info-go/entities"
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
@@ -239,7 +240,7 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) (stri
 		var artifactUrlInArtifactory string
 		var err error
 		if StaticMarkdownConfig.IsExtendedSummary() {
-			artifactUrlInArtifactory, err = generateArtifactUrl(artifact)
+			artifactUrlInArtifactory, err = generateArtifactUrl(artifact, *module)
 			if err != nil {
 				return "", err
 			}
@@ -256,11 +257,15 @@ func (bis *BuildInfoSummary) createArtifactsTree(module *buildInfo.Module) (stri
 	return artifactsTree.String(), nil
 }
 
-func generateArtifactUrl(artifact buildInfo.Artifact) (string, error) {
+func generateArtifactUrl(artifact buildInfo.Artifact, module buildInfo.Module) (string, error) {
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return "", nil
 	}
-	return GenerateArtifactUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path), "packages")
+	trackingSection := "packages"
+	if module.Type == entities.Generic {
+		trackingSection = "artifacts"
+	}
+	return GenerateArtifactUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path), trackingSection)
 }
 
 func groupModules(modules []buildInfo.Module) map[string][]buildInfo.Module {

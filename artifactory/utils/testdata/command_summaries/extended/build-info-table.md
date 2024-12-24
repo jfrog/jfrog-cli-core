@@ -2,6 +2,6 @@
 
 |  Build Info|  Security Violations| Security Issues|
 |:---------|:------------|:------------|
-| [buildName 123](http://myJFrogPlatform/builds/buildName/123) | Not scanned| Not scanned| 
+| [buildName 123](http://myJFrogPlatform/builds/buildName/123?gh_job_id=JFrog+CLI+Core+Tests&gh_section=buildInfo) | Not scanned| Not scanned| 
 
 

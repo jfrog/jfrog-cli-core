@@ -21,7 +21,7 @@ func TestGenerateArtifactUrl(t *testing.T) {
 	}{
 		{"artifactory 7 without project", "", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
 		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
-		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/#/artifacts/browse/tree/General/repo/path/file&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
+		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/?gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section#/artifacts/browse/tree/General/repo/path/file"},
 	}
 	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 	for _, testCase := range cases {

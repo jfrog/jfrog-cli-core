@@ -114,7 +114,7 @@ func (pmlc *PackageManagerLoginCommand) SetProjectKey(projectKey string) *Packag
 
 // Run executes the configuration method corresponding to the package manager specified for the command.
 func (pmlc *PackageManagerLoginCommand) Run() (err error) {
-	if IsSupportedPackageManager(pmlc.packageManager) {
+	if !IsSupportedPackageManager(pmlc.packageManager) {
 		return errorutils.CheckErrorf("unsupported package manager: %s", pmlc.packageManager)
 	}
 

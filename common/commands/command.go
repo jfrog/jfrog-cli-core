@@ -63,14 +63,14 @@ func reportUsage(command Command, channel chan<- bool) {
 	}
 	artifactoryVersion, err := serviceManager.GetVersion()
 	if err != nil {
-		log.Debug("Usage reporting. Failed getting the Artifactory", err.Error())
+		log.Debug("Usage reporting. Failed getting the version of Artifactory", err.Error())
 		return
 	}
 
 	var wg sync.WaitGroup
 
 	// Report the usage to Artifactory's Call Home API.
-	if version.NewVersion(ArtifactoryVersion).AtLeast(minCallHomeArtifactoryVersion) {
+	if version.NewVersion(artifactoryVersion).AtLeast(minCallHomeArtifactoryVersion) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -79,7 +79,7 @@ func reportUsage(command Command, channel chan<- bool) {
 	}
 
 	// Report the usage to the Visibility System.
-	if version.NewVersion(ArtifactoryVersion).AtLeast(minVisibilitySystemArtifactoryVersion) {
+	if version.NewVersion(artifactoryVersion).AtLeast(minVisibilitySystemArtifactoryVersion) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

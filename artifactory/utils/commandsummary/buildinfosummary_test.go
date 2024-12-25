@@ -1,15 +1,16 @@
 package commandsummary
 
 import (
-	buildInfo "github.com/jfrog/build-info-go/entities"
-	buildinfo "github.com/jfrog/build-info-go/entities"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	buildInfo "github.com/jfrog/build-info-go/entities"
+	buildinfo "github.com/jfrog/build-info-go/entities"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -58,6 +59,8 @@ func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
 	return buildInfoSummary, cleanup
 }
 
+const buildUrl = "http://myJFrogPlatform/builds/buildName/123?gh_job_id=JFrog+CLI+Core+Tests&gh_section=buildInfo"
+
 func TestBuildInfoTable(t *testing.T) {
 	buildInfoSummary, cleanUp := prepareBuildInfoTest()
 	defer func() {
@@ -68,17 +71,19 @@ func TestBuildInfoTable(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 		},
 	}
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		res := buildInfoSummary.buildInfoTable(builds)
+		res, err := buildInfoSummary.buildInfoTable(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, buildInfoTable), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		res := buildInfoSummary.buildInfoTable(builds)
+		res, err := buildInfoSummary.buildInfoTable(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, buildInfoTable), res)
 	})
 }
@@ -93,7 +98,7 @@ func TestBuildInfoModulesMaven(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "maven",
@@ -113,12 +118,14 @@ func TestBuildInfoModulesMaven(t *testing.T) {
 
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, mavenModule), res)
 	})
 }
@@ -133,7 +140,7 @@ func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "maven",
@@ -179,12 +186,14 @@ func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
 
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, mavenNestedModule), res)
 	})
 }
@@ -199,7 +208,7 @@ func TestBuildInfoModulesGradle(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "gradle",
@@ -218,12 +227,14 @@ func TestBuildInfoModulesGradle(t *testing.T) {
 
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		assert.Empty(t, res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		assert.Empty(t, res)
 	})
 }
@@ -238,7 +249,7 @@ func TestBuildInfoModulesGeneric(t *testing.T) {
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
-			BuildUrl: "http://myJFrogPlatform/builds/buildName/123",
+			BuildUrl: buildUrl,
 			Modules: []buildinfo.Module{
 				{
 					Id:   "generic",
@@ -255,12 +266,14 @@ func TestBuildInfoModulesGeneric(t *testing.T) {
 
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, genericModule), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, genericModule), res)
 	})
 }
@@ -305,12 +318,14 @@ func TestDockerModule(t *testing.T) {
 
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, dockerImageModule), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, dockerImageModule), res)
 	})
 
@@ -380,12 +395,14 @@ func TestDockerMultiArchModule(t *testing.T) {
 
 	t.Run("Extended Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(true)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, dockerMultiArchModule), res)
 	})
 	t.Run("Basic Summary", func(t *testing.T) {
 		StaticMarkdownConfig.setExtendedSummary(false)
-		res := buildInfoSummary.buildInfoModules(builds)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
 		testMarkdownOutput(t, getTestDataFile(t, dockerMultiArchModule), res)
 	})
 

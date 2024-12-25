@@ -2,6 +2,7 @@ package commandsummary
 
 import (
 	"fmt"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 )
 
@@ -33,8 +34,12 @@ func (us *UploadSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (mark
 	if err = us.loadResults(dataFilePaths); err != nil {
 		return
 	}
+	md, err := us.generateFileTreeMarkdown()
+	if err != nil {
+		return
+	}
 	// Wrap the Markdown in a <pre> tags to preserve spaces
-	markdown = fmt.Sprintf("\n<pre>\n\n\n%s</pre>\n\n", us.generateFileTreeMarkdown())
+	markdown = fmt.Sprintf("\n<pre>\n\n\n%s</pre>\n\n", md)
 	return
 }
 
@@ -51,21 +56,25 @@ func (us *UploadSummary) loadResults(filePaths []string) error {
 	return nil
 }
 
-func (us *UploadSummary) generateFileTreeMarkdown() string {
+func (us *UploadSummary) generateFileTreeMarkdown() (string, error) {
 	us.uploadTree = utils.NewFileTree()
 	for _, uploadResult := range us.uploadedArtifacts.Results {
-		us.uploadTree.AddFile(uploadResult.TargetPath, us.buildUiUrl(uploadResult.TargetPath))
+		buildUiUrl, err := us.buildUiUrl(uploadResult.TargetPath)
+		if err != nil {
+			return "", err
+		}
+		us.uploadTree.AddFile(uploadResult.TargetPath, buildUiUrl)
 		if us.uploadTree.IsTreeExceedsMax() {
-			return ""
+			return "", nil
 		}
 	}
-	return us.uploadTree.String()
+	return us.uploadTree.String(), nil
 }
 
-func (us *UploadSummary) buildUiUrl(targetPath string) string {
+func (us *UploadSummary) buildUiUrl(targetPath string) (string, error) {
 	// Only build URL if extended summary is enabled
 	if StaticMarkdownConfig.IsExtendedSummary() {
-		return GenerateArtifactUrl(targetPath)
+		return GenerateArtifactUrl(targetPath, artifactsSection)
 	}
-	return ""
+	return "", nil
 }

@@ -61,7 +61,7 @@ func reportUsage(command Command, channel chan<- bool) {
 		log.Debug("Usage reporting. Failed creating the Artifactory Service Manager.", err.Error())
 		return
 	}
-	ArtifactoryVersion, err := serviceManager.GetVersion()
+	artifactoryVersion, err := serviceManager.GetVersion()
 	if err != nil {
 		log.Debug("Usage reporting. Failed getting the Artifactory", err.Error())
 		return

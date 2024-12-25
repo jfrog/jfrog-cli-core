@@ -4,6 +4,10 @@ import (
 	"crypto/sha1" // #nosec G505 - This is only used for encoding, not security.
 	"encoding/hex"
 	"fmt"
+	"net/url"
+	"os"
+
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
 const (
@@ -12,11 +16,14 @@ const (
 	artifactoryDockerPackagesUiFormat = "%s/ui/packages/docker:%s/sha256__%s"
 )
 
-func GenerateArtifactUrl(pathInRt string) string {
+func GenerateArtifactUrl(pathInRt string, section summarySection) (url string, err error) {
 	if StaticMarkdownConfig.GetPlatformMajorVersion() == 6 {
-		return fmt.Sprintf(artifactory6UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
+		url = fmt.Sprintf(artifactory6UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
+	} else {
+		url = fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 	}
-	return fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
+	url, err = addGitHubTrackingToUrl(url, section)
+	return
 }
 
 func WrapCollapsableMarkdown(title, markdown string, headerSize int) string {
@@ -32,4 +39,38 @@ func fileNameToSha1(fileName string) string {
 	hash.Write([]byte(fileName))
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes)
+}
+
+type summarySection string
+
+const (
+	artifactsSection summarySection = "artifacts"
+	packagesSection  summarySection = "packages"
+	buildInfoSection summarySection = "buildInfo"
+)
+
+// addGitHubTrackingToUrl adds GitHub-related query parameters to a given URL if the GITHUB_WORKFLOW environment variable is set.
+func addGitHubTrackingToUrl(urlStr string, section summarySection) (string, error) {
+	// Check if GITHUB_WORKFLOW environment variable is set
+	githubWorkflow := os.Getenv("GITHUB_WORKFLOW")
+	if githubWorkflow == "" {
+		// Return the original URL if the variable is not set
+		return urlStr, nil
+	}
+
+	// Parse the input URL
+	parsedUrl, err := url.Parse(urlStr)
+	if errorutils.CheckError(err) != nil {
+		// Return an error if the URL is invalid
+		return "", err
+	}
+
+	// Get the query parameters and add the GitHub tracking parameters
+	queryParams := parsedUrl.Query()
+	queryParams.Set("gh_job_id", githubWorkflow)
+	queryParams.Set("gh_section", string(section))
+	parsedUrl.RawQuery = queryParams.Encode()
+
+	// Return the modified URL
+	return parsedUrl.String(), nil
 }

@@ -1,9 +1,9 @@
 package commandsummary
 
 import (
-	"os"
 	"testing"
 
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -103,8 +103,9 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Set up the environment variable
-			os.Setenv("GITHUB_WORKFLOW", test.envValue)
-			defer os.Unsetenv("GITHUB_WORKFLOW")
+
+			cleanup := testsutils.SetEnvWithCallbackAndAssert(t, "GITHUB_WORKFLOW", test.envValue)
+			defer cleanup()
 
 			// Call the function
 			result, err := addGitHubTrackingToUrl(test.url, test.section)

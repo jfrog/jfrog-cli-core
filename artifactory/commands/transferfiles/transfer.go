@@ -289,7 +289,7 @@ func (tdc *TransferFilesCommand) reportTransferFilesUsage() {
 			AttributeValue: sourceStorageInfo.BinariesSize,
 		},
 	}
-	if err = usage.NewArtifactoryCallHome().SendUsage(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.targetStorageInfoManager.GetServiceManager(), reportUsageAttributes...); err != nil {
+	if err = usage.NewArtifactoryCallHome().Send(coreutils.GetCliUserAgent(), tdc.CommandName(), tdc.targetStorageInfoManager.GetServiceManager(), reportUsageAttributes...); err != nil {
 		log.Debug(err.Error())
 	}
 }

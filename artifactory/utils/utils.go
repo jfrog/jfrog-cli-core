@@ -262,7 +262,7 @@ func CreateMetadataServiceManager(serviceDetails *config.ServerDetails, isDryRun
 	return metadata.NewManager(serviceConfig)
 }
 
-func CreateJfConnectServiceManager(serverDetails *config.ServerDetails) (jfconnect.Manager, error) {
+func CreateJfConnectServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int) (jfconnect.Manager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -275,6 +275,8 @@ func CreateJfConnectServiceManager(serverDetails *config.ServerDetails) (jfconne
 		SetServiceDetails(jfConnectAuth).
 		SetCertificatesPath(certsPath).
 		SetInsecureTls(serverDetails.InsecureTls).
+		SetHttpRetries(httpRetries).
+		SetHttpRetryWaitMilliSecs(httpRetryWaitMilliSecs).
 		Build()
 	if err != nil {
 		return nil, err

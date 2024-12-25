@@ -3,13 +3,20 @@ package commands
 import (
 	"sync"
 
+	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	coreusage "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
 	usageReporter "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
+	rtClient "github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+)
+
+const (
+	minCallHomeArtifactoryVersion         = "6.9.0"
+	minVisibilitySystemArtifactoryVersion = "7.102"
 )
 
 type Command interface {
@@ -46,29 +53,42 @@ func reportUsage(command Command, channel chan<- bool) {
 		log.Debug("Usage reporting:", err.Error())
 		return
 	}
+	if serverDetails == nil || serverDetails.ArtifactoryUrl == "" {
+		return
+	}
+	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
+	if err != nil {
+		log.Debug("Usage reporting:", err.Error())
+		return
+	}
+	ArtifactoryVersion, err := serviceManager.GetVersion()
+	if err != nil {
+		log.Debug("Usage reporting:", err.Error())
+		return
+	}
 
-	if serverDetails != nil {
-		var wg sync.WaitGroup
+	var wg sync.WaitGroup
 
-		// Report the usage to Artifactory's Call Home API.
-		if serverDetails.ArtifactoryUrl != "" {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				reportUsageToArtifactoryCallHome(command, serverDetails)
-			}()
-		}
+	// Report the usage to Artifactory's Call Home API.
+	if version.NewVersion(ArtifactoryVersion).AtLeast(minCallHomeArtifactoryVersion) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			reportUsageToArtifactoryCallHome(command, serviceManager)
+		}()
+	}
 
-		// Report the usage to the Visibility System.
+	// Report the usage to the Visibility System.
+	if version.NewVersion(ArtifactoryVersion).AtLeast(minVisibilitySystemArtifactoryVersion) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			reportUsageToVisibilitySystem(command, serverDetails)
 		}()
-
-		// Wait for the two report actions to finish.
-		wg.Wait()
 	}
+
+	// Wait for the two report actions to finish.
+	wg.Wait()
 }
 
 func reportUsageToVisibilitySystem(command Command, serverDetails *config.ServerDetails) {
@@ -77,14 +97,9 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 	}
 }
 
-func reportUsageToArtifactoryCallHome(command Command, serverDetails *config.ServerDetails) {
+func reportUsageToArtifactoryCallHome(command Command, serviceManager rtClient.ArtifactoryServicesManager) {
 	log.Debug(usageReporter.ArtifactoryCallHomePrefix, "Sending info...")
-	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
-	if err != nil {
-		log.Debug(usageReporter.ArtifactoryCallHomePrefix, err.Error())
-		return
-	}
-	if err = usage.NewArtifactoryCallHome().SendUsage(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager); err != nil {
+	if err := usage.NewArtifactoryCallHome().SendUsage(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager); err != nil {
 		log.Debug(err.Error())
 	}
 }

@@ -21,7 +21,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/maps"
 	"net/url"
-	"sort"
+	"slices"
 )
 
 // packageManagerToRepositoryPackageType maps project types to corresponding Artifactory repository package types.
@@ -52,6 +52,8 @@ type PackageManagerLoginCommand struct {
 	packageManager project.ProjectType
 	// repoName is the name of the repository used for configuration.
 	repoName string
+	// projectKey is the JFrog Project key in JFrog Platform.
+	projectKey string
 	// serverDetails contains Artifactory server configuration.
 	serverDetails *config.ServerDetails
 	// commandName specifies the command for this instance.
@@ -70,8 +72,9 @@ func NewPackageManagerLoginCommand(packageManager project.ProjectType) *PackageM
 // GetSupportedPackageManagersList returns a sorted list of supported package managers.
 func GetSupportedPackageManagersList() []project.ProjectType {
 	allSupportedPackageManagers := maps.Keys(packageManagerToRepositoryPackageType)
-	sort.Slice(allSupportedPackageManagers, func(i, j int) bool {
-		return allSupportedPackageManagers[i] < allSupportedPackageManagers[j]
+	// Sort keys based on their natural enum order
+	slices.SortFunc(allSupportedPackageManagers, func(a, b project.ProjectType) int {
+		return int(a) - int(b)
 	})
 	return allSupportedPackageManagers
 }
@@ -79,19 +82,6 @@ func GetSupportedPackageManagersList() []project.ProjectType {
 func IsSupportedPackageManager(packageManager project.ProjectType) bool {
 	_, exists := packageManagerToRepositoryPackageType[packageManager]
 	return exists
-}
-
-// packageManagerToPackageType maps project types to corresponding Artifactory package types (e.g., npm, pypi).
-func packageManagerToPackageType(packageManager project.ProjectType) (string, error) {
-	// Retrieve the package type from the map.
-	if packageType, exists := packageManagerToRepositoryPackageType[packageManager]; exists {
-		return packageType, nil
-	}
-	if !IsSupportedPackageManager(packageManager) {
-		return "", errorutils.CheckErrorf("unsupported package type for package manager: %s", packageManager)
-	}
-	// Return an error if the package manager is unsupported.
-	return packageManagerToRepositoryPackageType[packageManager], nil
 }
 
 // CommandName returns the name of the login command.
@@ -110,8 +100,24 @@ func (pmlc *PackageManagerLoginCommand) ServerDetails() (*config.ServerDetails, 
 	return pmlc.serverDetails, nil
 }
 
+// SetRepoName assigns the repository name to the command.
+func (pmlc *PackageManagerLoginCommand) SetRepoName(repoName string) *PackageManagerLoginCommand {
+	pmlc.repoName = repoName
+	return pmlc
+}
+
+// SetProjectKey assigns the project key to the command.
+func (pmlc *PackageManagerLoginCommand) SetProjectKey(projectKey string) *PackageManagerLoginCommand {
+	pmlc.projectKey = projectKey
+	return pmlc
+}
+
 // Run executes the configuration method corresponding to the package manager specified for the command.
 func (pmlc *PackageManagerLoginCommand) Run() (err error) {
+	if IsSupportedPackageManager(pmlc.packageManager) {
+		return errorutils.CheckErrorf("unsupported package manager: %s", pmlc.packageManager)
+	}
+
 	if pmlc.repoName == "" {
 		// Prompt the user to select a virtual repository that matches the package manager.
 		if err = pmlc.promptUserToSelectRepository(); err != nil {
@@ -147,15 +153,11 @@ func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 }
 
 // promptUserToSelectRepository prompts the user to select a compatible virtual repository.
-func (pmlc *PackageManagerLoginCommand) promptUserToSelectRepository() error {
-	// Map the package manager to its corresponding package type.
-	packageType, err := packageManagerToPackageType(pmlc.packageManager)
-	if err != nil {
-		return err
-	}
+func (pmlc *PackageManagerLoginCommand) promptUserToSelectRepository() (err error) {
 	repoFilterParams := services.RepositoriesFilterParams{
 		RepoType:    utils.Virtual.String(),
-		PackageType: packageType,
+		PackageType: packageManagerToRepositoryPackageType[pmlc.packageManager],
+		ProjectKey:  pmlc.projectKey,
 	}
 
 	// Prompt for repository selection based on filter parameters.

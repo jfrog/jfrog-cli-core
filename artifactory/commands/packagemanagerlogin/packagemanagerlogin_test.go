@@ -13,6 +13,7 @@ import (
 	clientTestUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,6 +51,13 @@ func createTestPackageManagerLoginCommand(packageManager project.ProjectType) *P
 	cmd.serverDetails = &config.ServerDetails{Url: dummyUrl, ArtifactoryUrl: dummyUrl + "/artifactory"}
 
 	return cmd
+}
+
+func TestPackageManagerLoginCommand_NotSupported(t *testing.T) {
+	notSupportedLoginCmd := createTestPackageManagerLoginCommand(project.Cocoapods)
+	err := notSupportedLoginCmd.Run()
+	assert.Error(t, err)
+	assert.ErrorContains(t, err, "unsupported package manager")
 }
 
 func TestPackageManagerLoginCommand_Npm(t *testing.T) {
@@ -380,4 +388,21 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 			}
 		})
 	}
+}
+
+func TestGetSupportedPackageManagersList(t *testing.T) {
+	result := GetSupportedPackageManagersList()
+	// Check that Go is before Pip, and Pip is before Npm using GreaterOrEqual
+	assert.GreaterOrEqual(t, slices.Index(result, project.Pip), slices.Index(result, project.Go), "Go should come before Pip")
+	assert.GreaterOrEqual(t, slices.Index(result, project.Npm), slices.Index(result, project.Pip), "Pip should come before Npm")
+}
+
+func TestIsSupportedPackageManager(t *testing.T) {
+	// Test valid package managers
+	for pm := range packageManagerToRepositoryPackageType {
+		assert.True(t, IsSupportedPackageManager(pm), "Package manager %s should be supported", pm)
+	}
+
+	// Test unsupported package manager
+	assert.False(t, IsSupportedPackageManager(project.Cocoapods), "Package manager Cocoapods should not be supported")
 }

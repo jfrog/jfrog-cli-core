@@ -16,13 +16,13 @@ const (
 	artifactoryDockerPackagesUiFormat = "%s/ui/packages/docker:%s/sha256__%s"
 )
 
-func GenerateArtifactUrl(pathInRt, trackingSection string) (url string, err error) {
+func GenerateArtifactUrl(pathInRt string, section summarySection) (url string, err error) {
 	if StaticMarkdownConfig.GetPlatformMajorVersion() == 6 {
 		url = fmt.Sprintf(artifactory6UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 	} else {
 		url = fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 	}
-	url, err = addGitHubTrackingToUrl(url, trackingSection)
+	url, err = addGitHubTrackingToUrl(url, section)
 	return
 }
 
@@ -41,8 +41,16 @@ func fileNameToSha1(fileName string) string {
 	return hex.EncodeToString(hashBytes)
 }
 
+type summarySection string
+
+const (
+	artifactsSection summarySection = "artifacts"
+	packagesSection                 = "packages"
+	buildInfoSection                = "build"
+)
+
 // addGitHubTrackingToUrl adds GitHub-related query parameters to a given URL if the GITHUB_WORKFLOW environment variable is set.
-func addGitHubTrackingToUrl(urlStr, section string) (string, error) {
+func addGitHubTrackingToUrl(urlStr string, section summarySection) (string, error) {
 	// Check if GITHUB_WORKFLOW environment variable is set
 	githubWorkflow := os.Getenv("GITHUB_WORKFLOW")
 	if githubWorkflow == "" {
@@ -60,7 +68,7 @@ func addGitHubTrackingToUrl(urlStr, section string) (string, error) {
 	// Get the query parameters and add the GitHub tracking parameters
 	queryParams := parsedUrl.Query()
 	queryParams.Set("gh_job_id", githubWorkflow)
-	queryParams.Set("gh_section", section)
+	queryParams.Set("gh_section", string(section))
 	parsedUrl.RawQuery = queryParams.Encode()
 
 	// Return the modified URL

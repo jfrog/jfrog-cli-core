@@ -74,7 +74,7 @@ func (us *UploadSummary) generateFileTreeMarkdown() (string, error) {
 func (us *UploadSummary) buildUiUrl(targetPath string) (string, error) {
 	// Only build URL if extended summary is enabled
 	if StaticMarkdownConfig.IsExtendedSummary() {
-		return GenerateArtifactUrl(targetPath, "artifacts")
+		return GenerateArtifactUrl(targetPath, artifactsSection)
 	}
 	return "", nil
 }

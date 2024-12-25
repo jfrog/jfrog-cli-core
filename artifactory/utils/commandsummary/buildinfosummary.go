@@ -260,11 +260,14 @@ func generateArtifactUrl(artifact buildInfo.Artifact, module buildInfo.Module) (
 	if strings.TrimSpace(artifact.OriginalDeploymentRepo) == "" {
 		return "", nil
 	}
-	trackingSection := "packages"
+	var section summarySection
+
 	if module.Type == buildInfo.Generic {
-		trackingSection = "artifacts"
+		section = artifactsSection
+	} else {
+		section = packagesSection
 	}
-	return GenerateArtifactUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path), trackingSection)
+	return GenerateArtifactUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path), section)
 }
 
 func groupModules(modules []buildInfo.Module) map[string][]buildInfo.Module {
@@ -327,7 +330,7 @@ func appendBuildInfoRow(tableBuilder *strings.Builder, build *buildInfo.BuildInf
 	buildName := build.Name + " " + build.Number
 	buildScanResult := getScanResults(buildName)
 	if StaticMarkdownConfig.IsExtendedSummary() {
-		buildInfoUrl, err := addGitHubTrackingToUrl(build.BuildUrl, "buildInfo")
+		buildInfoUrl, err := addGitHubTrackingToUrl(build.BuildUrl, buildInfoSection)
 		if err != nil {
 			return err
 		}

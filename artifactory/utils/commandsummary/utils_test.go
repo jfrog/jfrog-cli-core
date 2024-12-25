@@ -1,9 +1,9 @@
 package commandsummary
 
 import (
+	"os"
 	"testing"
 
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -53,7 +53,7 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 	tests := []struct {
 		name           string
 		url            string
-		section        string
+		section        summarySection
 		envValue       string
 		expectedResult string
 		expectsError   bool
@@ -61,7 +61,7 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 		{
 			"No GITHUB_WORKFLOW set",
 			"https://example.com/path",
-			"build",
+			buildInfoSection,
 			"",
 			"https://example.com/path",
 			false,
@@ -69,7 +69,7 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 		{
 			"GITHUB_WORKFLOW set",
 			"https://example.com/path",
-			"build",
+			buildInfoSection,
 			"workflow123",
 			"https://example.com/path?gh_job_id=workflow123&gh_section=build",
 			false,
@@ -77,7 +77,7 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 		{
 			"Invalid URL",
 			":invalid-url",
-			"build",
+			buildInfoSection,
 			"workflow123",
 			"",
 			true,
@@ -85,17 +85,17 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 		{
 			"URL with existing query parameters",
 			"https://example.com/path?existing_param=value",
-			"deploy",
+			packagesSection,
 			"workflow123",
-			"https://example.com/path?existing_param=value&gh_job_id=workflow123&gh_section=deploy",
+			"https://example.com/path?existing_param=value&gh_job_id=workflow123&gh_section=packages",
 			false,
 		},
 		{
 			"GITHUB_WORKFLOW with special characters",
 			"https://example.com/path",
-			"test",
+			artifactsSection,
 			"workflow with spaces & special?characters",
-			"https://example.com/path?gh_job_id=workflow+with+spaces+%26+special%3Fcharacters&gh_section=test",
+			"https://example.com/path?gh_job_id=workflow+with+spaces+%26+special%3Fcharacters&gh_section=artifacts",
 			false,
 		},
 	}
@@ -103,8 +103,8 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Set up the environment variable
-			cleanup := testsutils.SetEnvWithCallbackAndAssert(t, "GITHUB_WORKFLOW", test.envValue)
-			defer cleanup()
+			os.Setenv("GITHUB_WORKFLOW", test.envValue)
+			defer os.Unsetenv("GITHUB_WORKFLOW")
 
 			// Call the function
 			result, err := addGitHubTrackingToUrl(test.url, test.section)

@@ -6,7 +6,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/jfrog/build-info-go/entities"
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
@@ -262,7 +261,7 @@ func generateArtifactUrl(artifact buildInfo.Artifact, module buildInfo.Module) (
 		return "", nil
 	}
 	trackingSection := "packages"
-	if module.Type == entities.Generic {
+	if module.Type == buildInfo.Generic {
 		trackingSection = "artifacts"
 	}
 	return GenerateArtifactUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path), trackingSection)

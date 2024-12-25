@@ -50,7 +50,7 @@ func reportUsage(command Command, channel chan<- bool) {
 
 	serverDetails, err := command.ServerDetails()
 	if err != nil {
-		log.Debug("Usage reporting:", err.Error())
+		log.Debug("Usage reporting. Failed accessing ServerDetails.", err.Error())
 		return
 	}
 	if serverDetails == nil || serverDetails.ArtifactoryUrl == "" {
@@ -58,12 +58,12 @@ func reportUsage(command Command, channel chan<- bool) {
 	}
 	serviceManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
-		log.Debug("Usage reporting:", err.Error())
+		log.Debug("Usage reporting. Failed creating the Artifactory Service Manager.", err.Error())
 		return
 	}
 	ArtifactoryVersion, err := serviceManager.GetVersion()
 	if err != nil {
-		log.Debug("Usage reporting:", err.Error())
+		log.Debug("Usage reporting. Failed getting the Artifactory", err.Error())
 		return
 	}
 
@@ -99,7 +99,7 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 
 func reportUsageToArtifactoryCallHome(command Command, serviceManager rtClient.ArtifactoryServicesManager) {
 	log.Debug(usageReporter.ArtifactoryCallHomePrefix, "Sending info...")
-	if err := usage.NewArtifactoryCallHome().SendUsage(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager); err != nil {
+	if err := usage.NewArtifactoryCallHome().Send(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager); err != nil {
 		log.Debug(err.Error())
 	}
 }

@@ -12,7 +12,7 @@
 📦 libs-release
 └── 📁 path
     └── 📁 to
-        └── <a href='https://myplatform.com/ui/repos/tree/General/libs-release/path/to/artifact2?clearFilter=true' target="_blank">artifact2</a>
+        └── <a href='https://myplatform.com/ui/repos/tree/General/libs-release/path/to/artifact2?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=packages' target="_blank">artifact2</a>
 
 </details></pre>
 
@@ -22,7 +22,7 @@
 📦 libs-release
 └── 📁 path
     └── 📁 to
-        └── <a href='https://myplatform.com/ui/repos/tree/General/libs-release/path/to/artifact3?clearFilter=true' target="_blank">artifact3</a>
+        └── <a href='https://myplatform.com/ui/repos/tree/General/libs-release/path/to/artifact3?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=packages' target="_blank">artifact3</a>
 
 </details></pre>
 

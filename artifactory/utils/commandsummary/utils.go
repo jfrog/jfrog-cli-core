@@ -45,8 +45,8 @@ type summarySection string
 
 const (
 	artifactsSection summarySection = "artifacts"
-	packagesSection                 = "packages"
-	buildInfoSection                = "build"
+	packagesSection  summarySection = "packages"
+	buildInfoSection summarySection = "buildInfo"
 )
 
 // addGitHubTrackingToUrl adds GitHub-related query parameters to a given URL if the GITHUB_WORKFLOW environment variable is set.

@@ -71,7 +71,7 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 			"https://example.com/path",
 			buildInfoSection,
 			"workflow123",
-			"https://example.com/path?gh_job_id=workflow123&gh_section=build",
+			"https://example.com/path?gh_job_id=workflow123&gh_section=buildInfo",
 			false,
 		},
 		{

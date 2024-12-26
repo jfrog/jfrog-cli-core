@@ -1,8 +1,6 @@
 package ioutils
 
 import (
-	"fmt"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -84,9 +82,7 @@ func interruptKeyBind() prompt.Option {
 	interrupt := prompt.KeyBind{
 		Key: prompt.ControlC,
 		Fn: func(buf *prompt.Buffer) {
-			// Gracefully exit the program
-			fmt.Println("\nOperation interrupted. Exiting...")
-			os.Exit(0)
+			panic("Operation interrupted. Exiting...")
 		},
 	}
 	return prompt.OptionAddKeyBind(interrupt)

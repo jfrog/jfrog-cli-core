@@ -79,8 +79,8 @@ func (projectType ProjectType) String() string {
 
 // FromString converts a string to its corresponding ProjectType
 func FromString(value string) ProjectType {
-	for i, v := range ProjectTypes {
-		if v == value {
+	for i, projectType := range ProjectTypes {
+		if projectType == value {
 			return ProjectType(i)
 		}
 	}

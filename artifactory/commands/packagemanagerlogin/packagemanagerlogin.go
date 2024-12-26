@@ -287,11 +287,11 @@ func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
 //
 // For Docker:
 //
-//	docker login <artifactory-url-without-scheme> -u <username> -p <password>
+//	echo <password> | docker login <artifactory-url-without-scheme> -u <username> --password-stdin
 //
 // For Podman:
 //
-//	podman login <artifactory-url-without-scheme> -u <username> -p <password>
+//	echo <password> | podman login <artifactory-url-without-scheme> -u <username> --password-stdin
 func (pmlc *PackageManagerLoginCommand) configureContainer() error {
 	var containerManagerType container.ContainerManagerType
 	switch pmlc.packageManager {
@@ -303,11 +303,11 @@ func (pmlc *PackageManagerLoginCommand) configureContainer() error {
 		return errorutils.CheckErrorf("unsupported container manager: %s", pmlc.packageManager)
 	}
 	// Parse the URL to remove the scheme (https:// or http://)
-	parsedURL, err := url.Parse(pmlc.serverDetails.GetUrl())
+	parsedPlatformURL, err := url.Parse(pmlc.serverDetails.GetUrl())
 	if err != nil {
 		return err
 	}
-	urlWithoutScheme := parsedURL.Host + parsedURL.Path
+	urlWithoutScheme := parsedPlatformURL.Host + parsedPlatformURL.Path
 	return container.ContainerManagerLogin(
 		urlWithoutScheme,
 		&container.ContainerManagerLoginConfig{ServerDetails: pmlc.serverDetails},

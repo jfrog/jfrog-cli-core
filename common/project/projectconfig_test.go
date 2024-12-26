@@ -7,7 +7,7 @@ import (
 
 func TestFromString(t *testing.T) {
 	// Test valid conversions
-	tests := []struct {
+	testCases := []struct {
 		input    string
 		expected ProjectType
 	}{
@@ -17,14 +17,14 @@ func TestFromString(t *testing.T) {
 		{"pnpm", Pnpm},
 	}
 
-	for _, test := range tests {
-		t.Run(test.input, func(t *testing.T) {
-			result := FromString(test.input)
-			assert.Equal(t, test.expected, result, "For input %s, expected %v but got %v", test.input, test.expected, result)
+	for _, testCase := range testCases {
+		t.Run(testCase.input, func(t *testing.T) {
+			result := FromString(testCase.input)
+			assert.Equal(t, testCase.expected, result)
 		})
 	}
 
 	// Test invalid conversion
 	result := FromString("InvalidProject")
-	assert.Equal(t, ProjectType(-1), result, "Expected -1 for invalid project type")
+	assert.Equal(t, ProjectType(-1), result)
 }

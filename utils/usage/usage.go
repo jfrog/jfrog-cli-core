@@ -169,7 +169,7 @@ func (ur *UsageReporter) reportToArtifactory(features ...ReportFeature) (err err
 	if err != nil {
 		return
 	}
-	return usage.NewArtifactoryCallHome().SendUsageToArtifactory(ur.ProductId, serviceManager, converted...)
+	return usage.NewArtifactoryCallHome().SendToArtifactory(ur.ProductId, serviceManager, converted...)
 }
 
 func convertAttributesToMap(reportFeature ReportFeature) (converted map[string]string) {

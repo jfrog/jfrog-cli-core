@@ -39,7 +39,7 @@ func (vsm *VisibilitySystemManager) createMetric(commandName string) services.Vi
 }
 
 func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
-	manager, err := utils.CreateJfConnectServiceManager(vsm.serverDetails, -1, 0)
+	manager, err := utils.CreateJfConnectServiceManager(vsm.serverDetails, 1, 0)
 	if err != nil {
 		return err
 	}

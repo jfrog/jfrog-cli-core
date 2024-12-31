@@ -54,7 +54,6 @@ func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
 		StaticMarkdownConfig.setExtendedSummary(false)
 		StaticMarkdownConfig.setPlatformMajorVersion(0)
 		StaticMarkdownConfig.setPlatformUrl("")
-		_ = os.Unsetenv(githubWorkflowEnv)
 	}
 	setWorkFlowEnvIfNeeded()
 	// Create build info instance

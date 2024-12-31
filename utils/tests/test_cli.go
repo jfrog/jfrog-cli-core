@@ -52,21 +52,32 @@ func (cli *JfrogCli) RunCliCmdWithOutput(t *testing.T, args ...string) string {
 	return RunCmdWithOutput(t, func() error { return cli.Exec(args...) })
 }
 
-// Run a command, redirect the stdout and return the output
-func RunCmdWithOutput(t *testing.T, executeCmd func() error) string {
+func (cli *JfrogCli) RunCliCmdWithOutputs(t *testing.T, args ...string) (string, error) {
+	return RunCmdWithOutputs(t, func() error { return cli.Exec(args...) })
+}
+
+func RunCmdWithOutputs(t *testing.T, executeCmd func() error) (output string, err error) {
 	newStdout, stdWriter, cleanUp := redirectOutToPipe(t)
 	defer cleanUp()
 
 	go func() {
-		assert.NoError(t, executeCmd())
+		err = executeCmd()
 		// Closing the temp stdout in order to be able to read it's content.
 		assert.NoError(t, stdWriter.Close())
 	}()
 
-	content, err := io.ReadAll(newStdout)
+	content, e := io.ReadAll(newStdout)
+	assert.NoError(t, e)
+	output = string(content)
+	log.Debug(output)
+	return
+}
+
+// Run a command, redirect the stdout and return the output
+func RunCmdWithOutput(t *testing.T, executeCmd func() error) string {
+	output, err := RunCmdWithOutputs(t, executeCmd)
 	assert.NoError(t, err)
-	log.Debug(string(content))
-	return string(content)
+	return output
 }
 
 func redirectOutToPipe(t *testing.T) (*os.File, *os.File, func()) {

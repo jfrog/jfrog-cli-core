@@ -53,10 +53,21 @@ func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
 		StaticMarkdownConfig.setExtendedSummary(false)
 		StaticMarkdownConfig.setPlatformMajorVersion(0)
 		StaticMarkdownConfig.setPlatformUrl("")
+		_ = os.Unsetenv(githubWorkflowEnv)
 	}
+	setWorkFlowEnvIfNeeded()
 	// Create build info instance
 	buildInfoSummary := &BuildInfoSummary{}
 	return buildInfoSummary, cleanup
+}
+
+func setWorkFlowEnvIfNeeded() {
+	// Sets the GitHub workflow environment variable to allow testing locally
+	isGitHub := os.Getenv("GITHUB_ACTIONS")
+	if isGitHub == "" {
+		// This is the name of the GitHub action that executes the JFrog CLI Core Tests
+		_ = os.Setenv(githubWorkflowEnv, "JFrog CLI Core Tests")
+	}
 }
 
 const buildUrl = "http://myJFrogPlatform/builds/buildName/123?gh_job_id=JFrog+CLI+Core+Tests&gh_section=buildInfo"

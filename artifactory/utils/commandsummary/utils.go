@@ -14,6 +14,7 @@ const (
 	artifactory7UiFormat              = "%sui/repos/tree/General/%s?clearFilter=true"
 	artifactory6UiFormat              = "%sartifactory/webapp/#/artifacts/browse/tree/General/%s"
 	artifactoryDockerPackagesUiFormat = "%s/ui/packages/docker:%s/sha256__%s"
+	githubWorkflowEnv                 = "GITHUB_WORKFLOW"
 )
 
 func GenerateArtifactUrl(pathInRt string, section summarySection) (url string, err error) {
@@ -52,7 +53,7 @@ const (
 // addGitHubTrackingToUrl adds GitHub-related query parameters to a given URL if the GITHUB_WORKFLOW environment variable is set.
 func addGitHubTrackingToUrl(urlStr string, section summarySection) (string, error) {
 	// Check if GITHUB_WORKFLOW environment variable is set
-	githubWorkflow := os.Getenv("GITHUB_WORKFLOW")
+	githubWorkflow := os.Getenv(githubWorkflowEnv)
 	if githubWorkflow == "" {
 		// Return the original URL if the variable is not set
 		return urlStr, nil

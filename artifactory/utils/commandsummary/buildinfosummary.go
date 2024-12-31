@@ -129,14 +129,17 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		if len(subModules) == 0 {
 			continue
 		}
-		if !scannableModuleType[subModules[0].Type] {
+		// Check if the artifacts inside the module contains evidences
+		evidenceExists := checkEvidence(subModules)
+
+		if !scannableModuleType[subModules[0].Type] && !evidenceExists {
 			tree, err := bis.generateModuleArtifactTree(rootModuleID, subModules)
 			if err != nil {
 				return "", err
 			}
 			modulesMarkdown.WriteString(tree)
 		} else {
-			view, err := bis.generateModuleTableView(rootModuleID, subModules)
+			view, err := bis.generateModuleTableView(rootModuleID, subModules, evidenceExists)
 			if err != nil {
 				return "", err
 			}
@@ -144,6 +147,19 @@ func (bis *BuildInfoSummary) generateModulesMarkdown(modules ...buildInfo.Module
 		}
 	}
 	return modulesMarkdown.String(), nil
+}
+
+func checkEvidence(modules []buildInfo.Module) bool {
+	// TODO this has to be changed to SHA, as name can repeat
+	for _, module := range modules {
+		for _, artifact := range module.Artifacts {
+			_, exists := StaticMarkdownConfig.artifactsEvidencesMapping[artifact.Name]
+			if exists {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (bis *BuildInfoSummary) generateModuleArtifactTree(rootModuleID string, nestedModules []buildInfo.Module) (string, error) {
@@ -170,17 +186,17 @@ func (bis *BuildInfoSummary) generateModuleArtifactTree(rootModuleID string, nes
 	return markdownBuilder.String(), nil
 }
 
-func (bis *BuildInfoSummary) generateModuleTableView(rootModuleID string, subModules []buildInfo.Module) (string, error) {
+func (bis *BuildInfoSummary) generateModuleTableView(rootModuleID string, subModules []buildInfo.Module, evidenceExists bool) (string, error) {
 	var markdownBuilder strings.Builder
 	markdownBuilder.WriteString(generateModuleHeader(rootModuleID))
-	markdownBuilder.WriteString(generateModuleTableHeader())
+	markdownBuilder.WriteString(generateModuleTableHeader(evidenceExists))
 	isMultiModule := len(subModules) > 1
 	nestedModuleMarkdownTree, err := bis.generateTableModuleMarkdown(subModules, rootModuleID, isMultiModule)
 	if err != nil {
 		return "", err
 	}
 	scanResult := getScanResults(extractDockerImageTag(subModules))
-	markdownBuilder.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult))
+	markdownBuilder.WriteString(generateTableRow(nestedModuleMarkdownTree, scanResult, evidenceExists))
 	return markdownBuilder.String(), nil
 }
 
@@ -351,12 +367,37 @@ func generateModuleHeader(parentModuleID string) string {
 	return fmt.Sprintf("\n\n**%s**\n\n", parentModuleID)
 }
 
-func generateModuleTableHeader() string {
+func generateModuleTableHeader(evidenceExists bool) string {
+	if evidenceExists {
+		return "\n\n|  Artifacts | Evidence created |  Security Violations | Security Issues |\n|:------------|:---------------------|:------------------|:------------------|\n"
+	}
 	return "\n\n|  Artifacts |  Security Violations | Security Issues |\n|:------------|:---------------------|:------------------|\n"
 }
 
-func generateTableRow(nestedModuleMarkdownTree string, scanResult ScanResult) string {
+func generateTableRow(nestedModuleMarkdownTree string, scanResult ScanResult, evidenceExists bool) string {
+	if evidenceExists {
+		return fmt.Sprintf(" %s | %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree), getEvidenceLinkFromModule(nestedModuleMarkdownTree), appendSpacesToTableColumn(scanResult.GetViolations()), appendSpacesToTableColumn(scanResult.GetVulnerabilities()))
+	}
 	return fmt.Sprintf(" %s | %s | %s |\n", fitInsideMarkdownTable(nestedModuleMarkdownTree), appendSpacesToTableColumn(scanResult.GetViolations()), appendSpacesToTableColumn(scanResult.GetVulnerabilities()))
+}
+
+func getEvidenceLinkFromModule(moduleTree string) string {
+	for _, artifact := range StaticMarkdownConfig.artifactsEvidencesMapping {
+		if strings.Contains(moduleTree, artifact.Name) {
+			evidenceUrl, err := GenerateArtifactEvidenceUrl(path.Join(artifact.OriginalDeploymentRepo, artifact.Path))
+			if err != nil {
+				log.Warn(err)
+			}
+			if StaticMarkdownConfig.IsExtendedSummary() {
+				return fmt.Sprintf("[Build-signature](%s)", evidenceUrl)
+			}
+			// TODO add evidence support link
+			return fmt.Sprintf("🔎 [Enable evidence support](%s)", "somelink")
+		}
+	}
+	// TODO handle no evidence
+	return fmt.Sprintf("[Learn more about evidence](%s)", "someLink")
+
 }
 
 func fitInsideMarkdownTable(str string) string {

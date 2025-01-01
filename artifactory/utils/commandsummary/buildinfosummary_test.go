@@ -14,12 +14,13 @@ import (
 )
 
 const (
-	buildInfoTable        = "build-info-table.md"
-	dockerImageModule     = "docker-image-module.md"
-	genericModule         = "generic-module.md"
-	mavenModule           = "maven-module.md"
-	mavenNestedModule     = "maven-nested-module.md"
-	dockerMultiArchModule = "multiarch-docker-image.md"
+	buildInfoTable                = "build-info-table.md"
+	dockerImageModule             = "docker-image-module.md"
+	genericModule                 = "generic-module.md"
+	mavenModule                   = "maven-module.md"
+	mavenNestedModule             = "maven-nested-module.md"
+	dockerMultiArchModule         = "multiarch-docker-image.md"
+	dockerMultiArchModuleEvidence = "multiarch-docker-image-evidence.md"
 )
 
 type MockScanResult struct {
@@ -54,9 +55,19 @@ func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
 		StaticMarkdownConfig.setPlatformMajorVersion(0)
 		StaticMarkdownConfig.setPlatformUrl("")
 	}
+	setWorkFlowEnvIfNeeded()
 	// Create build info instance
 	buildInfoSummary := &BuildInfoSummary{}
 	return buildInfoSummary, cleanup
+}
+
+func setWorkFlowEnvIfNeeded() {
+	// Sets the GitHub workflow environment variable to allow testing locally
+	isGitHub := os.Getenv("GITHUB_ACTIONS")
+	if isGitHub == "" {
+		// This is the name of the GitHub action that executes the JFrog CLI Core Tests
+		_ = os.Setenv(githubWorkflowEnv, "JFrog CLI Core Tests")
+	}
 }
 
 const buildUrl = "http://myJFrogPlatform/builds/buildName/123?gh_job_id=JFrog+CLI+Core+Tests&gh_section=buildInfo"
@@ -487,6 +498,78 @@ func TestGroupModules(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestModuleWithEvidence(t *testing.T) {
+	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
+	StaticMarkdownConfig.artifactsEvidencesMapping = make(map[string]buildinfo.Artifact)
+	StaticMarkdownConfig.artifactsEvidencesMapping["list.manifest.json"] = buildinfo.Artifact{
+		Path: "multiarch-image/sha256",
+		Name: "sha256",
+	}
+	var builds = []*buildinfo.BuildInfo{
+		{
+			Name:    "dockerx",
+			Number:  "1",
+			Started: "2024-08-12T11:11:50.198+0300",
+			Modules: []buildinfo.Module{
+				{
+					Properties: map[string]interface{}{
+						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
+					},
+					Type: "docker",
+					Id:   "multiarch-image:1",
+					Artifacts: []buildinfo.Artifact{
+						{
+							Type: "json",
+							Checksum: buildinfo.Checksum{
+								Sha1:   "fa",
+								Sha256: "2217",
+								Md5:    "ba0",
+							},
+							Name:                   "list.manifest.json",
+							Path:                   "multiarch-image/1/list.manifest.json",
+							OriginalDeploymentRepo: "docker-local",
+						},
+					},
+				},
+				{
+					Type:   "docker",
+					Parent: "multiarch-image:1",
+					Id:     "linux/amd64/multiarch-image:1",
+					Artifacts: []buildinfo.Artifact{
+						{
+							Checksum: buildinfo.Checksum{
+								Sha1:   "32",
+								Sha256: "sha256:552c",
+								Md5:    "f56",
+							},
+							Name:                   "manifest.json",
+							Path:                   "multiarch-image/sha256",
+							OriginalDeploymentRepo: "docker-local",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("Extended Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(true)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		testMarkdownOutput(t, getTestDataFile(t, dockerMultiArchModuleEvidence), res)
+	})
+	t.Run("Basic Summary", func(t *testing.T) {
+		StaticMarkdownConfig.setExtendedSummary(false)
+		res, err := buildInfoSummary.buildInfoModules(builds)
+		assert.NoError(t, err)
+		testMarkdownOutput(t, getTestDataFile(t, dockerMultiArchModuleEvidence), res)
+	})
+
 }
 
 // Tests data files are location artifactory/commands/testdata/command_summary

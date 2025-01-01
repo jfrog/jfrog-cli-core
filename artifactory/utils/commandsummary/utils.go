@@ -12,8 +12,10 @@ import (
 
 const (
 	artifactory7UiFormat              = "%sui/repos/tree/General/%s?clearFilter=true"
+	artifactory7UiEvidenceFormat      = "%sui/repos/tree/Evidence/%s?clearFilter=true"
 	artifactory6UiFormat              = "%sartifactory/webapp/#/artifacts/browse/tree/General/%s"
 	artifactoryDockerPackagesUiFormat = "%s/ui/packages/docker:%s/sha256__%s"
+	githubWorkflowEnv                 = "GITHUB_WORKFLOW"
 )
 
 func GenerateArtifactUrl(pathInRt string, section summarySection) (url string, err error) {
@@ -23,6 +25,17 @@ func GenerateArtifactUrl(pathInRt string, section summarySection) (url string, e
 		url = fmt.Sprintf(artifactory7UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
 	}
 	url, err = addGitHubTrackingToUrl(url, section)
+	return
+}
+
+func GenerateArtifactEvidenceUrl(pathInRt string) (url string, err error) {
+	if StaticMarkdownConfig.GetPlatformMajorVersion() == 6 {
+		// todo handle not supported
+		url = fmt.Sprintf(artifactory6UiFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
+	} else {
+		url = fmt.Sprintf(artifactory7UiEvidenceFormat, StaticMarkdownConfig.GetPlatformUrl(), pathInRt)
+	}
+	url, err = addGitHubTrackingToUrl(url, artifactsSection)
 	return
 }
 
@@ -52,7 +65,7 @@ const (
 // addGitHubTrackingToUrl adds GitHub-related query parameters to a given URL if the GITHUB_WORKFLOW environment variable is set.
 func addGitHubTrackingToUrl(urlStr string, section summarySection) (string, error) {
 	// Check if GITHUB_WORKFLOW environment variable is set
-	githubWorkflow := os.Getenv("GITHUB_WORKFLOW")
+	githubWorkflow := os.Getenv(githubWorkflowEnv)
 	if githubWorkflow == "" {
 		// Return the original URL if the variable is not set
 		return urlStr, nil

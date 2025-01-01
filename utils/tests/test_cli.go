@@ -60,8 +60,10 @@ func RunCmdWithOutputs(t *testing.T, executeCmd func() error) (output string, er
 	newStdout, stdWriter, cleanUp := redirectOutToPipe(t)
 	defer cleanUp()
 
+	errCh := make(chan error, 1)
+
 	go func() {
-		err = executeCmd()
+		errCh <- executeCmd()
 		// Closing the temp stdout in order to be able to read it's content.
 		assert.NoError(t, stdWriter.Close())
 	}()
@@ -70,6 +72,9 @@ func RunCmdWithOutputs(t *testing.T, executeCmd func() error) (output string, er
 	assert.NoError(t, e)
 	output = string(content)
 	log.Debug(output)
+
+	err = <-errCh
+
 	return
 }
 

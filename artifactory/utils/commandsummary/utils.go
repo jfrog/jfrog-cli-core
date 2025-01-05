@@ -67,6 +67,10 @@ func addGitHubTrackingToUrl(urlStr string, section summarySection) (string, erro
 
 	// Get the query parameters and add the GitHub tracking parameters
 	queryParams := parsedUrl.Query()
+	// Tracking source
+	queryParams.Set("s", "1")
+	// Tracking metric
+	queryParams.Set("m", "3")
 	queryParams.Set("gh_job_id", githubWorkflow)
 	queryParams.Set("gh_section", string(section))
 	parsedUrl.RawQuery = queryParams.Encode()

@@ -21,6 +21,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/maps"
 	"net/url"
+	"os"
 	"slices"
 )
 
@@ -181,7 +182,12 @@ func (sc *SetupCommand) configurePip() error {
 	if err != nil {
 		return err
 	}
-	return pythoncommands.RunPipConfig(repoWithCredsUrl)
+	// If PIP_CONFIG_FILE is set, write the configuration to the custom config file manually.
+	// Using 'pip config set' native command is not supported together with PIP_CONFIG_FILE.
+	if customPipConfigPath := os.Getenv("PIP_CONFIG_FILE"); customPipConfigPath != "" {
+		return pythoncommands.CreatePipConfigManually(customPipConfigPath, repoWithCredsUrl)
+	}
+	return pythoncommands.RunConfigCommand(project.Pip, []string{"set", "global.index-url", repoWithCredsUrl})
 }
 
 // configurePoetry configures Poetry to use the specified repository and authentication credentials.

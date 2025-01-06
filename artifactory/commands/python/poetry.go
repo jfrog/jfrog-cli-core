@@ -164,14 +164,14 @@ func ConfigPoetryRepo(url, username, password, configRepoName string) error {
 func RunPoetryConfig(url, username, password, configRepoName string) error {
 	// Add the poetry repository config
 	// poetry config repositories.<repo-name> https://<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
-	err := runConfigCommand(project.Poetry, []string{poetryConfigRepoPrefix + configRepoName, url})
+	err := RunConfigCommand(project.Poetry, []string{poetryConfigRepoPrefix + configRepoName, url})
 	if err != nil {
 		return err
 	}
 
 	// Set the poetry repository credentials
 	// poetry config http-basic.<repo-name> <user> <password/token>
-	return runConfigCommand(project.Poetry, []string{poetryConfigAuthPrefix + configRepoName, username, password})
+	return RunConfigCommand(project.Poetry, []string{poetryConfigAuthPrefix + configRepoName, username, password})
 }
 
 func poetryUpdate() (err error) {

@@ -9,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
-	"github.com/jfrog/jfrog-client-go/utils/io"
 	clientTestUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,6 +60,14 @@ func TestPackageManagerLoginCommand_NotSupported(t *testing.T) {
 }
 
 func TestPackageManagerLoginCommand_Npm(t *testing.T) {
+	testPackageManagerLoginCommandNpmPnpm(t, project.Npm)
+}
+
+func TestPackageManagerLoginCommand_Pnpm(t *testing.T) {
+	testPackageManagerLoginCommandNpmPnpm(t, project.Pnpm)
+}
+
+func testPackageManagerLoginCommandNpmPnpm(t *testing.T, packageManager project.ProjectType) {
 	// Create a temporary directory to act as the environment's npmrc file location.
 	tempDir := t.TempDir()
 	npmrcFilePath := filepath.Join(tempDir, ".npmrc")
@@ -68,17 +75,17 @@ func TestPackageManagerLoginCommand_Npm(t *testing.T) {
 	// Set NPM_CONFIG_USERCONFIG to point to the temporary npmrc file path.
 	t.Setenv("NPM_CONFIG_USERCONFIG", npmrcFilePath)
 
-	npmLoginCmd := createTestPackageManagerLoginCommand(project.Npm)
+	loginCmd := createTestPackageManagerLoginCommand(packageManager)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Set up server details for the current test case's authentication type.
-			npmLoginCmd.serverDetails.SetUser(testCase.user)
-			npmLoginCmd.serverDetails.SetPassword(testCase.password)
-			npmLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
+			loginCmd.serverDetails.SetUser(testCase.user)
+			loginCmd.serverDetails.SetPassword(testCase.password)
+			loginCmd.serverDetails.SetAccessToken(testCase.accessToken)
 
 			// Run the login command and ensure no errors occur.
-			require.NoError(t, npmLoginCmd.Run())
+			require.NoError(t, loginCmd.Run())
 
 			// Read the contents of the temporary npmrc file.
 			npmrcContentBytes, err := os.ReadFile(npmrcFilePath)
@@ -154,31 +161,34 @@ func TestPackageManagerLoginCommand_Yarn(t *testing.T) {
 }
 
 func TestPackageManagerLoginCommand_Pip(t *testing.T) {
-	// pip and pipenv share the same configuration file.
-	testPackageManagerLoginCommandPip(t, project.Pip)
+	// Test with global configuration file.
+	testPackageManagerLoginCommandPip(t, project.Pip, false)
+	// Test with custom configuration file.
+	testPackageManagerLoginCommandPip(t, project.Pip, true)
 }
 
-func TestPackageManagerLoginCommand_Pipenv(t *testing.T) {
-	// pip and pipenv share the same configuration file.
-	testPackageManagerLoginCommandPip(t, project.Pipenv)
-}
-
-func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.ProjectType) {
+func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.ProjectType, customConfig bool) {
 	var pipConfFilePath string
-	if coreutils.IsWindows() {
-		pipConfFilePath = filepath.Join(os.Getenv("APPDATA"), "pip", "pip.ini")
+	if customConfig {
+		pipConfFilePath = filepath.Join(t.TempDir(), "pip.conf")
+		restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "PIP_CONFIG_FILE", pipConfFilePath)
+		defer restoreEnv()
 	} else {
-		// Retrieve the home directory and construct the pip.conf file path.
-		homeDir, err := os.UserHomeDir()
+		if coreutils.IsWindows() {
+			pipConfFilePath = filepath.Join(os.Getenv("APPDATA"), "pip", "pip.ini")
+		} else {
+			// Retrieve the home directory and construct the pip.conf file path.
+			homeDir, err := os.UserHomeDir()
+			assert.NoError(t, err)
+			pipConfFilePath = filepath.Join(homeDir, ".config", "pip", "pip.conf")
+		}
+		// Back up the existing .pip.conf file and ensure restoration after the test.
+		restorePipConfFunc, err := ioutils.BackupFile(pipConfFilePath, ".pipconf.backup")
 		assert.NoError(t, err)
-		pipConfFilePath = filepath.Join(homeDir, ".config", "pip", "pip.conf")
+		defer func() {
+			assert.NoError(t, restorePipConfFunc())
+		}()
 	}
-	// Back up the existing .pip.conf file and ensure restoration after the test.
-	restorePipConfFunc, err := ioutils.BackupFile(pipConfFilePath, ".pipconf.backup")
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, restorePipConfFunc())
-	}()
 
 	pipLoginCmd := createTestPackageManagerLoginCommand(packageManager)
 
@@ -216,33 +226,11 @@ func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.Proj
 }
 
 func TestPackageManagerLoginCommand_configurePoetry(t *testing.T) {
-	// Retrieve the home directory and construct the .yarnrc file path.
-	homeDir, err := os.UserHomeDir()
-	assert.NoError(t, err)
-	var poetryConfigDir string
-	switch {
-	case io.IsWindows():
-		poetryConfigDir = filepath.Join(homeDir, "AppData", "Roaming")
-	case io.IsMacOS():
-		poetryConfigDir = filepath.Join(homeDir, "Library", "Application Support")
-	default:
-		poetryConfigDir = filepath.Join(homeDir, ".config")
-	}
-
-	poetryConfigFilePath := filepath.Join(poetryConfigDir, "pypoetry", "config.toml")
-	// Poetry stores the auth in a separate file
-	poetryAuthFilePath := filepath.Join(poetryConfigDir, "pypoetry", "auth.toml")
-
-	// Back up the existing config.toml and auth.toml files and ensure restoration after the test.
-	restorePoetryConfigFunc, err := ioutils.BackupFile(poetryConfigFilePath, ".poetry.config.backup")
-	assert.NoError(t, err)
-	restorePoetryAuthFunc, err := ioutils.BackupFile(poetryAuthFilePath, ".poetry-auth.backup")
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, restorePoetryConfigFunc())
-		assert.NoError(t, restorePoetryAuthFunc())
-	}()
-
+	configDir := t.TempDir()
+	poetryConfigFilePath := filepath.Join(configDir, "config.toml")
+	poetryAuthFilePath := filepath.Join(configDir, "auth.toml")
+	restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "POETRY_CONFIG_DIR", configDir)
+	defer restoreEnv()
 	poetryLoginCmd := createTestPackageManagerLoginCommand(project.Poetry)
 
 	for _, testCase := range testCases {
@@ -308,7 +296,7 @@ func TestPackageManagerLoginCommand_Go(t *testing.T) {
 			require.NoError(t, goLoginCmd.Run())
 
 			// Get the value of the GOPROXY environment variable.
-			outputBytes, err := exec.Command("go", "env", "GOPROXY").Output()
+			outputBytes, err := exec.Command("go", "env", goProxyEnv).Output()
 			assert.NoError(t, err)
 			goProxy := string(outputBytes)
 
@@ -336,27 +324,18 @@ func TestBuildToolLoginCommand_configureDotnet(t *testing.T) {
 }
 
 func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager project.ProjectType) {
-	// Retrieve the home directory and construct the NuGet.config file path.
-	homeDir, err := os.UserHomeDir()
-	assert.NoError(t, err)
-	var nugetConfigDir string
-	switch {
-	case io.IsWindows():
-		nugetConfigDir = filepath.Join("AppData", "Roaming")
-	case packageManager == project.Nuget:
-		nugetConfigDir = ".config"
-	default:
-		nugetConfigDir = ".nuget"
+	var nugetConfigFilePath string
+
+	// Set the NuGet.config file path to a custom location.
+	if packageManager == project.Dotnet {
+		nugetConfigFilePath = filepath.Join(t.TempDir(), "NuGet.Config")
+		restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "DOTNET_CLI_HOME", filepath.Dir(nugetConfigFilePath))
+		defer restoreEnv()
+	} else {
+		nugetConfigFilePath = filepath.Join(t.TempDir(), "nuget.config")
+		restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "NUGET_CONFIG_FILE", nugetConfigFilePath)
+		defer restoreEnv()
 	}
-
-	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.Config")
-
-	// Back up the existing NuGet.config and ensure restoration after the test.
-	restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, packageManager.String()+".config.backup")
-	assert.NoError(t, err)
-	defer func() {
-		assert.NoError(t, restoreNugetConfigFunc())
-	}()
 
 	nugetLoginCmd := createTestPackageManagerLoginCommand(packageManager)
 

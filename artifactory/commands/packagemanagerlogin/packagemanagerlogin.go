@@ -28,6 +28,7 @@ import (
 var packageManagerToRepositoryPackageType = map[project.ProjectType]string{
 	// Npm package managers
 	project.Npm:  repository.Npm,
+	project.Pnpm: repository.Npm,
 	project.Yarn: repository.Npm,
 
 	// Python (pypi) package managers
@@ -127,8 +128,8 @@ func (pmlc *PackageManagerLoginCommand) Run() (err error) {
 
 	// Configure the appropriate package manager based on the package manager.
 	switch pmlc.packageManager {
-	case project.Npm:
-		err = pmlc.configureNpm()
+	case project.Npm, project.Pnpm:
+		err = pmlc.configureNpmPnpm()
 	case project.Yarn:
 		err = pmlc.configureYarn()
 	case project.Pip, project.Pipenv:
@@ -169,12 +170,14 @@ func (pmlc *PackageManagerLoginCommand) promptUserToSelectRepository() (err erro
 // Runs the following command:
 //
 //	pip config set global.index-url https://<user>:<token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
+//
+// Note: Custom configuration file can be set by setting the PIP_CONFIG_FILE environment variable.
 func (pmlc *PackageManagerLoginCommand) configurePip() error {
 	repoWithCredsUrl, err := pythoncommands.GetPypiRepoUrl(pmlc.serverDetails, pmlc.repoName, false)
 	if err != nil {
 		return err
 	}
-	return pythoncommands.RunConfigCommand(project.Pip, []string{"set", "global.index-url", repoWithCredsUrl})
+	return pythoncommands.RunPipConfig(repoWithCredsUrl)
 }
 
 // configurePoetry configures Poetry to use the specified repository and authentication credentials.
@@ -182,6 +185,8 @@ func (pmlc *PackageManagerLoginCommand) configurePip() error {
 //
 //	poetry config repositories.<repo-name> https://<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
 //	poetry config http-basic.<repo-name> <user> <password/token>
+//
+// Note: Custom configuration file can be set by setting the POETRY_CONFIG_DIR environment variable.
 func (pmlc *PackageManagerLoginCommand) configurePoetry() error {
 	repoUrl, username, password, err := pythoncommands.GetPypiRepoUrlWithCredentials(pmlc.serverDetails, pmlc.repoName, false)
 	if err != nil {
@@ -190,28 +195,29 @@ func (pmlc *PackageManagerLoginCommand) configurePoetry() error {
 	return pythoncommands.RunPoetryConfig(repoUrl.String(), username, password, pmlc.repoName)
 }
 
-// configureNpm configures npm to use the Artifactory repository URL and sets authentication.
+// configureNpmPnpm configures npm to use the Artifactory repository URL and sets authentication. Pnpm supports the same commands.
 // Runs the following commands:
 //
-//	npm config set registry https://<your-artifactory-url>/artifactory/api/npm/<repo-name>
+//	npm/pnpm config set registry https://<your-artifactory-url>/artifactory/api/npm/<repo-name>
 //
 // For token-based auth:
 //
-//	npm config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_authToken "<token>"
+//	npm/pnpm config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_authToken "<token>"
 //
 // For basic auth:
 //
-//	npm config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
-func (pmlc *PackageManagerLoginCommand) configureNpm() error {
+//	npm/pnpm config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
+//
+// Note: Custom configuration file can be set by setting the NPM_CONFIG_USERCONFIG environment variable.
+func (pmlc *PackageManagerLoginCommand) configureNpmPnpm() error {
 	repoUrl := commandsutils.GetNpmRepositoryUrl(pmlc.repoName, pmlc.serverDetails.ArtifactoryUrl)
-
-	if err := npm.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, "npm"); err != nil {
+	if err := npm.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, pmlc.packageManager.String()); err != nil {
 		return err
 	}
 
 	authKey, authValue := commandsutils.GetNpmAuthKeyValue(pmlc.serverDetails, repoUrl)
 	if authKey != "" && authValue != "" {
-		return npm.ConfigSet(authKey, authValue, "npm")
+		return npm.ConfigSet(authKey, authValue, pmlc.packageManager.String())
 	}
 	return nil
 }
@@ -228,10 +234,11 @@ func (pmlc *PackageManagerLoginCommand) configureNpm() error {
 // For basic auth:
 //
 //	yarn config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
-func (pmlc *PackageManagerLoginCommand) configureYarn() error {
+//
+// Note: Custom configuration file can be set by setting the YARN_RC_FILENAME environment variable.
+func (pmlc *PackageManagerLoginCommand) configureYarn() (err error) {
 	repoUrl := commandsutils.GetNpmRepositoryUrl(pmlc.repoName, pmlc.serverDetails.ArtifactoryUrl)
-
-	if err := yarn.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, "yarn", false); err != nil {
+	if err = yarn.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, "yarn", false); err != nil {
 		return err
 	}
 
@@ -263,6 +270,8 @@ func (pmlc *PackageManagerLoginCommand) configureGo() error {
 // For NuGet:
 //
 //	nuget sources add -Name <JFrog-Artifactory> -Source "https://acme.jfrog.io/artifactory/api/nuget/{repository-name}" -Username <your-username> -Password <your-password>
+//
+// Note: Custom dotnet/nuget configuration file can be set by setting the DOTNET_CLI_HOME/NUGET_CONFIG_FILE environment variable.
 func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
 	// Retrieve repository URL and credentials for NuGet or .NET Core.
 	sourceUrl, user, password, err := dotnet.GetSourceDetails(pmlc.serverDetails, pmlc.repoName, false)
@@ -270,16 +279,28 @@ func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
 		return err
 	}
 
-	// Determine the appropriate toolchain type (NuGet or .NET Core).
+	// Determine toolchain type based on the package manager
 	toolchainType := bidotnet.DotnetCore
 	if pmlc.packageManager == project.Nuget {
 		toolchainType = bidotnet.Nuget
 	}
-	if err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType); err != nil {
+
+	// Get config path from the environment if provided
+	customConfigPath := dotnet.GetConfigPathFromEnvIfProvided(toolchainType)
+	if customConfigPath != "" {
+		// Ensure the config file exists
+		if err = dotnet.CreateConfigFileIfNeeded(customConfigPath); err != nil {
+			return err
+		}
+	}
+
+	// Remove existing source if it exists
+	if err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType, customConfigPath); err != nil {
 		return err
 	}
-	// Add the repository as a source in the NuGet configuration with credentials for authentication.
-	return dotnet.AddSourceToNugetConfig(toolchainType, sourceUrl, user, password)
+
+	// Add the repository as a source in the NuGet configuration with credentials for authentication
+	return dotnet.AddSourceToNugetConfig(toolchainType, sourceUrl, user, password, customConfigPath)
 }
 
 // configureContainer configures container managers like Docker or Podman to authenticate with JFrog Artifactory.

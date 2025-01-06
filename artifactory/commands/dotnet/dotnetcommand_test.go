@@ -223,3 +223,130 @@ func createNewDotnetModule(t *testing.T, tmpDir string) *build.DotnetModule {
 	assert.NoError(t, err)
 	return module
 }
+
+func TestGetConfigPathFromEnvIfProvided(t *testing.T) {
+	testCases := []struct {
+		name         string
+		mockEnv      map[string]string
+		cmdType      dotnet.ToolchainType
+		expectedPath string
+	}{
+		{
+			name: "DotnetCore with DOTNET_CLI_HOME",
+			mockEnv: map[string]string{
+				"DOTNET_CLI_HOME": "/custom/dotnet",
+			},
+			cmdType:      dotnet.DotnetCore,
+			expectedPath: "/custom/dotnet/NuGet.Config",
+		},
+		{
+			name: "NuGet with NUGET_CONFIG_FILE",
+			mockEnv: map[string]string{
+				"NUGET_CONFIG_FILE": "/custom/nuget.config",
+			},
+			cmdType:      dotnet.Nuget,
+			expectedPath: "/custom/nuget.config",
+		},
+		{
+			name:         "No env variable",
+			mockEnv:      map[string]string{},
+			cmdType:      dotnet.Nuget,
+			expectedPath: "",
+		},
+	}
+
+	// Test the function with different environment variable settings
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			restoreEnv := testsutils.SetEnvWithCallbackAndAssert(t, "DOTNET_CLI_HOME", testCase.mockEnv["DOTNET_CLI_HOME"])
+			defer restoreEnv()
+
+			// Set other environment variables if needed
+			if testCase.mockEnv["NUGET_CONFIG_FILE"] != "" {
+				restoreEnvNuGet := testsutils.SetEnvWithCallbackAndAssert(t, "NUGET_CONFIG_FILE", testCase.mockEnv["NUGET_CONFIG_FILE"])
+				defer restoreEnvNuGet()
+			}
+			result := GetConfigPathFromEnvIfProvided(testCase.cmdType)
+			assert.Equal(t, testCase.expectedPath, result)
+		})
+	}
+}
+
+func TestCreateConfigFileIfNeeded(t *testing.T) {
+	tests := []struct {
+		name          string
+		configPath    string
+		fileExists    bool
+		expectedError error
+	}{
+		{
+			name:       "File does not exist, create file with default content",
+			configPath: "/custom/path/NuGet.Config",
+			fileExists: false,
+		},
+		{
+			name:       "File exists, no changes",
+			configPath: "/custom/path/NuGet.Config",
+			fileExists: true,
+		},
+	}
+
+	// Setup for testing file existence and creation
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), tt.configPath)
+			if tt.fileExists {
+				assert.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0777))
+				_, err := os.Create(configPath)
+				assert.NoError(t, err)
+			}
+			err := CreateConfigFileIfNeeded(configPath)
+			assert.NoError(t, err)
+
+			if !tt.fileExists {
+				// Read the content of the file
+				content, err := os.ReadFile(configPath)
+				assert.NoError(t, err)
+
+				// Assert the content is the default config content
+				assert.Equal(t, "<configuration></configuration>", string(content))
+			}
+		})
+	}
+}
+
+func TestAddConfigFileFlag(t *testing.T) {
+	tests := []struct {
+		name           string
+		toolchainType  dotnet.ToolchainType
+		configFilePath string
+		expectedFlags  []string
+	}{
+		{
+			name:           "DotnetCore toolchain",
+			toolchainType:  dotnet.DotnetCore,
+			configFilePath: "/path/to/NuGet.Config",
+			expectedFlags:  []string{"--configfile", "/path/to/NuGet.Config"},
+		},
+		{
+			name:           "NuGet toolchain",
+			toolchainType:  dotnet.Nuget,
+			configFilePath: "/path/to/NuGet.Config",
+			expectedFlags:  []string{"-ConfigFile", "/path/to/NuGet.Config"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a mock command object
+			cmd, err := dotnet.NewToolchainCmd(tt.toolchainType)
+			assert.NoError(t, err)
+
+			// Call the function
+			addConfigFileFlag(cmd, tt.configFilePath)
+
+			// Assert that the flags are as expected
+			assert.Equal(t, tt.expectedFlags, cmd.CommandFlags)
+		})
+	}
+}

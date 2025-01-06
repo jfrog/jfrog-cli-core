@@ -1,8 +1,12 @@
 package python
 
 import (
+	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -44,6 +48,23 @@ func (pc *PipCommand) SetArgs(arguments []string) *PipCommand {
 func (pc *PipCommand) SetCommandName(commandName string) *PipCommand {
 	pc.PythonCommand.SetCommandName(commandName)
 	return pc
+}
+
+// Configure the repository URL for pipenv to use Artifactory as a repository.
+func RunPipConfig(repoWithCredsUrl string) error {
+	// If PIP_CONFIG_FILE is set, write the configuration to the custom config file manually.
+	// Using 'pip config set' native command is not supported together with PIP_CONFIG_FILE.
+	if customPipConfigPath := os.Getenv("PIP_CONFIG_FILE"); customPipConfigPath != "" {
+		if err := os.MkdirAll(filepath.Dir(customPipConfigPath), os.ModePerm); err != nil {
+			return err
+		}
+		// Write the configuration to pip.conf.
+		configContent := fmt.Sprintf("[global]\nindex-url = %s\n", repoWithCredsUrl)
+		return os.WriteFile(customPipConfigPath, []byte(configContent), 0644)
+	}
+
+	// If PIP_CONFIG_FILE is not set, use 'pip config set' native command.
+	return runConfigCommand(project.Pip, []string{"set", "global.index-url", repoWithCredsUrl})
 }
 
 func (pc *PipCommand) CommandName() string {

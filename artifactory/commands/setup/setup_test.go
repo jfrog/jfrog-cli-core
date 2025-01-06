@@ -1,4 +1,4 @@
-package packagemanagerlogin
+package setup
 
 import (
 	"fmt"
@@ -43,8 +43,8 @@ var testCases = []struct {
 	},
 }
 
-func createTestPackageManagerLoginCommand(packageManager project.ProjectType) *PackageManagerLoginCommand {
-	cmd := NewPackageManagerLoginCommand(packageManager)
+func createTestSetupCommand(packageManager project.ProjectType) *SetupCommand {
+	cmd := NewSetupCommand(packageManager)
 	cmd.repoName = "test-repo"
 	dummyUrl := "https://acme.jfrog.io"
 	cmd.serverDetails = &config.ServerDetails{Url: dummyUrl, ArtifactoryUrl: dummyUrl + "/artifactory"}
@@ -52,22 +52,22 @@ func createTestPackageManagerLoginCommand(packageManager project.ProjectType) *P
 	return cmd
 }
 
-func TestPackageManagerLoginCommand_NotSupported(t *testing.T) {
-	notSupportedLoginCmd := createTestPackageManagerLoginCommand(project.Cocoapods)
+func TestSetupCommand_NotSupported(t *testing.T) {
+	notSupportedLoginCmd := createTestSetupCommand(project.Cocoapods)
 	err := notSupportedLoginCmd.Run()
 	assert.Error(t, err)
 	assert.ErrorContains(t, err, "unsupported package manager")
 }
 
-func TestPackageManagerLoginCommand_Npm(t *testing.T) {
-	testPackageManagerLoginCommandNpmPnpm(t, project.Npm)
+func TestSetupCommand_Npm(t *testing.T) {
+	testSetupCommandNpmPnpm(t, project.Npm)
 }
 
-func TestPackageManagerLoginCommand_Pnpm(t *testing.T) {
-	testPackageManagerLoginCommandNpmPnpm(t, project.Pnpm)
+func TestSetupCommand_Pnpm(t *testing.T) {
+	testSetupCommandNpmPnpm(t, project.Pnpm)
 }
 
-func testPackageManagerLoginCommandNpmPnpm(t *testing.T, packageManager project.ProjectType) {
+func testSetupCommandNpmPnpm(t *testing.T, packageManager project.ProjectType) {
 	// Create a temporary directory to act as the environment's npmrc file location.
 	tempDir := t.TempDir()
 	npmrcFilePath := filepath.Join(tempDir, ".npmrc")
@@ -75,7 +75,7 @@ func testPackageManagerLoginCommandNpmPnpm(t *testing.T, packageManager project.
 	// Set NPM_CONFIG_USERCONFIG to point to the temporary npmrc file path.
 	t.Setenv("NPM_CONFIG_USERCONFIG", npmrcFilePath)
 
-	loginCmd := createTestPackageManagerLoginCommand(packageManager)
+	loginCmd := createTestSetupCommand(packageManager)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -111,7 +111,7 @@ func testPackageManagerLoginCommandNpmPnpm(t *testing.T, packageManager project.
 	}
 }
 
-func TestPackageManagerLoginCommand_Yarn(t *testing.T) {
+func TestSetupCommand_Yarn(t *testing.T) {
 	// Retrieve the home directory and construct the .yarnrc file path.
 	homeDir, err := os.UserHomeDir()
 	assert.NoError(t, err)
@@ -124,7 +124,7 @@ func TestPackageManagerLoginCommand_Yarn(t *testing.T) {
 		assert.NoError(t, restoreYarnrcFunc())
 	}()
 
-	yarnLoginCmd := createTestPackageManagerLoginCommand(project.Yarn)
+	yarnLoginCmd := createTestSetupCommand(project.Yarn)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -160,14 +160,14 @@ func TestPackageManagerLoginCommand_Yarn(t *testing.T) {
 	}
 }
 
-func TestPackageManagerLoginCommand_Pip(t *testing.T) {
+func TestSetupCommand_Pip(t *testing.T) {
 	// Test with global configuration file.
-	testPackageManagerLoginCommandPip(t, project.Pip, false)
+	testSetupCommandPip(t, project.Pip, false)
 	// Test with custom configuration file.
-	testPackageManagerLoginCommandPip(t, project.Pip, true)
+	testSetupCommandPip(t, project.Pip, true)
 }
 
-func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.ProjectType, customConfig bool) {
+func testSetupCommandPip(t *testing.T, packageManager project.ProjectType, customConfig bool) {
 	var pipConfFilePath string
 	if customConfig {
 		pipConfFilePath = filepath.Join(t.TempDir(), "pip.conf")
@@ -190,7 +190,7 @@ func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.Proj
 		}()
 	}
 
-	pipLoginCmd := createTestPackageManagerLoginCommand(packageManager)
+	pipLoginCmd := createTestSetupCommand(packageManager)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -225,13 +225,13 @@ func testPackageManagerLoginCommandPip(t *testing.T, packageManager project.Proj
 	}
 }
 
-func TestPackageManagerLoginCommand_configurePoetry(t *testing.T) {
+func TestSetupCommand_configurePoetry(t *testing.T) {
 	configDir := t.TempDir()
 	poetryConfigFilePath := filepath.Join(configDir, "config.toml")
 	poetryAuthFilePath := filepath.Join(configDir, "auth.toml")
 	restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "POETRY_CONFIG_DIR", configDir)
 	defer restoreEnv()
-	poetryLoginCmd := createTestPackageManagerLoginCommand(project.Poetry)
+	poetryLoginCmd := createTestSetupCommand(project.Poetry)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -276,14 +276,14 @@ func TestPackageManagerLoginCommand_configurePoetry(t *testing.T) {
 	}
 }
 
-func TestPackageManagerLoginCommand_Go(t *testing.T) {
+func TestSetupCommand_Go(t *testing.T) {
 	goProxyEnv := "GOPROXY"
 	// Restore the original value of the GOPROXY environment variable after the test.
 	restoreGoProxy := clientTestUtils.SetEnvWithCallbackAndAssert(t, goProxyEnv, "")
 	defer restoreGoProxy()
 
-	// Assuming createTestPackageManagerLoginCommand initializes your Go login command
-	goLoginCmd := createTestPackageManagerLoginCommand(project.Go)
+	// Assuming createTestSetupCommand initializes your Go login command
+	goLoginCmd := createTestSetupCommand(project.Go)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -337,7 +337,7 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 		defer restoreEnv()
 	}
 
-	nugetLoginCmd := createTestPackageManagerLoginCommand(packageManager)
+	nugetLoginCmd := createTestSetupCommand(packageManager)
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

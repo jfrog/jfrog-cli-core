@@ -1,4 +1,4 @@
-package packagemanagerlogin
+package setup
 
 import (
 	"fmt"
@@ -47,8 +47,8 @@ var packageManagerToRepositoryPackageType = map[project.ProjectType]string{
 	project.Go: repository.Go,
 }
 
-// PackageManagerLoginCommand configures registries and authentication for various package manager (npm, Yarn, Pip, Pipenv, Poetry, Go)
-type PackageManagerLoginCommand struct {
+// SetupCommand configures registries and authentication for various package manager (npm, Yarn, Pip, Pipenv, Poetry, Go)
+type SetupCommand struct {
 	// packageManager represents the type of package manager (e.g., NPM, Yarn).
 	packageManager project.ProjectType
 	// repoName is the name of the repository used for configuration.
@@ -61,10 +61,10 @@ type PackageManagerLoginCommand struct {
 	commandName string
 }
 
-// NewPackageManagerLoginCommand initializes a new PackageManagerLoginCommand for the specified package manager
+// NewSetupCommand initializes a new SetupCommand for the specified package manager
 // and automatically sets a command name for the login operation.
-func NewPackageManagerLoginCommand(packageManager project.ProjectType) *PackageManagerLoginCommand {
-	return &PackageManagerLoginCommand{
+func NewSetupCommand(packageManager project.ProjectType) *SetupCommand {
+	return &SetupCommand{
 		packageManager: packageManager,
 		commandName:    packageManager.String() + "_login",
 	}
@@ -86,84 +86,84 @@ func IsSupportedPackageManager(packageManager project.ProjectType) bool {
 }
 
 // CommandName returns the name of the login command.
-func (pmlc *PackageManagerLoginCommand) CommandName() string {
-	return pmlc.commandName
+func (sc *SetupCommand) CommandName() string {
+	return sc.commandName
 }
 
 // SetServerDetails assigns the server configuration details to the command.
-func (pmlc *PackageManagerLoginCommand) SetServerDetails(serverDetails *config.ServerDetails) *PackageManagerLoginCommand {
-	pmlc.serverDetails = serverDetails
-	return pmlc
+func (sc *SetupCommand) SetServerDetails(serverDetails *config.ServerDetails) *SetupCommand {
+	sc.serverDetails = serverDetails
+	return sc
 }
 
 // ServerDetails returns the stored server configuration details.
-func (pmlc *PackageManagerLoginCommand) ServerDetails() (*config.ServerDetails, error) {
-	return pmlc.serverDetails, nil
+func (sc *SetupCommand) ServerDetails() (*config.ServerDetails, error) {
+	return sc.serverDetails, nil
 }
 
 // SetRepoName assigns the repository name to the command.
-func (pmlc *PackageManagerLoginCommand) SetRepoName(repoName string) *PackageManagerLoginCommand {
-	pmlc.repoName = repoName
-	return pmlc
+func (sc *SetupCommand) SetRepoName(repoName string) *SetupCommand {
+	sc.repoName = repoName
+	return sc
 }
 
 // SetProjectKey assigns the project key to the command.
-func (pmlc *PackageManagerLoginCommand) SetProjectKey(projectKey string) *PackageManagerLoginCommand {
-	pmlc.projectKey = projectKey
-	return pmlc
+func (sc *SetupCommand) SetProjectKey(projectKey string) *SetupCommand {
+	sc.projectKey = projectKey
+	return sc
 }
 
 // Run executes the configuration method corresponding to the package manager specified for the command.
-func (pmlc *PackageManagerLoginCommand) Run() (err error) {
-	if !IsSupportedPackageManager(pmlc.packageManager) {
-		return errorutils.CheckErrorf("unsupported package manager: %s", pmlc.packageManager)
+func (sc *SetupCommand) Run() (err error) {
+	if !IsSupportedPackageManager(sc.packageManager) {
+		return errorutils.CheckErrorf("unsupported package manager: %s", sc.packageManager)
 	}
 
-	if pmlc.repoName == "" {
+	if sc.repoName == "" {
 		// Prompt the user to select a virtual repository that matches the package manager.
-		if err = pmlc.promptUserToSelectRepository(); err != nil {
+		if err = sc.promptUserToSelectRepository(); err != nil {
 			return err
 		}
 	}
 
 	// Configure the appropriate package manager based on the package manager.
-	switch pmlc.packageManager {
+	switch sc.packageManager {
 	case project.Npm, project.Pnpm:
-		err = pmlc.configureNpmPnpm()
+		err = sc.configureNpmPnpm()
 	case project.Yarn:
-		err = pmlc.configureYarn()
+		err = sc.configureYarn()
 	case project.Pip, project.Pipenv:
-		err = pmlc.configurePip()
+		err = sc.configurePip()
 	case project.Poetry:
-		err = pmlc.configurePoetry()
+		err = sc.configurePoetry()
 	case project.Go:
-		err = pmlc.configureGo()
+		err = sc.configureGo()
 	case project.Nuget, project.Dotnet:
-		err = pmlc.configureDotnetNuget()
+		err = sc.configureDotnetNuget()
 	case project.Docker, project.Podman:
-		err = pmlc.configureContainer()
+		err = sc.configureContainer()
 	default:
-		err = errorutils.CheckErrorf("unsupported package manager: %s", pmlc.packageManager)
+		err = errorutils.CheckErrorf("unsupported package manager: %s", sc.packageManager)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to configure %s: %w", pmlc.packageManager.String(), err)
+		return fmt.Errorf("failed to configure %s: %w", sc.packageManager.String(), err)
 	}
 
-	log.Output(fmt.Sprintf("Successfully configured %s to use JFrog Artifactory repository '%s'.", coreutils.PrintBoldTitle(pmlc.packageManager.String()), coreutils.PrintBoldTitle(pmlc.repoName)))
+	log.Output(fmt.Sprintf("Successfully configured %s to use JFrog Artifactory repository '%s'.", coreutils.PrintBoldTitle(sc.packageManager.String()), coreutils.PrintBoldTitle(sc.repoName)))
 	return nil
 }
 
 // promptUserToSelectRepository prompts the user to select a compatible virtual repository.
-func (pmlc *PackageManagerLoginCommand) promptUserToSelectRepository() (err error) {
+func (sc *SetupCommand) promptUserToSelectRepository() (err error) {
 	repoFilterParams := services.RepositoriesFilterParams{
 		RepoType:    utils.Virtual.String(),
-		PackageType: packageManagerToRepositoryPackageType[pmlc.packageManager],
-		ProjectKey:  pmlc.projectKey,
+		PackageType: packageManagerToRepositoryPackageType[sc.packageManager],
+		ProjectKey:  sc.projectKey,
 	}
 
 	// Prompt for repository selection based on filter parameters.
-	pmlc.repoName, err = utils.SelectRepositoryInteractively(
-		pmlc.serverDetails,
+	sc.repoName, err = utils.SelectRepositoryInteractively(
+		sc.serverDetails,
 		repoFilterParams,
 		fmt.Sprintf("To configure %s, we need you to select a %s repository in Artifactory", repoFilterParams.PackageType, repoFilterParams.RepoType))
 
@@ -176,8 +176,8 @@ func (pmlc *PackageManagerLoginCommand) promptUserToSelectRepository() (err erro
 //	pip config set global.index-url https://<user>:<token>@<your-artifactory-url>/artifactory/api/pypi/<repo-name>/simple
 //
 // Note: Custom configuration file can be set by setting the PIP_CONFIG_FILE environment variable.
-func (pmlc *PackageManagerLoginCommand) configurePip() error {
-	repoWithCredsUrl, err := pythoncommands.GetPypiRepoUrl(pmlc.serverDetails, pmlc.repoName, false)
+func (sc *SetupCommand) configurePip() error {
+	repoWithCredsUrl, err := pythoncommands.GetPypiRepoUrl(sc.serverDetails, sc.repoName, false)
 	if err != nil {
 		return err
 	}
@@ -191,12 +191,12 @@ func (pmlc *PackageManagerLoginCommand) configurePip() error {
 //	poetry config http-basic.<repo-name> <user> <password/token>
 //
 // Note: Custom configuration file can be set by setting the POETRY_CONFIG_DIR environment variable.
-func (pmlc *PackageManagerLoginCommand) configurePoetry() error {
-	repoUrl, username, password, err := pythoncommands.GetPypiRepoUrlWithCredentials(pmlc.serverDetails, pmlc.repoName, false)
+func (sc *SetupCommand) configurePoetry() error {
+	repoUrl, username, password, err := pythoncommands.GetPypiRepoUrlWithCredentials(sc.serverDetails, sc.repoName, false)
 	if err != nil {
 		return err
 	}
-	return pythoncommands.RunPoetryConfig(repoUrl.String(), username, password, pmlc.repoName)
+	return pythoncommands.RunPoetryConfig(repoUrl.String(), username, password, sc.repoName)
 }
 
 // configureNpmPnpm configures npm to use the Artifactory repository URL and sets authentication. Pnpm supports the same commands.
@@ -213,15 +213,15 @@ func (pmlc *PackageManagerLoginCommand) configurePoetry() error {
 //	npm/pnpm config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
 //
 // Note: Custom configuration file can be set by setting the NPM_CONFIG_USERCONFIG environment variable.
-func (pmlc *PackageManagerLoginCommand) configureNpmPnpm() error {
-	repoUrl := commandsutils.GetNpmRepositoryUrl(pmlc.repoName, pmlc.serverDetails.ArtifactoryUrl)
-	if err := npm.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, pmlc.packageManager.String()); err != nil {
+func (sc *SetupCommand) configureNpmPnpm() error {
+	repoUrl := commandsutils.GetNpmRepositoryUrl(sc.repoName, sc.serverDetails.ArtifactoryUrl)
+	if err := npm.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, sc.packageManager.String()); err != nil {
 		return err
 	}
 
-	authKey, authValue := commandsutils.GetNpmAuthKeyValue(pmlc.serverDetails, repoUrl)
+	authKey, authValue := commandsutils.GetNpmAuthKeyValue(sc.serverDetails, repoUrl)
 	if authKey != "" && authValue != "" {
-		return npm.ConfigSet(authKey, authValue, pmlc.packageManager.String())
+		return npm.ConfigSet(authKey, authValue, sc.packageManager.String())
 	}
 	return nil
 }
@@ -240,13 +240,13 @@ func (pmlc *PackageManagerLoginCommand) configureNpmPnpm() error {
 //	yarn config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
 //
 // Note: Custom configuration file can be set by setting the YARN_RC_FILENAME environment variable.
-func (pmlc *PackageManagerLoginCommand) configureYarn() (err error) {
-	repoUrl := commandsutils.GetNpmRepositoryUrl(pmlc.repoName, pmlc.serverDetails.ArtifactoryUrl)
+func (sc *SetupCommand) configureYarn() (err error) {
+	repoUrl := commandsutils.GetNpmRepositoryUrl(sc.repoName, sc.serverDetails.ArtifactoryUrl)
 	if err = yarn.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, "yarn", false); err != nil {
 		return err
 	}
 
-	authKey, authValue := commandsutils.GetNpmAuthKeyValue(pmlc.serverDetails, repoUrl)
+	authKey, authValue := commandsutils.GetNpmAuthKeyValue(sc.serverDetails, repoUrl)
 	if authKey != "" && authValue != "" {
 		return yarn.ConfigSet(authKey, authValue, "yarn", false)
 	}
@@ -257,8 +257,8 @@ func (pmlc *PackageManagerLoginCommand) configureYarn() (err error) {
 // Runs the following command:
 //
 //	go env -w GOPROXY=https://<user>:<token>@<your-artifactory-url>/artifactory/go/<repo-name>,direct
-func (pmlc *PackageManagerLoginCommand) configureGo() error {
-	repoWithCredsUrl, err := gocommands.GetArtifactoryRemoteRepoUrl(pmlc.serverDetails, pmlc.repoName, gocommands.GoProxyUrlParams{Direct: true})
+func (sc *SetupCommand) configureGo() error {
+	repoWithCredsUrl, err := gocommands.GetArtifactoryRemoteRepoUrl(sc.serverDetails, sc.repoName, gocommands.GoProxyUrlParams{Direct: true})
 	if err != nil {
 		return err
 	}
@@ -276,16 +276,16 @@ func (pmlc *PackageManagerLoginCommand) configureGo() error {
 //	nuget sources add -Name <JFrog-Artifactory> -Source "https://acme.jfrog.io/artifactory/api/nuget/{repository-name}" -Username <your-username> -Password <your-password>
 //
 // Note: Custom dotnet/nuget configuration file can be set by setting the DOTNET_CLI_HOME/NUGET_CONFIG_FILE environment variable.
-func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
+func (sc *SetupCommand) configureDotnetNuget() error {
 	// Retrieve repository URL and credentials for NuGet or .NET Core.
-	sourceUrl, user, password, err := dotnet.GetSourceDetails(pmlc.serverDetails, pmlc.repoName, false)
+	sourceUrl, user, password, err := dotnet.GetSourceDetails(sc.serverDetails, sc.repoName, false)
 	if err != nil {
 		return err
 	}
 
 	// Determine toolchain type based on the package manager
 	toolchainType := bidotnet.DotnetCore
-	if pmlc.packageManager == project.Nuget {
+	if sc.packageManager == project.Nuget {
 		toolchainType = bidotnet.Nuget
 	}
 
@@ -317,25 +317,25 @@ func (pmlc *PackageManagerLoginCommand) configureDotnetNuget() error {
 // For Podman:
 //
 //	echo <password> | podman login <artifactory-url-without-scheme> -u <username> --password-stdin
-func (pmlc *PackageManagerLoginCommand) configureContainer() error {
+func (sc *SetupCommand) configureContainer() error {
 	var containerManagerType container.ContainerManagerType
-	switch pmlc.packageManager {
+	switch sc.packageManager {
 	case project.Docker:
 		containerManagerType = container.DockerClient
 	case project.Podman:
 		containerManagerType = container.Podman
 	default:
-		return errorutils.CheckErrorf("unsupported container manager: %s", pmlc.packageManager)
+		return errorutils.CheckErrorf("unsupported container manager: %s", sc.packageManager)
 	}
 	// Parse the URL to remove the scheme (https:// or http://)
-	parsedPlatformURL, err := url.Parse(pmlc.serverDetails.GetUrl())
+	parsedPlatformURL, err := url.Parse(sc.serverDetails.GetUrl())
 	if err != nil {
 		return err
 	}
 	urlWithoutScheme := parsedPlatformURL.Host + parsedPlatformURL.Path
 	return container.ContainerManagerLogin(
 		urlWithoutScheme,
-		&container.ContainerManagerLoginConfig{ServerDetails: pmlc.serverDetails},
+		&container.ContainerManagerLoginConfig{ServerDetails: sc.serverDetails},
 		containerManagerType,
 	)
 }

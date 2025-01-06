@@ -162,7 +162,11 @@ func (pmlc *PackageManagerLoginCommand) promptUserToSelectRepository() (err erro
 	}
 
 	// Prompt for repository selection based on filter parameters.
-	pmlc.repoName, err = utils.SelectRepositoryInteractively(pmlc.serverDetails, repoFilterParams)
+	pmlc.repoName, err = utils.SelectRepositoryInteractively(
+		pmlc.serverDetails,
+		repoFilterParams,
+		fmt.Sprintf("To configure %s, we need you to select a %s repository in Artifactory", repoFilterParams.PackageType, repoFilterParams.RepoType))
+
 	return err
 }
 

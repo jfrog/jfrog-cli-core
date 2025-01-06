@@ -597,6 +597,7 @@ type ServerDetails struct {
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
 	WebLogin                        bool   `json:"webLogin,omitempty"`
+	ApplicationKey                  string `json:"applicationKey,omitempty"`
 }
 
 // Deprecated
@@ -703,6 +704,10 @@ func (serverDetails *ServerDetails) GetClientCertPath() string {
 
 func (serverDetails *ServerDetails) GetClientCertKeyPath() string {
 	return serverDetails.ClientCertKeyPath
+}
+
+func (serverDetails *ServerDetails) GetApplicationKey() string {
+	return serverDetails.ApplicationKey
 }
 
 func (serverDetails *ServerDetails) CreateArtAuthConfig() (auth.ServiceDetails, error) {

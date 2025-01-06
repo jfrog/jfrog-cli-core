@@ -1,6 +1,7 @@
 package dotnet
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -267,7 +268,7 @@ func TestGetConfigPathFromEnvIfProvided(t *testing.T) {
 				defer restoreEnvNuGet()
 			}
 			result := GetConfigPathFromEnvIfProvided(testCase.cmdType)
-			assert.Equal(t, testCase.expectedPath, result)
+			assert.Equal(t, testCase.expectedPath, ioutils.WinToUnixPathSeparator(result))
 		})
 	}
 }
@@ -297,8 +298,7 @@ func TestCreateConfigFileIfNeeded(t *testing.T) {
 			configPath := filepath.Join(t.TempDir(), tt.configPath)
 			if tt.fileExists {
 				assert.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0777))
-				_, err := os.Create(configPath)
-				assert.NoError(t, err)
+				assert.NoError(t, os.WriteFile(configPath, []byte{}, 0644))
 			}
 			err := CreateConfigFileIfNeeded(configPath)
 			assert.NoError(t, err)

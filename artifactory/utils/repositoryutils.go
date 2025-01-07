@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
@@ -101,7 +102,7 @@ func SelectRepositoryInteractively(serverDetails *config.ServerDetails, repoFilt
 		return filteredRepos[0], nil
 	}
 	// Prompt the user to select a repository.
-	return ioutils.AskFromListWithMismatchConfirmation("Please select a repository to login to:", "Repository not found.", ioutils.ConvertToSuggests(filteredRepos)), nil
+	return ioutils.AskFromListWithMismatchConfirmation(fmt.Sprintf("Please select a %s %s repository to configure:", repoFilterParams.RepoType, repoFilterParams.PackageType), "Repository not found.", ioutils.ConvertToSuggests(filteredRepos)), nil
 }
 
 // GetFilteredRepositoriesWithFilterParams returns the names of local, remote, virtual, and federated repositories filtered by their names and type.

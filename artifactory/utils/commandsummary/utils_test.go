@@ -19,9 +19,9 @@ func TestGenerateArtifactUrl(t *testing.T) {
 		majorVersion int
 		expected     string
 	}{
-		{"artifactory 7 without project", "", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
-		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section"},
-		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/?gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section#/artifacts/browse/tree/General/repo/path/file"},
+		{"artifactory 7 without project", "", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section&m=3&s=1"},
+		{"artifactory 7 with project", "proj", 7, "https://myplatform.com/ui/repos/tree/General/repo/path/file?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section&m=3&s=1"},
+		{"artifactory 6 without project", "", 6, "https://myplatform.com/artifactory/webapp/?gh_job_id=JFrog+CLI+Core+Tests&gh_section=test-section&m=3&s=1#/artifacts/browse/tree/General/repo/path/file"},
 	}
 	StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
 	for _, testCase := range cases {
@@ -71,7 +71,7 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 			"https://example.com/path",
 			buildInfoSection,
 			"workflow123",
-			"https://example.com/path?gh_job_id=workflow123&gh_section=buildInfo",
+			"https://example.com/path?gh_job_id=workflow123&gh_section=buildInfo&m=3&s=1",
 			false,
 		},
 		{
@@ -87,7 +87,7 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 			"https://example.com/path?existing_param=value",
 			packagesSection,
 			"workflow123",
-			"https://example.com/path?existing_param=value&gh_job_id=workflow123&gh_section=packages",
+			"https://example.com/path?existing_param=value&gh_job_id=workflow123&gh_section=packages&m=3&s=1",
 			false,
 		},
 		{
@@ -95,7 +95,15 @@ func TestAddGitHubTrackingToUrl(t *testing.T) {
 			"https://example.com/path",
 			artifactsSection,
 			"workflow with spaces & special?characters",
-			"https://example.com/path?gh_job_id=workflow+with+spaces+%26+special%3Fcharacters&gh_section=artifacts",
+			"https://example.com/path?gh_job_id=workflow+with+spaces+%26+special%3Fcharacters&gh_section=artifacts&m=3&s=1",
+			false,
+		},
+		{
+			"URL with spaces",
+			"https://example.com/path?existing_param=value",
+			packagesSection,
+			"workflow space",
+			"https://example.com/path?existing_param=value&gh_job_id=workflow+space&gh_section=packages&m=3&s=1",
 			false,
 		},
 	}

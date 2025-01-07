@@ -26,6 +26,7 @@ const (
 type ProjectType int
 
 const (
+	// When adding new ProjectType here, Must also add it as a string to the ProjectTypes slice
 	Go ProjectType = iota
 	Pip
 	Pipenv
@@ -41,6 +42,8 @@ const (
 	Terraform
 	Cocoapods
 	Swift
+	Docker
+	Podman
 )
 
 type ConfigType string
@@ -66,10 +69,22 @@ var ProjectTypes = []string{
 	"terraform",
 	"cocoapods",
 	"swift",
+	"docker",
+	"podman",
 }
 
 func (projectType ProjectType) String() string {
 	return ProjectTypes[projectType]
+}
+
+// FromString converts a string to its corresponding ProjectType
+func FromString(value string) ProjectType {
+	for i, projectType := range ProjectTypes {
+		if projectType == value {
+			return ProjectType(i)
+		}
+	}
+	return -1
 }
 
 type MissingResolverErr struct {

@@ -49,26 +49,38 @@ const (
 	buildInfoSection summarySection = "buildInfo"
 )
 
-// addGitHubTrackingToUrl adds GitHub-related query parameters to a given URL if the GITHUB_WORKFLOW environment variable is set.
+const (
+	// The source of the request
+	sourceParamKey    = "s"
+	githubSourceValue = "1"
+	// The metric to track
+	metricParamKey    = "m"
+	githubMetricValue = "3"
+
+	jobIDKey       = "gh_job_id"
+	sectionKey     = "gh_section"
+	workflowEnvKey = "GITHUB_WORKFLOW"
+)
+
 func addGitHubTrackingToUrl(urlStr string, section summarySection) (string, error) {
 	// Check if GITHUB_WORKFLOW environment variable is set
-	githubWorkflow := os.Getenv("GITHUB_WORKFLOW")
+	githubWorkflow := os.Getenv(workflowEnvKey)
 	if githubWorkflow == "" {
-		// Return the original URL if the variable is not set
 		return urlStr, nil
 	}
 
 	// Parse the input URL
 	parsedUrl, err := url.Parse(urlStr)
 	if errorutils.CheckError(err) != nil {
-		// Return an error if the URL is invalid
 		return "", err
 	}
 
 	// Get the query parameters and add the GitHub tracking parameters
 	queryParams := parsedUrl.Query()
-	queryParams.Set("gh_job_id", githubWorkflow)
-	queryParams.Set("gh_section", string(section))
+	queryParams.Set(sourceParamKey, githubSourceValue)
+	queryParams.Set(metricParamKey, githubMetricValue)
+	queryParams.Set(jobIDKey, githubWorkflow)
+	queryParams.Set(sectionKey, string(section))
 	parsedUrl.RawQuery = queryParams.Encode()
 
 	// Return the modified URL

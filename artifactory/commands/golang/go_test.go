@@ -128,7 +128,7 @@ func TestGetArtifactoryApiUrl(t *testing.T) {
 }
 
 func TestGoProxyUrlParams_BuildUrl(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		name           string
 		RepoName       string
 		Direct         bool
@@ -153,15 +153,15 @@ func TestGoProxyUrlParams_BuildUrl(t *testing.T) {
 			ExpectedUrl:    "https://test/prefix/api/go/go",
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
 			remoteUrl, err := url.Parse("https://test")
 			require.NoError(t, err)
 			gdu := &GoProxyUrlParams{
-				Direct:         tt.Direct,
-				EndpointPrefix: tt.EndpointPrefix,
+				Direct:         testCase.Direct,
+				EndpointPrefix: testCase.EndpointPrefix,
 			}
-			assert.Equalf(t, tt.ExpectedUrl, gdu.BuildUrl(remoteUrl, tt.RepoName), "BuildUrl(%v, %v)", remoteUrl, tt.RepoName)
+			assert.Equalf(t, testCase.ExpectedUrl, gdu.BuildUrl(remoteUrl, testCase.RepoName), "BuildUrl(%v, %v)", remoteUrl, testCase.RepoName)
 		})
 	}
 }

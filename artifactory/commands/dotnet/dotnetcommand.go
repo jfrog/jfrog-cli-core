@@ -231,17 +231,19 @@ func GetConfigPathFromEnvIfProvided(cmdType dotnet.ToolchainType) string {
 
 // CreateConfigFileIfNeeded creates a new config file if it does not exist.
 func CreateConfigFileIfNeeded(customConfigPath string) error {
-	// Ensure the file exists, create an empty one it if not
-	if _, err := os.Stat(customConfigPath); os.IsNotExist(err) {
-		if err = os.MkdirAll(filepath.Dir(customConfigPath), 0755); err != nil {
-			return err
-		}
-		// Write the default config content to the file
-		if err = os.WriteFile(customConfigPath, []byte("<configuration></configuration>"), 0644); err != nil {
-			return err
-		}
+	// Ensure the file exists
+	exists, err := fileutils.IsFileExists(customConfigPath, false)
+	if err != nil || exists {
+		return err
 	}
-	return nil
+	// If the file does not exist, create it
+	if err = os.MkdirAll(filepath.Dir(customConfigPath), 0755); err != nil {
+		return err
+	}
+	// Write the default config content to the file
+	if err = os.WriteFile(customConfigPath, []byte("<configuration></configuration>"), 0644); err != nil {
+		return err
+	}
 }
 
 func addConfigFileFlag(cmd *dotnet.Cmd, configFilePath string) {

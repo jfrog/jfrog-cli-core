@@ -274,7 +274,7 @@ func TestGetConfigPathFromEnvIfProvided(t *testing.T) {
 }
 
 func TestCreateConfigFileIfNeeded(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		name          string
 		configPath    string
 		fileExists    bool
@@ -293,17 +293,17 @@ func TestCreateConfigFileIfNeeded(t *testing.T) {
 	}
 
 	// Setup for testing file existence and creation
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			configPath := filepath.Join(t.TempDir(), tt.configPath)
-			if tt.fileExists {
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			configPath := filepath.Join(t.TempDir(), testCase.configPath)
+			if testCase.fileExists {
 				assert.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0777))
 				assert.NoError(t, os.WriteFile(configPath, []byte{}, 0644))
 			}
 			err := CreateConfigFileIfNeeded(configPath)
 			assert.NoError(t, err)
 
-			if !tt.fileExists {
+			if !testCase.fileExists {
 				// Read the content of the file
 				content, err := os.ReadFile(configPath)
 				assert.NoError(t, err)
@@ -316,37 +316,34 @@ func TestCreateConfigFileIfNeeded(t *testing.T) {
 }
 
 func TestAddConfigFileFlag(t *testing.T) {
-	tests := []struct {
-		name           string
-		toolchainType  dotnet.ToolchainType
-		configFilePath string
-		expectedFlags  []string
+	testCases := []struct {
+		name          string
+		toolchainType dotnet.ToolchainType
+		expectedFlags []string
 	}{
 		{
-			name:           "DotnetCore toolchain",
-			toolchainType:  dotnet.DotnetCore,
-			configFilePath: "/path/to/NuGet.Config",
-			expectedFlags:  []string{"--configfile", "/path/to/NuGet.Config"},
+			name:          "DotnetCore toolchain",
+			toolchainType: dotnet.DotnetCore,
+			expectedFlags: []string{"--configfile", "/path/to/NuGet.Config"},
 		},
 		{
-			name:           "NuGet toolchain",
-			toolchainType:  dotnet.Nuget,
-			configFilePath: "/path/to/NuGet.Config",
-			expectedFlags:  []string{"-ConfigFile", "/path/to/NuGet.Config"},
+			name:          "NuGet toolchain",
+			toolchainType: dotnet.Nuget,
+			expectedFlags: []string{"-ConfigFile", "/path/to/NuGet.Config"},
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
 			// Create a mock command object
-			cmd, err := dotnet.NewToolchainCmd(tt.toolchainType)
+			cmd, err := dotnet.NewToolchainCmd(testCase.toolchainType)
 			assert.NoError(t, err)
 
 			// Call the function
-			addConfigFileFlag(cmd, tt.configFilePath)
+			addConfigFileFlag(cmd, "/path/to/NuGet.Config")
 
 			// Assert that the flags are as expected
-			assert.Equal(t, tt.expectedFlags, cmd.CommandFlags)
+			assert.Equal(t, testCase.expectedFlags, cmd.CommandFlags)
 		})
 	}
 }

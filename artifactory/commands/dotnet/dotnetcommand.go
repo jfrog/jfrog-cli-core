@@ -241,9 +241,7 @@ func CreateConfigFileIfNeeded(customConfigPath string) error {
 		return err
 	}
 	// Write the default config content to the file
-	if err = os.WriteFile(customConfigPath, []byte("<configuration></configuration>"), 0644); err != nil {
-		return err
-	}
+	return os.WriteFile(customConfigPath, []byte("<configuration></configuration>"), 0644)
 }
 
 func addConfigFileFlag(cmd *dotnet.Cmd, configFilePath string) {

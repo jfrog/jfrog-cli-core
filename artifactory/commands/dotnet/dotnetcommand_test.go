@@ -336,7 +336,7 @@ func TestAddConfigFileFlag(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for _, testCase := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a mock command object
 			cmd, err := dotnet.NewToolchainCmd(tt.toolchainType)

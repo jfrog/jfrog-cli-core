@@ -259,13 +259,11 @@ func TestGetConfigPathFromEnvIfProvided(t *testing.T) {
 	// Test the function with different environment variable settings
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			restoreEnv := testsutils.SetEnvWithCallbackAndAssert(t, "DOTNET_CLI_HOME", testCase.mockEnv["DOTNET_CLI_HOME"])
-			defer restoreEnv()
+			t.Setenv("DOTNET_CLI_HOME", testCase.mockEnv["DOTNET_CLI_HOME"])
 
 			// Set other environment variables if needed
 			if testCase.mockEnv["NUGET_CONFIG_FILE"] != "" {
-				restoreEnvNuGet := testsutils.SetEnvWithCallbackAndAssert(t, "NUGET_CONFIG_FILE", testCase.mockEnv["NUGET_CONFIG_FILE"])
-				defer restoreEnvNuGet()
+				t.Setenv("NUGET_CONFIG_FILE", testCase.mockEnv["NUGET_CONFIG_FILE"])
 			}
 			result := GetConfigPathFromEnvIfProvided(testCase.cmdType)
 			assert.Equal(t, testCase.expectedPath, ioutils.WinToUnixPathSeparator(result))

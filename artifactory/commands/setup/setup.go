@@ -71,14 +71,19 @@ func NewSetupCommand(packageManager project.ProjectType) *SetupCommand {
 	}
 }
 
-// GetSupportedPackageManagersList returns a sorted list of supported package managers.
-func GetSupportedPackageManagersList() []project.ProjectType {
+// GetSupportedPackageManagersList returns a sorted list of supported package manager names as strings.
+func GetSupportedPackageManagersList() []string {
 	allSupportedPackageManagers := maps.Keys(packageManagerToRepositoryPackageType)
 	// Sort keys based on their natural enum order
 	slices.SortFunc(allSupportedPackageManagers, func(a, b project.ProjectType) int {
 		return int(a) - int(b)
 	})
-	return allSupportedPackageManagers
+	// Convert enums to their string representation
+	result := make([]string, len(allSupportedPackageManagers))
+	for i, manager := range allSupportedPackageManagers {
+		result[i] = manager.String()
+	}
+	return result
 }
 
 func IsSupportedPackageManager(packageManager project.ProjectType) bool {

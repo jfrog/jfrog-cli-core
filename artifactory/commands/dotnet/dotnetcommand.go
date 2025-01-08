@@ -214,7 +214,7 @@ func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType, customCon
 		if strings.Contains(stdOut+stdErr, "Unable to find") || strings.Contains(stdOut+stdErr, "does not exist") {
 			return nil
 		}
-		return fmt.Errorf("failed to remove source: %w\n%s", err, strings.TrimSpace(stdOut+stdErr))
+		return errorutils.CheckErrorf("failed to remove source: %w\n%s\n%s", err, strings.TrimSpace(stdOut), strings.TrimSpace(stdErr))
 	}
 	return nil
 }

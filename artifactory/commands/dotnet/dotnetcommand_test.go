@@ -297,7 +297,7 @@ func TestCreateConfigFileIfNeeded(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			configPath := filepath.Join(t.TempDir(), tt.configPath)
 			if tt.fileExists {
-				assert.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0777))
+				assert.NoError(t, os.MkdirAll(filepath.Dir(configPath), os.ModePerm))
 				assert.NoError(t, os.WriteFile(configPath, []byte{}, 0644))
 			}
 			err := CreateConfigFileIfNeeded(configPath)

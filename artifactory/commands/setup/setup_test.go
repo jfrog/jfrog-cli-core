@@ -374,10 +374,10 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 }
 
 func TestGetSupportedPackageManagersList(t *testing.T) {
-	result := GetSupportedPackageManagersList()
+	packageManagersList := GetSupportedPackageManagersList()
 	// Check that "Go" is before "Pip", and "Pip" is before "Npm"
-	assert.GreaterOrEqual(t, slices.Index(result, project.Go.String()), slices.Index(result, project.Pip.String()), "Go should come before Pip")
-	assert.GreaterOrEqual(t, slices.Index(result, project.Pip.String()), slices.Index(result, project.Npm.String()), "Pip should come before Npm")
+	assert.Less(t, slices.Index(packageManagersList, project.Go.String()), slices.Index(packageManagersList, project.Pip.String()), "Go should come before Pip")
+	assert.Less(t, slices.Index(packageManagersList, project.Pip.String()), slices.Index(packageManagersList, project.Npm.String()), "Pip should come before Npm")
 }
 
 func TestIsSupportedPackageManager(t *testing.T) {

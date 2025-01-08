@@ -9,7 +9,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
-	clientTestUtils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
@@ -170,24 +169,14 @@ func TestSetupCommand_Pip(t *testing.T) {
 func testSetupCommandPip(t *testing.T, packageManager project.ProjectType, customConfig bool) {
 	var pipConfFilePath string
 	if customConfig {
+		// For custom configuration file, set the PIP_CONFIG_FILE environment variable to point to the temporary pip.conf file.
 		pipConfFilePath = filepath.Join(t.TempDir(), "pip.conf")
-		restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "PIP_CONFIG_FILE", pipConfFilePath)
-		defer restoreEnv()
+		t.Setenv("PIP_CONFIG_FILE", pipConfFilePath)
 	} else {
-		if coreutils.IsWindows() {
-			pipConfFilePath = filepath.Join(os.Getenv("APPDATA"), "pip", "pip.ini")
-		} else {
-			// Retrieve the home directory and construct the pip.conf file path.
-			homeDir, err := os.UserHomeDir()
-			assert.NoError(t, err)
-			pipConfFilePath = filepath.Join(homeDir, ".config", "pip", "pip.conf")
-		}
-		// Back up the existing .pip.conf file and ensure restoration after the test.
-		restorePipConfFunc, err := ioutils.BackupFile(pipConfFilePath, ".pipconf.backup")
-		assert.NoError(t, err)
-		defer func() {
-			assert.NoError(t, restorePipConfFunc())
-		}()
+		// For global configuration file, back up the existing pip.conf file and ensure restoration after the test.
+		var restoreFunc func()
+		pipConfFilePath, restoreFunc = globalGlobalPipConfigPath(t)
+		defer restoreFunc()
 	}
 
 	pipLoginCmd := createTestSetupCommand(packageManager)
@@ -225,12 +214,30 @@ func testSetupCommandPip(t *testing.T, packageManager project.ProjectType, custo
 	}
 }
 
+// globalGlobalPipConfigPath returns the path to the global pip.conf file and a backup function to restore the original file.
+func globalGlobalPipConfigPath(t *testing.T) (string, func()) {
+	var pipConfFilePath string
+	if coreutils.IsWindows() {
+		pipConfFilePath = filepath.Join(os.Getenv("APPDATA"), "pip", "pip.ini")
+	} else {
+		// Retrieve the home directory and construct the pip.conf file path.
+		homeDir, err := os.UserHomeDir()
+		assert.NoError(t, err)
+		pipConfFilePath = filepath.Join(homeDir, ".config", "pip", "pip.conf")
+	}
+	// Back up the existing .pip.conf file and ensure restoration after the test.
+	restorePipConfFunc, err := ioutils.BackupFile(pipConfFilePath, ".pipconf.backup")
+	assert.NoError(t, err)
+	return pipConfFilePath, func() {
+		assert.NoError(t, restorePipConfFunc())
+	}
+}
+
 func TestSetupCommand_configurePoetry(t *testing.T) {
 	configDir := t.TempDir()
 	poetryConfigFilePath := filepath.Join(configDir, "config.toml")
 	poetryAuthFilePath := filepath.Join(configDir, "auth.toml")
-	restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "POETRY_CONFIG_DIR", configDir)
-	defer restoreEnv()
+	t.Setenv("POETRY_CONFIG_DIR", configDir)
 	poetryLoginCmd := createTestSetupCommand(project.Poetry)
 
 	for _, testCase := range testCases {
@@ -279,8 +286,7 @@ func TestSetupCommand_configurePoetry(t *testing.T) {
 func TestSetupCommand_Go(t *testing.T) {
 	goProxyEnv := "GOPROXY"
 	// Restore the original value of the GOPROXY environment variable after the test.
-	restoreGoProxy := clientTestUtils.SetEnvWithCallbackAndAssert(t, goProxyEnv, "")
-	defer restoreGoProxy()
+	t.Setenv(goProxyEnv, "")
 
 	// Assuming createTestSetupCommand initializes your Go login command
 	goLoginCmd := createTestSetupCommand(project.Go)
@@ -329,12 +335,10 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 	// Set the NuGet.config file path to a custom location.
 	if packageManager == project.Dotnet {
 		nugetConfigFilePath = filepath.Join(t.TempDir(), "NuGet.Config")
-		restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "DOTNET_CLI_HOME", filepath.Dir(nugetConfigFilePath))
-		defer restoreEnv()
+		t.Setenv("DOTNET_CLI_HOME", filepath.Dir(nugetConfigFilePath))
 	} else {
 		nugetConfigFilePath = filepath.Join(t.TempDir(), "nuget.config")
-		restoreEnv := clientTestUtils.SetEnvWithCallbackAndAssert(t, "NUGET_CONFIG_FILE", nugetConfigFilePath)
-		defer restoreEnv()
+		t.Setenv("NUGET_CONFIG_FILE", nugetConfigFilePath)
 	}
 
 	nugetLoginCmd := createTestSetupCommand(packageManager)

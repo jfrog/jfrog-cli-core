@@ -67,7 +67,7 @@ type SetupCommand struct {
 func NewSetupCommand(packageManager project.ProjectType) *SetupCommand {
 	return &SetupCommand{
 		packageManager: packageManager,
-		commandName:    packageManager.String() + "_login",
+		commandName:    "setup_" + packageManager.String(),
 	}
 }
 

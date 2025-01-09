@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -314,7 +315,7 @@ func ValidateRepoExists(repoKey string, serviceDetails auth.ServiceDetails) erro
 	}
 	exists, err := servicesManager.IsRepoExists(repoKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed while attempting to check if repository %q exists in Artifactory: %w", repoKey, err)
 	}
 
 	if !exists {

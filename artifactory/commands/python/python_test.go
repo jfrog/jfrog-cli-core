@@ -10,7 +10,7 @@ import (
 )
 
 func TestGetPypiRepoUrlWithCredentials(t *testing.T) {
-	tests := []struct {
+	testCases := []struct {
 		name        string
 		curationCmd bool
 	}{
@@ -24,11 +24,11 @@ func TestGetPypiRepoUrlWithCredentials(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			url, _, _, err := GetPypiRepoUrlWithCredentials(&config.ServerDetails{}, "test", tt.curationCmd)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			url, _, _, err := GetPypiRepoUrlWithCredentials(&config.ServerDetails{}, "test", testCase.curationCmd)
 			require.NoError(t, err)
-			assert.Equal(t, tt.curationCmd, strings.Contains(url.Path, coreutils.CurationPassThroughApi))
+			assert.Equal(t, testCase.curationCmd, strings.Contains(url.Path, coreutils.CurationPassThroughApi))
 		})
 	}
 }

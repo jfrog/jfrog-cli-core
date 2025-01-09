@@ -448,14 +448,10 @@ func getIncludeExcludePatterns(patternType string) string {
 }
 
 func (configFile *ConfigFile) configGradle() error {
-	if err := configFile.setDeployerResolver(); err != nil {
+	if err := configFile.setResolver(false); err != nil {
 		return err
 	}
-	if configFile.Deployer.ServerId != "" {
-		configFile.setMavenIvyDescriptors()
-	}
-	configFile.readGradleGlobalConfig()
-	return nil
+	return configFile.setDeployer(false)
 }
 
 func (configFile *ConfigFile) readGradleGlobalConfig() {
@@ -494,7 +490,13 @@ func (configFile *ConfigFile) setResolver(withSnapshot bool) error {
 	}
 	// Set resolution repository
 	if configFile.Resolver.ServerId != "" {
-		resolverRepos, err := getRepositories(configFile.Resolver.ServerId, utils.Virtual, utils.Remote)
+		repoTypes := []utils.RepoType{utils.Virtual}
+		if configFile.ConfigType != project.Go.String() {
+			// Go project doesn't support resolving from remote repositories. (https://jfrog.com/help/r/jfrog-artifactory-documentation/set-up-remote-go-repositories)
+			// To resolve dependencies from a Remote Go repository, you must nest the remote repository under a virtual Go repository.
+			repoTypes = append(repoTypes, utils.Remote)
+		}
+		resolverRepos, err := getRepositories(configFile.Resolver.ServerId, repoTypes...)
 		if err != nil {
 			log.Error("failed getting repositories list: " + err.Error())
 			// Continue without auto complete.

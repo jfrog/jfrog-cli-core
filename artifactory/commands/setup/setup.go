@@ -63,7 +63,6 @@ type SetupCommand struct {
 }
 
 // NewSetupCommand initializes a new SetupCommand for the specified package manager
-// and automatically sets a command name for the login operation.
 func NewSetupCommand(packageManager project.ProjectType) *SetupCommand {
 	return &SetupCommand{
 		packageManager: packageManager,

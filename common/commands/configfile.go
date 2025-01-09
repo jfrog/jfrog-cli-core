@@ -448,10 +448,14 @@ func getIncludeExcludePatterns(patternType string) string {
 }
 
 func (configFile *ConfigFile) configGradle() error {
-	if err := configFile.setResolver(false); err != nil {
+	if err := configFile.setDeployerResolver(); err != nil {
 		return err
 	}
-	return configFile.setDeployer(false)
+	if configFile.Deployer.ServerId != "" {
+		configFile.setMavenIvyDescriptors()
+	}
+	configFile.readGradleGlobalConfig()
+	return nil
 }
 
 func (configFile *ConfigFile) readGradleGlobalConfig() {

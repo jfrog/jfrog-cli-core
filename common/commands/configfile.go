@@ -496,7 +496,7 @@ func (configFile *ConfigFile) setResolver(withSnapshot bool) error {
 	if configFile.Resolver.ServerId != "" {
 		repoTypes := []utils.RepoType{utils.Virtual}
 		if configFile.ConfigType != project.Go.String() {
-			// Go project doesn't support resolving from remote repositories. (https://jfrog.com/help/r/jfrog-artifactory-documentation/set-up-remote-go-repositories)
+			// Go doesn't support resolving from Artifactory remote Go repositories. (https://jfrog.com/help/r/jfrog-artifactory-documentation/set-up-remote-go-repositories)
 			// To resolve dependencies from a Remote Go repository, you must nest the remote repository under a virtual Go repository.
 			repoTypes = append(repoTypes, utils.Remote)
 		}

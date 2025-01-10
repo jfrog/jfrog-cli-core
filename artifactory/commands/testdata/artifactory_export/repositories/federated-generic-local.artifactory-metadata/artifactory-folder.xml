@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<artifactory-folder>
+  <repoPath>
+    <repoKey>federated-generic-local</repoKey>
+    <path></path>
+    <folder>true</folder>
+  </repoPath>
+  <name></name>
+  <created>1652778887020</created>
+  <lastModified>1652778887020</lastModified>
+  <additionalInfo>
+    <lastUpdated>1652778887020</lastUpdated>
+  </additionalInfo>
+</artifactory-folder>

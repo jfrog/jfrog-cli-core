@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"github.com/jfrog/jfrog-cli-core/v2/utils/usage/visibility"
 	"sync"
 
 	"github.com/jfrog/gofrog/version"
@@ -9,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	usageReporter "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/usage/visibility"
 	rtClient "github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
 	"github.com/jfrog/jfrog-client-go/utils/log"

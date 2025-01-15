@@ -28,11 +28,3 @@ func newCommandsCountMetric() commandsCountMetric {
 		},
 	}
 }
-
-func (ccm *commandsCountMetric) MetricsName() string {
-	return ccm.Name
-}
-
-func (ccm *commandsCountMetric) Value() int {
-	return ccm.Metric.Value
-}

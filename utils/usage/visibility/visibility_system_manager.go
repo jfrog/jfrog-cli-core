@@ -18,7 +18,7 @@ func NewVisibilitySystemManager(serverDetails *config.ServerDetails) *Visibility
 	}
 }
 
-func (vsm *VisibilitySystemManager) createCommandsCountMetric(commandName string) *commandsCountMetric {
+func (vsm *VisibilitySystemManager) createCommandsCountMetric(commandName string) commandsCountMetric {
 	metricLabels := newCommandsCountMetric()
 	metricLabels.Labels = commandsCountLabels{
 		ProductID:                            coreutils.GetCliUserAgentName(),
@@ -30,7 +30,7 @@ func (vsm *VisibilitySystemManager) createCommandsCountMetric(commandName string
 		GitRepo:                              os.Getenv("JFROG_CLI_USAGE_GIT_REPO"),
 		GhTokenForCodeScanningAlertsProvided: os.Getenv("JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED"),
 	}
-	return &metricLabels
+	return metricLabels
 }
 
 func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
@@ -38,5 +38,6 @@ func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
 	if err != nil {
 		return err
 	}
-	return manager.PostVisibilityMetric(vsm.createCommandsCountMetric(commandName))
+	metric := vsm.createCommandsCountMetric(commandName)
+	return manager.PostVisibilityMetric(&metric)
 }

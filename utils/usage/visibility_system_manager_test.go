@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateMetric(t *testing.T) {
+func TestCreateCommandsCountMetric(t *testing.T) {
 	// Set environment variables for the test using SetEnvWithCallbackAndAssert
 	envVars := map[string]string{
 		"JFROG_CLI_USAGE_OIDC_USED":                                  "TRUE",
@@ -30,7 +30,7 @@ func TestCreateMetric(t *testing.T) {
 	}()
 
 	commandName := "testCommand"
-	metric := NewVisibilitySystemManager(nil).createMetric(commandName)
+	metric := NewVisibilitySystemManager(nil).createCommandsCountMetric(commandName)
 	metricJSON, err := json.Marshal(metric)
 	assert.NoError(t, err)
 

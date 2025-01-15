@@ -1,12 +1,12 @@
 package usage
 
 import (
+	"github.com/jfrog/jfrog-client-go/jfconnect/services/metrics/jfrogcli"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/jfconnect/services"
 )
 
 type VisibilitySystemManager struct {
@@ -19,8 +19,9 @@ func NewVisibilitySystemManager(serverDetails *config.ServerDetails) *Visibility
 	}
 }
 
-func (vsm *VisibilitySystemManager) createMetric(commandName string) services.VisibilityMetric {
-	metricLabels := services.Labels{
+func (vsm *VisibilitySystemManager) createCommandsCountMetric(commandName string) *jfrogcli.CommandsCountMetric {
+	metricLabels := jfrogcli.NewCommandsCountMetric()
+	metricLabels.Labels = jfrogcli.CommandsCountLabels{
 		ProductID:                            coreutils.GetCliUserAgentName(),
 		ProductVersion:                       coreutils.GetCliUserAgentVersion(),
 		FeatureID:                            commandName,
@@ -30,12 +31,7 @@ func (vsm *VisibilitySystemManager) createMetric(commandName string) services.Vi
 		GitRepo:                              os.Getenv("JFROG_CLI_USAGE_GIT_REPO"),
 		GhTokenForCodeScanningAlertsProvided: os.Getenv("JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED"),
 	}
-
-	return services.VisibilityMetric{
-		Value:       1,
-		MetricsName: "jfcli_commands_count",
-		Labels:      metricLabels,
-	}
+	return &metricLabels
 }
 
 func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
@@ -43,5 +39,5 @@ func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
 	if err != nil {
 		return err
 	}
-	return manager.PostVisibilityMetric(vsm.createMetric(commandName))
+	return manager.PostVisibilityMetric(vsm.createCommandsCountMetric(commandName))
 }

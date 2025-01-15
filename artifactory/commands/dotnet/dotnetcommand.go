@@ -226,6 +226,7 @@ func GetConfigPathFromEnvIfProvided(cmdType dotnet.ToolchainType) string {
 			return filepath.Join(customDotnetDir, "NuGet.Config")
 		}
 	}
+	// The NUGET_CONFIG_FILE environment variable is supported by both NuGet and dotnet CLI.
 	return os.Getenv("NUGET_CONFIG_FILE")
 }
 

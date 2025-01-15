@@ -67,18 +67,17 @@ func TestSetupCommand_Pnpm(t *testing.T) {
 }
 
 func testSetupCommandNpmPnpm(t *testing.T, packageManager project.ProjectType) {
-	// Create a temporary directory to act as the environment's npmrc file location.
-	tempDir := t.TempDir()
-	npmrcFilePath := filepath.Join(tempDir, ".npmrc")
-
-	// Set NPM_CONFIG_USERCONFIG to point to the temporary npmrc file path.
-	t.Setenv("NPM_CONFIG_USERCONFIG", npmrcFilePath)
-
-	loginCmd := createTestSetupCommand(packageManager)
-
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
+			// Create a temporary directory to act as the environment's npmrc file location.
+			tempDir := t.TempDir()
+			npmrcFilePath := filepath.Join(tempDir, ".npmrc")
+
+			// Set NPM_CONFIG_USERCONFIG to point to the temporary npmrc file path.
+			t.Setenv("NPM_CONFIG_USERCONFIG", npmrcFilePath)
+
 			// Set up server details for the current test case's authentication type.
+			loginCmd := createTestSetupCommand(packageManager)
 			loginCmd.serverDetails.SetUser(testCase.user)
 			loginCmd.serverDetails.SetPassword(testCase.password)
 			loginCmd.serverDetails.SetAccessToken(testCase.accessToken)

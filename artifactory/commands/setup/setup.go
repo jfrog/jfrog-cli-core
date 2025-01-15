@@ -124,7 +124,9 @@ func (sc *SetupCommand) Run() (err error) {
 		return errorutils.CheckErrorf("unsupported package manager: %s", sc.packageManager)
 	}
 
-	if sc.repoName == "" {
+	// If the repository name is not provided, and the package manager is not Docker or Podman, prompt the user to select a repository.
+	// Docker and Podman do not require a repository name.
+	if sc.repoName == "" && sc.packageManager != project.Docker && sc.packageManager != project.Podman {
 		// Prompt the user to select a virtual repository that matches the package manager.
 		if err = sc.promptUserToSelectRepository(); err != nil {
 			return err
@@ -170,7 +172,7 @@ func (sc *SetupCommand) promptUserToSelectRepository() (err error) {
 	sc.repoName, err = utils.SelectRepositoryInteractively(
 		sc.serverDetails,
 		repoFilterParams,
-		fmt.Sprintf("To configure %s, we need you to select a %s repository in Artifactory", repoFilterParams.PackageType, repoFilterParams.RepoType))
+		fmt.Sprintf("To configure %s, we need you to select a %s repository in Artifactory:", repoFilterParams.PackageType, repoFilterParams.RepoType))
 
 	return err
 }
@@ -248,8 +250,6 @@ func (sc *SetupCommand) configureNpmPnpm() error {
 // For basic auth:
 //
 //	yarn config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
-//
-// Note: Custom configuration file can be set by setting the YARN_RC_FILENAME environment variable.
 func (sc *SetupCommand) configureYarn() (err error) {
 	repoUrl := commandsutils.GetNpmRepositoryUrl(sc.repoName, sc.serverDetails.ArtifactoryUrl)
 	if err = yarn.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, "yarn", false); err != nil {

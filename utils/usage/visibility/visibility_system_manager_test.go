@@ -1,4 +1,4 @@
-package usage
+package visibility
 
 import (
 	"encoding/json"

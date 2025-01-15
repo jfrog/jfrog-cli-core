@@ -1,13 +1,13 @@
 package commands
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/usage/visibility"
 	"sync"
 
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	coreusage "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
 	usageReporter "github.com/jfrog/jfrog-cli-core/v2/utils/usage"
 	rtClient "github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
@@ -92,7 +92,7 @@ func reportUsage(command Command, channel chan<- bool) {
 }
 
 func reportUsageToVisibilitySystem(command Command, serverDetails *config.ServerDetails) {
-	if err := coreusage.NewVisibilitySystemManager(serverDetails).SendUsage(command.CommandName()); err != nil {
+	if err := visibility.NewVisibilitySystemManager(serverDetails).SendUsage(command.CommandName()); err != nil {
 		log.Debug("Visibility System Usage reporting:", err.Error())
 	}
 }

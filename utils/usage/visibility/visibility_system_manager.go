@@ -1,7 +1,6 @@
-package usage
+package visibility
 
 import (
-	"github.com/jfrog/jfrog-client-go/jfconnect/services/metrics/jfrogcli"
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -19,9 +18,9 @@ func NewVisibilitySystemManager(serverDetails *config.ServerDetails) *Visibility
 	}
 }
 
-func (vsm *VisibilitySystemManager) createCommandsCountMetric(commandName string) *jfrogcli.CommandsCountMetric {
-	metricLabels := jfrogcli.NewCommandsCountMetric()
-	metricLabels.Labels = jfrogcli.CommandsCountLabels{
+func (vsm *VisibilitySystemManager) createCommandsCountMetric(commandName string) *commandsCountMetric {
+	metricLabels := newCommandsCountMetric()
+	metricLabels.Labels = commandsCountLabels{
 		ProductID:                            coreutils.GetCliUserAgentName(),
 		ProductVersion:                       coreutils.GetCliUserAgentVersion(),
 		FeatureID:                            commandName,

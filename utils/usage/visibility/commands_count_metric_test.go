@@ -2,11 +2,10 @@ package visibility
 
 import (
 	"encoding/json"
-	"testing"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestCreateCommandsCountMetric(t *testing.T) {
@@ -30,7 +29,7 @@ func TestCreateCommandsCountMetric(t *testing.T) {
 	}()
 
 	commandName := "testCommand"
-	metric := NewVisibilitySystemManager(nil).createCommandsCountMetric(commandName)
+	metric := newCommandsCountMetric(commandName)
 	metricJSON, err := json.Marshal(metric)
 	assert.NoError(t, err)
 

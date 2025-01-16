@@ -230,7 +230,7 @@ func extractBoolOptionFromArgs(args []string, optionName string) (cleanArgs []st
 
 // Add green color style to the string if possible.
 func PrintTitle(str string) string {
-	return colorStr(str, color.Green)
+	return PrintGreen(str)
 }
 
 // Add cyan color style to the string if possible.
@@ -253,9 +253,19 @@ func PrintComment(str string) string {
 	return colorStr(str, color.Gray)
 }
 
+// Add red color style to the string if possible.
+func PrintRed(str string) string {
+	return colorStr(str, color.Red)
+}
+
 // Add yellow color style to the string if possible.
 func PrintYellow(str string) string {
 	return colorStr(str, color.Yellow)
+}
+
+// Add green color style to the string if possible.
+func PrintGreen(str string) string {
+	return colorStr(str, color.Green)
 }
 
 // Add the requested style to the string if possible.

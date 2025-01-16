@@ -3,6 +3,7 @@ package visibility
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-client-go/jfconnect/services"
 )
 
 type VisibilitySystemManager struct {
@@ -15,10 +16,10 @@ func NewVisibilitySystemManager(serverDetails *config.ServerDetails) *Visibility
 	}
 }
 
-func (vsm *VisibilitySystemManager) SendUsage(commandName string) error {
+func (vsm *VisibilitySystemManager) SendUsage(metric services.VisibilityMetric) error {
 	manager, err := utils.CreateJfConnectServiceManager(vsm.serverDetails, 0, 0)
 	if err != nil {
 		return err
 	}
-	return manager.PostVisibilityMetric(newCommandsCountMetric(commandName))
+	return manager.PostVisibilityMetric(metric)
 }

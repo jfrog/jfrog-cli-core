@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-func newCommandsCountMetric(commandName string) services.VisibilityMetric {
+func NewCommandsCountMetric(commandName string) services.VisibilityMetric {
 	return services.VisibilityMetric{
 		Value: 1,
 		Name:  "jfcli_commands_count",

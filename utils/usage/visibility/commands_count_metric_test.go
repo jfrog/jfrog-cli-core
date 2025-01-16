@@ -29,7 +29,7 @@ func TestCreateCommandsCountMetric(t *testing.T) {
 	}()
 
 	commandName := "testCommand"
-	metric := newCommandsCountMetric(commandName)
+	metric := NewCommandsCountMetric(commandName)
 	metricJSON, err := json.Marshal(metric)
 	assert.NoError(t, err)
 

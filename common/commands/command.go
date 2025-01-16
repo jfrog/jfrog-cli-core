@@ -92,7 +92,8 @@ func reportUsage(command Command, channel chan<- bool) {
 }
 
 func reportUsageToVisibilitySystem(command Command, serverDetails *config.ServerDetails) {
-	if err := visibility.NewVisibilitySystemManager(serverDetails).SendUsage(command.CommandName()); err != nil {
+	commandsCountMetric := visibility.NewCommandsCountMetric(command.CommandName())
+	if err := visibility.NewVisibilitySystemManager(serverDetails).SendUsage(commandsCountMetric); err != nil {
 		log.Debug("Visibility System Usage reporting:", err.Error())
 	}
 }

@@ -1,6 +1,14 @@
 package progressbar
 
 import (
+	golangLog "log"
+	"math"
+	"os"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	corelog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
@@ -11,19 +19,12 @@ import (
 	"github.com/vbauerster/mpb/v8"
 	"github.com/vbauerster/mpb/v8/decor"
 	"golang.org/x/term"
-	golangLog "log"
-	"math"
-	"os"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 const (
 	ProgressBarWidth     = 20
 	longProgressBarWidth = 100
-	ProgressRefreshRate  = 200 * time.Millisecond
+	ProgressRefreshRate  = time.Second
 )
 
 var terminalWidth int

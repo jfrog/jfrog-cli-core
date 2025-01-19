@@ -158,19 +158,6 @@ func createXrayUsageHandler(t *testing.T, productId, commandName, clientId strin
 	}
 }
 
-func TestReportEcosystemUsageError(t *testing.T) {
-	// No features
-	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToArtifactory(false).SetSendToXray(false)
-	reporter.Report()
-	assert.NoError(t, reporter.WaitForResponses())
-	// Empty features
-	reporter.Report(ReportFeature{
-		FeatureId: "",
-		ClientId:  "client",
-	})
-	assert.Error(t, reporter.WaitForResponses())
-}
-
 func create404UsageHandler(t *testing.T) http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

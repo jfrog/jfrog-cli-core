@@ -64,6 +64,9 @@ func init() {
 	if cliTempDir == "" {
 		cliTempDir = os.TempDir()
 	}
+	if err := fileutils.CreateDirIfNotExist(cliTempDir); err != nil {
+		log.Error("failed to create temp dir at:", cliTempDir)
+	}
 	fileutils.SetTempDirBase(cliTempDir)
 }
 

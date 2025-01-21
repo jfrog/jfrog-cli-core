@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
@@ -81,7 +80,7 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 }
 
 // SelectRepositoryInteractively prompts the user to select a repository from a list of repositories that match the given filter parameters.
-func SelectRepositoryInteractively(serverDetails *config.ServerDetails, repoFilterParams services.RepositoriesFilterParams) (string, error) {
+func SelectRepositoryInteractively(serverDetails *config.ServerDetails, repoFilterParams services.RepositoriesFilterParams, promptMessage string) (string, error) {
 	sm, err := CreateServiceManager(serverDetails, 3, 0, false)
 	if err != nil {
 		return "", err
@@ -102,7 +101,7 @@ func SelectRepositoryInteractively(serverDetails *config.ServerDetails, repoFilt
 		return filteredRepos[0], nil
 	}
 	// Prompt the user to select a repository.
-	return ioutils.AskFromListWithMismatchConfirmation(fmt.Sprintf("Please select a %s %s repository to configure:", repoFilterParams.RepoType, repoFilterParams.PackageType), "Repository not found.", ioutils.ConvertToSuggests(filteredRepos)), nil
+	return ioutils.AskFromListWithMismatchConfirmation(promptMessage, "Repository not found.", ioutils.ConvertToSuggests(filteredRepos)), nil
 }
 
 // GetFilteredRepositoriesWithFilterParams returns the names of local, remote, virtual, and federated repositories filtered by their names and type.

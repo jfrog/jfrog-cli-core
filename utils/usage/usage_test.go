@@ -9,7 +9,6 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
-	ecosysusage "github.com/jfrog/jfrog-client-go/utils/usage"
 	xrayusage "github.com/jfrog/jfrog-client-go/xray/usage"
 
 	"github.com/stretchr/testify/assert"
@@ -41,25 +40,6 @@ var (
 		{FeatureId: "featureId", ClientId: "clientId2"},
 		{FeatureId: "featureId"},
 	}
-	ecosystemData = []ecosysusage.ReportEcosystemUsageData{
-		{
-			ProductId: productName,
-			AccountId: serverUrl,
-			ClientId:  "clientId",
-			Features:  []string{"featureId2"},
-		},
-		{
-			ProductId: productName,
-			AccountId: serverUrl,
-			ClientId:  "clientId2",
-			Features:  []string{"featureId"},
-		},
-		{
-			ProductId: productName,
-			AccountId: serverUrl,
-			Features:  []string{"featureId"},
-		},
-	}
 )
 
 func TestConvertToArtifactoryUsage(t *testing.T) {
@@ -69,22 +49,13 @@ func TestConvertToArtifactoryUsage(t *testing.T) {
 	}
 }
 
-func TestConvertToEcosystemUsage(t *testing.T) {
-	reporter := NewUsageReporter(productName, &config.ServerDetails{Url: serverUrl})
-	for i := 0; i < len(features); i++ {
-		report, err := reporter.convertAttributesToEcosystemReports(features[i])
-		assert.NoError(t, err)
-		assert.Equal(t, ecosystemData[i], report[0])
-	}
-}
-
 func TestReportArtifactoryUsage(t *testing.T) {
 	const commandName = "test-command"
 	server := httptest.NewServer(createArtifactoryUsageHandler(t, productName, commandName))
 	defer server.Close()
 	serverDetails := &config.ServerDetails{ArtifactoryUrl: server.URL + "/"}
 
-	reporter := NewUsageReporter(productName, serverDetails).SetSendToEcosystem(false).SetSendToXray(false)
+	reporter := NewUsageReporter(productName, serverDetails).SetSendToXray(false)
 
 	reporter.Report(ReportFeature{
 		FeatureId: commandName,
@@ -93,7 +64,7 @@ func TestReportArtifactoryUsage(t *testing.T) {
 }
 
 func TestReportArtifactoryUsageError(t *testing.T) {
-	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToEcosystem(false).SetSendToXray(false)
+	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToXray(false)
 	reporter.Report(ReportFeature{
 		FeatureId: "",
 	})
@@ -101,7 +72,7 @@ func TestReportArtifactoryUsageError(t *testing.T) {
 
 	server := httptest.NewServer(create404UsageHandler(t))
 	defer server.Close()
-	reporter = NewUsageReporter("", &config.ServerDetails{ArtifactoryUrl: server.URL + "/"}).SetSendToEcosystem(false).SetSendToXray(false)
+	reporter = NewUsageReporter("", &config.ServerDetails{ArtifactoryUrl: server.URL + "/"}).SetSendToXray(false)
 	reporter.Report(ReportFeature{
 		FeatureId: "",
 	})
@@ -140,7 +111,7 @@ func TestReportXrayUsage(t *testing.T) {
 	defer server.Close()
 	serverDetails := &config.ServerDetails{XrayUrl: server.URL + "/"}
 
-	reporter := NewUsageReporter(productName, serverDetails).SetSendToEcosystem(false).SetSendToArtifactory(false)
+	reporter := NewUsageReporter(productName, serverDetails).SetSendToArtifactory(false)
 
 	reporter.Report(ReportFeature{
 		FeatureId: commandName,
@@ -150,13 +121,13 @@ func TestReportXrayUsage(t *testing.T) {
 }
 
 func TestReportXrayError(t *testing.T) {
-	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToEcosystem(false).SetSendToArtifactory(false)
+	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToArtifactory(false)
 	reporter.Report(ReportFeature{})
 	assert.Error(t, reporter.WaitForResponses())
 
 	server := httptest.NewServer(create404UsageHandler(t))
 	defer server.Close()
-	reporter = NewUsageReporter("", &config.ServerDetails{ArtifactoryUrl: server.URL + "/"}).SetSendToEcosystem(false).SetSendToArtifactory(false)
+	reporter = NewUsageReporter("", &config.ServerDetails{ArtifactoryUrl: server.URL + "/"}).SetSendToArtifactory(false)
 	reporter.Report(ReportFeature{})
 	assert.Error(t, reporter.WaitForResponses())
 }
@@ -185,19 +156,6 @@ func createXrayUsageHandler(t *testing.T, productId, commandName, clientId strin
 		}
 		assert.Fail(t, "Unexpected request URI", r.RequestURI)
 	}
-}
-
-func TestReportEcosystemUsageError(t *testing.T) {
-	// No features
-	reporter := NewUsageReporter("", &config.ServerDetails{}).SetSendToArtifactory(false).SetSendToXray(false)
-	reporter.Report()
-	assert.NoError(t, reporter.WaitForResponses())
-	// Empty features
-	reporter.Report(ReportFeature{
-		FeatureId: "",
-		ClientId:  "client",
-	})
-	assert.Error(t, reporter.WaitForResponses())
 }
 
 func create404UsageHandler(t *testing.T) http.HandlerFunc {

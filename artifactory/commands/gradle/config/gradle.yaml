@@ -1,0 +1,11 @@
+version: 1
+type: gradle
+resolver:
+  repo: libs-release
+  serverId: test
+deployer:
+  repo: gradle-local-repo
+  serverId: test
+  ivyPattern: '[organization]/[module]/ivy-[revision].xml'
+  artifactPattern: '[organization]/[module]/[revision]/[artifact]-[revision](-[classifier]).[ext]'
+usePlugin: true

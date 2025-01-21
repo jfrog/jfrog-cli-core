@@ -9,6 +9,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/utils/io"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
@@ -329,17 +330,27 @@ func TestBuildToolLoginCommand_configureDotnet(t *testing.T) {
 }
 
 func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager project.ProjectType) {
-	var nugetConfigFilePath string
-
-	// Set the NuGet.config file path to a custom location.
-	if packageManager == project.Dotnet {
-		nugetConfigFilePath = filepath.Join(t.TempDir(), "NuGet.Config")
-		t.Setenv("DOTNET_CLI_HOME", filepath.Dir(nugetConfigFilePath))
-	} else {
-		nugetConfigFilePath = filepath.Join(t.TempDir(), "nuget.config")
-		t.Setenv("NUGET_CONFIG_FILE", nugetConfigFilePath)
+	// Retrieve the home directory and construct the NuGet.config file path.
+	homeDir, err := os.UserHomeDir()
+	assert.NoError(t, err)
+	var nugetConfigDir string
+	switch {
+	case io.IsWindows():
+		nugetConfigDir = filepath.Join("AppData", "Roaming")
+	case packageManager == project.Nuget:
+		nugetConfigDir = ".config"
+	default:
+		nugetConfigDir = ".nuget"
 	}
 
+	nugetConfigFilePath := filepath.Join(homeDir, nugetConfigDir, "NuGet", "NuGet.Config")
+
+	// Back up the existing NuGet.config and ensure restoration after the test.
+	restoreNugetConfigFunc, err := ioutils.BackupFile(nugetConfigFilePath, packageManager.String()+".config.backup")
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, restoreNugetConfigFunc())
+	}()
 	nugetLoginCmd := createTestSetupCommand(packageManager)
 
 	for _, testCase := range testCases {

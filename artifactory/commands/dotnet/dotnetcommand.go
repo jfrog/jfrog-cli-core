@@ -169,7 +169,7 @@ func changeWorkingDir(newWorkingDir string) (string, error) {
 }
 
 // Runs nuget/dotnet source add command
-func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, password, customConfigPath string) error {
+func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, password string) error {
 	cmd, err := dotnet.CreateDotnetAddSourceCmd(cmdType, sourceUrl)
 	if err != nil {
 		return err
@@ -180,10 +180,6 @@ func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, passw
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"username", user)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"password", password)
 
-	if customConfigPath != "" {
-		addConfigFileFlag(cmd, customConfigPath)
-	}
-
 	_, _, _, err = frogio.RunCmdWithOutputParser(cmd, false)
 	if err != nil {
 		return fmt.Errorf("failed to add source: %w", err)
@@ -193,7 +189,7 @@ func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, passw
 
 // RemoveSourceFromNugetConfigIfExists runs the nuget/dotnet source remove command.
 // Removes the source if it exists in the configuration.
-func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType, customConfigPath string) error {
+func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType) error {
 	cmd, err := dotnet.NewToolchainCmd(cmdType)
 	if err != nil {
 		return err
@@ -205,10 +201,6 @@ func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType, customCon
 		cmd.CommandFlags = append(cmd.CommandFlags, "-name", SourceName)
 	}
 
-	if customConfigPath != "" {
-		addConfigFileFlag(cmd, customConfigPath)
-	}
-
 	stdOut, stdErr, _, err := frogio.RunCmdWithOutputParser(cmd, false)
 	if err != nil {
 		if strings.Contains(stdOut+stdErr, "Unable to find") || strings.Contains(stdOut+stdErr, "does not exist") {
@@ -217,17 +209,6 @@ func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType, customCon
 		return errorutils.CheckErrorf("failed to remove source: %s", err.Error())
 	}
 	return nil
-}
-
-// GetConfigPathFromEnvIfProvided returns the path to the custom NuGet.Config file if it was provided by the user.
-func GetConfigPathFromEnvIfProvided(cmdType dotnet.ToolchainType) string {
-	if cmdType == dotnet.DotnetCore {
-		if customDotnetDir := os.Getenv("DOTNET_CLI_HOME"); customDotnetDir != "" {
-			return filepath.Join(customDotnetDir, "NuGet.Config")
-		}
-	}
-	// The NUGET_CONFIG_FILE environment variable is supported by both NuGet and dotnet CLI.
-	return os.Getenv("NUGET_CONFIG_FILE")
 }
 
 // CreateConfigFileIfNeeded creates a new config file if it does not exist.
@@ -243,15 +224,6 @@ func CreateConfigFileIfNeeded(customConfigPath string) error {
 	}
 	// Write the default config content to the file
 	return os.WriteFile(customConfigPath, []byte("<configuration></configuration>"), 0644)
-}
-
-func addConfigFileFlag(cmd *dotnet.Cmd, configFilePath string) {
-	// Add the config file flag if needed.
-	if cmd.GetToolchain() == dotnet.DotnetCore {
-		cmd.CommandFlags = append(cmd.CommandFlags, "--configfile", configFilePath)
-	} else {
-		cmd.CommandFlags = append(cmd.CommandFlags, "-ConfigFile", configFilePath)
-	}
 }
 
 // Checks if the user provided input such as -configfile flag or -Source flag.

@@ -124,7 +124,9 @@ func (sc *SetupCommand) Run() (err error) {
 		return errorutils.CheckErrorf("unsupported package manager: %s", sc.packageManager)
 	}
 
-	if sc.repoName == "" {
+	// If the repository name is not provided, and the package manager is not Docker or Podman, prompt the user to select a repository.
+	// Docker and Podman do not require a repository name.
+	if sc.repoName == "" && sc.packageManager != project.Docker && sc.packageManager != project.Podman {
 		// Prompt the user to select a virtual repository that matches the package manager.
 		if err = sc.promptUserToSelectRepository(); err != nil {
 			return err
@@ -170,7 +172,7 @@ func (sc *SetupCommand) promptUserToSelectRepository() (err error) {
 	sc.repoName, err = utils.SelectRepositoryInteractively(
 		sc.serverDetails,
 		repoFilterParams,
-		fmt.Sprintf("To configure %s, we need you to select a %s repository in Artifactory", repoFilterParams.PackageType, repoFilterParams.RepoType))
+		fmt.Sprintf("To configure %s, we need you to select a %s repository in Artifactory:", repoFilterParams.PackageType, repoFilterParams.RepoType))
 
 	return err
 }
@@ -248,8 +250,6 @@ func (sc *SetupCommand) configureNpmPnpm() error {
 // For basic auth:
 //
 //	yarn config set //your-artifactory-url/artifactory/api/npm/<repo-name>/:_auth "<base64-encoded-username:password>"
-//
-// Note: Custom configuration file can be set by setting the YARN_RC_FILENAME environment variable.
 func (sc *SetupCommand) configureYarn() (err error) {
 	repoUrl := commandsutils.GetNpmRepositoryUrl(sc.repoName, sc.serverDetails.ArtifactoryUrl)
 	if err = yarn.ConfigSet(commandsutils.NpmConfigRegistryKey, repoUrl, "yarn", false); err != nil {
@@ -284,8 +284,6 @@ func (sc *SetupCommand) configureGo() error {
 // For NuGet:
 //
 //	nuget sources add -Name <JFrog-Artifactory> -Source "https://acme.jfrog.io/artifactory/api/nuget/{repository-name}" -Username <your-username> -Password <your-password>
-//
-// Note: Custom dotnet/nuget configuration file can be set by setting the DOTNET_CLI_HOME/NUGET_CONFIG_FILE environment variable.
 func (sc *SetupCommand) configureDotnetNuget() error {
 	// Retrieve repository URL and credentials for NuGet or .NET Core.
 	sourceUrl, user, password, err := dotnet.GetSourceDetails(sc.serverDetails, sc.repoName, false)
@@ -299,22 +297,13 @@ func (sc *SetupCommand) configureDotnetNuget() error {
 		toolchainType = bidotnet.Nuget
 	}
 
-	// Get config path from the environment if provided
-	customConfigPath := dotnet.GetConfigPathFromEnvIfProvided(toolchainType)
-	if customConfigPath != "" {
-		// Ensure the config file exists
-		if err = dotnet.CreateConfigFileIfNeeded(customConfigPath); err != nil {
-			return err
-		}
-	}
-
 	// Remove existing source if it exists
-	if err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType, customConfigPath); err != nil {
+	if err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType); err != nil {
 		return err
 	}
 
 	// Add the repository as a source in the NuGet configuration with credentials for authentication
-	return dotnet.AddSourceToNugetConfig(toolchainType, sourceUrl, user, password, customConfigPath)
+	return dotnet.AddSourceToNugetConfig(toolchainType, sourceUrl, user, password)
 }
 
 // configureContainer configures container managers like Docker or Podman to authenticate with JFrog Artifactory.

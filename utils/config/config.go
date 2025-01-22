@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
+	applicationAuth "github.com/jfrog/jfrog-client-go/application/auth"
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
@@ -22,6 +23,7 @@ import (
 	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
 	metadataAuth "github.com/jfrog/jfrog-client-go/metadata/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
+	unifiedpolicyAuth "github.com/jfrog/jfrog-client-go/unifiedpolicy/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
@@ -708,6 +710,16 @@ func (serverDetails *ServerDetails) GetClientCertKeyPath() string {
 
 func (serverDetails *ServerDetails) GetApplicationKey() string {
 	return serverDetails.ApplicationKey
+}
+
+func (serverDetails *ServerDetails) CreateApplicationAuthConfig() (auth.ServiceDetails, error) {
+	ascAuth := applicationAuth.NewApplicationDetails()
+	return serverDetails.createAuthConfig(ascAuth)
+}
+
+func (serverDetails *ServerDetails) CreateUnifiedPolicyAuthConfig() (auth.ServiceDetails, error) {
+	ascAuth := unifiedpolicyAuth.NewUnifiedPolicyDetails()
+	return serverDetails.createAuthConfig(ascAuth)
 }
 
 func (serverDetails *ServerDetails) CreateArtAuthConfig() (auth.ServiceDetails, error) {

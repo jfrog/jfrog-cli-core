@@ -15,7 +15,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 )
 
@@ -211,21 +210,6 @@ func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType) error {
 	return nil
 }
 
-// CreateConfigFileIfNeeded creates a new config file if it does not exist.
-func CreateConfigFileIfNeeded(customConfigPath string) error {
-	// Ensure the file exists
-	exists, err := fileutils.IsFileExists(customConfigPath, false)
-	if err != nil || exists {
-		return err
-	}
-	// If the file does not exist, create it
-	if err = os.MkdirAll(filepath.Dir(customConfigPath), 0755); err != nil {
-		return err
-	}
-	// Write the default config content to the file
-	return os.WriteFile(customConfigPath, []byte("<configuration></configuration>"), 0644)
-}
-
 // Checks if the user provided input such as -configfile flag or -Source flag.
 // If those flags were provided, NuGet will use the provided configs (default config file or the one with -configfile)
 // If neither provided, we are initializing our own config.
@@ -343,6 +327,10 @@ func GetSourceDetails(details *config.ServerDetails, repoName string, useNugetV2
 		nugetApi = "api/nuget"
 	}
 	u.Path = path.Join(u.Path, nugetApi, repoName)
+	// Append "index.json" for NuGet V3
+	if !useNugetV2 {
+		u.Path = path.Join(u.Path, "index.json")
+	}
 	sourceURL = u.String()
 
 	user = details.User

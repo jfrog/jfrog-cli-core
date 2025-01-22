@@ -370,7 +370,7 @@ func testBuildToolLoginCommandConfigureDotnetNuget(t *testing.T, packageManager 
 
 			nugetConfigContent := string(nugetConfigContentBytes)
 
-			assert.Contains(t, nugetConfigContent, fmt.Sprintf("add key=\"%s\" value=\"https://acme.jfrog.io/artifactory/api/nuget/v3/test-repo\"", dotnet.SourceName))
+			assert.Contains(t, nugetConfigContent, fmt.Sprintf("add key=\"%s\" value=\"https://acme.jfrog.io/artifactory/api/nuget/v3/test-repo/index.json\"", dotnet.SourceName))
 
 			if testCase.accessToken != "" {
 				// Validate token-based authentication (The token is encoded so we can't test it)

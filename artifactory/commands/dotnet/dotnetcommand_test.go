@@ -87,7 +87,7 @@ func TestInitNewConfig(t *testing.T) {
 	assert.Equal(t, `<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
-    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/v3/test-repo" protocolVersion="3" allowInsecureConnections="true"/>
+    <add key="JFrogCli" value="https://server.com/artifactory/api/nuget/v3/test-repo/index.json" protocolVersion="3" allowInsecureConnections="true"/>
   </packageSources>
   <packageSourceCredentials>
     <JFrogCli>
@@ -133,7 +133,7 @@ func TestGetSourceDetails(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "user", user)
 	assert.Equal(t, "pass", pass)
-	assert.Equal(t, "https://server.com/artifactory/api/nuget/v3/repo-name", url)
+	assert.Equal(t, "https://server.com/artifactory/api/nuget/v3/repo-name/index.json", url)
 	server.Password = ""
 	server.AccessToken = "abc123"
 	url, user, pass, err = GetSourceDetails(server, repoName, true)
@@ -222,46 +222,4 @@ func createNewDotnetModule(t *testing.T, tmpDir string) *build.DotnetModule {
 	module, err := dotnetBuild.AddDotnetModules("")
 	assert.NoError(t, err)
 	return module
-}
-
-func TestCreateConfigFileIfNeeded(t *testing.T) {
-	testCases := []struct {
-		name          string
-		configPath    string
-		fileExists    bool
-		expectedError error
-	}{
-		{
-			name:       "File does not exist, create file with default content",
-			configPath: "/custom/path/NuGet.Config",
-			fileExists: false,
-		},
-		{
-			name:       "File exists, no changes",
-			configPath: "/custom/path/NuGet.Config",
-			fileExists: true,
-		},
-	}
-
-	// Setup for testing file existence and creation
-	for _, testCase := range testCases {
-		t.Run(testCase.name, func(t *testing.T) {
-			configPath := filepath.Join(t.TempDir(), testCase.configPath)
-			if testCase.fileExists {
-				assert.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0777))
-				assert.NoError(t, os.WriteFile(configPath, []byte{}, 0644))
-			}
-			err := CreateConfigFileIfNeeded(configPath)
-			assert.NoError(t, err)
-
-			if !testCase.fileExists {
-				// Read the content of the file
-				content, err := os.ReadFile(configPath)
-				assert.NoError(t, err)
-
-				// Assert the content is the default config content
-				assert.Equal(t, "<configuration></configuration>", string(content))
-			}
-		})
-	}
 }

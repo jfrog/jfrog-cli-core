@@ -713,13 +713,15 @@ func (serverDetails *ServerDetails) GetApplicationKey() string {
 }
 
 func (serverDetails *ServerDetails) CreateApplicationAuthConfig() (auth.ServiceDetails, error) {
-	ascAuth := applicationAuth.NewApplicationDetails()
-	return serverDetails.createAuthConfig(ascAuth)
+	appAuth := applicationAuth.NewApplicationDetails()
+	appAuth.SetUrl(serverDetails.Url)
+	return serverDetails.createAuthConfig(appAuth)
 }
 
 func (serverDetails *ServerDetails) CreateUnifiedPolicyAuthConfig() (auth.ServiceDetails, error) {
-	ascAuth := unifiedpolicyAuth.NewUnifiedPolicyDetails()
-	return serverDetails.createAuthConfig(ascAuth)
+	upAuth := unifiedpolicyAuth.NewUnifiedPolicyDetails()
+	upAuth.SetUrl(serverDetails.Url)
+	return serverDetails.createAuthConfig(upAuth)
 }
 
 func (serverDetails *ServerDetails) CreateArtAuthConfig() (auth.ServiceDetails, error) {

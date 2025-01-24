@@ -101,5 +101,3 @@ require (
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20241121100855-e7a75ceee2bd
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.3.3-0.20231223133729-ef57bd08cedc
-
-replace github.com/jfrog/jfrog-cli-artifactory => github.com/bhanurp/jfrog-cli-artifactory v0.1.12-0.20250110100951-d002779f4509

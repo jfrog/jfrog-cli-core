@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/dotnet"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/maven"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -398,4 +399,58 @@ func TestIsSupportedPackageManager(t *testing.T) {
 
 	// Test unsupported package manager
 	assert.False(t, IsSupportedPackageManager(project.Cocoapods), "Package manager Cocoapods should not be supported")
+}
+
+func TestSetupCommand_Maven(t *testing.T) {
+	// Retrieve the home directory and construct the settings.xml file path.
+	homeDir, err := os.UserHomeDir()
+	assert.NoError(t, err)
+	settingsXml := filepath.Join(homeDir, ".m2", "settings.xml")
+
+	// Back up the existing settings.xml file and ensure restoration after the test.
+	restoreSettingsXml, err := ioutils.BackupFile(settingsXml, ".settings.xml.backup")
+	assert.NoError(t, err)
+	defer func() {
+		assert.NoError(t, restoreSettingsXml())
+	}()
+
+	mavenLoginCmd := createTestSetupCommand(project.Maven)
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			// Set up server details for the current test case's authentication type.
+			mavenLoginCmd.serverDetails.SetUser(testCase.user)
+			mavenLoginCmd.serverDetails.SetPassword(testCase.password)
+			mavenLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
+
+			// Run the login command and ensure no errors occur.
+			require.NoError(t, mavenLoginCmd.Run())
+
+			// Read the contents of the temporary settings.xml file.
+			settingsXmlContentBytes, err := os.ReadFile(settingsXml)
+			assert.NoError(t, err)
+			settingsXmlContent := string(settingsXmlContentBytes)
+
+			// Check that the Artifactory URL is correctly set in settings.xml.
+			assert.Contains(t, settingsXmlContent, fmt.Sprintf("<url>%s</url>", mavenLoginCmd.serverDetails.ArtifactoryUrl))
+
+			// Validate the mirror ID and name are set correctly.
+			assert.Contains(t, settingsXmlContent, fmt.Sprintf("<id>%s</id>", maven.ArtifactoryMirrorID))
+			assert.Contains(t, settingsXmlContent, fmt.Sprintf("<name>%s</name>", mavenLoginCmd.repoName))
+
+			// Validate authentication credentials in the server section.
+			if testCase.accessToken != "" {
+				// Access token is set as password
+				assert.Contains(t, settingsXmlContent, fmt.Sprintf("<username>%s</username>", auth.ExtractUsernameFromAccessToken(testCase.accessToken)))
+				assert.Contains(t, settingsXmlContent, fmt.Sprintf("<password>%s</password>", testCase.accessToken))
+			} else if testCase.user != "" && testCase.password != "" {
+				// Basic authentication with username and password
+				assert.Contains(t, settingsXmlContent, fmt.Sprintf("<username>%s</username>", testCase.user))
+				assert.Contains(t, settingsXmlContent, fmt.Sprintf("<password>%s</password>", testCase.password))
+			}
+
+			// Clean up the temporary settings.xml file (if needed).
+			assert.NoError(t, os.Remove(settingsXml))
+		})
+	}
 }

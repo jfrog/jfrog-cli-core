@@ -1,6 +1,7 @@
 package buildinfo
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -255,8 +256,15 @@ func TestAddGitDoCollect(t *testing.T) {
 		dotGitPath:         dotGitPath,
 	}
 
+	gitDetails := utils.GitParsingDetails{DotGitPath: config.dotGitPath, LogLimit: config.issuesConfig.LogLimit, PrettyFormat: gitParsingPrettyFormat}
+	var issues []buildinfo.AffectedIssue
+	logRegExp, err := createLogRegExpHandler(config.issuesConfig, &issues)
+	if err != nil {
+		t.Error(err)
+	}
+
 	// Collect issues
-	issues, err := config.DoCollect(config.issuesConfig, "")
+	err = utils.ParseGitLogsFromLastVcsRevision(gitDetails, logRegExp, "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -276,7 +284,8 @@ func TestAddGitDoCollect(t *testing.T) {
 	baseDir, dotGitPath = tests.PrepareDotGitDir(t, originalFolder, filepath.Join("..", "testdata"))
 
 	// Collect issues - we pass a revision, so only 2 of the 4 existing issues should be collected
-	issues, err = config.DoCollect(config.issuesConfig, "6198a6294722fdc75a570aac505784d2ec0d1818")
+	issues = []buildinfo.AffectedIssue{}
+	err = utils.ParseGitLogsFromLastVcsRevision(gitDetails, logRegExp, "6198a6294722fdc75a570aac505784d2ec0d1818")
 	if err != nil {
 		t.Error(err)
 	}
@@ -286,7 +295,8 @@ func TestAddGitDoCollect(t *testing.T) {
 	}
 
 	// Test collection with a made up revision - the command should not throw an error, and 0 issues should be returned.
-	issues, err = config.DoCollect(config.issuesConfig, "abcdefABCDEF1234567890123456789012345678")
+	issues = []buildinfo.AffectedIssue{}
+	err = utils.ParseGitLogsFromLastVcsRevision(gitDetails, logRegExp, "abcdefABCDEF1234567890123456789012345678")
 	assert.NoError(t, err)
 	assert.Empty(t, issues)
 

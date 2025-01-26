@@ -11,7 +11,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	ecosysusage "github.com/jfrog/jfrog-client-go/utils/usage"
 	xrayusage "github.com/jfrog/jfrog-client-go/xray/usage"
 
 	"golang.org/x/sync/errgroup"
@@ -27,7 +26,6 @@ type UsageReporter struct {
 	serverDetails   *config.ServerDetails
 	reportWaitGroup *errgroup.Group
 
-	sendToEcosystem   bool
 	sendToXray        bool
 	sendToArtifactory bool
 }
@@ -48,7 +46,6 @@ func NewUsageReporter(productId string, serverDetails *config.ServerDetails) *Us
 		ProductId:         productId,
 		serverDetails:     serverDetails,
 		reportWaitGroup:   new(errgroup.Group),
-		sendToEcosystem:   true,
 		sendToXray:        true,
 		sendToArtifactory: true,
 	}
@@ -61,11 +58,6 @@ func ShouldReportUsage() (reportUsage bool) {
 		return false
 	}
 	return reportUsage
-}
-
-func (ur *UsageReporter) SetSendToEcosystem(send bool) *UsageReporter {
-	ur.sendToEcosystem = send
-	return ur
 }
 
 func (ur *UsageReporter) SetSendToXray(send bool) *UsageReporter {
@@ -89,14 +81,6 @@ func (ur *UsageReporter) Report(features ...ReportFeature) {
 		return
 	}
 	log.Debug(ArtifactoryCallHomePrefix, "Sending info...")
-	if ur.sendToEcosystem {
-		ur.reportWaitGroup.Go(func() (err error) {
-			if err = ur.reportToEcosystem(features...); err != nil {
-				err = fmt.Errorf("ecosystem, %w", err)
-			}
-			return
-		})
-	}
 	if ur.sendToXray {
 		ur.reportWaitGroup.Go(func() (err error) {
 			if err = ur.reportToXray(features...); err != nil {
@@ -120,22 +104,6 @@ func (ur *UsageReporter) WaitForResponses() (err error) {
 		err = fmt.Errorf("%s %s", ArtifactoryCallHomePrefix, err.Error())
 	}
 	return
-}
-
-func (ur *UsageReporter) reportToEcosystem(features ...ReportFeature) (err error) {
-	if ur.serverDetails.Url == "" {
-		err = errorutils.CheckErrorf("JFrog Platform URL is not set")
-		return
-	}
-	reports, err := ur.convertAttributesToEcosystemReports(features...)
-	if err != nil {
-		return
-	}
-	if len(reports) == 0 {
-		err = errorutils.CheckErrorf("nothing to send")
-		return
-	}
-	return ecosysusage.SendEcosystemUsageReports(reports...)
 }
 
 func (ur *UsageReporter) reportToXray(features ...ReportFeature) (err error) {
@@ -216,31 +184,6 @@ func (ur *UsageReporter) convertAttributesToXrayEvents(reportFeatures ...ReportF
 		events = append(events, xrayusage.CreateUsageEvent(
 			ur.ProductId, feature.FeatureId, convertedAttributes...,
 		))
-	}
-	return
-}
-
-func (ur *UsageReporter) convertAttributesToEcosystemReports(reportFeatures ...ReportFeature) (reports []ecosysusage.ReportEcosystemUsageData, err error) {
-	accountId := ur.serverDetails.Url
-	clientToFeaturesMap := map[string][]string{}
-	// Combine
-	for _, feature := range reportFeatures {
-		if feature.FeatureId == "" {
-			continue
-		}
-		if features, contains := clientToFeaturesMap[feature.ClientId]; contains {
-			clientToFeaturesMap[feature.ClientId] = append(features, feature.FeatureId)
-		} else {
-			clientToFeaturesMap[feature.ClientId] = []string{feature.FeatureId}
-		}
-	}
-	// Create data
-	for clientId, features := range clientToFeaturesMap {
-		var report ecosysusage.ReportEcosystemUsageData
-		if report, err = ecosysusage.CreateUsageData(ur.ProductId, accountId, clientId, features...); err != nil {
-			return
-		}
-		reports = append(reports, report)
 	}
 	return
 }

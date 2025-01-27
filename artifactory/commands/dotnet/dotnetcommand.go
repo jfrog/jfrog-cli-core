@@ -179,9 +179,9 @@ func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, passw
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"username", user)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"password", password)
 
-	_, _, _, err = frogio.RunCmdWithOutputParser(cmd, false)
+	_, errOut, _, err := frogio.RunCmdWithOutputParser(cmd, false)
 	if err != nil {
-		return fmt.Errorf("failed to add source: %w", err)
+		return fmt.Errorf("%s\nfailed to add source: %w", errOut, err)
 	}
 	return nil
 }
@@ -205,7 +205,7 @@ func RemoveSourceFromNugetConfigIfExists(cmdType dotnet.ToolchainType) error {
 		if strings.Contains(stdOut+stdErr, "Unable to find") || strings.Contains(stdOut+stdErr, "does not exist") {
 			return nil
 		}
-		return errorutils.CheckErrorf("failed to remove source: %s", err.Error())
+		return errorutils.CheckErrorf("%s\nfailed to remove source: %s", stdErr, err.Error())
 	}
 	return nil
 }

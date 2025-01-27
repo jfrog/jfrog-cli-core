@@ -1,8 +1,11 @@
 package python
 
 import (
+	"fmt"
 	"io"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/build-info-go/utils/pythonutils"
@@ -44,6 +47,15 @@ func (pc *PipCommand) SetArgs(arguments []string) *PipCommand {
 func (pc *PipCommand) SetCommandName(commandName string) *PipCommand {
 	pc.PythonCommand.SetCommandName(commandName)
 	return pc
+}
+
+func CreatePipConfigManually(customPipConfigPath, repoWithCredsUrl string) error {
+	if err := os.MkdirAll(filepath.Dir(customPipConfigPath), os.ModePerm); err != nil {
+		return err
+	}
+	// Write the configuration to pip.conf.
+	configContent := fmt.Sprintf("[global]\nindex-url = %s\n", repoWithCredsUrl)
+	return os.WriteFile(customPipConfigPath, []byte(configContent), 0644)
 }
 
 func (pc *PipCommand) CommandName() string {

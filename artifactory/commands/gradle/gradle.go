@@ -1,6 +1,7 @@
 package gradle
 
 import (
+	_ "embed"
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/generic"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -15,8 +16,14 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/spf13/viper"
+	"os"
 	"path/filepath"
+	"strings"
+	"text/template"
 )
+
+//go:embed resources/init.gradle
+var gradleInitScript string
 
 const (
 	usePlugin  = "useplugin"
@@ -229,6 +236,80 @@ func (gc *GradleCommand) Result() *commandsutils.Result {
 func (gc *GradleCommand) setResult(result *commandsutils.Result) *GradleCommand {
 	gc.result = result
 	return gc
+}
+
+type InitScriptAuthConfig struct {
+	ArtifactoryURL           string
+	ArtifactoryRepositoryKey string
+	ArtifactoryUsername      string
+	ArtifactoryAccessToken   string
+}
+
+// GenerateInitScript generates a Gradle init script with the provided authentication configuration.
+func GenerateInitScript(config InitScriptAuthConfig) (string, error) {
+	tmpl, err := template.New("gradleTemplate").Parse(gradleInitScript)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse Gradle init script template: %s", err)
+	}
+
+	var result strings.Builder
+	err = tmpl.Execute(&result, config)
+	if err != nil {
+		return "", fmt.Errorf("failed to execute Gradle init script template: %s", err)
+	}
+
+	return result.String(), nil
+}
+
+// WriteInitScriptWithBackup write the Gradle init script to the Gradle user home directory.
+// If init scripts already exists, they will be backed up.
+// Allows the user to interactively decide whether to overwrite existing init scripts.
+func WriteInitScriptWithBackup(initScript string, interactUser bool) error {
+	gradleHome := os.Getenv("GRADLE_USER_HOME")
+	if gradleHome == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get user home directory: %w", err)
+		}
+		gradleHome = filepath.Join(homeDir, ".gradle")
+	}
+	initScripts, err := getExistingGradleInitScripts(gradleHome)
+	if err != nil {
+		return err
+	}
+	if len(initScripts) > 0 && interactUser {
+		toContinue := coreutils.AskYesNo("Existing Gradle init scripts have been found. Do you want to overwrite them?", false)
+		if !toContinue {
+			return nil
+		}
+	}
+	if err = backupExistingGradleInitScripts(initScripts); err != nil {
+		return err
+	}
+	initScriptPath := filepath.Join(gradleHome, "init.gradle")
+	if err = os.WriteFile(initScriptPath, []byte(initScript), 0644); err != nil {
+		return fmt.Errorf("failed to write Gradle init script to %s: %w", initScriptPath, err)
+	}
+	return nil
+}
+
+func getExistingGradleInitScripts(gradleHome string) ([]string, error) {
+	gradleInitScripts, err := filepath.Glob(filepath.Join(gradleHome, "init.gradle*"))
+	if err != nil {
+		return nil, fmt.Errorf("failed while searching for Gradle init scripts: %w", err)
+	}
+	return gradleInitScripts, nil
+}
+
+// backupExistingGradleInitScripts backup existing Gradle init scripts in the Gradle user home directory.
+func backupExistingGradleInitScripts(gradleInitScripts []string) error {
+	for _, script := range gradleInitScripts {
+		backupPath := script + ".bak"
+		if err := os.Rename(script, backupPath); err != nil {
+			return fmt.Errorf("failed to backup Gradle init script %s: %w", script, err)
+		}
+	}
+	return nil
 }
 
 func runGradle(vConfig *viper.Viper, tasks []string, deployableArtifactsFile string, configuration *build.BuildConfiguration, threads int, disableDeploy bool) error {

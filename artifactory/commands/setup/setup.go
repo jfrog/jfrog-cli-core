@@ -1,11 +1,13 @@
 package setup
 
 import (
+	_ "embed"
 	"fmt"
 	bidotnet "github.com/jfrog/build-info-go/build/utils/dotnet"
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/dotnet"
 	gocommands "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/golang"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/gradle"
 	pythoncommands "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/python"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/repository"
 	commandsutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
@@ -17,12 +19,14 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/maps"
 	"net/url"
 	"os"
 	"slices"
+	"strings"
 )
 
 // packageManagerToRepositoryPackageType maps project types to corresponding Artifactory repository package types.
@@ -46,6 +50,8 @@ var packageManagerToRepositoryPackageType = map[project.ProjectType]string{
 	project.Podman: repository.Docker,
 
 	project.Go: repository.Go,
+
+	project.Gradle: repository.Gradle,
 }
 
 // SetupCommand configures registries and authentication for various package manager (npm, Yarn, Pip, Pipenv, Poetry, Go)
@@ -147,6 +153,8 @@ func (sc *SetupCommand) Run() (err error) {
 		err = sc.configureDotnetNuget()
 	case project.Docker, project.Podman:
 		err = sc.configureContainer()
+	case project.Gradle:
+		err = sc.configureGradle()
 	default:
 		err = errorutils.CheckErrorf("unsupported package manager: %s", sc.packageManager)
 	}
@@ -348,4 +356,26 @@ func (sc *SetupCommand) configureContainer() error {
 		&container.ContainerManagerLoginConfig{ServerDetails: sc.serverDetails},
 		containerManagerType,
 	)
+}
+
+// configureGradle configures Gradle to use the specified Artifactory repository.
+func (sc *SetupCommand) configureGradle() error {
+	password := sc.serverDetails.GetPassword()
+	username := sc.serverDetails.GetUser()
+	if sc.serverDetails.GetAccessToken() != "" {
+		password = sc.serverDetails.GetAccessToken()
+		username = auth.ExtractUsernameFromAccessToken(password)
+	}
+	initScriptAuthConfig := gradle.InitScriptAuthConfig{
+		ArtifactoryURL:           strings.TrimSuffix(sc.serverDetails.GetArtifactoryUrl(), "/"),
+		ArtifactoryRepositoryKey: sc.repoName,
+		ArtifactoryAccessToken:   password,
+		ArtifactoryUsername:      username,
+	}
+	initScript, err := gradle.GenerateInitScript(initScriptAuthConfig)
+	if err != nil {
+		return err
+	}
+
+	return gradle.WriteInitScriptWithBackup(initScript, true)
 }

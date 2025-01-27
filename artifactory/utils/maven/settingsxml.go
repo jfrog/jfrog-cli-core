@@ -7,6 +7,7 @@ import (
 	"github.com/apache/camel-k/v2/pkg/util/maven"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // ArtifactoryMirrorID is the ID used for the Artifactory mirror.
@@ -44,7 +45,9 @@ func (sxm *SettingsXmlManager) loadSettings() error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// If file does not exist, initialize with empty settings
-			sxm.settings = maven.Settings{}
+			sxm.settings = maven.Settings{
+				XMLName: xml.Name{Local: "settings"},
+			}
 			return nil
 		}
 		return fmt.Errorf("failed to read settings file %s: %w", sxm.path, err)
@@ -83,7 +86,7 @@ func (sxm *SettingsXmlManager) updateMirror(artifactoryUrl, repoName string) err
 		ID:       ArtifactoryMirrorID,
 		Name:     repoName,
 		MirrorOf: "*",
-		URL:      artifactoryUrl,
+		URL:      strings.TrimSuffix(artifactoryUrl, "/") + "/" + repoName,
 	}
 
 	// Find if the mirror already exists

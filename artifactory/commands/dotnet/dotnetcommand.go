@@ -182,9 +182,9 @@ func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, passw
 	// Support http connection if requested
 	if strings.HasPrefix(sourceUrl, "http://") {
 		if cmdType == dotnet.DotnetCore {
-			cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"allow-insecure-connections", "true")
+			cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"allow-insecure-connections")
 		} else {
-			cmd.CommandFlags = append(cmd.CommandFlags, "AllowInsecureConnections", "true")
+			cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"AllowInsecureConnections")
 		}
 	}
 

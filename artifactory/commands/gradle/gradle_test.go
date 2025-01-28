@@ -34,7 +34,7 @@ func TestWriteInitScript(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify the init script was written to the correct location
-	expectedPath := filepath.Join(tempDir, "init.d", "jfrog.jfrog.init.gradle")
+	expectedPath := filepath.Join(tempDir, "init.d", InitScriptName)
 	content, err := os.ReadFile(expectedPath)
 	assert.NoError(t, err)
 	assert.Equal(t, initScript, string(content))

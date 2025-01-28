@@ -327,7 +327,7 @@ func TestSetupCommand_Gradle(t *testing.T) {
 	t.Setenv(gradle.UserHomeEnv, testGradleUserHome)
 	gradleLoginCmd := createTestSetupCommand(project.Gradle)
 
-	expectedInitScriptPath := filepath.Join(testGradleUserHome, "init.d", "jfrog.init.gradle")
+	expectedInitScriptPath := filepath.Join(testGradleUserHome, "init.d", gradle.InitScriptName)
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			// Set up server details for the current test case's authentication type.

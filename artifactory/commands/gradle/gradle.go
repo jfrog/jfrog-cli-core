@@ -29,7 +29,8 @@ const (
 	usePlugin  = "useplugin"
 	useWrapper = "usewrapper"
 
-	UserHomeEnv = "GRADLE_USER_HOME"
+	UserHomeEnv    = "GRADLE_USER_HOME"
+	InitScriptName = "jfrog.init.gradle"
 )
 
 type GradleCommand struct {
@@ -279,7 +280,7 @@ func WriteInitScript(initScript string) error {
 	if err := os.MkdirAll(initScriptsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create Gradle init.d directory: %w", err)
 	}
-	jfrogInitScriptPath := filepath.Join(initScriptsDir, "jfrog.init.gradle")
+	jfrogInitScriptPath := filepath.Join(initScriptsDir, InitScriptName)
 	if err := os.WriteFile(jfrogInitScriptPath, []byte(initScript), 0644); err != nil {
 		return fmt.Errorf("failed to write Gradle init script to %s: %w", jfrogInitScriptPath, err)
 	}

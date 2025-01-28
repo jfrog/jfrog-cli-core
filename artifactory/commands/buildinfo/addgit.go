@@ -172,7 +172,7 @@ func (config *BuildAddGitCommand) collectBuildIssues() ([]buildinfo.AffectedIssu
 
 	// Run issues collection.
 	gitDetails := utils.GitParsingDetails{DotGitPath: config.dotGitPath, LogLimit: config.issuesConfig.LogLimit, PrettyFormat: gitParsingPrettyFormat}
-	err = utils.ParseGitLogsFromLastBuild(config.issuesConfig.ServerDetails, config.buildConfiguration, gitDetails, logRegExp)
+	err = utils.ParseGitLogFromLastBuild(config.issuesConfig.ServerDetails, config.buildConfiguration, gitDetails, logRegExp)
 	if err != nil {
 		return nil, err
 	}

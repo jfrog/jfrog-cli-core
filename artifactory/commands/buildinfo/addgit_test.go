@@ -264,7 +264,7 @@ func TestAddGitDoCollect(t *testing.T) {
 	}
 
 	// Collect issues
-	err = utils.ParseGitLogsFromLastVcsRevision(gitDetails, logRegExp, "")
+	err = utils.ParseGitLogFromLastVcsRevision(gitDetails, logRegExp, "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -285,7 +285,7 @@ func TestAddGitDoCollect(t *testing.T) {
 
 	// Collect issues - we pass a revision, so only 2 of the 4 existing issues should be collected
 	issues = []buildinfo.AffectedIssue{}
-	err = utils.ParseGitLogsFromLastVcsRevision(gitDetails, logRegExp, "6198a6294722fdc75a570aac505784d2ec0d1818")
+	err = utils.ParseGitLogFromLastVcsRevision(gitDetails, logRegExp, "6198a6294722fdc75a570aac505784d2ec0d1818")
 	if err != nil {
 		t.Error(err)
 	}
@@ -296,7 +296,7 @@ func TestAddGitDoCollect(t *testing.T) {
 
 	// Test collection with a made up revision - the command should not throw an error, and 0 issues should be returned.
 	issues = []buildinfo.AffectedIssue{}
-	err = utils.ParseGitLogsFromLastVcsRevision(gitDetails, logRegExp, "abcdefABCDEF1234567890123456789012345678")
+	err = utils.ParseGitLogFromLastVcsRevision(gitDetails, logRegExp, "abcdefABCDEF1234567890123456789012345678")
 	assert.NoError(t, err)
 	assert.Empty(t, issues)
 

@@ -18,7 +18,7 @@ import (
 	"strconv"
 )
 
-func getLatestVcsRevision(serverDetails *utilsconfig.ServerDetails, buildConfiguration *build.BuildConfiguration, vcsUrl string) (string, error) {
+func doGetLatestVcsRevision(serverDetails *utilsconfig.ServerDetails, buildConfiguration *build.BuildConfiguration, vcsUrl string) (string, error) {
 	// Get latest build's build-info from Artifactory
 	buildInfo, err := getLatestBuildInfo(serverDetails, buildConfiguration)
 	if err != nil {
@@ -69,52 +69,74 @@ type GitParsingDetails struct {
 	DotGitPath string
 }
 
-// Parses git logs from the last build's VCS revision.
+// Parses git commits from the last build's VCS revision.
 // Calls git log with a custom format, and parses each line of the output with regexp. logRegExp is used to parse the log lines.
-func ParseGitLogsFromLastBuild(serverDetails *utilsconfig.ServerDetails, buildConfiguration *build.BuildConfiguration, gitDetails GitParsingDetails, logRegExp *gofrogcmd.CmdOutputPattern) error {
+func ParseGitLogFromLastBuild(serverDetails *utilsconfig.ServerDetails, buildConfiguration *build.BuildConfiguration, gitDetails GitParsingDetails, logRegExp *gofrogcmd.CmdOutputPattern) error {
+	lastVcsRevision, err := getLatestVcsRevision(serverDetails, buildConfiguration, &gitDetails)
+	if err != nil {
+		return err
+	}
+	return ParseGitLogFromLastVcsRevision(gitDetails, logRegExp, lastVcsRevision)
+}
+
+// Returns git commits from the last build's VCS revision.
+// Calls git log with a custom format, and returns the output as is.
+func GetPlainGitLogFromLastBuild(serverDetails *utilsconfig.ServerDetails, buildConfiguration *build.BuildConfiguration, gitDetails GitParsingDetails) (string, error) {
+	lastVcsRevision, err := getLatestVcsRevision(serverDetails, buildConfiguration, &gitDetails)
+	if err != nil {
+		return "", err
+	}
+	return getPlainGitLogFromLastVcsRevision(gitDetails, lastVcsRevision)
+}
+
+// Get latest build's VCS revision from Artifactory.
+func getLatestVcsRevision(serverDetails *utilsconfig.ServerDetails, buildConfiguration *build.BuildConfiguration, gitDetails *GitParsingDetails) (string, error) {
 	// Check that git exists in path.
 	_, err := exec.LookPath("git")
 	if err != nil {
-		return errorutils.CheckError(err)
+		return "", errorutils.CheckError(err)
 	}
 
-	gitDetails.DotGitPath, err = GetDotGit(gitDetails.DotGitPath)
+	(*gitDetails).DotGitPath, err = GetDotGit(gitDetails.DotGitPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	vcsUrl, err := getVcsUrl(gitDetails.DotGitPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Get latest build's VCS revision from Artifactory.
-	lastVcsRevision, err := getLatestVcsRevision(serverDetails, buildConfiguration, vcsUrl)
-	if err != nil {
-		return err
-	}
-	return ParseGitLogsFromLastVcsRevision(gitDetails, logRegExp, lastVcsRevision)
+	return doGetLatestVcsRevision(serverDetails, buildConfiguration, vcsUrl)
 }
 
-func ParseGitLogsFromLastVcsRevision(gitDetails GitParsingDetails, logRegExp *gofrogcmd.CmdOutputPattern, lastVcsRevision string) error {
-	errRegExp, err := createErrRegExpHandler(lastVcsRevision)
-	if err != nil {
-		return err
-	}
-
+func prepareGitLogCommand(gitDetails GitParsingDetails, lastVcsRevision string) (logCmd *LogCmd, cleanupFunc func() error, err error) {
 	// Get log with limit, starting from the latest commit.
-	logCmd := &LogCmd{logLimit: gitDetails.LogLimit, lastVcsRevision: lastVcsRevision, prettyFormat: gitDetails.PrettyFormat}
+	logCmd = &LogCmd{logLimit: gitDetails.LogLimit, lastVcsRevision: lastVcsRevision, prettyFormat: gitDetails.PrettyFormat}
 
 	// Change working dir to where .git is.
 	wd, err := os.Getwd()
 	if errorutils.CheckError(err) != nil {
-		return err
+		return
 	}
+	cleanupFunc = func() error {
+		return errors.Join(err, errorutils.CheckError(os.Chdir(wd)))
+	}
+	err = errorutils.CheckError(os.Chdir(gitDetails.DotGitPath))
+	return
+}
+
+func ParseGitLogFromLastVcsRevision(gitDetails GitParsingDetails, logRegExp *gofrogcmd.CmdOutputPattern, lastVcsRevision string) (err error) {
+	logCmd, cleanupFunc, err := prepareGitLogCommand(gitDetails, lastVcsRevision)
 	defer func() {
-		err = errors.Join(err, errorutils.CheckError(os.Chdir(wd)))
+		if cleanupFunc != nil {
+			err = errors.Join(err, cleanupFunc())
+		}
 	}()
-	err = os.Chdir(gitDetails.DotGitPath)
-	if errorutils.CheckError(err) != nil {
+
+	errRegExp, err := createErrRegExpHandler(lastVcsRevision)
+	if err != nil {
 		return err
 	}
 
@@ -134,6 +156,18 @@ func ParseGitLogsFromLastVcsRevision(gitDetails GitParsingDetails, logRegExp *go
 		err = errorutils.CheckErrorf("failed executing git log command")
 	}
 	return err
+}
+
+func getPlainGitLogFromLastVcsRevision(gitDetails GitParsingDetails, lastVcsRevision string) (gitLog string, err error) {
+	logCmd, cleanupFunc, err := prepareGitLogCommand(gitDetails, lastVcsRevision)
+	defer func() {
+		if cleanupFunc != nil {
+			err = errors.Join(err, cleanupFunc())
+		}
+	}()
+
+	// Run git command.
+	return gofrogcmd.RunCmdOutput(logCmd)
 }
 
 // Creates a regexp handler to handle the event of revision missing in the git revision range.

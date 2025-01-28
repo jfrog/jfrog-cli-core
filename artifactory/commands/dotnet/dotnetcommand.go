@@ -188,9 +188,9 @@ func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, passw
 		}
 	}
 
-	_, errOut, _, err := frogio.RunCmdWithOutputParser(cmd, false)
+	stdOut, errOut, _, err := frogio.RunCmdWithOutputParser(cmd, false)
 	if err != nil {
-		return fmt.Errorf("%s\nfailed to add source: %w", errOut, err)
+		return fmt.Errorf("%s\nfailed to add source: %w", stdOut+errOut, err)
 	}
 	return nil
 }

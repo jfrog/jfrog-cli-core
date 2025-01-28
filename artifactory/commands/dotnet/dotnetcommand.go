@@ -179,6 +179,15 @@ func AddSourceToNugetConfig(cmdType dotnet.ToolchainType, sourceUrl, user, passw
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"username", user)
 	cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"password", password)
 
+	// Support http connection if requested
+	if strings.HasPrefix(sourceUrl, "http://") {
+		if cmdType == dotnet.DotnetCore {
+			cmd.CommandFlags = append(cmd.CommandFlags, flagPrefix+"allow-insecure-connections", "true")
+		} else {
+			cmd.CommandFlags = append(cmd.CommandFlags, "AllowInsecureConnections", "true")
+		}
+	}
+
 	_, errOut, _, err := frogio.RunCmdWithOutputParser(cmd, false)
 	if err != nil {
 		return fmt.Errorf("%s\nfailed to add source: %w", errOut, err)

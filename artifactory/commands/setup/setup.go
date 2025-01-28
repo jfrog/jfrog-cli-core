@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"os"
 	"slices"
+	"strings"
 )
 
 // packageManagerToRepositoryPackageType maps project types to corresponding Artifactory repository package types.
@@ -306,6 +307,10 @@ func (sc *SetupCommand) configureDotnetNuget() error {
 	// Remove existing source if it exists
 	if err = dotnet.RemoveSourceFromNugetConfigIfExists(toolchainType); err != nil {
 		return err
+	}
+
+	if strings.HasPrefix(sourceUrl, "http://") {
+
 	}
 
 	// Add the repository as a source in the NuGet configuration with credentials for authentication

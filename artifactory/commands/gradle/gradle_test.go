@@ -26,10 +26,7 @@ func TestGenerateInitScript(t *testing.T) {
 func TestWriteInitScript(t *testing.T) {
 	// Set up a temporary directory for testing
 	tempDir := t.TempDir()
-	assert.NoError(t, os.Setenv("GRADLE_USER_HOME", tempDir))
-	defer func() {
-		assert.NoError(t, os.Unsetenv("GRADLE_USER_HOME"))
-	}()
+	t.Setenv(UserHomeEnv, tempDir)
 
 	initScript := "test init script content"
 
@@ -37,7 +34,7 @@ func TestWriteInitScript(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify the init script was written to the correct location
-	expectedPath := filepath.Join(tempDir, "init.d", "jfrog.init.gradle")
+	expectedPath := filepath.Join(tempDir, "init.d", "jfrog.jfrog.init.gradle")
 	content, err := os.ReadFile(expectedPath)
 	assert.NoError(t, err)
 	assert.Equal(t, initScript, string(content))

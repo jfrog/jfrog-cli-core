@@ -22,12 +22,14 @@ import (
 	"text/template"
 )
 
-//go:embed resources/init.gradle
+//go:embed resources/jfrog.init.gradle
 var gradleInitScript string
 
 const (
 	usePlugin  = "useplugin"
 	useWrapper = "usewrapper"
+
+	UserHomeEnv = "GRADLE_USER_HOME"
 )
 
 type GradleCommand struct {
@@ -264,7 +266,7 @@ func GenerateInitScript(config InitScriptAuthConfig) (string, error) {
 // WriteInitScript writes the Gradle init script to the Gradle user home `init.d` directory,
 // which stores initialization scripts.
 func WriteInitScript(initScript string) error {
-	gradleHome := os.Getenv("GRADLE_USER_HOME")
+	gradleHome := os.Getenv(UserHomeEnv)
 	if gradleHome == "" {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {

@@ -3,6 +3,7 @@ package setup
 import (
 	"fmt"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/dotnet"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/gradle"
 	cmdutils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -316,6 +317,41 @@ func TestSetupCommand_Go(t *testing.T) {
 			default:
 				// Validate anonymous access.
 				assert.Contains(t, goProxy, "https://acme.jfrog.io/artifactory/api/go/test-repo")
+			}
+		})
+	}
+}
+
+func TestSetupCommand_Gradle(t *testing.T) {
+	testGradleUserHome := t.TempDir()
+	t.Setenv(gradle.UserHomeEnv, testGradleUserHome)
+	gradleLoginCmd := createTestSetupCommand(project.Gradle)
+
+	expectedInitScriptPath := filepath.Join(testGradleUserHome, "init.d", "jfrog.init.gradle")
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			// Set up server details for the current test case's authentication type.
+			gradleLoginCmd.serverDetails.SetUser(testCase.user)
+			gradleLoginCmd.serverDetails.SetPassword(testCase.password)
+			gradleLoginCmd.serverDetails.SetAccessToken(testCase.accessToken)
+
+			// Run the login command and ensure no errors occur.
+			require.NoError(t, gradleLoginCmd.Run())
+
+			// Get the content of the gradle init script.
+			contentBytes, err := os.ReadFile(expectedInitScriptPath)
+			require.NoError(t, err)
+			content := string(contentBytes)
+
+			assert.Contains(t, content, "artifactoryUrl = 'https://acme.jfrog.io/artifactory'")
+			if testCase.accessToken != "" {
+				// Validate token-based authentication.
+				assert.Contains(t, content, fmt.Sprintf("def artifactoryUsername = '%s'", auth.ExtractUsernameFromAccessToken(testCase.accessToken)))
+				assert.Contains(t, content, fmt.Sprintf("def artifactoryAccessToken = '%s'", testCase.accessToken))
+			} else {
+				// Validate basic authentication with user and password.
+				assert.Contains(t, content, fmt.Sprintf("def artifactoryUsername = '%s'", testCase.user))
+				assert.Contains(t, content, fmt.Sprintf("def artifactoryAccessToken = '%s'", testCase.password))
 			}
 		})
 	}

@@ -1,15 +1,14 @@
-package usage
+package visibility
 
 import (
 	"encoding/json"
-	"testing"
-
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
-func TestCreateMetric(t *testing.T) {
+func TestCreateCommandsCountMetric(t *testing.T) {
 	// Set environment variables for the test using SetEnvWithCallbackAndAssert
 	envVars := map[string]string{
 		"JFROG_CLI_USAGE_OIDC_USED":                                  "TRUE",
@@ -30,7 +29,7 @@ func TestCreateMetric(t *testing.T) {
 	}()
 
 	commandName := "testCommand"
-	metric := NewVisibilitySystemManager(nil).createMetric(commandName)
+	metric := NewCommandsCountMetric(commandName)
 	metricJSON, err := json.Marshal(metric)
 	assert.NoError(t, err)
 

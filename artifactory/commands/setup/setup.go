@@ -377,5 +377,5 @@ func (sc *SetupCommand) configureGradle() error {
 		return err
 	}
 
-	return gradle.WriteInitScriptWithBackup(initScript, true)
+	return gradle.WriteInitScript(initScript)
 }

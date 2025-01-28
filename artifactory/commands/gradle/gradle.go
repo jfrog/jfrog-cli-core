@@ -261,10 +261,9 @@ func GenerateInitScript(config InitScriptAuthConfig) (string, error) {
 	return result.String(), nil
 }
 
-// WriteInitScriptWithBackup write the Gradle init script to the Gradle user home directory.
-// If init scripts already exists, they will be backed up.
-// Allows the user to interactively decide whether to overwrite existing init scripts.
-func WriteInitScriptWithBackup(initScript string, interactUser bool) error {
+// WriteInitScript writes the Gradle init script to the Gradle user home `init.d` directory,
+// which stores initialization scripts.
+func WriteInitScript(initScript string) error {
 	gradleHome := os.Getenv("GRADLE_USER_HOME")
 	if gradleHome == "" {
 		homeDir, err := os.UserHomeDir()
@@ -273,41 +272,14 @@ func WriteInitScriptWithBackup(initScript string, interactUser bool) error {
 		}
 		gradleHome = filepath.Join(homeDir, ".gradle")
 	}
-	initScripts, err := getExistingGradleInitScripts(gradleHome)
-	if err != nil {
-		return err
-	}
-	if len(initScripts) > 0 && interactUser {
-		toContinue := coreutils.AskYesNo("Existing Gradle init scripts have been found. Do you want to overwrite them?", false)
-		if !toContinue {
-			return nil
-		}
-	}
-	if err = backupExistingGradleInitScripts(initScripts); err != nil {
-		return err
-	}
-	initScriptPath := filepath.Join(gradleHome, "init.gradle")
-	if err = os.WriteFile(initScriptPath, []byte(initScript), 0644); err != nil {
-		return fmt.Errorf("failed to write Gradle init script to %s: %w", initScriptPath, err)
-	}
-	return nil
-}
 
-func getExistingGradleInitScripts(gradleHome string) ([]string, error) {
-	gradleInitScripts, err := filepath.Glob(filepath.Join(gradleHome, "init.gradle*"))
-	if err != nil {
-		return nil, fmt.Errorf("failed while searching for Gradle init scripts: %w", err)
+	initScriptsDir := filepath.Join(gradleHome, "init.d")
+	if err := os.MkdirAll(initScriptsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create Gradle init.d directory: %w", err)
 	}
-	return gradleInitScripts, nil
-}
-
-// backupExistingGradleInitScripts backup existing Gradle init scripts in the Gradle user home directory.
-func backupExistingGradleInitScripts(gradleInitScripts []string) error {
-	for _, script := range gradleInitScripts {
-		backupPath := script + ".bak"
-		if err := os.Rename(script, backupPath); err != nil {
-			return fmt.Errorf("failed to backup Gradle init script %s: %w", script, err)
-		}
+	jfrogInitScriptPath := filepath.Join(initScriptsDir, "jfrog.init.gradle")
+	if err := os.WriteFile(jfrogInitScriptPath, []byte(initScript), 0644); err != nil {
+		return fmt.Errorf("failed to write Gradle init script to %s: %w", jfrogInitScriptPath, err)
 	}
 	return nil
 }

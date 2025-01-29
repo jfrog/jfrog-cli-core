@@ -201,3 +201,17 @@ func SetHiddenBoolFlag() BoolFlagOption {
 		f.Hidden = true
 	}
 }
+
+func (c *Context) WithDefaultIntFlagValue(flagName string, defValue int) (value int, err error) {
+	value = defValue
+	if c.IsFlagSet(flagName) {
+		var parsed int64
+		parsed, err = strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
+		if err != nil {
+			err = fmt.Errorf("can't parse int flag '%s': %w", flagName, err)
+			return
+		}
+		value = int(parsed)
+	}
+	return
+}

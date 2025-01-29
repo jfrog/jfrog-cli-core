@@ -104,7 +104,7 @@ func SelectRepositoryInteractively(serverDetails *config.ServerDetails, repoFilt
 		return filteredRepos[0], nil
 	}
 	if !log.IsStdOutTerminal() || strings.ToLower(os.Getenv(coreutils.CI)) == "true" {
-		return "", errorutils.CheckErrorf("multiple repositories were found that match the following criteria: %v. Please select a repository interactively.", repoFilterParams)
+		return "", errorutils.CheckErrorf("multiple repositories were found that match the following criteria: %v. Please provide the repository name using '--repo' flag.", repoFilterParams)
 	}
 	// Prompt the user to select a repository.
 	return ioutils.AskFromListWithMismatchConfirmation(promptMessage, "Repository not found.", ioutils.ConvertToSuggests(filteredRepos)), nil

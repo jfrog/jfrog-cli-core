@@ -114,8 +114,10 @@ func GetNpmAuthKeyValue(serverDetails *config.ServerDetails, repoUrl string) (ke
 	default:
 		return "", ""
 	}
-
-	return fmt.Sprintf("//%s:%s", strings.TrimPrefix(repoUrl, "https://"), keySuffix), value
+	// Parse the URL to remove the scheme (https:// or http://)
+	urlWithoutScheme := strings.TrimPrefix(repoUrl, "https://")
+	urlWithoutScheme = strings.TrimPrefix(urlWithoutScheme, "http://")
+	return fmt.Sprintf("//%s:%s", urlWithoutScheme, keySuffix), value
 }
 
 // basicAuthBase64Encode encodes user credentials in Base64 for basic authentication.

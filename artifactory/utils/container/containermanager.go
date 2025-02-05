@@ -194,7 +194,6 @@ func ContainerManagerLogin(imageRegistry string, config *ContainerManagerLoginCo
 	password := config.ServerDetails.Password
 	// If access-token exists, perform login with it.
 	if config.ServerDetails.AccessToken != "" {
-		log.Debug("Using access-token details in " + containerManager.String() + "-login command.")
 		if username == "" {
 			username = auth.ExtractUsernameFromAccessToken(config.ServerDetails.AccessToken)
 		}

@@ -3,8 +3,11 @@ package utils
 import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
+	"os"
 	"path"
 	"strings"
 
@@ -99,6 +102,9 @@ func SelectRepositoryInteractively(serverDetails *config.ServerDetails, repoFilt
 	if len(filteredRepos) == 1 {
 		// Automatically select the repository if only one exists.
 		return filteredRepos[0], nil
+	}
+	if !log.IsStdOutTerminal() || strings.ToLower(os.Getenv(coreutils.CI)) == "true" {
+		return "", errorutils.CheckErrorf("multiple repositories were found that match the following criteria: %v. Please provide the repository name using '--repo' flag.", repoFilterParams)
 	}
 	// Prompt the user to select a repository.
 	return ioutils.AskFromListWithMismatchConfirmation(promptMessage, "Repository not found.", ioutils.ConvertToSuggests(filteredRepos)), nil

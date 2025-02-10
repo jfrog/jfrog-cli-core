@@ -171,6 +171,18 @@ func SetHiddenStrFlag() StringFlagOption {
 	}
 }
 
+func SetMandatoryFalse() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Mandatory = false
+	}
+}
+
+func WithBoolDefaultValueFalse() BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.DefaultValue = false
+	}
+}
+
 type BoolFlag struct {
 	BaseFlag
 	DefaultValue bool

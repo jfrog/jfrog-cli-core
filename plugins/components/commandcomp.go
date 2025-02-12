@@ -171,6 +171,30 @@ func SetHiddenStrFlag() StringFlagOption {
 	}
 }
 
+func SetMandatoryFalse() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Mandatory = false
+	}
+}
+
+func SetMandatoryTrue() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Mandatory = true
+	}
+}
+
+func WithBoolDefaultValueFalse() BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.DefaultValue = false
+	}
+}
+
+func WithBoolDefaultValueTrue() BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.DefaultValue = true
+	}
+}
+
 type BoolFlag struct {
 	BaseFlag
 	DefaultValue bool
@@ -200,4 +224,18 @@ func SetHiddenBoolFlag() BoolFlagOption {
 	return func(f *BoolFlag) {
 		f.Hidden = true
 	}
+}
+
+func (c *Context) WithDefaultIntFlagValue(flagName string, defValue int) (value int, err error) {
+	value = defValue
+	if c.IsFlagSet(flagName) {
+		var parsed int64
+		parsed, err = strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
+		if err != nil {
+			err = fmt.Errorf("can't parse int flag '%s': %w", flagName, err)
+			return
+		}
+		value = int(parsed)
+	}
+	return
 }

@@ -13,7 +13,6 @@ const (
 )
 
 func TestGenerateArtifactUrl(t *testing.T) {
-	// Used to
 	_, cleanUp := prepareBuildInfoTest()
 	defer func() {
 		cleanUp()

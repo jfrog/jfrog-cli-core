@@ -1,6 +1,8 @@
 package common
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"sort"
 	"strconv"
 	"strings"
@@ -99,4 +101,26 @@ func buildAndSortFlags(keys []string, flagsMap map[string]components.Flag) (flag
 	}
 	sort.Slice(flags, func(i, j int) bool { return flags[i].GetName() < flags[j].GetName() })
 	return
+}
+
+// This function indicates whether the command should be executed without
+// confirmation warning or not.
+// If the --quiet option was sent, it is used to determine whether to prompt the confirmation or not.
+// If not, the command will prompt the confirmation, unless the CI environment variable was set to true.
+func GetQuietValue(c *components.Context) bool {
+	if c.IsFlagSet("quiet") {
+		return c.GetBoolFlagValue("quiet")
+	}
+
+	return getCiValue()
+}
+
+// Return true if the CI environment variable was set to true.
+func getCiValue() bool {
+	var ci bool
+	var err error
+	if ci, err = clientutils.GetBoolEnvValue(coreutils.CI, false); err != nil {
+		return false
+	}
+	return ci
 }

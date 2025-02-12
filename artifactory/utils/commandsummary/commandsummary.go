@@ -33,6 +33,7 @@ const (
 	BuildScan    Index = "build-scans"
 	DockerScan   Index = "docker-scans"
 	SarifReport  Index = "sarif-reports"
+	Evidence     Index = "evidence"
 )
 
 // List of allowed directories for searching indexed content

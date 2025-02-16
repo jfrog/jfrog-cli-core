@@ -22,17 +22,31 @@ type releaseBundleCmd struct {
 
 func (rbc *releaseBundleCmd) getPrerequisites() (servicesManager *lifecycle.LifecycleServicesManager,
 	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams, err error) {
-	servicesManager, err = utils.CreateLifecycleServiceManager(rbc.serverDetails, false)
+	return rbc.initPrerequisites(false, "")
+}
+
+func (rbp *ReleaseBundlePromoteCommand) getPromotionPrerequisites() (servicesManager *lifecycle.LifecycleServicesManager,
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams, err error) {
+	return rbp.initPrerequisites(true, rbp.promotionType)
+}
+
+func (rb *releaseBundleCmd) initPrerequisites(isPromotion bool, promotionType string) (servicesManager *lifecycle.LifecycleServicesManager,
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams, err error) {
+	servicesManager, err = utils.CreateLifecycleServiceManager(rb.serverDetails, false)
 	if err != nil {
 		return
 	}
 	rbDetails = services.ReleaseBundleDetails{
-		ReleaseBundleName:    rbc.releaseBundleName,
-		ReleaseBundleVersion: rbc.releaseBundleVersion,
+		ReleaseBundleName:    rb.releaseBundleName,
+		ReleaseBundleVersion: rb.releaseBundleVersion,
 	}
 	queryParams = services.CommonOptionalQueryParams{
-		ProjectKey: rbc.rbProjectKey,
-		Async:      !rbc.sync,
+		ProjectKey: rb.rbProjectKey,
+		Async:      !rb.sync,
+	}
+
+	if isPromotion {
+		queryParams.PromotionType = promotionType
 	}
 	return
 }

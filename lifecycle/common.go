@@ -22,6 +22,18 @@ type releaseBundleCmd struct {
 
 func (rbc *releaseBundleCmd) getPrerequisites() (servicesManager *lifecycle.LifecycleServicesManager,
 	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams, err error) {
+	return rbc.initPrerequisites()
+}
+
+func (rbp *ReleaseBundlePromoteCommand) getPromotionPrerequisites() (servicesManager *lifecycle.LifecycleServicesManager,
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams, err error) {
+	servicesManager, rbDetails, queryParams, err = rbp.initPrerequisites()
+	queryParams.PromotionType = rbp.promotionType
+	return servicesManager, rbDetails, queryParams, err
+}
+
+func (rbc *releaseBundleCmd) initPrerequisites() (servicesManager *lifecycle.LifecycleServicesManager,
+	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams, err error) {
 	servicesManager, err = utils.CreateLifecycleServiceManager(rbc.serverDetails, false)
 	if err != nil {
 		return
@@ -34,6 +46,7 @@ func (rbc *releaseBundleCmd) getPrerequisites() (servicesManager *lifecycle.Life
 		ProjectKey: rbc.rbProjectKey,
 		Async:      !rbc.sync,
 	}
+
 	return
 }
 

@@ -177,9 +177,21 @@ func SetMandatoryFalse() StringFlagOption {
 	}
 }
 
+func SetMandatoryTrue() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Mandatory = true
+	}
+}
+
 func WithBoolDefaultValueFalse() BoolFlagOption {
 	return func(f *BoolFlag) {
 		f.DefaultValue = false
+	}
+}
+
+func WithBoolDefaultValueTrue() BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.DefaultValue = true
 	}
 }
 

@@ -64,6 +64,10 @@ func (c *Context) AddStringFlag(key, value string) {
 	c.stringFlags[key] = value
 }
 
+func (c *Context) AddBoolFlag(key string, value bool) {
+	c.boolFlags[key] = value
+}
+
 func (c *Context) GetIntFlagValue(flagName string) (value int, err error) {
 	parsed, err := strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
 	if err != nil {
@@ -72,6 +76,19 @@ func (c *Context) GetIntFlagValue(flagName string) (value int, err error) {
 	}
 	value = int(parsed)
 	return
+}
+
+func (c *Context) GetDefaultIntFlagValueIfNotSet(flagName string, defaultValue int) (value int, err error) {
+	if c.IsFlagSet(flagName) {
+		parsed, err := strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
+		if err != nil {
+			err = fmt.Errorf("can't parse int flag '%s': %w", flagName, err)
+			return value, err
+		}
+		value = int(parsed)
+		return value, err
+	}
+	return defaultValue, nil
 }
 
 func (c *Context) GetBoolFlagValue(flagName string) bool {
@@ -180,6 +197,18 @@ func SetMandatoryFalse() StringFlagOption {
 func WithBoolDefaultValueFalse() BoolFlagOption {
 	return func(f *BoolFlag) {
 		f.DefaultValue = false
+	}
+}
+
+func WithHiddenTrue() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Hidden = true
+	}
+}
+
+func WithBoolDefaultValueTrue() BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.DefaultValue = true
 	}
 }
 

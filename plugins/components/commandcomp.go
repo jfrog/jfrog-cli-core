@@ -61,10 +61,16 @@ func (c *Context) GetStringFlagValue(flagName string) string {
 }
 
 func (c *Context) AddStringFlag(key, value string) {
+	if c.stringFlags == nil {
+		c.stringFlags = make(map[string]string)
+	}
 	c.stringFlags[key] = value
 }
 
 func (c *Context) AddBoolFlag(key string, value bool) {
+	if c.boolFlags == nil {
+		c.boolFlags = make(map[string]bool)
+	}
 	c.boolFlags[key] = value
 }
 

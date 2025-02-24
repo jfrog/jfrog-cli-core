@@ -14,6 +14,7 @@ type ReleaseBundlePromoteCommand struct {
 	environment          string
 	includeReposPatterns []string
 	excludeReposPatterns []string
+	promotionType        string
 }
 
 func NewReleaseBundlePromoteCommand() *ReleaseBundlePromoteCommand {
@@ -65,6 +66,11 @@ func (rbp *ReleaseBundlePromoteCommand) SetExcludeReposPatterns(excludeReposPatt
 	return rbp
 }
 
+func (rbp *ReleaseBundlePromoteCommand) SetPromotionType(promotionType string) *ReleaseBundlePromoteCommand {
+	rbp.promotionType = promotionType
+	return rbp
+}
+
 func (rbp *ReleaseBundlePromoteCommand) CommandName() string {
 	return "rb_promote"
 }
@@ -78,7 +84,8 @@ func (rbp *ReleaseBundlePromoteCommand) Run() error {
 		return err
 	}
 
-	servicesManager, rbDetails, queryParams, err := rbp.getPrerequisites()
+	servicesManager, rbDetails, queryParams, err := rbp.getPromotionPrerequisites()
+
 	if err != nil {
 		return err
 	}

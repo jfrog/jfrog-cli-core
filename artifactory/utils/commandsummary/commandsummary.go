@@ -65,9 +65,10 @@ const (
 	OutputDirName         = "jfrog-command-summary"
 	finalMarkdownFileName = "markdown.md"
 	// Filenames formats
-	SarifFileFormat   = "*.sarif"
-	DataFileFormat    = "*-data"
-	NoneScannedResult = "default"
+	SarifFileFormat         = "*.sarif"
+	DataFileFormat          = "*-data"
+	NoneScannedResult       = "default"
+	Evidence          Index = "evidence"
 )
 
 type CommandSummary struct {

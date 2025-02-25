@@ -39,6 +39,8 @@ const (
 	deploymentSnapshotsRepo = "repo-deploy-snapshots"
 	includePatterns         = "include-patterns"
 	excludePatterns         = "exclude-patterns"
+	disableSnapshots        = "disable-snapshots"
+	snapshotsUpdatePolicy   = "snapshots-update-policy"
 
 	// Gradle flags
 	usesPlugin          = "uses-plugin"
@@ -251,6 +253,8 @@ func WithDeployerRepo(repoId string) ConfigOption {
 // Populate Maven related configuration from cli flags
 func (configFile *ConfigFile) populateMavenConfigFromFlags(c *cli.Context) {
 	configFile.Resolver.SnapshotRepo = c.String(resolutionSnapshotsRepo)
+	configFile.Resolver.DisableSnapshots = c.Bool(disableSnapshots)
+	configFile.Resolver.SnapshotsUpdatePolicy = c.String(snapshotsUpdatePolicy)
 	configFile.Resolver.ReleaseRepo = c.String(resolutionReleasesRepo)
 	configFile.Deployer.SnapshotRepo = c.String(deploymentSnapshotsRepo)
 	configFile.Deployer.ReleaseRepo = c.String(deploymentReleasesRepo)
@@ -258,7 +262,7 @@ func (configFile *ConfigFile) populateMavenConfigFromFlags(c *cli.Context) {
 	configFile.Deployer.ExcludePatterns = c.String(excludePatterns)
 	configFile.UseWrapper = c.Bool(useWrapper)
 	configFile.Interactive = configFile.Interactive && !isAnyFlagSet(c, resolutionSnapshotsRepo, resolutionReleasesRepo,
-		deploymentSnapshotsRepo, deploymentReleasesRepo, includePatterns, excludePatterns)
+		disableSnapshots, snapshotsUpdatePolicy, deploymentSnapshotsRepo, deploymentReleasesRepo, includePatterns, excludePatterns)
 }
 
 func WithResolverSnapshotRepo(repoId string) ConfigOption {

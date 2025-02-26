@@ -38,7 +38,7 @@ func CreateSpecFromFile(specFilePath string, specVars map[string]string) (spec *
 	return
 }
 
-func CreateSpecFromBuildNameAndNumber(buildName, buildNumber string) (*SpecFiles, error) {
+func CreateSpecFromBuildNameNumberAndProject(buildName, buildNumber, projectKey string) (*SpecFiles, error) {
 	if buildName == "" || buildNumber == "" {
 		return nil, errorutils.CheckErrorf("build name and build number must be provided")
 	}
@@ -47,7 +47,8 @@ func CreateSpecFromBuildNameAndNumber(buildName, buildNumber string) (*SpecFiles
 	specFile := &SpecFiles{
 		Files: []File{
 			{
-				Build: buildString,
+				Build:   buildString,
+				Project: projectKey,
 			},
 		},
 	}

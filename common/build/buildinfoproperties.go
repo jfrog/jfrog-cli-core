@@ -45,6 +45,9 @@ const Repo = "repo"
 const SnapshotRepo = "snapshotRepo"
 const ReleaseRepo = "releaseRepo"
 
+const DisableSnapshots = "disableSnapshots"
+const SnapshotsUpdatePolicy = "snapshotsUpdatePolicy"
+
 const ServerId = "serverId"
 const Url = "url"
 const Username = "username"
@@ -123,6 +126,8 @@ var mavenConfigMapping = map[string]string{
 	"buildInfoConfig.artifactoryResolutionEnabled":      "buildInfoConfig.artifactoryResolutionEnabled",
 	"resolve.repoKey":                          ResolverPrefix + ReleaseRepo,
 	"resolve.downSnapshotRepoKey":              ResolverPrefix + SnapshotRepo,
+	"resolve.snapshots.disabled":               ResolverPrefix + DisableSnapshots,
+	"resolve.snapshots.updatePolicy":           ResolverPrefix + SnapshotsUpdatePolicy,
 	"publish.repoKey":                          DeployerPrefix + ReleaseRepo,
 	"publish.snapshot.repoKey":                 DeployerPrefix + SnapshotRepo,
 	"publish.includePatterns":                  DeployerPrefix + IncludePatterns,

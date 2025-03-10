@@ -13,6 +13,10 @@ const (
 )
 
 func TestGenerateArtifactUrl(t *testing.T) {
+	_, cleanUp := prepareBuildInfoTest()
+	defer func() {
+		cleanUp()
+	}()
 	cases := []struct {
 		testName     string
 		projectKey   string

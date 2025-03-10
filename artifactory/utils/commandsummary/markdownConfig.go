@@ -3,6 +3,7 @@ package commandsummary
 import (
 	"encoding/json"
 	"fmt"
+	buildInfo "github.com/jfrog/build-info-go/entities"
 	"net/http"
 	"net/url"
 	"strings"
@@ -23,6 +24,8 @@ type MarkdownConfig struct {
 	platformMajorVersion int
 	// Static mapping of scan results to be used in the summary
 	scanResultsMapping map[string]ScanResult
+	// Static mapping of artifacts evidences
+	artifactsEvidencesMapping map[string]buildInfo.Artifact
 }
 
 const extendedSummaryLandPage = "https://jfrog.com/help/access?xinfo:appid=csh-gen-gitbook"
@@ -59,6 +62,9 @@ func (mg *MarkdownConfig) GetExtendedSummaryLangPage() string {
 
 func (mg *MarkdownConfig) SetScanResultsMapping(resultsMap map[string]ScanResult) {
 	mg.scanResultsMapping = resultsMap
+}
+func (mg *MarkdownConfig) SetArtifactsEvidencesMapping(artifactsEvidencesMapping map[string]buildInfo.Artifact) {
+	mg.artifactsEvidencesMapping = artifactsEvidencesMapping
 }
 
 // Initializes the command summary values that effect Markdown generation

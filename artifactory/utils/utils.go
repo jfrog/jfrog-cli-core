@@ -92,7 +92,11 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, 0, httpRetries, httpRetryWaitMilliSecs, 0)
+	return CreateServiceManagerWithTimeout(serverDetails, httpRetries, httpRetryWaitMilliSecs, isDryRun, 0)
+}
+
+func CreateServiceManagerWithTimeout(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool, timeout time.Duration) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, 0, httpRetries, httpRetryWaitMilliSecs, timeout)
 }
 
 // Create a service manager with threads.

@@ -96,17 +96,19 @@ func (mre *MissingResolverErr) Error() string {
 }
 
 type Repository struct {
-	Repo             string `yaml:"repo,omitempty"`
-	ServerId         string `yaml:"serverId,omitempty"`
-	SnapshotRepo     string `yaml:"snapshotRepo,omitempty"`
-	ReleaseRepo      string `yaml:"releaseRepo,omitempty"`
-	DeployMavenDesc  bool   `yaml:"deployMavenDescriptors,omitempty"`
-	DeployIvyDesc    bool   `yaml:"deployIvyDescriptors,omitempty"`
-	IvyPattern       string `yaml:"ivyPattern,omitempty"`
-	ArtifactsPattern string `yaml:"artifactPattern,omitempty"`
-	NugetV2          bool   `yaml:"nugetV2,omitempty"`
-	IncludePatterns  string `yaml:"includePatterns,omitempty"`
-	ExcludePatterns  string `yaml:"excludePatterns,omitempty"`
+	Repo                  string `yaml:"repo,omitempty"`
+	ServerId              string `yaml:"serverId,omitempty"`
+	SnapshotRepo          string `yaml:"snapshotRepo,omitempty"`
+	DisableSnapshots      bool   `yaml:"disableSnapshots,omitempty"`
+	SnapshotsUpdatePolicy string `yaml:"snapshotsUpdatePolicy,omitempty"`
+	ReleaseRepo           string `yaml:"releaseRepo,omitempty"`
+	DeployMavenDesc       bool   `yaml:"deployMavenDescriptors,omitempty"`
+	DeployIvyDesc         bool   `yaml:"deployIvyDescriptors,omitempty"`
+	IvyPattern            string `yaml:"ivyPattern,omitempty"`
+	ArtifactsPattern      string `yaml:"artifactPattern,omitempty"`
+	NugetV2               bool   `yaml:"nugetV2,omitempty"`
+	IncludePatterns       string `yaml:"includePatterns,omitempty"`
+	ExcludePatterns       string `yaml:"excludePatterns,omitempty"`
 }
 
 type RepositoryConfig struct {

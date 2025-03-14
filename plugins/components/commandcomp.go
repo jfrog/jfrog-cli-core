@@ -206,12 +206,6 @@ func WithBoolDefaultValueFalse() BoolFlagOption {
 	}
 }
 
-func WithHiddenTrue() StringFlagOption {
-	return func(f *StringFlag) {
-		f.Hidden = true
-	}
-}
-
 func WithBoolDefaultValueTrue() BoolFlagOption {
 	return func(f *BoolFlag) {
 		f.DefaultValue = true

@@ -2,9 +2,7 @@ package lifecycle
 
 import (
 	"errors"
-	"os"
 	"path"
-	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -14,16 +12,10 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-const (
-	TimeoutEnvKey = "JFROG_CLI_REQUEST_TIMEOUT"
-)
-
 func (rbc *ReleaseBundleCreateCommand) createFromArtifacts(lcServicesManager *lifecycle.LifecycleServicesManager,
 	rbDetails services.ReleaseBundleDetails, queryParams services.CommonOptionalQueryParams) (err error) {
 
-	timeout, _ := time.ParseDuration(os.Getenv(TimeoutEnvKey))
-
-	rtServicesManager, err := utils.CreateServiceManagerWithTimeout(rbc.serverDetails, 3, 0, false, timeout)
+	rtServicesManager, err := utils.CreateServiceManager(rbc.serverDetails, 3, 0, false)
 	if err != nil {
 		return err
 	}

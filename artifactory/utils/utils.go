@@ -34,6 +34,10 @@ import (
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
 )
 
+const (
+	TimeoutEnvKey = "JFROG_CLI_REQUEST_TIMEOUT"
+)
+
 func GetProjectDir(global bool) (string, error) {
 	configDir, err := getConfigDir(global)
 	if err != nil {
@@ -92,10 +96,7 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
-	return CreateServiceManagerWithTimeout(serverDetails, httpRetries, httpRetryWaitMilliSecs, isDryRun, 0)
-}
-
-func CreateServiceManagerWithTimeout(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool, timeout time.Duration) (artifactory.ArtifactoryServicesManager, error) {
+	timeout, _ := time.ParseDuration(os.Getenv(TimeoutEnvKey))
 	return CreateServiceManagerWithContext(context.Background(), serverDetails, isDryRun, 0, httpRetries, httpRetryWaitMilliSecs, timeout)
 }
 

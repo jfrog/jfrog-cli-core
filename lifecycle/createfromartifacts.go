@@ -2,13 +2,14 @@ package lifecycle
 
 import (
 	"errors"
+	"path"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/lifecycle"
 	"github.com/jfrog/jfrog-client-go/lifecycle/services"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"path"
 )
 
 func (rbc *ReleaseBundleCreateCommand) createFromArtifacts(lcServicesManager *lifecycle.LifecycleServicesManager,

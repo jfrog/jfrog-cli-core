@@ -382,6 +382,11 @@ func ConvertContext(baseContext *cli.Context, flagsToConvert ...Flag) (*Context,
 		CommandName:      baseContext.Command.Name,
 		Arguments:        baseContext.Args(),
 		PrintCommandHelp: getPrintCommandHelpFunc(baseContext),
+		ParentContext: &Context{
+			CommandName:      baseContext.Parent().Command.Name,
+			Arguments:        baseContext.Parent().Args(),
+			PrintCommandHelp: getPrintCommandHelpFunc(baseContext.Parent()),
+		},
 	}
 	return pluginContext, fillFlagMaps(pluginContext, baseContext, flagsToConvert)
 }
@@ -407,7 +412,7 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 				c.stringFlags[stringFlag.Name] = finalValue
 			}
 		}
-		if boolFlag, ok := flag.(BoolFlag); ok {
+		if boolFlag, ok := flag.(BoolFlag); ok && baseContext.IsSet(boolFlag.Name) {
 			c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
 		}
 	}

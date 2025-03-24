@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type Argument struct {
@@ -54,10 +55,15 @@ type Context struct {
 	stringFlags      map[string]string
 	boolFlags        map[string]bool
 	PrintCommandHelp func(commandName string) error
+	ParentContext    *Context
 }
 
 func (c *Context) GetStringFlagValue(flagName string) string {
 	return c.stringFlags[flagName]
+}
+
+func (c *Context) SetStringFlagValue(flagName string, value string) {
+	c.stringFlags[flagName] = value
 }
 
 func (c *Context) AddStringFlag(key, value string) {
@@ -99,6 +105,13 @@ func (c *Context) GetDefaultIntFlagValueIfNotSet(flagName string, defaultValue i
 
 func (c *Context) GetBoolFlagValue(flagName string) bool {
 	return c.boolFlags[flagName]
+}
+
+func (c *Context) GetBoolTFlagValue(flagName string) bool {
+	if c.IsFlagSet(flagName) {
+		return c.boolFlags[flagName]
+	}
+	return true
 }
 
 func (c *Context) IsFlagSet(flagName string) bool {
@@ -200,6 +213,12 @@ func SetMandatoryFalse() StringFlagOption {
 	}
 }
 
+func SetMandatoryTrue() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Mandatory = true
+	}
+}
+
 func WithBoolDefaultValueFalse() BoolFlagOption {
 	return func(f *BoolFlag) {
 		f.DefaultValue = false
@@ -255,4 +274,26 @@ func (c *Context) WithDefaultIntFlagValue(flagName string, defValue int) (value 
 		value = int(parsed)
 	}
 	return
+}
+
+func (c *Context) GetNumberOfArgs() int {
+	return len(c.Arguments)
+}
+
+func (c *Context) GetArgumentAt(index int) string {
+	if len(c.Arguments) > index {
+		return c.Arguments[index]
+	}
+	return ""
+}
+
+func (c *Context) GetStringsArrFlagValue(flagName string) (resultArray []string) {
+	if c.IsFlagSet(flagName) {
+		resultArray = append(resultArray, strings.Split(c.GetStringFlagValue(flagName), ";")...)
+	}
+	return
+}
+
+func (c *Context) GetParent() *Context {
+	return c.ParentContext
 }

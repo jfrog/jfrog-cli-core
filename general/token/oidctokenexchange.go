@@ -2,11 +2,13 @@ package token
 
 import (
 	"encoding/json"
+	"fmt"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
@@ -105,11 +107,14 @@ func (otc *OidcTokenExchangeCommand) CommandName() string {
 }
 
 func (otc *OidcTokenExchangeCommand) Run() (err error) {
+	log.Debug("Exchanging OIDC token...")
 	servicesManager, err := rtUtils.CreateAccessServiceManager(otc.serverDetails, false)
 	if err != nil {
 		return err
 	}
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
+	log.Debug("OIDC token exchanged successfully.")
+	fmt.Printf(otc.response.AccessToken)
 	return
 }
 

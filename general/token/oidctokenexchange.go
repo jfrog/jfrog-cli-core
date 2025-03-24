@@ -8,7 +8,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
@@ -23,16 +22,17 @@ type OidcTokenExchangeCommand struct {
 	oidcTokenID     string
 	projectKey      string
 	applicationName string
-	expiry          *uint
-	refreshable     bool
-	runId           string
-	jobId           string
-	repo            string
-	response        *auth.CreateTokenResponseData
+	// [Optional] Unique identifier for the CI runtime
+	runId string
+	// [Optional] Unique identifier for the CI job
+	jobId string
+	// [Optional] CI repository name
+	repository string
+	response   *auth.OidcTokenResponseData
 }
 
 func NewOidcTokenExchangeCommand() *OidcTokenExchangeCommand {
-	return &OidcTokenExchangeCommand{response: new(auth.CreateTokenResponseData)}
+	return &OidcTokenExchangeCommand{response: new(auth.OidcTokenResponseData)}
 }
 
 func (otc *OidcTokenExchangeCommand) SetServerDetails(serverDetails *config.ServerDetails) *OidcTokenExchangeCommand {
@@ -40,12 +40,15 @@ func (otc *OidcTokenExchangeCommand) SetServerDetails(serverDetails *config.Serv
 	return otc
 }
 
+func (otc *OidcTokenExchangeCommand) GetOidToken() string {
+	return otc.response.AccessToken
+}
+
 func (otc *OidcTokenExchangeCommand) SetProviderName(providerName string) *OidcTokenExchangeCommand {
 	otc.providerName = providerName
 	return otc
 }
 
-// TokenID is received from the OIDC provider
 func (otc *OidcTokenExchangeCommand) SetOidcTokenID(oidcTokenID string) *OidcTokenExchangeCommand {
 	otc.oidcTokenID = oidcTokenID
 	return otc
@@ -77,19 +80,7 @@ func (otc *OidcTokenExchangeCommand) SetJobId(jobId string) *OidcTokenExchangeCo
 }
 
 func (otc *OidcTokenExchangeCommand) SetRepo(repo string) *OidcTokenExchangeCommand {
-	otc.repo = repo
-	return otc
-}
-
-// TODO check if it should be here
-func (otc *OidcTokenExchangeCommand) SetExpiry(expiry *uint) *OidcTokenExchangeCommand {
-	otc.expiry = expiry
-	return otc
-}
-
-// TODO check if it is possible to refresh
-func (otc *OidcTokenExchangeCommand) SetRefreshable(refreshable bool) *OidcTokenExchangeCommand {
-	otc.refreshable = refreshable
+	otc.repository = repo
 	return otc
 }
 
@@ -107,13 +98,11 @@ func (otc *OidcTokenExchangeCommand) CommandName() string {
 }
 
 func (otc *OidcTokenExchangeCommand) Run() (err error) {
-	log.Debug("Exchanging OIDC token...")
 	servicesManager, err := rtUtils.CreateAccessServiceManager(otc.serverDetails, false)
 	if err != nil {
 		return err
 	}
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
-	log.Debug("OIDC token exchanged successfully.")
 	fmt.Printf(otc.response.AccessToken)
 	return
 }
@@ -127,15 +116,12 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams.ApplicationKey = otc.applicationName
 	oidcTokenParams.RunId = otc.runId
 	oidcTokenParams.JobId = otc.jobId
-	oidcTokenParams.Repo = otc.repo
+	oidcTokenParams.Repo = otc.repository
+	//oidcTokenParams.Audience = otc.audience
+	//oidcTokenParams.ProviderName = otc.providerName
 
 	// Manual values for testing
-	//oidcTokenParams.Audience = otc.audience
 	oidcTokenParams.Audience = "jfrog-github"
-	//oidcTokenParams.ProviderName = otc.providerName
 	oidcTokenParams.ProviderName = "setup-jfrog-cli-test"
-	// TODO see if this is relevant
-	//oidcTokenParams.ExpiresIn = otc.expiry
-	//oidcTokenParams.Refreshable = otc.refreshable
 	return oidcTokenParams
 }

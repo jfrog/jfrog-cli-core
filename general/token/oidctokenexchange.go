@@ -117,15 +117,18 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams := services.CreateOidcTokenParams{}
 	oidcTokenParams.GrantType = grantType
 	oidcTokenParams.SubjectTokenType = subjectTokenType
-	oidcTokenParams.ProviderName = otc.providerName
 	oidcTokenParams.OidcTokenID = otc.oidcTokenID
 	oidcTokenParams.ProjectKey = otc.projectKey
 	oidcTokenParams.ApplicationKey = otc.applicationName
-	//oidcTokenParams.Audience = otc.audience
-	oidcTokenParams.Audience = "jfrog-github"
 	oidcTokenParams.RunId = otc.runId
 	oidcTokenParams.JobId = otc.jobId
 	oidcTokenParams.Repo = otc.repo
+
+	// Manual values for testing
+	//oidcTokenParams.Audience = otc.audience
+	oidcTokenParams.Audience = "jfrog-github"
+	//oidcTokenParams.ProviderName = otc.providerName
+	oidcTokenParams.ProviderName = "setup-jfrog-cli-test"
 	// TODO see if this is relevant
 	//oidcTokenParams.ExpiresIn = otc.expiry
 	//oidcTokenParams.Refreshable = otc.refreshable

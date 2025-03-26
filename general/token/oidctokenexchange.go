@@ -5,9 +5,11 @@ import (
 	"fmt"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"os"
 )
 
 const (
@@ -15,20 +17,34 @@ const (
 	subjectTokenType = "urn:ietf:params:oauth:token-type:id_token"
 )
 
+type oidcProviderType int
+
+const (
+	GitHub oidcProviderType = iota
+	Azure
+	GenericOidc
+)
+
+func (p oidcProviderType) String() string {
+	return [...]string{"GitHub", "Azure", "GenericOidc"}[p]
+}
+
 type OidcTokenExchangeCommand struct {
 	serverDetails   *config.ServerDetails
 	providerName    string
 	audience        string
-	oidcTokenID     string
+	tokenId         string
 	projectKey      string
 	applicationName string
+	providerType    oidcProviderType
 	// [Optional] Unique identifier for the CI runtime
 	runId string
 	// [Optional] Unique identifier for the CI job
 	jobId string
 	// [Optional] CI repository name
-	repository string
-	response   *auth.OidcTokenResponseData
+	repository           string
+	response             *auth.OidcTokenResponseData
+	outputTokenToConsole bool
 }
 
 func NewOidcTokenExchangeCommand() *OidcTokenExchangeCommand {
@@ -50,7 +66,7 @@ func (otc *OidcTokenExchangeCommand) SetProviderName(providerName string) *OidcT
 }
 
 func (otc *OidcTokenExchangeCommand) SetOidcTokenID(oidcTokenID string) *OidcTokenExchangeCommand {
-	otc.oidcTokenID = oidcTokenID
+	otc.tokenId = oidcTokenID
 	return otc
 }
 
@@ -79,7 +95,7 @@ func (otc *OidcTokenExchangeCommand) SetJobId(jobId string) *OidcTokenExchangeCo
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) SetRepo(repo string) *OidcTokenExchangeCommand {
+func (otc *OidcTokenExchangeCommand) SetRepository(repo string) *OidcTokenExchangeCommand {
 	otc.repository = repo
 	return otc
 }
@@ -97,7 +113,32 @@ func (otc *OidcTokenExchangeCommand) CommandName() string {
 	return "jf_oidc_token_exchange"
 }
 
+func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) error {
+	switch providerType {
+	case GitHub.String():
+		otc.providerType = GitHub
+	case Azure.String():
+		otc.providerType = Azure
+	case GenericOidc.String():
+		otc.providerType = GenericOidc
+	default:
+		return errorutils.CheckError(fmt.Errorf("unspported oidc provider type: %s", providerType))
+	}
+	return nil
+}
+
 func (otc *OidcTokenExchangeCommand) Run() (err error) {
+	// OIDC exchange token command will always fail to report to the visibility system
+	// we are setting this env to avoid confusing logs in the visibility system
+	err = os.Setenv(coreutils.ReportUsage, "false")
+	if err != nil {
+		return
+	}
+	defer func() {
+		if err = os.Unsetenv(coreutils.ReportUsage); err != nil {
+			return
+		}
+	}()
 	servicesManager, err := rtUtils.CreateAccessServiceManager(otc.serverDetails, false)
 	if err != nil {
 		return err
@@ -106,7 +147,10 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf(otc.response.AccessToken)
+	// When we use this command internally, we do not want to token to be outputted to the console
+	if otc.outputTokenToConsole {
+		fmt.Printf(otc.response.AccessToken)
+	}
 	return
 }
 
@@ -114,17 +158,13 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams := services.CreateOidcTokenParams{}
 	oidcTokenParams.GrantType = grantType
 	oidcTokenParams.SubjectTokenType = subjectTokenType
-	oidcTokenParams.OidcTokenID = otc.oidcTokenID
+	oidcTokenParams.OidcTokenID = otc.tokenId
 	oidcTokenParams.ProjectKey = otc.projectKey
 	oidcTokenParams.ApplicationKey = otc.applicationName
 	oidcTokenParams.RunId = otc.runId
 	oidcTokenParams.JobId = otc.jobId
 	oidcTokenParams.Repo = otc.repository
-	//oidcTokenParams.Audience = otc.audience
-	//oidcTokenParams.ProviderName = otc.providerName
-
-	// Manual values for testing
-	oidcTokenParams.Audience = "jfrog-github"
-	oidcTokenParams.ProviderName = "setup-jfrog-cli-test"
+	oidcTokenParams.Audience = otc.audience
+	oidcTokenParams.ProviderName = otc.providerName
 	return oidcTokenParams
 }

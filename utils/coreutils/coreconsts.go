@@ -51,7 +51,7 @@ const (
 	TransitiveDownload      = "JFROG_CLI_TRANSITIVE_DOWNLOAD"
 	// Token provided by the OIDC provider, used to exchange for an access token.
 	OidcExchangeTokenId = "JFROG_CLI_OIDC_EXCHANGE_TOKEN_ID"
-
+	OidcProviderType    = "JFROG_CLI_OIDC_PROVIDER_TYPE"
 	// These environment variables are used to adjust command names for more detailed tracking in the usage report.
 	// Set by the setup-jfrog-cli GitHub Action to identify specific command usage scenarios.
 	// True if an automatic build publication was triggered.

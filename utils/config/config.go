@@ -597,6 +597,7 @@ type ServerDetails struct {
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
 	WebLogin                        bool   `json:"webLogin,omitempty"`
+	OidcProviderType                string `json:"oidcProviderType,omitempty"`
 	OidcProvider                    string `json:"oidcProvider,omitempty"`
 	OidcAudience                    string `json:"oidcAudience,omitempty"`
 	OidcExchangeTokenId             string `json:"-"`

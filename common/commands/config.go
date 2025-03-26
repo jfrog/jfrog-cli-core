@@ -216,31 +216,10 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 		}
 	}
 
-	// Handle OIDC
-	if cc.details.OidcProvider != "" {
-		// TODO what about provider type?
-		if cc.details.Url == "" {
-			return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
-		}
-		if cc.details.OidcExchangeTokenId == "" {
-			return errorutils.CheckErrorf("the --oidc-token-id flag must be provided when --oidc-provider is used. Ensure the flag is set or the environment variable is exported. If running on a CI server, verify the token is correctly injected.")
-		}
-		// TODO exchange token
-		log.Info("Exchanging OIDC token...")
-		accessTokenCreateCmd := generic.NewOidcTokenExchangeCommand()
-		accessTokenCreateCmd.
-			SetServerDetails(cc.details).
-			SetProviderName(cc.details.OidcProvider).
-			SetOidcTokenID(cc.details.OidcExchangeTokenId).
-			SetAudience(cc.details.OidcAudience)
-		//SetApplicationName(cc.).
-		//SetProjectKey(c.String(cliutils.Project)).
-
-		err := Exec(accessTokenCreateCmd)
-		if err != nil {
+	if cc.details.OidcProvider != "" || cc.details.OidcProviderType != "" {
+		if err := exchangeOidcTokenAndSetAccessToken(cc); err != nil {
 			return err
 		}
-		cc.details.AccessToken = accessTokenCreateCmd.GetOidToken()
 	}
 
 	if cc.details.AccessToken != "" && cc.details.User == "" {
@@ -249,6 +228,37 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 		}
 		cc.tryExtractingUsernameFromAccessToken()
 	}
+	return nil
+}
+
+// When a user is configuration a new server with OIDC, we will exchange the token and set the access token.
+func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
+	if err := validateOidcParams(cc.details); err != nil {
+		return err
+	}
+	// TODO this could be reused with the actual command?
+	log.Info("Exchanging OIDC token...")
+	accessTokenCreateCmd := generic.NewOidcTokenExchangeCommand()
+	// First check supported provider type
+	if err := accessTokenCreateCmd.SetProviderType(cc.details.OidcProviderType); err != nil {
+		return err
+	}
+	accessTokenCreateCmd.
+		SetServerDetails(cc.details).
+		SetProviderName(cc.details.OidcProvider).
+		SetOidcTokenID(cc.details.OidcExchangeTokenId).
+		SetAudience(cc.details.OidcAudience).
+		// TODO those values should be inserted here in config or as static env vars?
+		SetApplicationName("add_application_name").
+		SetProjectKey("add_project_key").
+		SetRepository("add_repo_here").
+		SetJobId("add_job_id").
+		SetRunId("add_run_id")
+	err := Exec(accessTokenCreateCmd)
+	if err != nil {
+		return err
+	}
+	cc.details.AccessToken = accessTokenCreateCmd.GetOidToken()
 	return nil
 }
 
@@ -895,4 +905,20 @@ func GetAllServerIds() []string {
 		serverIds = append(serverIds, serverConfig.ServerId)
 	}
 	return serverIds
+}
+
+func validateOidcParams(details *config.ServerDetails) error {
+	if details.Url == "" {
+		return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
+	}
+	if details.OidcExchangeTokenId == "" {
+		return errorutils.CheckErrorf("the --oidc-token-id flag must be provided when --oidc-provider is used. Ensure the flag is set or the environment variable is exported. If running on a CI server, verify the token is correctly injected.")
+	}
+	if details.OidcProvider == "" {
+		return errorutils.CheckErrorf("the --oidc-provider flag must be provided when using OIDC authentication")
+	}
+	if details.OidcProviderType == "" {
+		return errorutils.CheckErrorf("the --oidc-provider-type flag must be provided when using OIDC authentication")
+	}
+	return nil
 }

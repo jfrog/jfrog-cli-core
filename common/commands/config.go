@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	generic "github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"net/url"
 	"os"
 	"reflect"
@@ -213,6 +214,33 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 			coreutils.SetIfEmpty(&cc.details.MissionControlUrl, cc.details.Url+"mc/")
 			coreutils.SetIfEmpty(&cc.details.PipelinesUrl, cc.details.Url+"pipelines/")
 		}
+	}
+
+	// Handle OIDC
+	if cc.details.OidcProvider != "" {
+		// TODO what about provider type?
+		if cc.details.Url == "" {
+			return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
+		}
+		if cc.details.OidcExchangeTokenId == "" {
+			return errorutils.CheckErrorf("the --oidc-token-id flag must be provided when --oidc-provider is used. Ensure the flag is set or the environment variable is exported. If running on a CI server, verify the token is correctly injected.")
+		}
+		// TODO exchange token
+		log.Info("Exchanging OIDC token...")
+		accessTokenCreateCmd := generic.NewOidcTokenExchangeCommand()
+		accessTokenCreateCmd.
+			SetServerDetails(cc.details).
+			SetProviderName(cc.details.OidcProvider).
+			SetOidcTokenID(cc.details.OidcExchangeTokenId).
+			SetAudience(cc.details.OidcAudience)
+		//SetApplicationName(cc.).
+		//SetProjectKey(c.String(cliutils.Project)).
+
+		err := Exec(accessTokenCreateCmd)
+		if err != nil {
+			return err
+		}
+		cc.details.AccessToken = accessTokenCreateCmd.GetOidToken()
 	}
 
 	if cc.details.AccessToken != "" && cc.details.User == "" {

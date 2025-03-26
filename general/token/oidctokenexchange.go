@@ -103,6 +103,9 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 		return err
 	}
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
+	if err != nil {
+		return err
+	}
 	fmt.Printf(otc.response.AccessToken)
 	return
 }

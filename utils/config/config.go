@@ -597,6 +597,9 @@ type ServerDetails struct {
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
 	WebLogin                        bool   `json:"webLogin,omitempty"`
+	OidcProvider                    string `json:"oidcProvider,omitempty"`
+	OidcAudience                    string `json:"oidcAudience,omitempty"`
+	OidcExchangeTokenId             string `json:"-"`
 }
 
 // Deprecated
@@ -836,4 +839,8 @@ func (missionControlDetails *MissionControlDetails) GetAccessToken() string {
 
 func (missionControlDetails *MissionControlDetails) SetAccessToken(accessToken string) {
 	missionControlDetails.AccessToken = accessToken
+}
+
+func (serverDetails *ServerDetails) SetOidcExchangeTokenId(id string) {
+	serverDetails.OidcExchangeTokenId = id
 }

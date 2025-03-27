@@ -50,7 +50,7 @@ const (
 	ServerID                = "JFROG_CLI_SERVER_ID"
 	TransitiveDownload      = "JFROG_CLI_TRANSITIVE_DOWNLOAD"
 	// Token provided by the OIDC provider, used to exchange for an access token.
-	// nolint:gosec // False positive: This is not a hardcoded credential.
+	//#nosec G101 // False positive: This is not a hardcoded credential.
 	OidcExchangeTokenId = "JFROG_CLI_OIDC_EXCHANGE_TOKEN_ID"
 	OidcProviderType    = "JFROG_CLI_OIDC_PROVIDER_TYPE"
 	// These environment variables are used to adjust command names for more detailed tracking in the usage report.

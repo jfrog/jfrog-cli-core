@@ -378,16 +378,21 @@ func getActionFunc(cmd Command) cli.ActionFunc {
 }
 
 func ConvertContext(baseContext *cli.Context, flagsToConvert ...Flag) (*Context, error) {
+	print(baseContext)
 	pluginContext := &Context{
 		CommandName:      baseContext.Command.Name,
 		Arguments:        baseContext.Args(),
 		PrintCommandHelp: getPrintCommandHelpFunc(baseContext),
-		ParentContext: &Context{
+	}
+
+	if baseContext.Parent() != nil {
+		pluginContext.ParentContext = &Context{
 			CommandName:      baseContext.Parent().Command.Name,
 			Arguments:        baseContext.Parent().Args(),
 			PrintCommandHelp: getPrintCommandHelpFunc(baseContext.Parent()),
-		},
+		}
 	}
+
 	return pluginContext, fillFlagMaps(pluginContext, baseContext, flagsToConvert)
 }
 

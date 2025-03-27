@@ -237,8 +237,9 @@ var unsafeUrlTestCases = []unsafeUrlTest{
 	{"ssh://localhost:1339/", true},
 
 	// Unsafe URLs:
+	// jfrog-ignore - unsafe url for tests
 	{"http://acme.jfrog.io", false},
-	// jfrog-ignore
+	// jfrog-ignore - unsafe url for tests
 	{"http://acme.jfrog.io:8081", false},
 	{"http://localhost-123", false},
 }

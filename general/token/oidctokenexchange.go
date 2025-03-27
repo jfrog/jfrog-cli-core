@@ -5,11 +5,9 @@ import (
 	"fmt"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"os"
 )
 
 const (
@@ -135,32 +133,12 @@ func (otc *OidcTokenExchangeCommand) ShouldPrintResponse() bool {
 	return otc.outputTokenToConsole
 }
 
-func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) error {
-	switch providerType {
-	case GitHub.String():
-		otc.ProviderType = GitHub
-	case Azure.String():
-		otc.ProviderType = Azure
-	case GenericOidc.String():
-		otc.ProviderType = GenericOidc
-	default:
-		return errorutils.CheckError(fmt.Errorf("unspported oidc provider type: %s", providerType))
-	}
-	return nil
+func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) (err error) {
+	otc.ProviderType, err = OidcProviderTypeFromString(providerType)
+	return
 }
 
 func (otc *OidcTokenExchangeCommand) Run() (err error) {
-	// OIDC exchange token command will always fail to report to the visibility system
-	// we are setting this env to avoid confusing logs in the visibility system
-	err = os.Setenv(coreutils.ReportUsage, "false")
-	if err != nil {
-		return
-	}
-	defer func() {
-		if err = os.Unsetenv(coreutils.ReportUsage); err != nil {
-			return
-		}
-	}()
 	servicesManager, err := rtUtils.CreateAccessServiceManager(otc.serverDetails, false)
 	if err != nil {
 		return err

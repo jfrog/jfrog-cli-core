@@ -709,6 +709,10 @@ func (serverDetails *ServerDetails) GetClientCertKeyPath() string {
 	return serverDetails.ClientCertKeyPath
 }
 
+func (serverDetails *ServerDetails) UsesOidc() bool {
+	return serverDetails.OidcProvider != "" || serverDetails.OidcProviderType != ""
+}
+
 func (serverDetails *ServerDetails) CreateArtAuthConfig() (auth.ServiceDetails, error) {
 	artAuth := artifactoryAuth.NewArtifactoryDetails()
 	artAuth.SetUrl(serverDetails.ArtifactoryUrl)

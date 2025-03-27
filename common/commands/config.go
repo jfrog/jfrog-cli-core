@@ -40,6 +40,8 @@ const (
 	BasicAuth   AuthenticationMethod = "Username and Password / Reference token"
 	MTLS        AuthenticationMethod = "Mutual TLS"
 	WebLogin    AuthenticationMethod = "Web Login"
+	// Currently supported only non-interactively.
+	OIDC AuthenticationMethod = "OIDC"
 )
 
 const (
@@ -198,7 +200,7 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 		}
 	}
 
-	if cc.details.OidcProvider != "" || cc.details.OidcProviderType != "" {
+	if cc.details.UsesOidc() {
 		if err := exchangeOidcTokenAndSetAccessToken(cc); err != nil {
 			return err
 		}
@@ -218,7 +220,7 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 	if err := validateOidcParams(cc.details); err != nil {
 		return err
 	}
-	log.Info("Exchanging OIDC token...")
+	log.Debug("Exchanging OIDC token...")
 	accessTokenCreateCmd := generic.NewOidcTokenExchangeCommand()
 	// First check supported provider type
 	if err := accessTokenCreateCmd.SetProviderType(cc.details.OidcProviderType); err != nil {
@@ -423,6 +425,7 @@ func (cc *ConfigCommand) promptAuthMethods() (selectedMethod AuthenticationMetho
 		WebLogin,
 		BasicAuth,
 		MTLS,
+		OIDC,
 	}
 	var selectableItems []ioutils.PromptItem
 	for _, curMethod := range authMethods {

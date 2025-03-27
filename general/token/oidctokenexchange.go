@@ -67,7 +67,7 @@ type OidcTokenParams struct {
 }
 
 func NewOidcTokenExchangeCommand() *OidcTokenExchangeCommand {
-	return &OidcTokenExchangeCommand{response: new(auth.OidcTokenResponseData)}
+	return &OidcTokenExchangeCommand{response: new(auth.OidcTokenResponseData), OidcTokenParams: &OidcTokenParams{}}
 }
 
 func (otc *OidcTokenExchangeCommand) SetServerDetails(serverDetails *config.ServerDetails) *OidcTokenExchangeCommand {

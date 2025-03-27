@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"strings"
 )
 
 const (
@@ -31,12 +32,12 @@ func OidcProviderTypeFromString(providerType string) (OidcProviderType, error) {
 	if providerType == "" {
 		return 0, nil
 	}
-	switch providerType {
-	case GitHub.String():
+	switch strings.ToLower(providerType) {
+	case strings.ToLower(GitHub.String()):
 		return GitHub, nil
-	case Azure.String():
+	case strings.ToLower(Azure.String()):
 		return Azure, nil
-	case GenericOidc.String():
+	case strings.ToLower(GenericOidc.String()):
 		return GenericOidc, nil
 	default:
 		return 0, fmt.Errorf("unsupported oidc provider type: %s", providerType)

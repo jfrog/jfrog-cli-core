@@ -344,6 +344,74 @@ func TestImport(t *testing.T) {
 	assert.Equal(t, "password", serverDetails.GetPassword())
 }
 
+func TestValidateOidcParams(t *testing.T) {
+	base := &config.ServerDetails{
+		Url:                 "https://my.jfrog.com",
+		OidcExchangeTokenId: "token123",
+		OidcProvider:        "MyProvider",
+		OidcProviderType:    "GitHub",
+	}
+
+	testsCases := []struct {
+		name        string
+		modify      func(*config.ServerDetails)
+		expectError bool
+		errContains string
+	}{
+		{
+			name:        "All fields set",
+			modify:      func(sd *config.ServerDetails) {},
+			expectError: false,
+		},
+		{
+			name: "Missing URL",
+			modify: func(sd *config.ServerDetails) {
+				sd.Url = ""
+			},
+			expectError: true,
+			errContains: "--url",
+		},
+		{
+			name: "Missing OIDC Token ID",
+			modify: func(sd *config.ServerDetails) {
+				sd.OidcExchangeTokenId = ""
+			},
+			expectError: true,
+			errContains: "--oidc-token-id",
+		},
+		{
+			name: "Missing OIDC Provider",
+			modify: func(sd *config.ServerDetails) {
+				sd.OidcProvider = ""
+			},
+			expectError: true,
+			errContains: "--oidc-provider",
+		},
+		{
+			name: "Missing OIDC Provider Type",
+			modify: func(sd *config.ServerDetails) {
+				sd.OidcProviderType = ""
+			},
+			expectError: true,
+			errContains: "--oidc-provider-type",
+		},
+	}
+
+	for _, tt := range testsCases {
+		t.Run(tt.name, func(t *testing.T) {
+			sd := *base // Copy base
+			tt.modify(&sd)
+			err := validateOidcParams(&sd)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func testExportImport(t *testing.T, inputDetails *config.ServerDetails) {
 	configToken, err := config.Export(inputDetails)
 	assert.NoError(t, err)

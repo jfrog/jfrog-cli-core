@@ -1,6 +1,7 @@
 package general
 
 import (
+	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -23,5 +24,28 @@ func TestDeduceServerId(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, testCase.expectedServerID, serverId)
 		})
+	}
+}
+
+func TestSetProviderType_CaseInsensitive(t *testing.T) {
+	cmd := token.NewOidcTokenExchangeCommand()
+	cmd.OidcTokenParams = &token.OidcTokenParams{}
+
+	testCases := []struct {
+		input          string
+		expectedOutput token.OidcProviderType
+	}{
+		{"github", token.GitHub},
+		{"GITHUB", token.GitHub},
+		{"GiThUb", token.GitHub},
+		{"azure", token.Azure},
+		{"Azure", token.Azure},
+		{"genericoidc", token.GenericOidc},
+	}
+
+	for _, tc := range testCases {
+		err := cmd.SetProviderType(tc.input)
+		assert.NoError(t, err)
+		assert.Equal(t, tc.expectedOutput, cmd.ProviderType)
 	}
 }

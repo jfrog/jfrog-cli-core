@@ -55,7 +55,6 @@ var mutex sync.Mutex
 type ConfigCommand struct {
 	details          *config.ServerDetails
 	defaultDetails   *config.ServerDetails
-	oidcDetails      *generic.OidcTokenExchangeCommand
 	interactive      bool
 	encPassword      bool
 	useBasicAuthOnly bool

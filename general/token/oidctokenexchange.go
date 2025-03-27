@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	// nolint:gosec // False positive: This is not a hardcoded credential.
 	grantType        = "urn:ietf:params:oauth:grant-type:token-exchange"
 	subjectTokenType = "urn:ietf:params:oauth:token-type:id_token"
 )

@@ -347,7 +347,8 @@ func TestImport(t *testing.T) {
 
 func TestValidateOidcParams(t *testing.T) {
 	base := &config.ServerDetails{
-		Url:                 "https://my.jfrog.com",
+		Url: "https://my.jfrog.com",
+		// jfrog-ignore
 		OidcExchangeTokenId: "token123",
 		OidcProvider:        "MyProvider",
 		OidcProviderType:    "GitHub",

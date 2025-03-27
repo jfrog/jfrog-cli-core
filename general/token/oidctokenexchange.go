@@ -14,7 +14,7 @@ import (
 const (
 	//#nosec G101 // False positive: This is not a hardcoded credential.
 	grantType = "urn:ietf:params:oauth:grant-type:token-exchange"
-	//#nosec G101
+	//#nosec G101 jfrog-ignore
 	subjectTokenType = "urn:ietf:params:oauth:token-type:id_token"
 )
 

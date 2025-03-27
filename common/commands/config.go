@@ -253,6 +253,7 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetProjectKey("add_project_key").
 		SetRepository("add_repo_here").
 		SetJobId("add_job_id").
+		// use ci.runId
 		SetRunId("add_run_id")
 	err := Exec(accessTokenCreateCmd)
 	if err != nil {
@@ -908,6 +909,7 @@ func GetAllServerIds() []string {
 }
 
 func validateOidcParams(details *config.ServerDetails) error {
+	// TODO can we verify the correctness of the exchange token id ? what happend if it's not valid? can we retry?
 	if details.Url == "" {
 		return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
 	}

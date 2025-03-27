@@ -56,8 +56,6 @@ const (
 	// Set by the setup-jfrog-cli GitHub Action to identify specific command usage scenarios.
 	// True if an automatic build publication was triggered.
 	UsageAutoPublishedBuild = "JFROG_CLI_USAGE_AUTO_BUILD_PUBLISHED"
-	// True if the JFrog platform was configured using OIDC integration.
-	UsageOidcConfigured = "JFROG_CLI_USAGE_CONFIG_OIDC"
 
 	// Deprecated and replaced with TransitiveDownload
 	TransitiveDownloadExperimental = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"
@@ -65,12 +63,17 @@ const (
 
 // Although these vars are constant, they are defined inside a vars section and not a constants section because the tests modify these values.
 var (
-	HomeDir     = "JFROG_CLI_HOME_DIR"
-	BuildName   = "JFROG_CLI_BUILD_NAME"
-	BuildNumber = "JFROG_CLI_BUILD_NUMBER"
-	Project     = "JFROG_CLI_BUILD_PROJECT"
-	SigningKey  = "JFROG_CLI_SIGNING_KEY"
-	KeyAlias    = "JFROG_CLI_KEY_ALIAS"
+	HomeDir              = "JFROG_CLI_HOME_DIR"
+	BuildName            = "JFROG_CLI_BUILD_NAME"
+	BuildNumber          = "JFROG_CLI_BUILD_NUMBER"
+	Project              = "JFROG_CLI_BUILD_PROJECT"
+	ApplicationKey       = "JFROG_CLI_APPLICATION_KEY"
+	SourceCodeRepository = "JFROG_CLI_SOURCECODE_REPOSITORY"
+	SigningKey           = "JFROG_CLI_SIGNING_KEY"
+	KeyAlias             = "JFROG_CLI_KEY_ALIAS"
 	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
+	// For CI runs
+	CIJobID = "JFROG_CLI_CI_JOB_ID"
+	CIRunID = "JFROG_CLI_CI_RUN_ID"
 )

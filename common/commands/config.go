@@ -43,8 +43,6 @@ const (
 )
 
 const (
-	// Indicates that the config command uses OIDC authentication.
-	configOidcCommandName = "config_oidc"
 	// Default config command name.
 	configCommandName = "config"
 )
@@ -55,6 +53,7 @@ var mutex sync.Mutex
 type ConfigCommand struct {
 	details          *config.ServerDetails
 	defaultDetails   *config.ServerDetails
+	oidcDetails      *generic.OidcTokenExchangeCommand
 	interactive      bool
 	encPassword      bool
 	useBasicAuthOnly bool
@@ -64,8 +63,9 @@ type ConfigCommand struct {
 	// Forcibly make the configured server default.
 	makeDefault bool
 	// For unit tests
-	disablePrompts bool
-	cmdType        ConfigAction
+	disablePrompts  bool
+	cmdType         ConfigAction
+	oidcSetupParams *generic.OidcTokenParams
 }
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
@@ -151,25 +151,7 @@ func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (cc *ConfigCommand) CommandName() string {
-	oidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
-	if err != nil {
-		log.Warn("Failed to get the value of the environment variable: " + coreutils.UsageAutoPublishedBuild + ". " + err.Error())
-	}
-	if oidcConfigured {
-		return configOidcCommandName
-	}
 	return configCommandName
-}
-
-// ExecAndReportUsage runs the ConfigCommand and then triggers a usage report if needed,
-// Report usage only if OIDC integration was used
-// Usage must be sent after command execution as we need the server details to be set.
-func (cc *ConfigCommand) ExecAndReportUsage() (err error) {
-	if err = cc.Run(); err != nil {
-		return
-	}
-	reportUsage(cc, nil)
-	return
 }
 
 func (cc *ConfigCommand) config() error {
@@ -236,7 +218,6 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 	if err := validateOidcParams(cc.details); err != nil {
 		return err
 	}
-	// TODO this could be reused with the actual command?
 	log.Info("Exchanging OIDC token...")
 	accessTokenCreateCmd := generic.NewOidcTokenExchangeCommand()
 	// First check supported provider type
@@ -249,11 +230,10 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetOidcTokenID(cc.details.OidcExchangeTokenId).
 		SetAudience(cc.details.OidcAudience).
 		// TODO those values should be inserted here in config or as static env vars?
-		SetApplicationName("add_application_name").
-		SetProjectKey("add_project_key").
+		SetApplicationName(cc.oidcDetails.GetApplicationKey()).
+		SetProjectKey("").
 		SetRepository("add_repo_here").
 		SetJobId("add_job_id").
-		// use ci.runId
 		SetRunId("add_run_id")
 	err := Exec(accessTokenCreateCmd)
 	if err != nil {
@@ -854,6 +834,11 @@ func (cc *ConfigCommand) handleWebLogin() error {
 	cc.details.WebLogin = true
 	cc.tryExtractingUsernameFromAccessToken()
 	return nil
+}
+
+func (cc *ConfigCommand) SetOIDCParams(oidcDetails *generic.OidcTokenParams) *ConfigCommand {
+	cc.oidcSetupParams = oidcDetails
+	return cc
 }
 
 // Return true if a URL is safe. URL is considered not safe if the following conditions are met:

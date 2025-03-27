@@ -17,34 +17,51 @@ const (
 	subjectTokenType = "urn:ietf:params:oauth:token-type:id_token"
 )
 
-type oidcProviderType int
+type OidcProviderType int
 
 const (
-	GitHub oidcProviderType = iota
+	GitHub OidcProviderType = iota
 	Azure
 	GenericOidc
 )
 
-func (p oidcProviderType) String() string {
+func (p OidcProviderType) String() string {
 	return [...]string{"GitHub", "Azure", "GenericOidc"}[p]
 }
 
+func OidcProviderTypeFromString(providerType string) (OidcProviderType, error) {
+	if providerType == "" {
+		return 0, nil
+	}
+	switch providerType {
+	case GitHub.String():
+		return GitHub, nil
+	case Azure.String():
+		return Azure, nil
+	case GenericOidc.String():
+		return GenericOidc, nil
+	default:
+		return 0, fmt.Errorf("unsupported oidc provider type: %s", providerType)
+	}
+}
+
 type OidcTokenExchangeCommand struct {
-	serverDetails   *config.ServerDetails
-	providerName    string
-	audience        string
-	tokenId         string
-	projectKey      string
-	applicationName string
-	providerType    oidcProviderType
-	// [Optional] Unique identifier for the CI runtime
-	runId string
-	// [Optional] Unique identifier for the CI job
-	jobId string
-	// [Optional] CI repository name
-	repository           string
+	*OidcTokenParams
+	serverDetails        *config.ServerDetails
 	response             *auth.OidcTokenResponseData
 	outputTokenToConsole bool
+}
+
+type OidcTokenParams struct {
+	ProviderType   OidcProviderType
+	ProviderName   string
+	TokenId        string
+	Audience       string
+	ProjectKey     string
+	ApplicationKey string
+	JobId          string
+	RunId          string
+	Repository     string
 }
 
 func NewOidcTokenExchangeCommand() *OidcTokenExchangeCommand {
@@ -60,43 +77,47 @@ func (otc *OidcTokenExchangeCommand) GetOidToken() string {
 	return otc.response.AccessToken
 }
 
+func (otc *OidcTokenExchangeCommand) GetApplicationKey() string {
+	return otc.ApplicationKey
+}
+
 func (otc *OidcTokenExchangeCommand) SetProviderName(providerName string) *OidcTokenExchangeCommand {
-	otc.providerName = providerName
+	otc.ProviderName = providerName
 	return otc
 }
 
 func (otc *OidcTokenExchangeCommand) SetOidcTokenID(oidcTokenID string) *OidcTokenExchangeCommand {
-	otc.tokenId = oidcTokenID
+	otc.TokenId = oidcTokenID
 	return otc
 }
 
 func (otc *OidcTokenExchangeCommand) SetProjectKey(projectKey string) *OidcTokenExchangeCommand {
-	otc.projectKey = projectKey
+	otc.ProjectKey = projectKey
 	return otc
 }
 
 func (otc *OidcTokenExchangeCommand) SetApplicationName(applicationName string) *OidcTokenExchangeCommand {
-	otc.applicationName = applicationName
+	otc.ApplicationKey = applicationName
 	return otc
 }
 
 func (otc *OidcTokenExchangeCommand) SetAudience(audience string) *OidcTokenExchangeCommand {
-	otc.audience = audience
+	otc.Audience = audience
 	return otc
 }
 
 func (otc *OidcTokenExchangeCommand) SetRunId(runId string) *OidcTokenExchangeCommand {
-	otc.runId = runId
+	otc.RunId = runId
 	return otc
 }
 
 func (otc *OidcTokenExchangeCommand) SetJobId(jobId string) *OidcTokenExchangeCommand {
-	otc.jobId = jobId
+	otc.JobId = jobId
 	return otc
 }
 
 func (otc *OidcTokenExchangeCommand) SetRepository(repo string) *OidcTokenExchangeCommand {
-	otc.repository = repo
+	otc.Repository = repo
 	return otc
 }
 
@@ -113,14 +134,18 @@ func (otc *OidcTokenExchangeCommand) CommandName() string {
 	return "jf_oidc_token_exchange"
 }
 
+func (otc *OidcTokenExchangeCommand) ShouldPrintResponse() bool {
+	return otc.outputTokenToConsole
+}
+
 func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) error {
 	switch providerType {
 	case GitHub.String():
-		otc.providerType = GitHub
+		otc.ProviderType = GitHub
 	case Azure.String():
-		otc.providerType = Azure
+		otc.ProviderType = Azure
 	case GenericOidc.String():
-		otc.providerType = GenericOidc
+		otc.ProviderType = GenericOidc
 	default:
 		return errorutils.CheckError(fmt.Errorf("unspported oidc provider type: %s", providerType))
 	}
@@ -147,10 +172,6 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	// When we use this command internally, we do not want to token to be outputted to the console
-	if otc.outputTokenToConsole {
-		fmt.Printf(otc.response.AccessToken)
-	}
 	return
 }
 
@@ -158,13 +179,13 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams := services.CreateOidcTokenParams{}
 	oidcTokenParams.GrantType = grantType
 	oidcTokenParams.SubjectTokenType = subjectTokenType
-	oidcTokenParams.OidcTokenID = otc.tokenId
-	oidcTokenParams.ProjectKey = otc.projectKey
-	oidcTokenParams.ApplicationKey = otc.applicationName
-	oidcTokenParams.RunId = otc.runId
-	oidcTokenParams.JobId = otc.jobId
-	oidcTokenParams.Repo = otc.repository
-	oidcTokenParams.Audience = otc.audience
-	oidcTokenParams.ProviderName = otc.providerName
+	oidcTokenParams.OidcTokenID = otc.TokenId
+	oidcTokenParams.ProjectKey = otc.ProjectKey
+	oidcTokenParams.ApplicationKey = otc.ApplicationKey
+	oidcTokenParams.RunId = otc.RunId
+	oidcTokenParams.JobId = otc.JobId
+	oidcTokenParams.Repo = otc.Repository
+	oidcTokenParams.Audience = otc.Audience
+	oidcTokenParams.ProviderName = otc.ProviderName
 	return oidcTokenParams
 }

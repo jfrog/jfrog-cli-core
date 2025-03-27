@@ -39,6 +39,17 @@ func Exec(command Command) error {
 	return err
 }
 
+// ExecAndReportUsage runs the command and then triggers a usage report if needed,
+// Is used for commands which don't have the full server details before execution
+// For example: oidc exchange command, which will get access token only after execution.
+func ExecAndReportUsage(cc Command) (err error) {
+	if err = cc.Run(); err != nil {
+		return
+	}
+	reportUsage(cc, nil)
+	return
+}
+
 func reportUsage(command Command, channel chan<- bool) {
 	// When the usage reporting is done, signal to the channel.
 	defer signalReportUsageFinished(channel)

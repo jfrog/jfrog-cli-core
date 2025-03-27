@@ -229,12 +229,12 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetProviderName(cc.details.OidcProvider).
 		SetOidcTokenID(cc.details.OidcExchangeTokenId).
 		SetAudience(cc.details.OidcAudience).
-		// TODO those values should be inserted here in config or as static env vars?
-		SetApplicationName(cc.oidcDetails.GetApplicationKey()).
-		SetProjectKey("").
-		SetRepository("add_repo_here").
-		SetJobId("add_job_id").
-		SetRunId("add_run_id")
+		SetApplicationName(cc.oidcSetupParams.ApplicationKey).
+		SetProjectKey(cc.oidcSetupParams.ProjectKey).
+		SetRepository(cc.oidcSetupParams.Repository).
+		SetJobId(cc.oidcSetupParams.JobId).
+		SetRunId(cc.oidcSetupParams.RunId)
+
 	err := Exec(accessTokenCreateCmd)
 	if err != nil {
 		return err
@@ -894,7 +894,6 @@ func GetAllServerIds() []string {
 }
 
 func validateOidcParams(details *config.ServerDetails) error {
-	// TODO can we verify the correctness of the exchange token id ? what happend if it's not valid? can we retry?
 	if details.Url == "" {
 		return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
 	}

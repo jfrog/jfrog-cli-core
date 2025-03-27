@@ -53,10 +53,11 @@ type OidcTokenExchangeCommand struct {
 }
 
 type OidcTokenParams struct {
-	ProviderType   OidcProviderType
-	ProviderName   string
-	TokenId        string
-	Audience       string
+	ProviderType OidcProviderType
+	ProviderName string
+	TokenId      string
+	Audience     string
+	// Those values are used to link the token to a specific use, they are optional
 	ProjectKey     string
 	ApplicationKey string
 	JobId          string
@@ -75,10 +76,6 @@ func (otc *OidcTokenExchangeCommand) SetServerDetails(serverDetails *config.Serv
 
 func (otc *OidcTokenExchangeCommand) GetOidToken() string {
 	return otc.response.AccessToken
-}
-
-func (otc *OidcTokenExchangeCommand) GetApplicationKey() string {
-	return otc.ApplicationKey
 }
 
 func (otc *OidcTokenExchangeCommand) SetProviderName(providerName string) *OidcTokenExchangeCommand {

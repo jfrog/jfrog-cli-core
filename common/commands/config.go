@@ -234,9 +234,7 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetProjectKey(cc.oidcSetupParams.ProjectKey).
 		SetRepository(cc.oidcSetupParams.Repository).
 		SetJobId(cc.oidcSetupParams.JobId).
-		SetRunId(cc.oidcSetupParams.RunId).
-		// TODO remove this after tests
-		SetOutputTokenToConsole(true)
+		SetRunId(cc.oidcSetupParams.RunId)
 
 	// Usage report will be sent only after execution in order to have valid token
 	err := ExecAndReportUsage(exchangeOidcTokenCmd)

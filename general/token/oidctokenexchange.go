@@ -7,6 +7,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 	"strings"
 )
 
@@ -134,9 +135,13 @@ func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) (err e
 	return
 }
 
-// Prints AccessToken and Username to console to be used by the user
 func (otc *OidcTokenExchangeCommand) PrintResponseToConsole() {
-	log.Output(fmt.Sprintf("AccessToken: %s\nUsername: %s", otc.response.AccessToken, otc.response.Username))
+	if os.Getenv("CI") == "true" {
+		// Mask the values in CI logs
+		log.Output(fmt.Sprintf("{ AccessToken: %s Username: %s }", "****", "****"))
+	} else {
+		log.Output(fmt.Sprintf("{ AccessToken: %s Username: %s }", otc.response.AccessToken, otc.response.Username))
+	}
 }
 
 func (otc *OidcTokenExchangeCommand) Run() (err error) {
@@ -145,9 +150,8 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 		return err
 	}
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
-
-	// For tests
-	otc.PrintResponseToConsole()
+	// Update the config server details with the exchanged token
+	otc.serverDetails.AccessToken = otc.response.AccessToken
 	return
 }
 

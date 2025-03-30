@@ -70,7 +70,7 @@ type ConfigCommand struct {
 }
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
-	return &ConfigCommand{cmdType: cmdType, serverId: serverId}
+	return &ConfigCommand{cmdType: cmdType, serverId: serverId, oidcSetupParams: &generic.OidcTokenParams{}}
 }
 
 func (cc *ConfigCommand) SetServerId(serverId string) *ConfigCommand {

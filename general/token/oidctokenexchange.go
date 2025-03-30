@@ -148,11 +148,6 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 		return err
 	}
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
-	if err != nil {
-		return err
-	}
-	// Update server details with the exchanged access token
-	otc.serverDetails.AccessToken = otc.response.AccessToken
 	return
 }
 

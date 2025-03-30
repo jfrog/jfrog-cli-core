@@ -220,12 +220,12 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		return err
 	}
 	log.Debug("Exchanging OIDC token...")
-	accessTokenCreateCmd := generic.NewOidcTokenExchangeCommand()
+	exchangeOidcTokenCmd := generic.NewOidcTokenExchangeCommand()
 	// First check supported provider type
-	if err := accessTokenCreateCmd.SetProviderType(cc.details.OidcProviderType); err != nil {
+	if err := exchangeOidcTokenCmd.SetProviderType(cc.details.OidcProviderType); err != nil {
 		return err
 	}
-	accessTokenCreateCmd.
+	exchangeOidcTokenCmd.
 		SetServerDetails(cc.details).
 		SetProviderName(cc.details.OidcProvider).
 		SetOidcTokenID(cc.details.OidcExchangeTokenId).
@@ -239,11 +239,12 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetOutputTokenToConsole(true)
 
 	// Usage report will be sent only after execution in order to have valid token
-	err := ExecAndReportUsage(accessTokenCreateCmd)
+	err := ExecAndReportUsage(exchangeOidcTokenCmd)
 	if err != nil {
 		return err
 	}
-	cc.details.AccessToken = accessTokenCreateCmd.GetOidToken()
+	// Update the config server details with the exchanged token
+	cc.details.AccessToken = exchangeOidcTokenCmd.GetOidToken()
 	return nil
 }
 

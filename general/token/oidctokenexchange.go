@@ -1,13 +1,11 @@
 package token
 
 import (
-	"encoding/json"
 	"fmt"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"strings"
 )
 
@@ -119,9 +117,12 @@ func (otc *OidcTokenExchangeCommand) SetRepository(repo string) *OidcTokenExchan
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) Response() ([]byte, error) {
-	content, err := json.Marshal(*otc.response)
-	return content, errorutils.CheckError(err)
+func (otc *OidcTokenExchangeCommand) SetOutputTokenToConsole(outputTokenToConsole bool) {
+	otc.outputTokenToConsole = outputTokenToConsole
+}
+
+func (otc *OidcTokenExchangeCommand) Response() (response *auth.OidcTokenResponseData) {
+	return otc.response
 }
 
 func (otc *OidcTokenExchangeCommand) ServerDetails() (*config.ServerDetails, error) {

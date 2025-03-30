@@ -4,6 +4,7 @@ import (
 	"fmt"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/log"
@@ -32,7 +33,9 @@ func (p OidcProviderType) String() string {
 
 func OidcProviderTypeFromString(providerType string) (OidcProviderType, error) {
 	if providerType == "" {
-		return 0, nil
+		// If no provider type is provided, return 0 (GitHub) as default
+		// And export env var for future use
+		return 0, os.Setenv(coreutils.OidcProviderType, GitHub.String())
 	}
 	switch strings.ToLower(providerType) {
 	case strings.ToLower(GitHub.String()):

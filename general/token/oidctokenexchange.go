@@ -6,6 +6,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 )
 
@@ -46,9 +47,8 @@ func OidcProviderTypeFromString(providerType string) (OidcProviderType, error) {
 
 type OidcTokenExchangeCommand struct {
 	*OidcTokenParams
-	serverDetails        *config.ServerDetails
-	response             *auth.OidcTokenResponseData
-	outputTokenToConsole bool
+	serverDetails *config.ServerDetails
+	response      *auth.OidcTokenResponseData
 }
 
 type OidcTokenParams struct {
@@ -117,10 +117,6 @@ func (otc *OidcTokenExchangeCommand) SetRepository(repo string) *OidcTokenExchan
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) SetOutputTokenToConsole(outputTokenToConsole bool) {
-	otc.outputTokenToConsole = outputTokenToConsole
-}
-
 func (otc *OidcTokenExchangeCommand) Response() (response *auth.OidcTokenResponseData) {
 	return otc.response
 }
@@ -131,10 +127,6 @@ func (otc *OidcTokenExchangeCommand) ServerDetails() (*config.ServerDetails, err
 
 func (otc *OidcTokenExchangeCommand) CommandName() string {
 	return "jf_oidc_token_exchange"
-}
-
-func (otc *OidcTokenExchangeCommand) ShouldPrintResponse() bool {
-	return otc.outputTokenToConsole
 }
 
 func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) (err error) {
@@ -148,6 +140,12 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 		return err
 	}
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
+
+	// For testing
+	log.Debug("printing repose to console")
+	fmt.Printf("Response: %+v\n", otc.response)
+	log.Output("Response: %+v\n", otc.response)
+
 	return
 }
 

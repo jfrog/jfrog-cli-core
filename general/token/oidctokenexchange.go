@@ -29,6 +29,11 @@ func (p OidcProviderType) String() string {
 	return [...]string{"GitHub", "Azure", "GenericOidc"}[p]
 }
 
+type responseConsole struct {
+	AccessToken string `json:"access_token"`
+	Username    string `json:"username"`
+}
+
 func OidcProviderTypeFromString(providerType string) (OidcProviderType, error) {
 	if providerType == "" {
 		return 0, nil
@@ -141,11 +146,12 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 	}
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
 
-	// For testing
-	log.Debug("printing repose to console")
-	fmt.Printf("Response: %+v\n", otc.response)
-	log.Output("Response: %+v\n", otc.response)
-
+	// Populate responseConsole and print to console
+	response := responseConsole{
+		AccessToken: otc.response.AccessToken,
+		Username:    otc.response.Username,
+	}
+	log.Output(response)
 	return
 }
 

@@ -39,10 +39,10 @@ func Exec(command Command) error {
 	return err
 }
 
-// ExecAndReportUsage runs the command and then triggers a usage report if needed,
+// ExecAndThenReportUsage runs the command and then triggers a usage report
 // Is used for commands which don't have the full server details before execution
 // For example: oidc exchange command, which will get access token only after execution.
-func ExecAndReportUsage(cc Command) (err error) {
+func ExecAndThenReportUsage(cc Command) (err error) {
 	if err = cc.Run(); err != nil {
 		return
 	}

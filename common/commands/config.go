@@ -234,7 +234,7 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetRunId(cc.oidcSetupParams.RunId)
 
 	// Usage report will be sent only after execution in order to have valid token
-	err := ExecAndReportUsage(exchangeOidcTokenCmd)
+	err := ExecAndThenReportUsage(exchangeOidcTokenCmd)
 	if err != nil {
 		return err
 	}

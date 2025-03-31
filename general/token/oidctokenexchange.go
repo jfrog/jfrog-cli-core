@@ -57,7 +57,7 @@ type OidcTokenParams struct {
 	ProviderName string
 	TokenId      string
 	Audience     string
-	// Those values are used to link the token to a specific use, they are optional
+	// These values are used to link the token to a specific use, they are optional
 	ProjectKey     string
 	ApplicationKey string
 	JobId          string

@@ -93,7 +93,7 @@ func (otc *OidcTokenExchangeCommand) SetProjectKey(projectKey string) *OidcToken
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) SetApplicationName(applicationName string) *OidcTokenExchangeCommand {
+func (otc *OidcTokenExchangeCommand) SetApplicationKey(applicationName string) *OidcTokenExchangeCommand {
 	otc.ApplicationKey = applicationName
 	return otc
 }
@@ -130,7 +130,12 @@ func (otc *OidcTokenExchangeCommand) CommandName() string {
 	return "jf_oidc_token_exchange"
 }
 
-func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) (err error) {
+func (otc *OidcTokenExchangeCommand) SetProviderType(providerType OidcProviderType) *OidcTokenExchangeCommand {
+	otc.ProviderType = providerType
+	return otc
+}
+
+func (otc *OidcTokenExchangeCommand) SetProviderTypeAsString(providerType string) (err error) {
 	otc.ProviderType, err = OidcProviderTypeFromString(providerType)
 	return
 }

@@ -597,10 +597,6 @@ type ServerDetails struct {
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
 	WebLogin                        bool   `json:"webLogin,omitempty"`
-	OidcProviderType                string `json:"oidcProviderType,omitempty"`
-	OidcProvider                    string `json:"oidcProvider,omitempty"`
-	OidcAudience                    string `json:"oidcAudience,omitempty"`
-	OidcExchangeTokenId             string `json:"-"`
 }
 
 // Deprecated
@@ -707,10 +703,6 @@ func (serverDetails *ServerDetails) GetClientCertPath() string {
 
 func (serverDetails *ServerDetails) GetClientCertKeyPath() string {
 	return serverDetails.ClientCertKeyPath
-}
-
-func (serverDetails *ServerDetails) UsesOidc() bool {
-	return serverDetails.OidcProvider != "" || serverDetails.OidcProviderType != ""
 }
 
 func (serverDetails *ServerDetails) CreateArtAuthConfig() (auth.ServiceDetails, error) {
@@ -844,8 +836,4 @@ func (missionControlDetails *MissionControlDetails) GetAccessToken() string {
 
 func (missionControlDetails *MissionControlDetails) SetAccessToken(accessToken string) {
 	missionControlDetails.AccessToken = accessToken
-}
-
-func (serverDetails *ServerDetails) SetOidcExchangeTokenId(id string) {
-	serverDetails.OidcExchangeTokenId = id
 }

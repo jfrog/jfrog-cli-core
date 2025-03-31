@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"os"
 	"testing"
 
@@ -347,64 +348,57 @@ func TestImport(t *testing.T) {
 }
 
 func TestValidateOidcParams(t *testing.T) {
-	base := &config.ServerDetails{
-		Url: "https://my.jfrog.com",
-		// jfrog-ignore
-		OidcExchangeTokenId: "token123",
-		OidcProvider:        "MyProvider",
-		OidcProviderType:    "GitHub",
-	}
-
 	testsCases := []struct {
 		name        string
-		modify      func(*config.ServerDetails)
+		platformUrl string
+		oidcParams  *token.OidcTokenParams
 		expectError bool
 		errContains string
 	}{
 		{
-			name:        "All fields set",
-			modify:      func(sd *config.ServerDetails) {},
+			name:        "All parameters set",
+			platformUrl: "https://my.jfrog.com",
+			oidcParams: &token.OidcTokenParams{
+				TokenId:      "token123",
+				ProviderName: "MyProvider",
+			},
 			expectError: false,
 		},
 		{
-			name: "Missing URL",
-			modify: func(sd *config.ServerDetails) {
-				sd.Url = ""
+			name:        "Missing platform URL",
+			platformUrl: "",
+			oidcParams: &token.OidcTokenParams{
+				TokenId:      "token123",
+				ProviderName: "MyProvider",
 			},
 			expectError: true,
 			errContains: "--url",
 		},
 		{
-			name: "Missing OIDC Token ID",
-			modify: func(sd *config.ServerDetails) {
-				sd.OidcExchangeTokenId = ""
+			name:        "Missing OIDC Token ID",
+			platformUrl: "https://my.jfrog.com",
+			oidcParams: &token.OidcTokenParams{
+				TokenId:      "",
+				ProviderName: "MyProvider",
 			},
 			expectError: true,
 			errContains: "--oidc-token-id",
 		},
 		{
-			name: "Missing OIDC Provider",
-			modify: func(sd *config.ServerDetails) {
-				sd.OidcProvider = ""
+			name:        "Missing OIDC Provider Name",
+			platformUrl: "https://my.jfrog.com",
+			oidcParams: &token.OidcTokenParams{
+				TokenId:      "token123",
+				ProviderName: "",
 			},
 			expectError: true,
 			errContains: "--oidc-provider",
-		},
-		{
-			name: "Missing OIDC Provider Type",
-			modify: func(sd *config.ServerDetails) {
-				sd.OidcProviderType = ""
-			},
-			expectError: true,
-			errContains: "--oidc-provider-type",
 		},
 	}
 
 	for _, tt := range testsCases {
 		t.Run(tt.name, func(t *testing.T) {
-			sd := *base // Copy base
-			tt.modify(&sd)
-			err := validateOidcParams(&sd)
+			err := validateOidcParams(tt.platformUrl, tt.oidcParams)
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errContains)

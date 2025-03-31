@@ -27,7 +27,7 @@ func TestDeduceServerId(t *testing.T) {
 	}
 }
 
-func TestSetProviderType_CaseInsensitive(t *testing.T) {
+func TestSetProviderTypeAsString_CaseInsensitive(t *testing.T) {
 	cmd := token.NewOidcTokenExchangeCommand()
 	cmd.OidcTokenParams = &token.OidcTokenParams{}
 
@@ -44,7 +44,7 @@ func TestSetProviderType_CaseInsensitive(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		err := cmd.SetProviderType(tc.input)
+		err := cmd.SetProviderTypeAsString(tc.input)
 		assert.NoError(t, err)
 		assert.Equal(t, tc.expectedOutput, cmd.ProviderType)
 	}

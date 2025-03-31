@@ -199,7 +199,7 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 		}
 	}
 
-	if cc.details.UsesOidc() {
+	if cc.UsesOidc() {
 		if err := exchangeOidcTokenAndSetAccessToken(cc); err != nil {
 			return err
 		}
@@ -216,21 +216,18 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 
 // When a user is configuration a new server with OIDC, we will exchange the token and set the access token.
 func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
-	if err := validateOidcParams(cc.details); err != nil {
+	if err := validateOidcParams(cc.details.Url, cc.oidcSetupParams); err != nil {
 		return err
 	}
 	log.Debug("Exchanging OIDC token...")
 	exchangeOidcTokenCmd := generic.NewOidcTokenExchangeCommand()
-	// First check supported provider type
-	if err := exchangeOidcTokenCmd.SetProviderType(cc.details.OidcProviderType); err != nil {
-		return err
-	}
 	exchangeOidcTokenCmd.
 		SetServerDetails(cc.details).
-		SetProviderName(cc.details.OidcProvider).
-		SetOidcTokenID(cc.details.OidcExchangeTokenId).
-		SetAudience(cc.details.OidcAudience).
-		SetApplicationName(cc.oidcSetupParams.ApplicationKey).
+		SetProviderName(cc.oidcSetupParams.ProviderName).
+		SetOidcTokenID(cc.oidcSetupParams.TokenId).
+		SetProviderType(cc.oidcSetupParams.ProviderType).
+		SetAudience(cc.oidcSetupParams.Audience).
+		SetApplicationKey(cc.oidcSetupParams.ApplicationKey).
 		SetProjectKey(cc.oidcSetupParams.ProjectKey).
 		SetRepository(cc.oidcSetupParams.Repository).
 		SetJobId(cc.oidcSetupParams.JobId).
@@ -504,6 +501,15 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	if cc.details.ClientCertKeyPath == "" {
 		ioutils.ScanFromConsole("Client certificate key path", &cc.details.ClientCertKeyPath, cc.defaultDetails.ClientCertKeyPath)
 	}
+}
+
+func (cc *ConfigCommand) SetOidcExchangeTokenId(id string) {
+	cc.oidcSetupParams.TokenId = id
+}
+
+func (cc *ConfigCommand) UsesOidc() bool {
+	// TODO check if this is valid without checking the tpye as it defaults to github
+	return cc.oidcSetupParams.ProviderName != ""
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
@@ -897,18 +903,15 @@ func GetAllServerIds() []string {
 	return serverIds
 }
 
-func validateOidcParams(details *config.ServerDetails) error {
-	if details.Url == "" {
+func validateOidcParams(platformUrl string, oidcParams *generic.OidcTokenParams) error {
+	if platformUrl == "" {
 		return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
 	}
-	if details.OidcExchangeTokenId == "" {
+	if oidcParams.TokenId == "" {
 		return errorutils.CheckErrorf("the --oidc-token-id flag must be provided when --oidc-provider is used. Ensure the flag is set or the environment variable is exported. If running on a CI server, verify the token is correctly injected.")
 	}
-	if details.OidcProvider == "" {
+	if oidcParams.ProviderName == "" {
 		return errorutils.CheckErrorf("the --oidc-provider flag must be provided when using OIDC authentication")
-	}
-	if details.OidcProviderType == "" {
-		return errorutils.CheckErrorf("the --oidc-provider-type flag must be provided when using OIDC authentication")
 	}
 	return nil
 }

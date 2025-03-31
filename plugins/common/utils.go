@@ -3,6 +3,7 @@ package common
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -54,10 +55,6 @@ func RunCmdWithDeprecationWarning(cmdName, oldSubcommand string, c *components.C
 	cmd func(c *components.Context) error) error {
 	cliutils.LogNonNativeCommandDeprecation(cmdName, oldSubcommand)
 	return cmd(c)
-}
-
-func GetThreadsCount(c *components.Context) (threads int, err error) {
-	return cliutils.GetThreadsCount(c.GetStringFlagValue("threads"))
 }
 
 func GetPrintCurrentCmdHelp(c *components.Context) func() error {
@@ -123,4 +120,22 @@ func getCiValue() bool {
 		return false
 	}
 	return ci
+}
+
+// Get project key from flag or environment variable
+func GetProject(c *components.Context) string {
+	projectKey := c.GetStringFlagValue("project")
+	return getOrDefaultEnv(projectKey, coreutils.Project)
+}
+
+// Return argument if not empty or retrieve from environment variable
+func getOrDefaultEnv(arg, envKey string) string {
+	if arg != "" {
+		return arg
+	}
+	return os.Getenv(envKey)
+}
+
+func GetThreadsCount(c *components.Context) (threads int, err error) {
+	return cliutils.GetThreadsCount(c.GetStringFlagValue("threads"))
 }

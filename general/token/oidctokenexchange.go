@@ -139,12 +139,7 @@ func (otc *OidcTokenExchangeCommand) SetProviderType(providerType string) (err e
 }
 
 func (otc *OidcTokenExchangeCommand) PrintResponseToConsole() {
-	if os.Getenv("CI") == "true" {
-		// Mask the values in CI logs
-		log.Output(fmt.Sprintf("{ AccessToken: %s Username: %s }", "****", "****"))
-	} else {
-		log.Output(fmt.Sprintf("{ AccessToken: %s Username: %s }", otc.response.AccessToken, otc.response.Username))
-	}
+	log.Output(fmt.Sprintf("{ AccessToken: %s Username: %s }", otc.response.AccessToken, otc.response.Username))
 }
 
 func (otc *OidcTokenExchangeCommand) Run() (err error) {

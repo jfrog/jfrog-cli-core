@@ -134,6 +134,7 @@ func TestConvertConfigV4ToLatest(t *testing.T) {
 }
 
 func TestConvertConfigV5ToV6(t *testing.T) {
+
 	configV5 := `
 		{
 		  "servers": [
@@ -146,7 +147,9 @@ func TestConvertConfigV5ToV6(t *testing.T) {
 					  "pipelinesUrl": "http://localhost:8080/pipelines/",
 					  "user": "user",
 			          "password": "password",
+					  # jfrog-ignore - not a real token
 					  "accessToken": "M9Zi1FY_lpA5dR01ev6EU6Tx_qRVsm2mSYWqobz",
+					  # jfrog-ignore - not a real token
 					  "RefreshToken": "a476324f-856c-41d7-b87e-3162e7d6jk91",
 					  "serverId": "Default-Server",
   					  "isDefault": true

@@ -87,11 +87,11 @@ func TestSignalStopError(t *testing.T) {
 }
 
 const (
-	//#nosec G101 - Dummy token for tests.
+	//#nosec G101 jfrog-ignore - Dummy token for tests.
 	firstUuidTokenForTest = "347cd3e9-86b6-4bec-9be9-e053a485f327"
-	//#nosec G101 - Dummy token for tests.
+	//#nosec G101 jfrog-ignore - Dummy token for tests.
 	secondUuidTokenForTest = "af14706e-e0c1-4b7d-8791-6a18bd1fd339"
-	//#nosec G101 - Dummy token for tests.
+	//#nosec G101 jfrog-ignore - Dummy token for tests.
 	nodeIdForTest = "nodea0gwihu76sk5g-artifactory-primary-0"
 )
 

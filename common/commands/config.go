@@ -199,7 +199,7 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 		}
 	}
 
-	if cc.UsesOidc() {
+	if cc.OidcAuthMethodUsed() {
 		if err := exchangeOidcTokenAndSetAccessToken(cc); err != nil {
 			return err
 		}
@@ -508,8 +508,8 @@ func (cc *ConfigCommand) SetOidcExchangeTokenId(id string) {
 	cc.oidcSetupParams.TokenId = id
 }
 
-// Provider name must be set in order to use OIDC integration
-func (cc *ConfigCommand) UsesOidc() bool {
+// If OIDC params were provided it indicates that we should use OIDC authentication method.
+func (cc *ConfigCommand) OidcAuthMethodUsed() bool {
 	return cc.oidcSetupParams != nil && cc.oidcSetupParams.ProviderName != ""
 }
 

@@ -887,6 +887,7 @@ func assertSingleAuthMethod(details *config.ServerDetails) error {
 
 type ConfigCommandConfiguration struct {
 	ServerDetails *config.ServerDetails
+	OidcParams    *generic.OidcTokenParams
 	Interactive   bool
 	EncPassword   bool
 	BasicAuthOnly bool

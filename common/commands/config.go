@@ -70,7 +70,7 @@ type ConfigCommand struct {
 }
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
-	return &ConfigCommand{cmdType: cmdType, serverId: serverId, oidcSetupParams: &generic.OidcTokenParams{}}
+	return &ConfigCommand{cmdType: cmdType, serverId: serverId}
 }
 
 func (cc *ConfigCommand) SetServerId(serverId string) *ConfigCommand {
@@ -300,6 +300,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 		if cc.defaultDetails != nil {
 			cc.details.InsecureTls = cc.defaultDetails.InsecureTls
 		}
+		cc.oidcSetupParams = new(generic.OidcTokenParams)
 	}
 
 	// Get configurations list
@@ -509,7 +510,7 @@ func (cc *ConfigCommand) SetOidcExchangeTokenId(id string) {
 
 // Provider name must be set in order to use OIDC integration
 func (cc *ConfigCommand) UsesOidc() bool {
-	return cc.oidcSetupParams.ProviderName != ""
+	return cc.oidcSetupParams != nil && cc.oidcSetupParams.ProviderName != ""
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {

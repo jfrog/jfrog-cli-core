@@ -507,8 +507,8 @@ func (cc *ConfigCommand) SetOidcExchangeTokenId(id string) {
 	cc.oidcSetupParams.TokenId = id
 }
 
+// Provider name must be set in order to use OIDC integration
 func (cc *ConfigCommand) UsesOidc() bool {
-	// TODO check if this is valid without checking the tpye as it defaults to github
 	return cc.oidcSetupParams.ProviderName != ""
 }
 

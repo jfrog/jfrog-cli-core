@@ -11,10 +11,9 @@ import (
 func TestCreateCommandsCountMetric(t *testing.T) {
 	// Set environment variables for the test using SetEnvWithCallbackAndAssert
 	envVars := map[string]string{
-		"JFROG_CLI_USAGE_OIDC_USED":                                  "TRUE",
-		"JFROG_CLI_USAGE_JOB_ID":                                     "job123",
-		"JFROG_CLI_USAGE_RUN_ID":                                     "run456",
-		"JFROG_CLI_USAGE_GIT_REPO":                                   "test-repo",
+		"JFROG_CLI_CI_JOB_ID":      "job123",
+		"JFROG_CLI_CI_RUN_ID":      "run456",
+		"JFROG_CLI_USAGE_GIT_REPO": "test-repo",
 		"JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED": "TRUE",
 	}
 	cleanupFuncs := []func(){}
@@ -41,7 +40,6 @@ func TestCreateCommandsCountMetric(t *testing.T) {
 			"product_id": "` + coreutils.GetCliUserAgentName() + `",
 			"product_version": "` + coreutils.GetCliUserAgentVersion() + `",
 			"feature_id": "testCommand",
-			"oidc_used": "TRUE",
 			"job_id": "job123",
 			"run_id": "run456",
 			"git_repo": "test-repo",

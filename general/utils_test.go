@@ -29,7 +29,7 @@ func TestDeduceServerId(t *testing.T) {
 
 func TestSetProviderTypeAsString_CaseInsensitive(t *testing.T) {
 	cmd := token.NewOidcTokenExchangeCommand()
-	cmd.OidcTokenParams = &token.OidcTokenParams{}
+	cmd.ConfigOidcParams = &token.ConfigOidcParams{}
 
 	testCases := []struct {
 		input          string

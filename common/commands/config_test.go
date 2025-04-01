@@ -351,14 +351,14 @@ func TestValidateOidcParams(t *testing.T) {
 	testsCases := []struct {
 		name        string
 		platformUrl string
-		oidcParams  *token.ConfigOidcParams
+		oidcParams  *token.OidcParams
 		expectError bool
 		errContains string
 	}{
 		{
 			name:        "All parameters set",
 			platformUrl: "https://my.jfrog.com",
-			oidcParams: &token.ConfigOidcParams{
+			oidcParams: &token.OidcParams{
 				TokenId:      "token123",
 				ProviderName: "MyProvider",
 			},
@@ -367,7 +367,7 @@ func TestValidateOidcParams(t *testing.T) {
 		{
 			name:        "Missing platform URL",
 			platformUrl: "",
-			oidcParams: &token.ConfigOidcParams{
+			oidcParams: &token.OidcParams{
 				TokenId:      "token123",
 				ProviderName: "MyProvider",
 			},
@@ -377,7 +377,7 @@ func TestValidateOidcParams(t *testing.T) {
 		{
 			name:        "Missing OIDC Token ID",
 			platformUrl: "https://my.jfrog.com",
-			oidcParams: &token.ConfigOidcParams{
+			oidcParams: &token.OidcParams{
 				TokenId:      "",
 				ProviderName: "MyProvider",
 			},
@@ -387,7 +387,7 @@ func TestValidateOidcParams(t *testing.T) {
 		{
 			name:        "Missing OIDC Provider Name",
 			platformUrl: "https://my.jfrog.com",
-			oidcParams: &token.ConfigOidcParams{
+			oidcParams: &token.OidcParams{
 				TokenId:      "token123",
 				ProviderName: "",
 			},

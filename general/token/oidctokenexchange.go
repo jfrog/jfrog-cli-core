@@ -47,12 +47,12 @@ func OidcProviderTypeFromString(providerType string) (OidcProviderType, error) {
 }
 
 type OidcTokenExchangeCommand struct {
-	*ConfigOidcParams
+	*OidcParams
 	serverDetails *config.ServerDetails
 	response      *auth.OidcTokenResponseData
 }
 
-type ConfigOidcParams struct {
+type OidcParams struct {
 	ProviderType OidcProviderType
 	ProviderName string
 	TokenId      string
@@ -66,7 +66,7 @@ type ConfigOidcParams struct {
 }
 
 func NewOidcTokenExchangeCommand() *OidcTokenExchangeCommand {
-	return &OidcTokenExchangeCommand{response: new(auth.OidcTokenResponseData), ConfigOidcParams: &ConfigOidcParams{}}
+	return &OidcTokenExchangeCommand{response: new(auth.OidcTokenResponseData), OidcParams: &OidcParams{}}
 }
 
 func (otc *OidcTokenExchangeCommand) SetServerDetails(serverDetails *config.ServerDetails) *OidcTokenExchangeCommand {

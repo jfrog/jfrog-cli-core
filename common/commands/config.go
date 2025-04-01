@@ -66,7 +66,7 @@ type ConfigCommand struct {
 	// For unit tests
 	disablePrompts  bool
 	cmdType         ConfigAction
-	oidcSetupParams *generic.ConfigOidcParams
+	oidcSetupParams *generic.OidcParams
 }
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
@@ -300,7 +300,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 		if cc.defaultDetails != nil {
 			cc.details.InsecureTls = cc.defaultDetails.InsecureTls
 		}
-		cc.oidcSetupParams = new(generic.ConfigOidcParams)
+		cc.oidcSetupParams = new(generic.OidcParams)
 	}
 
 	// Get configurations list
@@ -847,7 +847,7 @@ func (cc *ConfigCommand) handleWebLogin() error {
 	return nil
 }
 
-func (cc *ConfigCommand) SetOIDCParams(oidcDetails *generic.ConfigOidcParams) *ConfigCommand {
+func (cc *ConfigCommand) SetOIDCParams(oidcDetails *generic.OidcParams) *ConfigCommand {
 	cc.oidcSetupParams = oidcDetails
 	return cc
 }
@@ -887,7 +887,7 @@ func assertSingleAuthMethod(details *config.ServerDetails) error {
 
 type ConfigCommandConfiguration struct {
 	ServerDetails *config.ServerDetails
-	OidcParams    *generic.ConfigOidcParams
+	OidcParams    *generic.OidcParams
 	Interactive   bool
 	EncPassword   bool
 	BasicAuthOnly bool
@@ -905,7 +905,7 @@ func GetAllServerIds() []string {
 	return serverIds
 }
 
-func validateOidcParams(platformUrl string, oidcParams *generic.ConfigOidcParams) error {
+func validateOidcParams(platformUrl string, oidcParams *generic.OidcParams) error {
 	if platformUrl == "" {
 		return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
 	}

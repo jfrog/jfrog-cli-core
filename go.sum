@@ -54,8 +54,8 @@ github.com/elazarl/goproxy v1.7.2 h1:Y2o6urb7Eule09PjlhQRGNsqRfPmYI3KKQLFpCAV3+o
 github.com/elazarl/goproxy v1.7.2/go.mod h1:82vkLNir0ALaW14Rc399OTTjyNREgmdL2cVoIbS6XaE=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
 github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
-github.com/eyalDelarea/jfrog-client-go v1.28.1-0.20250403103907-a9905a7dcf65 h1:ykT1LhiQGLr/HiI7e6f9lJ2gj+zJ1l8L5mOBeAAMuXM=
-github.com/eyalDelarea/jfrog-client-go v1.28.1-0.20250403103907-a9905a7dcf65/go.mod h1:uRmT8Q1SJymIzId01v0W1o8mGqrRfrwUF53CgEMsH0U=
+github.com/eyalDelarea/jfrog-client-go v1.28.1-0.20250403122513-763f90022e24 h1:6TajSkKorO4j0qYCTCfr1k+f+OTCzfrer7a7S+w2+sc=
+github.com/eyalDelarea/jfrog-client-go v1.28.1-0.20250403122513-763f90022e24/go.mod h1:uRmT8Q1SJymIzId01v0W1o8mGqrRfrwUF53CgEMsH0U=
 github.com/forPelevin/gomoji v1.3.0 h1:WPIOLWB1bvRYlKZnSSEevLt3IfKlLs+tK+YA9fFYlkE=
 github.com/forPelevin/gomoji v1.3.0/go.mod h1:mM6GtmCgpoQP2usDArc6GjbXrti5+FffolyQfGgPboQ=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=

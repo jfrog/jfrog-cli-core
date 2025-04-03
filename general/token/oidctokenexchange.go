@@ -4,9 +4,11 @@ import (
 	"fmt"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+	"os"
 	"strings"
 )
 
@@ -30,20 +32,27 @@ func (p OidcProviderType) String() string {
 }
 
 func OidcProviderTypeFromString(providerType string) (OidcProviderType, error) {
+	var oidcProviderType OidcProviderType
 	if providerType == "" {
 		// If no provider type is provided, return 0 (GitHub) as default
-		return 0, nil
+		oidcProviderType = 0
+	} else {
+		switch strings.ToLower(providerType) {
+		case strings.ToLower(GitHub.String()):
+			oidcProviderType = GitHub
+		case strings.ToLower(Azure.String()):
+			oidcProviderType = Azure
+		case strings.ToLower(GenericOidc.String()):
+			oidcProviderType = GenericOidc
+		default:
+			return 0, fmt.Errorf("unsupported oidc provider type: %s", providerType)
+		}
 	}
-	switch strings.ToLower(providerType) {
-	case strings.ToLower(GitHub.String()):
-		return GitHub, nil
-	case strings.ToLower(Azure.String()):
-		return Azure, nil
-	case strings.ToLower(GenericOidc.String()):
-		return GenericOidc, nil
-	default:
-		return 0, fmt.Errorf("unsupported oidc provider type: %s", providerType)
+	// This is used for usage reporting
+	if err := os.Setenv(coreutils.OidcProviderType, oidcProviderType.String()); err != nil {
+		log.Warn("Failed to set JFROG_CLI_OIDC_PROVIDER_TYPE environment variable")
 	}
+	return oidcProviderType, nil
 }
 
 type OidcTokenExchangeCommand struct {

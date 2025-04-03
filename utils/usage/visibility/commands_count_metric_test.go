@@ -2,6 +2,7 @@ package visibility
 
 import (
 	"encoding/json"
+	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
@@ -11,9 +12,10 @@ import (
 func TestCreateCommandsCountMetric(t *testing.T) {
 	// Set environment variables for the test using SetEnvWithCallbackAndAssert
 	envVars := map[string]string{
-		"JFROG_CLI_CI_JOB_ID":      "job123",
-		"JFROG_CLI_CI_RUN_ID":      "run456",
-		"JFROG_CLI_USAGE_GIT_REPO": "test-repo",
+		coreutils.CIJobID:              "job123",
+		coreutils.CIRunID:              "run456",
+		coreutils.SourceCodeRepository: "test-repo",
+		coreutils.OidcProviderType:     token.GitHub.String(),
 		"JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED": "TRUE",
 	}
 	cleanupFuncs := []func(){}
@@ -40,6 +42,7 @@ func TestCreateCommandsCountMetric(t *testing.T) {
 			"product_id": "` + coreutils.GetCliUserAgentName() + `",
 			"product_version": "` + coreutils.GetCliUserAgentVersion() + `",
 			"feature_id": "testCommand",
+     		"provider_type": "GitHub",
 			"job_id": "job123",
 			"run_id": "run456",
 			"git_repo": "test-repo",

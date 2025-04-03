@@ -134,7 +134,6 @@ func TestConvertConfigV4ToLatest(t *testing.T) {
 }
 
 func TestConvertConfigV5ToV6(t *testing.T) {
-
 	configV5 := `
 		{
 		  "servers": [

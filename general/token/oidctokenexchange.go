@@ -161,12 +161,6 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
 	// Update the config server details with the exchanged token
 	otc.serverDetails.AccessToken = otc.response.AccessToken
-
-	// Log token details
-	if err = otc.logTokenDetails(); err != nil {
-		log.Warn("Failed to log token details, error: ", err)
-	}
-
 	return
 }
 
@@ -183,18 +177,4 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams.Audience = otc.Audience
 	oidcTokenParams.ProviderName = otc.ProviderName
 	return oidcTokenParams
-}
-
-// logTokenDetails logs the token details (scope and expiry) for debugging purposes.
-func (otc *OidcTokenExchangeCommand) logTokenDetails() error {
-	expiry, err := auth.ExtractExpiryFromAccessToken(otc.response.AccessToken)
-	if err != nil {
-		return err
-	}
-	scope, err := auth.ExtractScopeFromAccessToken(otc.response.AccessToken)
-	if err != nil {
-		return err
-	}
-	log.Debug("Debug OIDC token values: scope: ", scope, ", expiry: ", expiry)
-	return nil
 }

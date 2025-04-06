@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	JFConfigDirName    = ".jfrog"
-	JFConfigFileName   = "config.yml"
+	JfConfigDirName    = ".jfrog"
+	JfConfigFileName   = "config.yml"
 	ApplicationRootYML = "application"
 	Key                = "key"
 )
@@ -279,7 +279,7 @@ func ReadJFrogApplicationKeyFromConfigOrEnv() (applicationKeyValue string) {
 }
 
 func getApplicationKeyFromConfig() string {
-	configFilePath := filepath.Join(JFConfigDirName, JFConfigFileName)
+	configFilePath := filepath.Join(JfConfigDirName, JfConfigFileName)
 	vConfig, err := project.ReadConfigFile(configFilePath, project.YAML)
 	if err != nil {
 		log.Debug("error reading config file: %v", err)

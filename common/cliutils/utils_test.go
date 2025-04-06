@@ -11,7 +11,7 @@ import (
 )
 
 func TestReadJFrogApplicationKeyFromConfigOrEnv(t *testing.T) {
-	configFilePath := filepath.Join(JFConfigDirName, JFConfigFileName)
+	configFilePath := filepath.Join(JfConfigDirName, JfConfigFileName)
 
 	// Test cases
 	tests := []struct {

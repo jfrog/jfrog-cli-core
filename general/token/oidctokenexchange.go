@@ -10,7 +10,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"strings"
-	"time"
 )
 
 const (
@@ -163,13 +162,11 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 	// Update the config server details with the exchanged token
 	otc.serverDetails.AccessToken = otc.response.AccessToken
 
-	// Safe to log token details for easier debugging
-	log.Debug("Token Scope: ", otc.response.Scope)
-	if otc.response.ExpiresIn != nil {
-		expirationTime := time.Now().Add(time.Duration(*otc.response.ExpiresIn) * time.Second)
-		log.Debug("Token Expiration Date: ", expirationTime)
+	// Log token details
+	if err = otc.logTokenDetails(); err != nil {
+		log.Warn("Failed to log token details, error: ", err)
 	}
-	log.Debug("Token Audience: ", otc.response.Audience)
+
 	return
 }
 
@@ -186,4 +183,18 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams.Audience = otc.Audience
 	oidcTokenParams.ProviderName = otc.ProviderName
 	return oidcTokenParams
+}
+
+// logTokenDetails logs the token details (scope and expiry) for debugging purposes.
+func (otc *OidcTokenExchangeCommand) logTokenDetails() error {
+	expiry, err := auth.ExtractExpiryFromAccessToken(otc.response.AccessToken)
+	if err != nil {
+		return err
+	}
+	scope, err := auth.ExtractScopeFromAccessToken(otc.response.AccessToken)
+	if err != nil {
+		return err
+	}
+	log.Debug("Debug OIDC token values: scope: ", scope, ", expiry: ", expiry)
+	return nil
 }

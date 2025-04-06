@@ -3,8 +3,10 @@ package cliutils
 import (
 	"errors"
 	"fmt"
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -16,6 +18,13 @@ import (
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+)
+
+const (
+	JfConfigDirName    = ".jfrog"
+	JfConfigFileName   = "config.yml"
+	ApplicationRootYML = "application"
+	Key                = "key"
 )
 
 func FixWinPathBySource(path string, fromSpec bool) string {
@@ -250,4 +259,40 @@ func FixWinPathsForFileSystemSourcedCmds(uploadSpec *spec.SpecFiles, specFlag, e
 			}
 		}
 	}
+}
+
+// Retrieves the application key from the .jfrog/config file or the environment variable.
+// If the application key is not found in either, returns an empty string.
+func ReadJFrogApplicationKeyFromConfigOrEnv() (applicationKeyValue string) {
+	applicationKeyValue = getApplicationKeyFromConfig()
+	if applicationKeyValue != "" {
+		log.Debug("Found application key in config file:", applicationKeyValue)
+		return
+	}
+	applicationKeyValue = os.Getenv(coreutils.ApplicationKey)
+	if applicationKeyValue != "" {
+		log.Debug("Found application key in environment variable:", applicationKeyValue)
+		return
+	}
+	log.Debug("Application key is not found in the config file or environment variable.")
+	return ""
+}
+
+func getApplicationKeyFromConfig() string {
+	configFilePath := filepath.Join(JfConfigDirName, JfConfigFileName)
+	vConfig, err := project.ReadConfigFile(configFilePath, project.YAML)
+	if err != nil {
+		log.Debug("error reading config file: %v", err)
+		return ""
+	}
+
+	application := vConfig.GetStringMapString(ApplicationRootYML)
+	applicationKey, ok := application[Key]
+	if !ok {
+		log.Debug("Application key is not found in the config file.")
+		return ""
+	}
+
+	log.Debug("Found application key:", applicationKey)
+	return applicationKey
 }

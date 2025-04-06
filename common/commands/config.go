@@ -3,6 +3,7 @@ package commands
 import (
 	"errors"
 	"fmt"
+	generic "github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"net/url"
 	"os"
 	"reflect"
@@ -39,11 +40,11 @@ const (
 	BasicAuth   AuthenticationMethod = "Username and Password / Reference token"
 	MTLS        AuthenticationMethod = "Mutual TLS"
 	WebLogin    AuthenticationMethod = "Web Login"
+	// Currently supported only non-interactively.
+	OIDC AuthenticationMethod = "OIDC"
 )
 
 const (
-	// Indicates that the config command uses OIDC authentication.
-	configOidcCommandName = "config_oidc"
 	// Default config command name.
 	configCommandName = "config"
 )
@@ -63,8 +64,9 @@ type ConfigCommand struct {
 	// Forcibly make the configured server default.
 	makeDefault bool
 	// For unit tests
-	disablePrompts bool
-	cmdType        ConfigAction
+	disablePrompts  bool
+	cmdType         ConfigAction
+	oidcSetupParams *generic.OidcParams
 }
 
 func NewConfigCommand(cmdType ConfigAction, serverId string) *ConfigCommand {
@@ -150,25 +152,7 @@ func (cc *ConfigCommand) ServerDetails() (*config.ServerDetails, error) {
 }
 
 func (cc *ConfigCommand) CommandName() string {
-	oidcConfigured, err := clientUtils.GetBoolEnvValue(coreutils.UsageOidcConfigured, false)
-	if err != nil {
-		log.Warn("Failed to get the value of the environment variable: " + coreutils.UsageAutoPublishedBuild + ". " + err.Error())
-	}
-	if oidcConfigured {
-		return configOidcCommandName
-	}
 	return configCommandName
-}
-
-// ExecAndReportUsage runs the ConfigCommand and then triggers a usage report if needed,
-// Report usage only if OIDC integration was used
-// Usage must be sent after command execution as we need the server details to be set.
-func (cc *ConfigCommand) ExecAndReportUsage() (err error) {
-	if err = cc.Run(); err != nil {
-		return
-	}
-	reportUsage(cc, nil)
-	return
 }
 
 func (cc *ConfigCommand) config() error {
@@ -215,12 +199,47 @@ func (cc *ConfigCommand) getConfigurationNonInteractively() error {
 		}
 	}
 
+	if cc.OidcAuthMethodUsed() {
+		if err := exchangeOidcTokenAndSetAccessToken(cc); err != nil {
+			return err
+		}
+	}
+
 	if cc.details.AccessToken != "" && cc.details.User == "" {
 		if err := cc.validateTokenIsNotApiKey(); err != nil {
 			return err
 		}
 		cc.tryExtractingUsernameFromAccessToken()
 	}
+	return nil
+}
+
+// When a user is configuration a new server with OIDC, we will exchange the token and set the access token.
+func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
+	if err := validateOidcParams(cc.details.Url, cc.oidcSetupParams); err != nil {
+		return err
+	}
+	log.Debug("Exchanging OIDC token...")
+	exchangeOidcTokenCmd := generic.NewOidcTokenExchangeCommand()
+	exchangeOidcTokenCmd.
+		SetServerDetails(cc.details).
+		SetProviderName(cc.oidcSetupParams.ProviderName).
+		SetOidcTokenID(cc.oidcSetupParams.TokenId).
+		SetProviderType(cc.oidcSetupParams.ProviderType).
+		SetAudience(cc.oidcSetupParams.Audience).
+		SetApplicationKey(cc.oidcSetupParams.ApplicationKey).
+		SetProjectKey(cc.oidcSetupParams.ProjectKey).
+		SetRepository(cc.oidcSetupParams.Repository).
+		SetJobId(cc.oidcSetupParams.JobId).
+		SetRunId(cc.oidcSetupParams.RunId)
+
+	// Usage report will be sent only after execution in order to have valid token
+	err := ExecAndThenReportUsage(exchangeOidcTokenCmd)
+	if err != nil {
+		return err
+	}
+	// Update the config server details with the exchanged token
+	cc.details.AccessToken = exchangeOidcTokenCmd.GetExchangedToken()
 	return nil
 }
 
@@ -281,6 +300,7 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 		if cc.defaultDetails != nil {
 			cc.details.InsecureTls = cc.defaultDetails.InsecureTls
 		}
+		cc.oidcSetupParams = new(generic.OidcParams)
 	}
 
 	// Get configurations list
@@ -404,6 +424,7 @@ func (cc *ConfigCommand) promptAuthMethods() (selectedMethod AuthenticationMetho
 		WebLogin,
 		BasicAuth,
 		MTLS,
+		OIDC,
 	}
 	var selectableItems []ioutils.PromptItem
 	for _, curMethod := range authMethods {
@@ -481,6 +502,15 @@ func (cc *ConfigCommand) readClientCertInfoFromConsole() {
 	if cc.details.ClientCertKeyPath == "" {
 		ioutils.ScanFromConsole("Client certificate key path", &cc.details.ClientCertKeyPath, cc.defaultDetails.ClientCertKeyPath)
 	}
+}
+
+func (cc *ConfigCommand) SetOidcExchangeTokenId(id string) {
+	cc.oidcSetupParams.TokenId = id
+}
+
+// If OIDC params were provided it indicates that we should use OIDC authentication method.
+func (cc *ConfigCommand) OidcAuthMethodUsed() bool {
+	return cc.oidcSetupParams != nil && cc.oidcSetupParams.ProviderName != ""
 }
 
 func readAccessTokenFromConsole(details *config.ServerDetails) error {
@@ -817,6 +847,11 @@ func (cc *ConfigCommand) handleWebLogin() error {
 	return nil
 }
 
+func (cc *ConfigCommand) SetOIDCParams(oidcDetails *generic.OidcParams) *ConfigCommand {
+	cc.oidcSetupParams = oidcDetails
+	return cc
+}
+
 // Return true if a URL is safe. URL is considered not safe if the following conditions are met:
 // 1. The URL uses an http:// scheme
 // 2. The URL leads to a URL outside the local machine
@@ -852,6 +887,7 @@ func assertSingleAuthMethod(details *config.ServerDetails) error {
 
 type ConfigCommandConfiguration struct {
 	ServerDetails *config.ServerDetails
+	OidcParams    *generic.OidcParams
 	Interactive   bool
 	EncPassword   bool
 	BasicAuthOnly bool
@@ -867,4 +903,17 @@ func GetAllServerIds() []string {
 		serverIds = append(serverIds, serverConfig.ServerId)
 	}
 	return serverIds
+}
+
+func validateOidcParams(platformUrl string, oidcParams *generic.OidcParams) error {
+	if platformUrl == "" {
+		return errorutils.CheckErrorf("the --url flag must be provided when --oidc-provider is used")
+	}
+	if oidcParams.TokenId == "" {
+		return errorutils.CheckErrorf("the --oidc-token-id flag must be provided when --oidc-provider is used. Ensure the flag is set or the environment variable is exported. If running on a CI server, verify the token is correctly injected.")
+	}
+	if oidcParams.ProviderName == "" {
+		return errorutils.CheckErrorf("the --oidc-provider flag must be provided when using OIDC authentication")
+	}
+	return nil
 }

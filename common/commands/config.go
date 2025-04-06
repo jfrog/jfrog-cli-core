@@ -239,7 +239,7 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		return err
 	}
 	// Update the config server details with the exchanged token
-	cc.details.AccessToken = exchangeOidcTokenCmd.GetOidToken()
+	cc.details.AccessToken = exchangeOidcTokenCmd.GetExchangedToken()
 	return nil
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -83,7 +84,7 @@ func (otc *OidcTokenExchangeCommand) SetServerDetails(serverDetails *config.Serv
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) GetOidToken() string {
+func (otc *OidcTokenExchangeCommand) GetExchangedToken() string {
 	return otc.response.AccessToken
 }
 
@@ -161,6 +162,14 @@ func (otc *OidcTokenExchangeCommand) Run() (err error) {
 	*otc.response, err = servicesManager.ExchangeOidcToken(otc.getOidcTokenParams())
 	// Update the config server details with the exchanged token
 	otc.serverDetails.AccessToken = otc.response.AccessToken
+
+	// Safe to log token details for easier debugging
+	log.Debug("Token Scope: ", otc.response.Scope)
+	if otc.response.ExpiresIn != nil {
+		expirationTime := time.Now().Add(time.Duration(*otc.response.ExpiresIn) * time.Second)
+		log.Debug("Token Expiration Date: ", expirationTime)
+	}
+	log.Debug("Token Audience: ", otc.response.Audience)
 	return
 }
 

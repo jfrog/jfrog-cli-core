@@ -169,3 +169,7 @@ func buildRequestUrl(longImageName, imageTag, containerRegistryUrl string, https
 	}
 	return "http://" + endpoint
 }
+
+func (i *Image) SetName(name string) {
+	i.name = name
+}

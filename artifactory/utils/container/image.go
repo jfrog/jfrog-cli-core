@@ -3,6 +3,7 @@ package container
 import (
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/jfrog/jfrog-client-go/artifactory"
@@ -152,6 +153,9 @@ func (image *Image) GetRemoteRepo(serviceManager artifactory.ArtifactoryServices
 	if err != nil {
 		return "", err
 	}
+	if resp.StatusCode == http.StatusForbidden {
+		return "", errorutils.CheckErrorf(getStatusForbiddenErrorMessage())
+	}
 	if resp.StatusCode != http.StatusOK {
 		return "", errorutils.CheckErrorf("error while getting docker repository name. Artifactory response: " + resp.Status)
 	}
@@ -168,4 +172,11 @@ func buildRequestUrl(longImageName, imageTag, containerRegistryUrl string, https
 		return "https://" + endpoint
 	}
 	return "http://" + endpoint
+}
+
+func getStatusForbiddenErrorMessage() string {
+	errorMessage := "error while getting docker repository name. Artifactory response:  " + strconv.Itoa(http.StatusForbidden) +
+		", Possible causes include: \n- Xray scan in progress \n- Xray policy violations \n- insufficient permissions\n- invalid authentication method\n- disabled anonymous access\n- missing Docker manifests." +
+		"\nPlease verify the above factors to resolve the issue."
+	return errorMessage
 }

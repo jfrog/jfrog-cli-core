@@ -416,8 +416,16 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 				c.stringFlags[stringFlag.Name] = finalValue
 			}
 		}
-		if boolFlag, ok := flag.(BoolFlag); ok && (baseContext.IsSet(boolFlag.Name) || boolFlag.DefaultValue) {
-			c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
+		if boolFlag, ok := flag.(BoolFlag); ok {
+			val := getValueForBoolFlag(boolFlag, baseContext)
+			// Only store the flag if:
+			// - The user explicitly set it, OR
+			// - The resolved value is 'true' (e.g., default is true and user didn't override it)
+			// This avoids adding unnecessary 'false' flags that aren't relevant.
+			if baseContext.IsSet(boolFlag.Name) || val {
+				// Store the flag and its resolved value in the context map
+				c.boolFlags[boolFlag.Name] = val
+			}
 		}
 	}
 	return nil

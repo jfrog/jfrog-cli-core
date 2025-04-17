@@ -4,6 +4,7 @@ import (
 	speccore "github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"strconv"
 	"strings"
 )
 
@@ -62,7 +63,12 @@ func OverrideFieldsIfSet(spec *speccore.File, c *components.Context) {
 // If `fieldName` exist in the cli args, read it to `field` as a string.
 func overrideStringIfSet(field *string, c *components.Context, fieldName string) {
 	if c.IsFlagSet(fieldName) {
-		*field = c.GetStringFlagValue(fieldName)
+		stringFlag := c.GetStringFlagValue(fieldName)
+		if stringFlag != "" {
+			*field = stringFlag
+			return
+		}
+		*field = strconv.FormatBool(c.GetBoolFlagValue(fieldName))
 	}
 }
 

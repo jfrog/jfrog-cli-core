@@ -383,6 +383,15 @@ func ConvertContext(baseContext *cli.Context, flagsToConvert ...Flag) (*Context,
 		Arguments:        baseContext.Args(),
 		PrintCommandHelp: getPrintCommandHelpFunc(baseContext),
 	}
+
+	if baseContext.Parent() != nil {
+		pluginContext.ParentContext = &Context{
+			CommandName:      baseContext.Parent().Command.Name,
+			Arguments:        baseContext.Parent().Args(),
+			PrintCommandHelp: getPrintCommandHelpFunc(baseContext.Parent()),
+		}
+	}
+
 	return pluginContext, fillFlagMaps(pluginContext, baseContext, flagsToConvert)
 }
 
@@ -408,7 +417,15 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 			}
 		}
 		if boolFlag, ok := flag.(BoolFlag); ok {
-			c.boolFlags[boolFlag.Name] = getValueForBoolFlag(boolFlag, baseContext)
+			val := getValueForBoolFlag(boolFlag, baseContext)
+			// Only store the flag if:
+			// - The user explicitly set it, OR
+			// - The resolved value is 'true' (e.g., default is true and user didn't override it)
+			// This avoids adding unnecessary 'false' flags that aren't relevant.
+			if baseContext.IsSet(boolFlag.Name) || val {
+				// Store the flag and its resolved value in the context map
+				c.boolFlags[boolFlag.Name] = val
+			}
 		}
 	}
 	return nil

@@ -3,6 +3,7 @@ package components
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type Argument struct {
@@ -54,14 +55,29 @@ type Context struct {
 	stringFlags      map[string]string
 	boolFlags        map[string]bool
 	PrintCommandHelp func(commandName string) error
+	ParentContext    *Context
 }
 
 func (c *Context) GetStringFlagValue(flagName string) string {
 	return c.stringFlags[flagName]
 }
 
+func (c *Context) SetStringFlagValue(flagName string, value string) {
+	c.stringFlags[flagName] = value
+}
+
 func (c *Context) AddStringFlag(key, value string) {
+	if c.stringFlags == nil {
+		c.stringFlags = make(map[string]string)
+	}
 	c.stringFlags[key] = value
+}
+
+func (c *Context) AddBoolFlag(key string, value bool) {
+	if c.boolFlags == nil {
+		c.boolFlags = make(map[string]bool)
+	}
+	c.boolFlags[key] = value
 }
 
 func (c *Context) GetIntFlagValue(flagName string) (value int, err error) {
@@ -74,8 +90,28 @@ func (c *Context) GetIntFlagValue(flagName string) (value int, err error) {
 	return
 }
 
+func (c *Context) GetDefaultIntFlagValueIfNotSet(flagName string, defaultValue int) (value int, err error) {
+	if c.IsFlagSet(flagName) {
+		parsed, err := strconv.ParseInt(c.GetStringFlagValue(flagName), 0, 64)
+		if err != nil {
+			err = fmt.Errorf("can't parse int flag '%s': %w", flagName, err)
+			return value, err
+		}
+		value = int(parsed)
+		return value, err
+	}
+	return defaultValue, nil
+}
+
 func (c *Context) GetBoolFlagValue(flagName string) bool {
 	return c.boolFlags[flagName]
+}
+
+func (c *Context) GetBoolTFlagValue(flagName string) bool {
+	if c.IsFlagSet(flagName) {
+		return c.boolFlags[flagName]
+	}
+	return true
 }
 
 func (c *Context) IsFlagSet(flagName string) bool {
@@ -177,9 +213,21 @@ func SetMandatoryFalse() StringFlagOption {
 	}
 }
 
+func SetMandatoryTrue() StringFlagOption {
+	return func(f *StringFlag) {
+		f.Mandatory = true
+	}
+}
+
 func WithBoolDefaultValueFalse() BoolFlagOption {
 	return func(f *BoolFlag) {
 		f.DefaultValue = false
+	}
+}
+
+func WithBoolDefaultValueTrue() BoolFlagOption {
+	return func(f *BoolFlag) {
+		f.DefaultValue = true
 	}
 }
 
@@ -226,4 +274,26 @@ func (c *Context) WithDefaultIntFlagValue(flagName string, defValue int) (value 
 		value = int(parsed)
 	}
 	return
+}
+
+func (c *Context) GetNumberOfArgs() int {
+	return len(c.Arguments)
+}
+
+func (c *Context) GetArgumentAt(index int) string {
+	if len(c.Arguments) > index {
+		return c.Arguments[index]
+	}
+	return ""
+}
+
+func (c *Context) GetStringsArrFlagValue(flagName string) (resultArray []string) {
+	if c.IsFlagSet(flagName) {
+		resultArray = append(resultArray, strings.Split(c.GetStringFlagValue(flagName), ";")...)
+	}
+	return
+}
+
+func (c *Context) GetParent() *Context {
+	return c.ParentContext
 }

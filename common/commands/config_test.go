@@ -2,7 +2,7 @@ package commands
 
 import (
 	"encoding/json"
-	testsUtils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"os"
 	"testing"
 
@@ -238,7 +238,9 @@ var unsafeUrlTestCases = []unsafeUrlTest{
 	{"ssh://localhost:1339/", true},
 
 	// Unsafe URLs:
+	// jfrog-ignore - unsafe url for tests
 	{"http://acme.jfrog.io", false},
+	// jfrog-ignore - unsafe url for tests
 	{"http://acme.jfrog.io:8081", false},
 	{"http://localhost-123", false},
 }
@@ -345,60 +347,64 @@ func TestImport(t *testing.T) {
 	assert.Equal(t, "password", serverDetails.GetPassword())
 }
 
-func TestCommandName(t *testing.T) {
-	// Clean up
-	defer func() {
-		testsUtils.UnSetEnvAndAssert(t, coreutils.UsageOidcConfigured)
-	}()
-	cc := NewConfigCommand(AddOrEdit, testServerId)
-	// Test when the environment variable is not set
-	assert.Equal(t, configCommandName, cc.CommandName())
-	// Test when the environment variable is set
-	testsUtils.SetEnvWithCallbackAndAssert(t, coreutils.UsageOidcConfigured, "true")
-	assert.Equal(t, configOidcCommandName, cc.CommandName())
-}
-
-func TestConfigCommand_ExecAndReportUsage(t *testing.T) {
-	defer func() {
-		testsUtils.UnSetEnvAndAssert(t, coreutils.UsageOidcConfigured)
-	}()
-	// Define test scenarios
-	testCases := []struct {
-		name         string
-		envVarValue  string // Environment variable value to set (or empty to unset)
-		expectedName string // Expected command name
-		expectError  bool   // Whether an error is expected
+func TestValidateOidcParams(t *testing.T) {
+	testsCases := []struct {
+		name        string
+		platformUrl string
+		oidcParams  *token.OidcParams
+		expectError bool
+		errContains string
 	}{
 		{
-			name:         "With usage report",
-			envVarValue:  "TRUE",
-			expectedName: configOidcCommandName,
+			name:        "All parameters set",
+			platformUrl: "https://my.jfrog.com",
+			oidcParams: &token.OidcParams{
+				TokenId:      "token123",
+				ProviderName: "MyProvider",
+			},
+			expectError: false,
 		},
 		{
-			name:         "Without usage report",
-			envVarValue:  "", // Empty to unset the environment variable
-			expectedName: configCommandName,
+			name:        "Missing platform URL",
+			platformUrl: "",
+			oidcParams: &token.OidcParams{
+				TokenId:      "token123",
+				ProviderName: "MyProvider",
+			},
+			expectError: true,
+			errContains: "--url",
+		},
+		{
+			name:        "Missing OIDC Token ID",
+			platformUrl: "https://my.jfrog.com",
+			oidcParams: &token.OidcParams{
+				TokenId:      "",
+				ProviderName: "MyProvider",
+			},
+			expectError: true,
+			errContains: "--oidc-token-id",
+		},
+		{
+			name:        "Missing OIDC Provider Name",
+			platformUrl: "https://my.jfrog.com",
+			oidcParams: &token.OidcParams{
+				TokenId:      "token123",
+				ProviderName: "",
+			},
+			expectError: true,
+			errContains: "--oidc-provider",
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Set or unset the environment variable
-			if tc.envVarValue != "" {
-				err := os.Setenv(coreutils.UsageOidcConfigured, tc.envVarValue)
-				assert.NoError(t, err)
+	for _, tt := range testsCases {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateOidcParams(tt.platformUrl, tt.oidcParams)
+			if tt.expectError {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
 			} else {
-				err := os.Unsetenv(coreutils.UsageOidcConfigured)
 				assert.NoError(t, err)
 			}
-
-			// Initialize the command and check the expected command name
-			cc := NewConfigCommand(AddOrEdit, testServerId)
-			assert.Equal(t, tc.expectedName, cc.CommandName())
-
-			// Execute and validate no errors
-			err := cc.ExecAndReportUsage()
-			assert.NoError(t, err)
 		})
 	}
 }

@@ -216,8 +216,8 @@ func ExtractStringOptionFromArgs(args []string, optionName string) (cleanArgs []
 	return
 }
 
-func ExtractUseNpmRcFromArgs(args []string) (cleanArgs []string, useNpmrc bool, err error) {
-	return extractBoolOptionFromArgs(args, "use-npmrc")
+func ExtractUseNativeFromArgs(args []string) (cleanArgs []string, useNpmrc bool, err error) {
+	return extractBoolOptionFromArgs(args, "client-native")
 
 }
 

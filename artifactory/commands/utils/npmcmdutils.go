@@ -149,10 +149,3 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 	cleanArgs, buildConfig, err = build.ExtractBuildDetailsFromArgs(cleanArgs)
 	return
 }
-
-// npm publish can have two implementations, one with normal npm.yaml and other with npmrc.
-func ExtractNpmConfigType(args []string) (cleanArgs []string, useNpmRc bool, err error) {
-	cleanArgs = append([]string(nil), args...)
-	cleanArgs, useNpmRc, err = coreutils.ExtractUseNpmRcFromArgs(cleanArgs)
-	return
-}

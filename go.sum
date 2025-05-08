@@ -115,7 +115,6 @@ github.com/jfrog/gofrog v1.7.6 h1:QmfAiRzVyaI7JYGsB7cxfAJePAZTzFz0gRWZSE27c6s=
 github.com/jfrog/gofrog v1.7.6/go.mod h1:ntr1txqNOZtHplmaNd7rS4f8jpA5Apx8em70oYEe7+4=
 github.com/jfrog/jfrog-client-go v1.28.1-0.20250508130334-f159cff9b11a h1:QkebmsUWuurSgp4Lx7k6GtQ0sX3RmJ/d2n+NQ2l2g/E=
 github.com/jfrog/jfrog-client-go v1.28.1-0.20250508130334-f159cff9b11a/go.mod h1:uRmT8Q1SJymIzId01v0W1o8mGqrRfrwUF53CgEMsH0U=
-github.com/jfrog/jfrog-client-go v1.52.0/go.mod h1:uRmT8Q1SJymIzId01v0W1o8mGqrRfrwUF53CgEMsH0U=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=

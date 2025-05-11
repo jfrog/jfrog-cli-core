@@ -2,10 +2,11 @@ package container
 
 import (
 	"encoding/json"
-	ioutils "github.com/jfrog/gofrog/io"
 	"os"
 	"path"
 	"strings"
+
+	ioutils "github.com/jfrog/gofrog/io"
 
 	buildinfo "github.com/jfrog/build-info-go/entities"
 
@@ -91,10 +92,23 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 
 // Set build properties on image layers in Artifactory.
 func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (err error) {
+	// Skip if no build info is provided
+	if buildName == "" || buildNumber == "" {
+		log.Debug("Skipping setting properties - no build name or build number provided")
+		return nil
+	}
+
 	props, err := build.CreateBuildProperties(buildName, buildNumber, project)
 	if err != nil {
 		return
 	}
+
+	// Skip if no properties were created
+	if len(props) == 0 {
+		log.Debug("Skipping setting properties - no properties created")
+		return nil
+	}
+
 	pathToFile, err := writeLayersToFile(imageLayers)
 	if err != nil {
 		return

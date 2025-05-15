@@ -1,6 +1,7 @@
 package token
 
 import (
+	"encoding/json"
 	"fmt"
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -72,6 +73,11 @@ type OidcParams struct {
 	JobId          string
 	RunId          string
 	Repository     string
+}
+
+type ExchangeCommandOutputStruct struct {
+	AccessToken string `json:"AccessToken"`
+	Username    string `json:"Username"`
 }
 
 func NewOidcTokenExchangeCommand() *OidcTokenExchangeCommand {
@@ -150,7 +156,16 @@ func (otc *OidcTokenExchangeCommand) SetProviderTypeAsString(providerType string
 }
 
 func (otc *OidcTokenExchangeCommand) PrintResponseToConsole() {
-	log.Output(fmt.Sprintf("{ AccessToken: %s Username: %s }", otc.response.AccessToken, otc.response.Username))
+	response := ExchangeCommandOutputStruct{
+		AccessToken: otc.response.AccessToken,
+		Username:    otc.response.Username,
+	}
+	jsonOutput, err := json.Marshal(response)
+	if err != nil {
+		log.Error("Failed to marshal response to JSON:", err)
+		return
+	}
+	log.Output(string(jsonOutput))
 }
 
 func (otc *OidcTokenExchangeCommand) Run() (err error) {

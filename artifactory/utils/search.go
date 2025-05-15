@@ -3,8 +3,10 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	buildinfo "github.com/jfrog/build-info-go/entities"
 	ioutils "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -187,4 +189,16 @@ func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *s
 		searchResults = append(searchResults, curReader)
 	}
 	return
+}
+
+func ConvertArtifactsSearchDetailsToBuildInfoArtifacts(artifactsDetailsReader *content.ContentReader) ([]buildinfo.Artifact, error) {
+	var buildArtifacts []buildinfo.Artifact
+	for artifactSearchDetails := new(utils.ResultItem); artifactsDetailsReader.NextRecord(artifactSearchDetails) == nil; artifactSearchDetails = new(utils.ResultItem) {
+		artifact := artifactSearchDetails.ToArtifact()
+		if i := strings.LastIndex(artifact.Name, "."); i != -1 {
+			artifact.Type = artifact.Name[i+1:]
+		}
+		buildArtifacts = append(buildArtifacts, artifact)
+	}
+	return buildArtifacts, artifactsDetailsReader.GetError()
 }

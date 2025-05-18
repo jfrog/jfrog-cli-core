@@ -45,6 +45,7 @@ const (
 	Docker
 	Podman
 	Twine
+	Helm
 )
 
 type ConfigType string
@@ -73,6 +74,7 @@ var ProjectTypes = []string{
 	"docker",
 	"podman",
 	"twine",
+	"helm",
 }
 
 func (projectType ProjectType) String() string {

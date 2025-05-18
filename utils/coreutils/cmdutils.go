@@ -216,6 +216,10 @@ func ExtractStringOptionFromArgs(args []string, optionName string) (cleanArgs []
 	return
 }
 
+func ExtractUseNativeFromArgs(args []string) (cleanArgs []string, useNpmrc bool, err error) {
+	return extractBoolOptionFromArgs(args, "run-native")
+}
+
 func extractBoolOptionFromArgs(args []string, optionName string) (cleanArgs []string, value bool, err error) {
 	cleanArgs = append([]string(nil), args...)
 

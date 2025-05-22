@@ -167,6 +167,10 @@ func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.C
 }
 
 func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *spec.SpecFiles) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
+	return SearchFilesBySpecific(servicesManager, spec.Files)
+}
+
+func SearchFilesBySpecific(servicesManager artifactory.ArtifactoryServicesManager, files []spec.File) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
 	callbackFunc = func() error {
 		var errs error
 		for _, reader := range searchResults {
@@ -177,8 +181,8 @@ func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *s
 
 	var curSearchParams services.SearchParams
 	var curReader *content.ContentReader
-	for i := 0; i < len(spec.Files); i++ {
-		curSearchParams, err = GetSearchParams(spec.Get(i))
+	for i := 0; i < len(files); i++ {
+		curSearchParams, err = GetSearchParams(&files[i])
 		if err != nil {
 			return
 		}

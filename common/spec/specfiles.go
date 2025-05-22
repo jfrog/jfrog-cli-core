@@ -89,6 +89,10 @@ type File struct {
 	Transitive              string
 	TargetPathInArchive     string
 	include                 []string
+	Package                 string
+	Version                 string
+	Type                    string
+	RepoKey                 string
 }
 
 func (f File) GetInclude() []string {

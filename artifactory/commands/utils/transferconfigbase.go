@@ -209,37 +209,19 @@ func (tcb *TransferConfigBase) transferSpecificRepositoriesToTarget(reposToTrans
 // Transfer virtual repositories
 // reposToTransfer - Repositories names to transfer
 func (tcb *TransferConfigBase) transferVirtualRepositoriesToTarget(reposToTransfer []services.RepositoryDetails) (err error) {
-	allReposParams := make(map[string]interface{})
 	var singleRepoParamsMap map[string]interface{}
 	var singleRepoParams interface{}
-	// Step 1 - Get and create all virtual repositories with the included repositories removed
+	// Get and create all virtual repositories
 	for _, repoToTransfer := range reposToTransfer {
 		// Get repository params
 		if err = tcb.SourceArtifactoryManager.GetRepository(repoToTransfer.Key, &singleRepoParams); err != nil {
 			return
 		}
-		allReposParams[repoToTransfer.Key] = singleRepoParams
 		singleRepoParamsMap, err = InterfaceToMap(singleRepoParams)
 		if err != nil {
 			return
 		}
-
-		// Create virtual repository without included repositories
-		repositories := singleRepoParamsMap["repositories"]
-		delete(singleRepoParamsMap, "repositories")
 		if err = tcb.createRepositoryAndAssignToProject(singleRepoParamsMap, repoToTransfer); err != nil {
-			return
-		}
-
-		// Restore included repositories to set them later on
-		if repositories != nil {
-			singleRepoParamsMap["repositories"] = repositories
-		}
-	}
-
-	// Step 2 - Update all virtual repositories with the included repositories
-	for repoKey, repoParams := range allReposParams {
-		if err = tcb.TargetArtifactoryManager.UpdateRepositoryWithParams(repoParams, repoKey); err != nil {
 			return
 		}
 	}

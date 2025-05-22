@@ -220,11 +220,6 @@ func TestTransferVirtualRepositoriesToTarget(t *testing.T) {
 			expectedVirtualRepoAParamsMap := getRepoParamsMap(t, virtualRepoA)
 			expectedVirtualRepoBParamsMap := getRepoParamsMap(t, virtualRepoB)
 
-			if r.Method == http.MethodPut {
-				delete(expectedVirtualRepoAParamsMap, "repositories")
-				delete(expectedVirtualRepoBParamsMap, "repositories")
-			}
-
 			switch r.RequestURI {
 			case "/api/repositories/a-virtual":
 				assert.Equal(t, expectedVirtualRepoAParamsMap, getRepoParamsMap(t, body))

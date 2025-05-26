@@ -53,16 +53,14 @@ func (rabib *RemoteAgentBuildInfoBuilder) Build(module string) (*buildinfo.Build
 // Search for image manifest and layers in Artifactory.
 func (rabib *RemoteAgentBuildInfoBuilder) handleManifest(resultMap map[string]*utils.ResultItem) (map[string]*utils.ResultItem, *manifest, error) {
 	if manifest, ok := resultMap["manifest.json"]; ok {
-		err := rabib.isVerifiedManifest(manifest)
-		if err != nil {
-			return nil, nil, err
-
+		if !rabib.isVerifiedManifest(manifest) {
+			log.Debug("Manifest verification failed, continuing with SHA-based validation...")
 		}
 		manifest, err := getManifest(resultMap, rabib.buildInfoBuilder.serviceManager, rabib.buildInfoBuilder.repositoryDetails.key)
 		if err != nil {
 			return nil, nil, err
 		}
-		// // Manifest may hold 'empty layers'. As a result, promotion will fail to promote the same layer more than once.
+		// Manifest may hold 'empty layers'. As a result, promotion will fail to promote the same layer more than once.
 		rabib.buildInfoBuilder.imageSha2 = manifest.Config.Digest
 		log.Debug("Found manifest.json. Proceeding to create build-info.")
 		return resultMap, manifest, nil
@@ -134,16 +132,15 @@ func (rabib *RemoteAgentBuildInfoBuilder) searchImage() (resultMap map[string]*u
 	return nil, errorutils.CheckErrorf(imageNotFoundErrorMessage, rabib.buildInfoBuilder.image.name)
 }
 
-// Verify manifest's sha256. If there is no match, return nil.
-func (rabib *RemoteAgentBuildInfoBuilder) isVerifiedManifest(imageManifest *utils.ResultItem) error {
+// Verify manifest's sha256. Returns true if manifest is verified, false otherwise.
+func (rabib *RemoteAgentBuildInfoBuilder) isVerifiedManifest(imageManifest *utils.ResultItem) bool {
 	if imageManifest.GetProperty("docker.manifest.digest") != rabib.manifestSha2 {
 		manifestDigest := imageManifest.GetProperty("docker.manifest.digest")
 		log.Warn("Manifest digest mismatch detected. Local image digest: " + rabib.manifestSha2 + ", Repository digest: " + manifestDigest)
 		log.Info("Proceeding with SHA-based validation to ensure correct image identification...")
-		// Return nil instead of error to allow the operation to continue
-		return nil
+		return false
 	}
-	return nil
+	return true
 }
 
 func getFatManifestRoot(fatManifestPath string) string {

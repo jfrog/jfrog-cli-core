@@ -94,7 +94,7 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (err error) {
 	// Skip if no build info is provided
 	if buildName == "" || buildNumber == "" {
-		log.Debug("Skipping setting properties - no build name or build number provided")
+		log.Debug("Skipping setting properties - build name and build number are required")
 		return nil
 	}
 

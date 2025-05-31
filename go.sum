@@ -47,6 +47,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/dortam888/jfrog-client-go v0.0.0-20250518085003-096e7b0441b0 h1:2sbzUEJ2ltMmJeNydZmQC/02844B/2I15tUGv+XsDxk=
+github.com/dortam888/jfrog-client-go v0.0.0-20250518085003-096e7b0441b0/go.mod h1:uRmT8Q1SJymIzId01v0W1o8mGqrRfrwUF53CgEMsH0U=
 github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 h1:iFaUwBSo5Svw6L7HYpRu/0lE3e0BaElwnNO1qkNQxBY=
 github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5/go.mod h1:qssHWj60/X5sZFNxpG4HBPDHVqxNm4DfnCKgrbZOT+s=
 github.com/dsnet/golib v0.0.0-20171103203638-1ea166775780/go.mod h1:Lj+Z9rebOhdfkVLjJ8T6VcRQv3SXugXy999NBtR9aFY=
@@ -113,8 +115,6 @@ github.com/jfrog/build-info-go v1.10.12 h1:KO/YUeKYtDrnpcmsXmwqr6akjzrwA0hSTUB+O
 github.com/jfrog/build-info-go v1.10.12/go.mod h1:JcISnovFXKx3wWf3p1fcMmlPdt6adxScXvoJN4WXqIE=
 github.com/jfrog/gofrog v1.7.6 h1:QmfAiRzVyaI7JYGsB7cxfAJePAZTzFz0gRWZSE27c6s=
 github.com/jfrog/gofrog v1.7.6/go.mod h1:ntr1txqNOZtHplmaNd7rS4f8jpA5Apx8em70oYEe7+4=
-github.com/jfrog/jfrog-client-go v1.53.1 h1:GDRLUDs6hhfGNjqbI+bjc3ApgBHnpVwURM+f26PVfyw=
-github.com/jfrog/jfrog-client-go v1.53.1/go.mod h1:XxYs2QtlTm92yqJ5O4j4vzWI8d4sDtKQUT1miNHMgnw=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=

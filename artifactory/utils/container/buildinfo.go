@@ -2,6 +2,7 @@ package container
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -91,7 +92,7 @@ func (builder *buildInfoBuilder) getSearchableRepo() string {
 }
 
 // Set build properties on image layers in Artifactory.
-func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager) (err error) {
+func setBuildProperties(buildName, buildNumber, project string, imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager, originalRepo string) (err error) {
 	// Skip if no build info is provided
 	if buildName == "" || buildNumber == "" {
 		log.Debug("Skipping setting properties - build name and build number are required")
@@ -109,7 +110,14 @@ func setBuildProperties(buildName, buildNumber, project string, imageLayers []ut
 		return nil
 	}
 
-	pathToFile, err := writeLayersToFile(imageLayers)
+	// Filter image layers for virtual repositories to only include layers from default deployment repository
+	filteredLayers, err := filterLayersForVirtualRepository(imageLayers, serviceManager, originalRepo)
+	if err != nil {
+		log.Debug("Failed to filter layers for virtual repository, proceeding with all layers:", err.Error())
+		filteredLayers = imageLayers
+	}
+
+	pathToFile, err := writeLayersToFile(filteredLayers)
 	if err != nil {
 		return
 	}
@@ -117,6 +125,87 @@ func setBuildProperties(buildName, buildNumber, project string, imageLayers []ut
 	defer ioutils.Close(reader, &err)
 	_, err = serviceManager.SetProps(services.PropsParams{Reader: reader, Props: props})
 	return
+}
+
+// filterLayersForVirtualRepository filters image layers to only include those from the default deployment repository
+// when dealing with virtual repositories. For non-virtual repositories, it returns all layers unchanged.
+func filterLayersForVirtualRepository(imageLayers []utils.ResultItem, serviceManager artifactory.ArtifactoryServicesManager, originalRepo string) ([]utils.ResultItem, error) {
+	if len(imageLayers) == 0 {
+		return imageLayers, nil
+	}
+
+	// Check if the original repository is a virtual repository by getting its configuration
+	repoConfig, err := getRepositoryConfiguration(originalRepo, serviceManager)
+	if err != nil {
+		log.Debug("Failed to get repository configuration for", originalRepo, ":", err.Error())
+		return imageLayers, err
+	}
+
+	// If it's not a virtual repository, return all layers unchanged
+	if repoConfig == nil || repoConfig.Rclass != "virtual" {
+		log.Debug("Repository", originalRepo, "is not virtual, proceeding with all layers")
+		return imageLayers, nil
+	}
+
+	// If it's a virtual repository but has no default deployment repo, return all layers
+	if repoConfig.DefaultDeploymentRepo == "" {
+		log.Debug("Virtual repository", originalRepo, "has no default deployment repository, proceeding with all layers")
+		return imageLayers, nil
+	}
+
+	// Filter layers to only include those from the default deployment repository
+	var filteredLayers []utils.ResultItem
+	for _, layer := range imageLayers {
+		if layer.Repo == repoConfig.DefaultDeploymentRepo {
+			filteredLayers = append(filteredLayers, layer)
+		}
+	}
+
+	if len(filteredLayers) > 0 {
+		log.Debug("Filtered", len(imageLayers), "layers to", len(filteredLayers), "layers from default deployment repository:", repoConfig.DefaultDeploymentRepo)
+	} else {
+		log.Debug("No layers found in default deployment repository", repoConfig.DefaultDeploymentRepo, ", proceeding with all layers")
+		return imageLayers, nil
+	}
+
+	return filteredLayers, nil
+}
+
+// repositoryConfig represents the virtual repository configuration
+type repositoryConfig struct {
+	Key                   string `json:"key"`
+	Rclass                string `json:"rclass"`
+	DefaultDeploymentRepo string `json:"defaultDeploymentRepo"`
+}
+
+// getRepositoryConfiguration fetches the repository configuration from Artifactory
+func getRepositoryConfiguration(repoKey string, serviceManager artifactory.ArtifactoryServicesManager) (*repositoryConfig, error) {
+	// Create HTTP client details for the request
+	httpClientDetails := serviceManager.GetConfig().GetServiceDetails().CreateHttpClientDetails()
+
+	// Construct the API endpoint URL
+	baseUrl := serviceManager.GetConfig().GetServiceDetails().GetUrl()
+	endpoint := "api/repositories/" + repoKey
+	url := baseUrl + endpoint
+
+	// Make the HTTP GET request
+	resp, body, _, err := serviceManager.Client().SendGet(url, true, &httpClientDetails)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for successful response
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to get repository configuration: HTTP %d", resp.StatusCode)
+	}
+
+	// Parse the JSON response
+	var config repositoryConfig
+	if err := json.Unmarshal(body, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse repository configuration: %v", err)
+	}
+
+	return &config, nil
 }
 
 // Download the content of layer search result.
@@ -340,7 +429,7 @@ func (builder *buildInfoBuilder) createBuildInfo(commandType CommandType, manife
 			return nil, err
 		}
 		if !builder.skipTaggingLayers {
-			if err := setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager); err != nil {
+			if err := setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager, builder.repositoryDetails.key); err != nil {
 				return nil, err
 			}
 		}
@@ -399,7 +488,7 @@ func (builder *buildInfoBuilder) createMultiPlatformBuildInfo(fatManifest *FatMa
 			Parent:    imageLongNameWithoutRepo,
 		})
 	}
-	return buildInfo, setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager)
+	return buildInfo, setBuildProperties(builder.buildName, builder.buildNumber, builder.project, builder.imageLayers, builder.serviceManager, builder.repositoryDetails.key)
 }
 
 // Construct the manifest's module ID by its type (attestation) or its platform.

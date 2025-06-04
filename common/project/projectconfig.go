@@ -46,6 +46,7 @@ const (
 	Podman
 	Twine
 	Helm
+	Ruby
 )
 
 type ConfigType string
@@ -75,6 +76,7 @@ var ProjectTypes = []string{
 	"podman",
 	"twine",
 	"helm",
+	"ruby",
 }
 
 func (projectType ProjectType) String() string {

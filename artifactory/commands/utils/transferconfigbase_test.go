@@ -223,6 +223,8 @@ func TestTransferVirtualRepositoriesToTarget(t *testing.T) {
 			if r.Method == http.MethodPut {
 				delete(expectedVirtualRepoAParamsMap, "repositories")
 				delete(expectedVirtualRepoBParamsMap, "repositories")
+				delete(expectedVirtualRepoAParamsMap, "defaultDeploymentRepo")
+				delete(expectedVirtualRepoBParamsMap, "defaultDeploymentRepo")
 			}
 
 			switch r.RequestURI {

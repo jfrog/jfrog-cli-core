@@ -31,6 +31,8 @@
   "priorityResolution": false,
   "projectKey": "default",
   "environments": [],
+  "repositories": ["b-local"],
+  "defaultDeploymentRepo": "b-local",
   "hideUnauthorizedResources": false,
   "artifactoryRequestsCanRetrieveRemoteArtifacts": false,
   "resolveDockerTagsByTimestamp": false,

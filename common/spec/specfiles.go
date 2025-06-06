@@ -89,10 +89,10 @@ type File struct {
 	Transitive              string
 	TargetPathInArchive     string
 	include                 []string
-	Package                 string
-	Version                 string
-	Type                    string
-	RepoKey                 string
+	Package                 string `json:"package,omitempty"`
+	Version                 string `json:"version,omitempty"`
+	Type                    string `json:"type,omitempty"`
+	RepoKey                 string `json:"repo_key,omitempty"`
 }
 
 func (f File) GetInclude() []string {

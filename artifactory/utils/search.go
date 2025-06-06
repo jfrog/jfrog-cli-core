@@ -170,7 +170,12 @@ func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *s
 	return SearchFilesBySpecific(servicesManager, spec.Files)
 }
 
-func SearchFilesBySpecific(servicesManager artifactory.ArtifactoryServicesManager, files []spec.File) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
+// SearchFilesBySpecs performs a search operation using the provided file specifications.
+// It supports multiple source types including artifacts, packages, and release bundles.
+func SearchFilesBySpecs(servicesManager artifactory.ArtifactoryServicesManager, files []spec.File) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
+	if len(files) == 0 {
+		return nil, nil, errorutils.CheckErrorf("no files provided for search")
+	}
 	callbackFunc = func() error {
 		var errs error
 		for _, reader := range searchResults {

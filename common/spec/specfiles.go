@@ -92,7 +92,7 @@ type File struct {
 	Package                 string `json:"package,omitempty"`
 	Version                 string `json:"version,omitempty"`
 	Type                    string `json:"type,omitempty"`
-	RepoKey                 string `json:"repo_key,omitempty"`
+	RepoKey                 string `json:"repoKey,omitempty"`
 }
 
 func (f File) GetInclude() []string {

@@ -1,10 +1,11 @@
 package coreutils
 
 import (
-	"github.com/forPelevin/gomoji"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strconv"
 	"strings"
+
+	"github.com/forPelevin/gomoji"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 
 	"github.com/gookit/color"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -167,6 +168,11 @@ func ExtractInsecureTlsFromArgs(args []string) (cleanArgs []string, insecureTls 
 // Used by docker
 func ExtractSkipLoginFromArgs(args []string) (cleanArgs []string, skipLogin bool, err error) {
 	return extractBoolOptionFromArgs(args, "skip-login")
+}
+
+// Used by docker
+func ExtractBoolFlagFromArgs(args []string, flagName string) (cleanArgs []string, flagValue bool, err error) {
+	return extractBoolOptionFromArgs(args, flagName)
 }
 
 // Used by docker

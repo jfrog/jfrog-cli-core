@@ -357,11 +357,8 @@ func GetJfrogSecurityConfFilePath() (string, error) {
 }
 
 func GetJfrogBackupDir() (string, error) {
-	homeDir, err := GetJfrogHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(homeDir, JfrogBackupDirName), nil
+	tempDir := os.TempDir()
+	return filepath.Join(tempDir, JfrogBackupDirName), nil
 }
 
 func GetJfrogPluginsDir() (string, error) {

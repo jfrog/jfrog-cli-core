@@ -29,6 +29,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/jfconnect"
 	"github.com/jfrog/jfrog-client-go/lifecycle"
 	"github.com/jfrog/jfrog-client-go/metadata"
+	"github.com/jfrog/jfrog-client-go/onemodel"
 	clientUtils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	ioUtils "github.com/jfrog/jfrog-client-go/utils/io"
@@ -261,6 +262,27 @@ func CreateMetadataServiceManager(serviceDetails *config.ServerDetails, isDryRun
 		return nil, err
 	}
 	return metadata.NewManager(serviceConfig)
+}
+
+func CreateOnemodelServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (onemodel.Manager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	mdAuth, err := serviceDetails.CreateOnemodelAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(mdAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serviceDetails.InsecureTls).
+		SetDryRun(isDryRun).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return onemodel.NewManager(serviceConfig)
 }
 
 func CreateJfConnectServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int) (jfconnect.Manager, error) {

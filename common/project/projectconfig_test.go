@@ -1,8 +1,9 @@
 package project
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFromString(t *testing.T) {
@@ -15,6 +16,7 @@ func TestFromString(t *testing.T) {
 		{"pip", Pip},
 		{"npm", Npm},
 		{"pnpm", Pnpm},
+		{"ruby", Ruby},
 	}
 
 	for _, testCase := range testCases {

@@ -13,9 +13,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.6.5
-	github.com/jfrog/build-info-go v1.10.12
+	github.com/jfrog/build-info-go v1.10.14
 	github.com/jfrog/gofrog v1.7.6
-	github.com/jfrog/jfrog-client-go v1.53.1
+	github.com/jfrog/jfrog-client-go v1.54.1
 	github.com/magiconair/properties v1.8.9
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -39,7 +39,7 @@ require (
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
-	github.com/cloudflare/circl v1.6.0 // indirect
+	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/cyphar/filepath-securejoin v0.4.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -114,9 +114,8 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
+// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20250610112448-de5e55438dba
 
-replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go v1.28.1-0.20250610112448-de5e55438dba
-
-// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20250226091544-c803cbbc5495
+// replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20250611113558-c1a092f216fd
 
 // replace github.com/jfrog/gofrog => github.com/jfrog/gofrog v1.3.3-0.20231223133729-ef57bd08cedc

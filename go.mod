@@ -114,7 +114,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/rimapol/jfrog-client-go v0.0.0-20250606121944-5c0f425fc4ca
+replace github.com/jfrog/jfrog-client-go => github.com/rimapol/jfrog-client-go v0.0.0-20250612141307-1c82bd3fb9b8
 
 // replace github.com/jfrog/jfrog-client-go => ../jfrog-client-go
 

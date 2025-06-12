@@ -22,6 +22,7 @@ import (
 	evidenceAuth "github.com/jfrog/jfrog-client-go/evidence/auth"
 	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
 	metadataAuth "github.com/jfrog/jfrog-client-go/metadata/auth"
+	onemodelAuth "github.com/jfrog/jfrog-client-go/onemodel/auth"
 	pipelinesAuth "github.com/jfrog/jfrog-client-go/pipelines/auth"
 	"github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -585,6 +586,7 @@ type ServerDetails struct {
 	LifecycleUrl                    string `json:"-"`
 	EvidenceUrl                     string `json:"-"`
 	MetadataUrl                     string `json:"-"`
+	OnemodelUrl                     string `json:"-"`
 	User                            string `json:"user,omitempty"`
 	Password                        string `json:"password,omitempty"`
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
@@ -687,6 +689,10 @@ func (serverDetails *ServerDetails) GetMetadataUrl() string {
 	return serverDetails.MetadataUrl
 }
 
+func (serverDetails *ServerDetails) GetOnemodelUrl() string {
+	return serverDetails.OnemodelUrl
+}
+
 func (serverDetails *ServerDetails) GetUser() string {
 	return serverDetails.User
 }
@@ -782,6 +788,12 @@ func (serverDetails *ServerDetails) CreateMetadataAuthConfig() (auth.ServiceDeta
 	mdAuth := metadataAuth.NewMetadataDetails()
 	mdAuth.SetUrl(serverDetails.MetadataUrl)
 	return serverDetails.createAuthConfig(mdAuth)
+}
+
+func (serverDetails *ServerDetails) CreateOnemodelAuthConfig() (auth.ServiceDetails, error) {
+	omAuth := onemodelAuth.NewOnemodelDetails()
+	omAuth.SetUrl(serverDetails.OnemodelUrl)
+	return serverDetails.createAuthConfig(omAuth)
 }
 
 func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails) (auth.ServiceDetails, error) {

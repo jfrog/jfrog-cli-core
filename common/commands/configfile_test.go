@@ -2,11 +2,12 @@ package commands
 
 import (
 	"flag"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
@@ -152,6 +153,24 @@ func TestNpmConfigFile(t *testing.T) {
 
 	// Check configuration
 	config := checkCommonAndGetConfiguration(t, project.Npm.String(), tempDirPath)
+	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+}
+
+func TestRubyConfigFile(t *testing.T) {
+	// Set JFROG_CLI_HOME_DIR environment variable
+	tempDirPath := createTempEnv(t)
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
+
+	// Create build config
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	err := CreateBuildConfig(context, project.Ruby)
+	assert.NoError(t, err)
+
+	// Check configuration
+	config := checkCommonAndGetConfiguration(t, project.Ruby.String(), tempDirPath)
 	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
 	assert.Equal(t, "repo", config.GetString("resolver.repo"))
 	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))

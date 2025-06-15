@@ -17,6 +17,7 @@ import (
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
+	catalogAuth "github.com/jfrog/jfrog-client-go/catalog/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
 	evidenceAuth "github.com/jfrog/jfrog-client-go/evidence/auth"
 	lifecycleAuth "github.com/jfrog/jfrog-client-go/lifecycle/auth"
@@ -578,6 +579,7 @@ type ServerDetails struct {
 	DistributionUrl                 string `json:"distributionUrl,omitempty"`
 	XrayUrl                         string `json:"xrayUrl,omitempty"`
 	XscUrl                          string `json:"xscUrl,omitempty"`
+	CatalogUrl                      string `json:"catalogUrl,omitempty"`
 	MissionControlUrl               string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl                    string `json:"pipelinesUrl,omitempty"`
 	AccessUrl                       string `json:"accessUrl,omitempty"`
@@ -659,6 +661,10 @@ func (serverDetails *ServerDetails) GetXrayUrl() string {
 	return serverDetails.XrayUrl
 }
 
+func (serverDetails *ServerDetails) GetCatalogUrl() string {
+	return serverDetails.CatalogUrl
+}
+
 func (serverDetails *ServerDetails) GetMissionControlUrl() string {
 	return serverDetails.MissionControlUrl
 }
@@ -727,6 +733,12 @@ func (serverDetails *ServerDetails) CreateXrayAuthConfig() (auth.ServiceDetails,
 	artAuth := xrayAuth.NewXrayDetails()
 	artAuth.SetUrl(serverDetails.XrayUrl)
 	return serverDetails.createAuthConfig(artAuth)
+}
+
+func (serverDetails *ServerDetails) CreateCatalogAuthConfig() (auth.ServiceDetails, error) {
+	catAuth := catalogAuth.NewCatalogDetails()
+	catAuth.SetUrl(utils.AddTrailingSlashIfNeeded(serverDetails.Url) + "catalog/")
+	return serverDetails.createAuthConfig(catAuth)
 }
 
 func (serverDetails *ServerDetails) CreateXscAuthConfig() (auth.ServiceDetails, error) {

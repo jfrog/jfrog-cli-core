@@ -2,11 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/jfrog-client-go/artifactory/services"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/project"
@@ -155,6 +156,8 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 		return
 	}
 	switch confType {
+	case project.Ruby:
+		return configFile.setDeployerResolver()
 	case project.Go:
 		return configFile.setDeployerResolver()
 	case project.Pip, project.Pipenv:

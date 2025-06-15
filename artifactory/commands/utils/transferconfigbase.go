@@ -224,16 +224,21 @@ func (tcb *TransferConfigBase) transferVirtualRepositoriesToTarget(reposToTransf
 			return
 		}
 
-		// Create virtual repository without included repositories
+		// Create virtual repository without included repositories and default deployment repo
 		repositories := singleRepoParamsMap["repositories"]
 		delete(singleRepoParamsMap, "repositories")
+		defaultDeploymentRepo := singleRepoParamsMap["defaultDeploymentRepo"]
+		delete(singleRepoParamsMap, "defaultDeploymentRepo")
 		if err = tcb.createRepositoryAndAssignToProject(singleRepoParamsMap, repoToTransfer); err != nil {
 			return
 		}
 
-		// Restore included repositories to set them later on
+		// Restore included repositories and default deployment repo to set them later on
 		if repositories != nil {
 			singleRepoParamsMap["repositories"] = repositories
+		}
+		if defaultDeploymentRepo != nil {
+			singleRepoParamsMap["defaultDeploymentRepo"] = defaultDeploymentRepo
 		}
 	}
 

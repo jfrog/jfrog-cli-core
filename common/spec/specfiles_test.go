@@ -45,4 +45,13 @@ func TestCreateSpecFromBuildNameAndNumber(t *testing.T) {
 		assert.Nil(t, spec)
 		assert.EqualError(t, err, "build name and build number must be provided")
 	})
+
+	t.Run("Build Name and Number with Slashes", func(t *testing.T) {
+		spec, err := CreateSpecFromBuildNameNumberAndProject("my/build/name", "1/2/3", "test")
+
+		assert.NoError(t, err)
+		assert.NotNil(t, spec)
+		assert.Equal(t, "my\\/build\\/name/1\\/2\\/3", spec.Files[0].Build)
+		assert.Equal(t, "test", spec.Files[0].Project)
+	})
 }

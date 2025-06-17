@@ -35,9 +35,17 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 		return
 	}
 	log.Info("After logging in via your web browser, please enter the code if prompted: " + coreutils.PrintBoldTitle(uuidStr[len(uuidStr)-4:]))
-	if err = browser.OpenURL(clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrog-CLI&jfClientCode=1"); err != nil {
-		return
+
+	loginUrl := clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrog-CLI&jfClientCode=1"
+	log.Info("Please open the following URL in your browser to authenticate:")
+	log.Info(loginUrl)
+
+	// Attempt to open in browser if available
+	if err = browser.OpenURL(loginUrl); err != nil {
+		log.Warn("Failed to automatically open the browser. Please open the URL manually.")
+		// Do not return, continue the flow
 	}
+
 	time.Sleep(1 * time.Second)
 	log.Debug("Attempting to get the authentication token...")
 	token, err = accessManager.GetLoginAuthenticationToken(uuidStr)
@@ -45,7 +53,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 		return
 	}
 	if token.AccessToken == "" {
-		return token, errorutils.CheckErrorf("failed getting authentication token after web log")
+		return token, errorutils.CheckErrorf("failed getting authentication token after web login")
 	}
 	log.Info("You're now logged in!")
 	return

@@ -15,9 +15,10 @@ const (
 	Json       OutputFormat = "json"
 	SimpleJson OutputFormat = "simple-json"
 	Sarif      OutputFormat = "sarif"
+	CycloneDx  OutputFormat = "cyclonedx"
 )
 
-var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif)}
+var OutputFormats = []string{string(Table), string(Json), string(SimpleJson), string(Sarif), string(CycloneDx)}
 
 func GetOutputFormat(formatFlagVal string) (format OutputFormat, err error) {
 	// Default print format is table.
@@ -32,6 +33,8 @@ func GetOutputFormat(formatFlagVal string) (format OutputFormat, err error) {
 			format = SimpleJson
 		case string(Sarif):
 			format = Sarif
+		case string(CycloneDx):
+			format = CycloneDx
 		default:
 			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(OutputFormats))
 		}

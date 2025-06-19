@@ -166,7 +166,18 @@ func SearchResultNoDate(reader *content.ContentReader) (contentReader *content.C
 	return
 }
 
+// SearchFiles performs a search operation using the provided spec files.
+// This is a wrapper around SearchFilesBySpecs for backward compatibility.
 func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *spec.SpecFiles) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
+	return SearchFilesBySpecs(servicesManager, spec.Files)
+}
+
+// SearchFilesBySpecs performs a search operation using the provided file specifications.
+// It supports multiple source types including artifacts, packages, and release bundles.
+func SearchFilesBySpecs(servicesManager artifactory.ArtifactoryServicesManager, files []spec.File) (searchResults []*content.ContentReader, callbackFunc func() error, err error) {
+	if len(files) == 0 {
+		return nil, nil, errorutils.CheckErrorf("no files provided for search")
+	}
 	callbackFunc = func() error {
 		var errs error
 		for _, reader := range searchResults {
@@ -177,8 +188,8 @@ func SearchFiles(servicesManager artifactory.ArtifactoryServicesManager, spec *s
 
 	var curSearchParams services.SearchParams
 	var curReader *content.ContentReader
-	for i := 0; i < len(spec.Files); i++ {
-		curSearchParams, err = GetSearchParams(spec.Get(i))
+	for i := 0; i < len(files); i++ {
+		curSearchParams, err = GetSearchParams(&files[i])
 		if err != nil {
 			return
 		}

@@ -7,6 +7,7 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"strings"
 )
 
 type SpecFiles struct {
@@ -43,7 +44,10 @@ func CreateSpecFromBuildNameNumberAndProject(buildName, buildNumber, projectKey 
 		return nil, errorutils.CheckErrorf("build name and build number must be provided")
 	}
 
-	buildString := buildName + "/" + buildNumber
+	escapedBuildName := strings.ReplaceAll(buildName, "/", "\\/")
+	escapedBuildNumber := strings.ReplaceAll(buildNumber, "/", "\\/")
+
+	buildString := escapedBuildName + "/" + escapedBuildNumber
 	specFile := &SpecFiles{
 		Files: []File{
 			{

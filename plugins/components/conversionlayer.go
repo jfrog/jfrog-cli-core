@@ -44,6 +44,7 @@ func convertSubcommands(subcommands []Namespace, nameSpaces ...string) ([]cli.Co
 	for _, ns := range subcommands {
 		nameSpaceCommand := cli.Command{
 			Name:     ns.Name,
+			Aliases:  ns.Aliases,
 			Usage:    ns.Description,
 			Hidden:   ns.Hidden,
 			Category: ns.Category,

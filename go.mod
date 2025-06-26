@@ -115,7 +115,7 @@ require (
 )
 
 // attiasas:add_catalog
-replace github.com/jfrog/jfrog-client-go => github.com/attiasas/jfrog-client-go v0.0.0-20250612153843-7671f43b7be6
+replace github.com/jfrog/jfrog-client-go => github.com/attiasas/jfrog-client-go v0.0.0-20250626144927-4f720f081e8c
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go v1.8.9-0.20250611113558-c1a092f216fd
 

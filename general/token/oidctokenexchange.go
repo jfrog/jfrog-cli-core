@@ -191,6 +191,5 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams.Repo = otc.Repository
 	oidcTokenParams.Audience = otc.Audience
 	oidcTokenParams.ProviderName = otc.ProviderName
-	oidcTokenParams.ProviderType = otc.ProviderType.String()
 	return oidcTokenParams
 }

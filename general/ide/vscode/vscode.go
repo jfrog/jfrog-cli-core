@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -99,10 +101,25 @@ func (vc *VscodeCommand) Run() error {
 
 	// Modify product.json
 	if err := vc.modifyProductJSON(repoURL); err != nil {
+		// Check if this is a permission error
+		isPermanentError := strings.Contains(err.Error(), "operation not permitted") ||
+			strings.Contains(err.Error(), "permission denied")
+
 		// Attempt to restore backup on failure
 		if restoreErr := vc.restoreBackup(); restoreErr != nil {
 			log.Error("Failed to restore backup after error:", restoreErr)
 		}
+
+		if isPermanentError && runtime.GOOS == "darwin" {
+			return errorutils.CheckError(fmt.Errorf("failed to modify product.json due to System Integrity Protection (SIP): %w\n\n"+
+				"The backup was created successfully at: %s\n\n"+
+				"Options to resolve this:\n"+
+				"1. Temporarily disable SIP: csrutil disable (requires reboot)\n"+
+				"2. Use the manual setup instructions below\n"+
+				"3. Install VSCode in a user-writable location (e.g., ~/Applications/)\n\n"+
+				"%s", err, vc.backupPath, vc.getManualSetupInstructions(repoURL)))
+		}
+
 		return errorutils.CheckError(fmt.Errorf("failed to modify product.json: %w\n\nBackup restored. Manual setup instructions:\n%s", err, vc.getManualSetupInstructions(repoURL)))
 	}
 
@@ -206,7 +223,22 @@ func (vc *VscodeCommand) checkSIPStatus() error {
 func (vc *VscodeCommand) createBackup() error {
 	log.Info("Creating backup of original product.json...")
 
-	vc.backupPath = vc.productPath + ".backup." + time.Now().Format("20060102-150405")
+	// Create backup directory in ~/.jfrog/backup/ide/vscode/
+	backupDir, err := coreutils.GetJfrogBackupDir()
+	if err != nil {
+		return fmt.Errorf("failed to get JFrog backup directory: %w", err)
+	}
+
+	ideBackupDir := filepath.Join(backupDir, "ide", "vscode")
+	err = fileutils.CreateDirIfNotExist(ideBackupDir)
+	if err != nil {
+		return fmt.Errorf("failed to create IDE backup directory: %w", err)
+	}
+
+	// Create backup filename with timestamp
+	timestamp := time.Now().Format("20060102-150405")
+	backupFileName := fmt.Sprintf("product.json.backup.%s", timestamp)
+	vc.backupPath = filepath.Join(ideBackupDir, backupFileName)
 
 	data, err := ioutil.ReadFile(vc.productPath)
 	if err != nil {

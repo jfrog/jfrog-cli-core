@@ -77,6 +77,9 @@ var (
 	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
 	// For CI runs
-	CIJobID = "JFROG_CLI_CI_JOB_ID"
-	CIRunID = "JFROG_CLI_CI_RUN_ID"
+	CIJobID       = "JFROG_CLI_CI_JOB_ID"
+	CIRunID       = "JFROG_CLI_CI_RUN_ID"
+	CIVcsUrl      = "JFROG_CLI_CI_VCS_URL"
+	CIVcsRevision = "JFROG_CLI_CI_VCS_REVISION"
+	CIVcsBranch   = "JFROG_CLI_CI_BRANCH"
 )

@@ -61,29 +61,29 @@ func NewJetbrainsCommand(repoKey, artifactoryURL string) *JetbrainsCommand {
 
 // Run executes the JetBrains configuration command
 func (jc *JetbrainsCommand) Run() error {
-	log.Info("Configuring JetBrains IDEs to use JFrog Artifactory plugins repository...")
+	log.Info("Configuring JetBrains IDEs plugin repository...")
 
-	// Get the Artifactory URL if not provided
-	if jc.artifactoryURL == "" {
-		serverDetails, err := config.GetDefaultServerConf()
-		if err != nil {
-			return errorutils.CheckError(fmt.Errorf("failed to get default server configuration: %w", err))
+	var repoURL string
+	if jc.repoKey == "" {
+		repoURL = jc.artifactoryURL
+	} else {
+		if jc.artifactoryURL == "" {
+			serverDetails, err := config.GetDefaultServerConf()
+			if err != nil {
+				return errorutils.CheckError(fmt.Errorf("failed to get default server configuration: %w", err))
+			}
+			if serverDetails == nil {
+				return errorutils.CheckError(fmt.Errorf("no default server configuration found. Please configure JFrog CLI or provide --artifactory-url"))
+			}
+			jc.artifactoryURL = serverDetails.GetUrl()
 		}
-		if serverDetails == nil {
-			return errorutils.CheckError(fmt.Errorf("no default server configuration found. Please configure JFrog CLI or provide --artifactory-url"))
-		}
-		jc.artifactoryURL = serverDetails.GetUrl()
+		repoURL = jc.buildRepositoryURL()
 	}
 
-	// Build the complete repository URL
-	repoURL := jc.buildRepositoryURL()
-
-	// Validate repository connection
 	if err := jc.validateRepository(repoURL); err != nil {
 		return errorutils.CheckError(fmt.Errorf("repository validation failed: %w", err))
 	}
 
-	// Auto-detect JetBrains IDE installations
 	if err := jc.detectJetBrainsIDEs(); err != nil {
 		return errorutils.CheckError(fmt.Errorf("failed to detect JetBrains IDEs: %w\n\nManual setup instructions:\n%s", err, jc.getManualSetupInstructions(repoURL)))
 	}
@@ -94,24 +94,20 @@ func (jc *JetbrainsCommand) Run() error {
 
 	log.Info(fmt.Sprintf("Found %d JetBrains IDE installation(s):", len(jc.detectedIDEs)))
 	for _, ide := range jc.detectedIDEs {
-		log.Info(fmt.Sprintf("  • %s %s", ide.Name, ide.Version))
+		log.Info(fmt.Sprintf("  %s %s", ide.Name, ide.Version))
 	}
 
-	// Create backups and modify each IDE
 	modifiedCount := 0
 	for _, ide := range jc.detectedIDEs {
-		log.Info(fmt.Sprintf("\nConfiguring %s %s...", ide.Name, ide.Version))
+		log.Info(fmt.Sprintf("Configuring %s %s...", ide.Name, ide.Version))
 
-		// Create backup
 		if err := jc.createBackup(ide); err != nil {
 			log.Warn(fmt.Sprintf("Failed to create backup for %s: %v", ide.Name, err))
 			continue
 		}
 
-		// Modify properties file
 		if err := jc.modifyPropertiesFile(ide, repoURL); err != nil {
 			log.Error(fmt.Sprintf("Failed to configure %s: %v", ide.Name, err))
-			// Attempt to restore backup
 			if restoreErr := jc.restoreBackup(ide); restoreErr != nil {
 				log.Error(fmt.Sprintf("Failed to restore backup for %s: %v", ide.Name, restoreErr))
 			}
@@ -119,16 +115,16 @@ func (jc *JetbrainsCommand) Run() error {
 		}
 
 		modifiedCount++
-		log.Info(fmt.Sprintf("✅ %s %s configured successfully", ide.Name, ide.Version))
+		log.Info(fmt.Sprintf("%s %s configured successfully", ide.Name, ide.Version))
 	}
 
 	if modifiedCount == 0 {
 		return errorutils.CheckError(fmt.Errorf("failed to configure any JetBrains IDEs\n\nManual setup instructions:\n%s", jc.getManualSetupInstructions(repoURL)))
 	}
 
-	log.Info(fmt.Sprintf("\n✅ Successfully configured %d out of %d JetBrains IDE(s)!", modifiedCount, len(jc.detectedIDEs)))
+	log.Info(fmt.Sprintf("Successfully configured %d out of %d JetBrains IDE(s)", modifiedCount, len(jc.detectedIDEs)))
 	log.Info("Repository URL:", repoURL)
-	log.Info("\nPlease restart your JetBrains IDEs for the changes to take effect.")
+	log.Info("Please restart your JetBrains IDEs to apply changes")
 
 	return nil
 }
@@ -136,12 +132,12 @@ func (jc *JetbrainsCommand) Run() error {
 // buildRepositoryURL constructs the complete repository URL
 func (jc *JetbrainsCommand) buildRepositoryURL() string {
 	baseURL := strings.TrimSuffix(jc.artifactoryURL, "/")
-	return fmt.Sprintf("%s/artifactory/api/jetbrains/%s", baseURL, jc.repoKey)
+	return fmt.Sprintf("%s/artifactory/%s", baseURL, jc.repoKey)
 }
 
 // validateRepository checks if the repository is accessible
 func (jc *JetbrainsCommand) validateRepository(repoURL string) error {
-	log.Info("Validating repository connection...")
+	log.Info("Validating repository...")
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(repoURL)
@@ -151,13 +147,13 @@ func (jc *JetbrainsCommand) validateRepository(repoURL string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode == 404 {
-		return fmt.Errorf("repository not found (404). Please verify the repository key '%s' exists and has anonymous read access", jc.repoKey)
+		return fmt.Errorf("repository not found (404). Please verify the repository key '%s' exists", jc.repoKey)
 	}
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= 400 && resp.StatusCode != 401 {
 		return fmt.Errorf("repository returned status %d. Please verify the repository is accessible", resp.StatusCode)
 	}
 
-	log.Info("✅ Repository validation successful")
+	log.Info("Repository validation successful")
 	return nil
 }
 
@@ -273,7 +269,7 @@ func (jc *JetbrainsCommand) createBackup(ide IDEInstallation) error {
 	}
 
 	jc.backupPaths[ide.PropertiesPath] = backupPath
-	log.Info(fmt.Sprintf("  ✅ Backup created at: %s", backupPath))
+	log.Info(fmt.Sprintf("	Backup created at: %s", backupPath))
 	return nil
 }
 
@@ -302,7 +298,7 @@ func (jc *JetbrainsCommand) restoreBackup(ide IDEInstallation) error {
 		return fmt.Errorf("failed to restore backup: %w", err)
 	}
 
-	log.Info(fmt.Sprintf("  ✅ Backup restored for %s", ide.Name))
+	log.Info(fmt.Sprintf("	Backup restored for %s", ide.Name))
 	return nil
 }
 

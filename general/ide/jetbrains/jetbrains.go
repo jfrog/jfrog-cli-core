@@ -3,7 +3,6 @@ package jetbrains
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -149,7 +148,7 @@ func (jc *JetbrainsCommand) validateRepository(repoURL string) error {
 	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("repository not found (404). Please verify the repository key '%s' exists", jc.repoKey)
 	}
-	if resp.StatusCode >= 400 && resp.StatusCode != 401 {
+	if resp.StatusCode >= 400 && resp.StatusCode != http.StatusUnauthorized {
 		return fmt.Errorf("repository returned status %d. Please verify the repository is accessible", resp.StatusCode)
 	}
 
@@ -184,7 +183,7 @@ func (jc *JetbrainsCommand) detectJetBrainsIDEs() error {
 	}
 
 	// Scan for IDE configurations
-	entries, err := ioutil.ReadDir(configBasePath)
+	entries, err := os.ReadDir(configBasePath)
 	if err != nil {
 		return fmt.Errorf("failed to read JetBrains configuration directory: %w", err)
 	}
@@ -250,7 +249,7 @@ func (jc *JetbrainsCommand) createBackup(ide IDEInstallation) error {
 	// If properties file doesn't exist, create an empty backup
 	if _, err := os.Stat(ide.PropertiesPath); os.IsNotExist(err) {
 		// Create empty file for backup record
-		if err := ioutil.WriteFile(backupPath, []byte("# Empty properties file backup\n"), 0644); err != nil {
+		if err := os.WriteFile(backupPath, []byte("# Empty properties file backup\n"), 0644); err != nil {
 			return fmt.Errorf("failed to create backup marker: %w", err)
 		}
 		jc.backupPaths[ide.PropertiesPath] = backupPath
@@ -258,13 +257,13 @@ func (jc *JetbrainsCommand) createBackup(ide IDEInstallation) error {
 	}
 
 	// Read existing properties file
-	data, err := ioutil.ReadFile(ide.PropertiesPath)
+	data, err := os.ReadFile(ide.PropertiesPath)
 	if err != nil {
 		return fmt.Errorf("failed to read properties file: %w", err)
 	}
 
 	// Write backup
-	if err := ioutil.WriteFile(backupPath, data, 0644); err != nil {
+	if err := os.WriteFile(backupPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
@@ -280,7 +279,7 @@ func (jc *JetbrainsCommand) restoreBackup(ide IDEInstallation) error {
 		return fmt.Errorf("no backup path available for %s", ide.PropertiesPath)
 	}
 
-	data, err := ioutil.ReadFile(backupPath)
+	data, err := os.ReadFile(backupPath)
 	if err != nil {
 		return fmt.Errorf("failed to read backup: %w", err)
 	}
@@ -294,7 +293,7 @@ func (jc *JetbrainsCommand) restoreBackup(ide IDEInstallation) error {
 		return nil
 	}
 
-	if err := ioutil.WriteFile(ide.PropertiesPath, data, 0644); err != nil {
+	if err := os.WriteFile(ide.PropertiesPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to restore backup: %w", err)
 	}
 
@@ -309,7 +308,7 @@ func (jc *JetbrainsCommand) modifyPropertiesFile(ide IDEInstallation, repoURL st
 
 	// Read existing properties if file exists
 	if _, err := os.Stat(ide.PropertiesPath); err == nil {
-		data, err := ioutil.ReadFile(ide.PropertiesPath)
+		data, err := os.ReadFile(ide.PropertiesPath)
 		if err != nil {
 			return fmt.Errorf("failed to read properties file: %w", err)
 		}
@@ -352,7 +351,7 @@ func (jc *JetbrainsCommand) modifyPropertiesFile(ide IDEInstallation, repoURL st
 
 	// Write modified properties file
 	content := strings.Join(lines, "\n") + "\n"
-	if err := ioutil.WriteFile(ide.PropertiesPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(ide.PropertiesPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write properties file: %w", err)
 	}
 

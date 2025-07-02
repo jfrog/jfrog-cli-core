@@ -3,7 +3,6 @@ package vscode
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -264,12 +263,12 @@ func (vc *VscodeCommand) createBackup() error {
 	backupFileName := fmt.Sprintf("product.json.backup.%s", timestamp)
 	vc.backupPath = filepath.Join(ideBackupDir, backupFileName)
 
-	data, err := ioutil.ReadFile(vc.productPath)
+	data, err := os.ReadFile(vc.productPath)
 	if err != nil {
 		return fmt.Errorf("failed to read original product.json: %w", err)
 	}
 
-	if err := ioutil.WriteFile(vc.backupPath, data, 0644); err != nil {
+	if err := os.WriteFile(vc.backupPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
@@ -283,12 +282,12 @@ func (vc *VscodeCommand) restoreBackup() error {
 		return fmt.Errorf("no backup path available")
 	}
 
-	data, err := ioutil.ReadFile(vc.backupPath)
+	data, err := os.ReadFile(vc.backupPath)
 	if err != nil {
 		return fmt.Errorf("failed to read backup: %w", err)
 	}
 
-	if err := ioutil.WriteFile(vc.productPath, data, 0644); err != nil {
+	if err := os.WriteFile(vc.productPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to restore backup: %w", err)
 	}
 	return nil
@@ -389,7 +388,7 @@ func (vc *VscodeCommand) modifyWithPowerShell(repoURL string) error {
 
 // verifyModification checks that the serviceUrl was actually changed
 func (vc *VscodeCommand) verifyModification(expectedURL string) error {
-	data, err := ioutil.ReadFile(vc.productPath)
+	data, err := os.ReadFile(vc.productPath)
 	if err != nil {
 		return fmt.Errorf("failed to read file for verification: %w", err)
 	}

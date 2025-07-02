@@ -146,7 +146,7 @@ func (jc *JetbrainsCommand) validateRepository(repoURL string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("repository not found (404). Please verify the repository key '%s' exists", jc.repoKey)
 	}
 	if resp.StatusCode >= 400 && resp.StatusCode != 401 {

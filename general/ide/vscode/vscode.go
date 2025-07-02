@@ -183,11 +183,11 @@ func (vc *VscodeCommand) validateRepository(repoURL string) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
 		log.Warn("Repository not found (404). Please verify the repository exists")
 		return nil
 	}
-	if resp.StatusCode == 401 || resp.StatusCode == 403 {
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		log.Warn("Repository requires authentication")
 		return nil
 	}
@@ -494,7 +494,7 @@ func (vic *VscodeInstallCommand) validateExtensionRepository(repoURL string) err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 404 {
+	if resp.StatusCode == http.StatusNotFound {
 		return fmt.Errorf("extension not found. Please verify publisher '%s' and extension '%s' exist in repository '%s'", vic.publisher, vic.extensionName, vic.repoKey)
 	}
 	if resp.StatusCode >= 400 {

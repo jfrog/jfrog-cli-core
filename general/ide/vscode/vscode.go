@@ -260,7 +260,7 @@ func (vc *VscodeCommand) createBackup() error {
 	}
 
 	timestamp := time.Now().Format("20060102-150405")
-	backupFileName := fmt.Sprintf("product.json.backup.%s", timestamp)
+	backupFileName := "product.json.backup." + timestamp
 	vc.backupPath = filepath.Join(ideBackupDir, backupFileName)
 
 	data, err := os.ReadFile(vc.productPath)
@@ -305,20 +305,18 @@ func (vc *VscodeCommand) modifyProductJson(repoURL string) error {
 		return fmt.Errorf("failed to create backup: %w", err)
 	}
 
+	var err error
 	if runtime.GOOS == "windows" {
-		if err := vc.modifyWithPowerShell(repoURL); err != nil {
-			if restoreErr := vc.restoreBackup(); restoreErr != nil {
-				log.Error("Failed to restore backup:", restoreErr)
-			}
-			return err
-		}
+		err = vc.modifyWithPowerShell(repoURL)
 	} else {
-		if err := vc.modifyWithSed(repoURL); err != nil {
-			if restoreErr := vc.restoreBackup(); restoreErr != nil {
-				log.Error("Failed to restore backup:", restoreErr)
-			}
-			return err
+		err = vc.modifyWithSed(repoURL)
+	}
+
+	if err != nil {
+		if restoreErr := vc.restoreBackup(); restoreErr != nil {
+			log.Error("Failed to restore backup:", restoreErr)
 		}
+		return err
 	}
 
 	return nil

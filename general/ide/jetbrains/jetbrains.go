@@ -323,7 +323,7 @@ func (jc *JetbrainsCommand) modifyPropertiesFile(ide IDEInstallation, repoURL st
 				// Replace with our repository URL
 				lines = append(lines, fmt.Sprintf("idea.plugins.host=%s", repoURL))
 				pluginsHostSet = true
-				log.Info(fmt.Sprintf("  Updated existing idea.plugins.host property"))
+				log.Info("  Updated existing idea.plugins.host property")
 			} else {
 				lines = append(lines, line)
 			}
@@ -341,7 +341,7 @@ func (jc *JetbrainsCommand) modifyPropertiesFile(ide IDEInstallation, repoURL st
 		}
 		lines = append(lines, "# JFrog Artifactory plugins repository")
 		lines = append(lines, fmt.Sprintf("idea.plugins.host=%s", repoURL))
-		log.Info(fmt.Sprintf("  Added idea.plugins.host property"))
+		log.Info("  Added idea.plugins.host property")
 	}
 
 	// Ensure config directory exists

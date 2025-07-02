@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
+	apptrustAuth "github.com/jfrog/jfrog-client-go/apptrust/auth"
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	distributionAuth "github.com/jfrog/jfrog-client-go/distribution/auth"
@@ -733,6 +734,12 @@ func (serverDetails *ServerDetails) CreateXscAuthConfig() (auth.ServiceDetails, 
 	ascAuth := xscAuth.NewXscDetails()
 	ascAuth.SetUrl(serverDetails.convertXrayUrlToXscUrl())
 	return serverDetails.createAuthConfig(ascAuth)
+}
+
+func (serverDetails *ServerDetails) CreateApptrustAuthConfig() (auth.ServiceDetails, error) {
+	atAuth := apptrustAuth.NewXscDetails()
+	atAuth.SetUrl(serverDetails.Url)
+	return serverDetails.createAuthConfig(atAuth)
 }
 
 // Xray and Xsc will always have the same platform url.

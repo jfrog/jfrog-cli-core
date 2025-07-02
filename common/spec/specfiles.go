@@ -7,6 +7,7 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"strings"
 )
 
 type SpecFiles struct {
@@ -43,7 +44,10 @@ func CreateSpecFromBuildNameNumberAndProject(buildName, buildNumber, projectKey 
 		return nil, errorutils.CheckErrorf("build name and build number must be provided")
 	}
 
-	buildString := buildName + "/" + buildNumber
+	escapedBuildName := strings.ReplaceAll(buildName, "/", "\\/")
+	escapedBuildNumber := strings.ReplaceAll(buildNumber, "/", "\\/")
+
+	buildString := escapedBuildName + "/" + escapedBuildNumber
 	specFile := &SpecFiles{
 		Files: []File{
 			{
@@ -89,6 +93,10 @@ type File struct {
 	Transitive              string
 	TargetPathInArchive     string
 	include                 []string
+	Package                 string `json:"package,omitempty"`
+	Version                 string `json:"version,omitempty"`
+	Type                    string `json:"type,omitempty"`
+	RepoKey                 string `json:"repoKey,omitempty"`
 }
 
 func (f File) GetInclude() []string {
@@ -213,6 +221,11 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		isExplode, _ := file.IsExplode(false)
 		isBypassArchiveInspection, _ := file.IsBypassArchiveInspection(false)
 		isTransitive, _ := file.IsTransitive(false)
+		isPackage := len(file.Package) > 0
+		isVersion := len(file.Version) > 0
+		isType := len(file.Type) > 0
+		isRepoKey := len(file.RepoKey) > 0
+
 		if isPathMapping {
 			if !isAql {
 				return errorutils.CheckErrorf("pathMapping is supported only with aql")
@@ -230,11 +243,9 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		if !isSearchBasedSpec && !isPattern {
 			return errorutils.CheckErrorf("spec must include a pattern")
 		}
-		if isBuild && isBundle {
-			return fileSpecValidationError("build", "bundle")
-		}
-		if isSearchBasedSpec && !isAql && !isPattern && !isBuild && !isBundle {
-			return errorutils.CheckErrorf("spec must include either aql, pattern, build or bundle")
+
+		if isSearchBasedSpec && !isAql && !isPattern && !isBuild && !isBundle && !isPackage {
+			return errorutils.CheckErrorf("spec must include either aql, pattern, build, bundle or package")
 		}
 		if isOffset {
 			if isBuild {
@@ -254,9 +265,6 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 			if isBundle {
 				return fileSpecValidationError("bundle", "limit")
 			}
-		}
-		if isAql && isPattern {
-			return fileSpecValidationError("aql", "pattern")
 		}
 		if isAql && isExclusions {
 			return fileSpecValidationError("aql", "exclusions")
@@ -290,6 +298,11 @@ func ValidateSpec(files []File, isTargetMandatory, isSearchBasedSpec bool) error
 		}
 		if isBypassArchiveInspection && !isExplode {
 			return errorutils.CheckErrorf("spec cannot include 'bypass-archive-inspection' if 'explode' is not included")
+		}
+		if isPackage {
+			if !isVersion || !isType || !isRepoKey {
+				return errorutils.CheckErrorf("spec with type 'package' must include 'version', 'type' and 'repo_key'")
+			}
 		}
 	}
 	return nil

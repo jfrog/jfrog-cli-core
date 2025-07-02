@@ -91,37 +91,37 @@ func (jc *JetbrainsCommand) Run() error {
 		return errorutils.CheckError(fmt.Errorf("no JetBrains IDEs found\n\nManual setup instructions:\n%s", jc.getManualSetupInstructions(repoURL)))
 	}
 
-	log.Info(fmt.Sprintf("Found %d JetBrains IDE installation(s):", len(jc.detectedIDEs)))
+	log.Info("Found", len(jc.detectedIDEs), "JetBrains IDE installation(s):")
 	for _, ide := range jc.detectedIDEs {
-		log.Info(fmt.Sprintf("  %s %s", ide.Name, ide.Version))
+		log.Info("  " + ide.Name + " " + ide.Version)
 	}
 
 	modifiedCount := 0
 	for _, ide := range jc.detectedIDEs {
-		log.Info(fmt.Sprintf("Configuring %s %s...", ide.Name, ide.Version))
+		log.Info("Configuring " + ide.Name + " " + ide.Version + "...")
 
 		if err := jc.createBackup(ide); err != nil {
-			log.Warn(fmt.Sprintf("Failed to create backup for %s: %v", ide.Name, err))
+			log.Warn("Failed to create backup for "+ide.Name+":", err)
 			continue
 		}
 
 		if err := jc.modifyPropertiesFile(ide, repoURL); err != nil {
-			log.Error(fmt.Sprintf("Failed to configure %s: %v", ide.Name, err))
+			log.Error("Failed to configure "+ide.Name+":", err)
 			if restoreErr := jc.restoreBackup(ide); restoreErr != nil {
-				log.Error(fmt.Sprintf("Failed to restore backup for %s: %v", ide.Name, restoreErr))
+				log.Error("Failed to restore backup for "+ide.Name+":", restoreErr)
 			}
 			continue
 		}
 
 		modifiedCount++
-		log.Info(fmt.Sprintf("%s %s configured successfully", ide.Name, ide.Version))
+		log.Info(ide.Name + " " + ide.Version + " configured successfully")
 	}
 
 	if modifiedCount == 0 {
 		return errorutils.CheckError(fmt.Errorf("failed to configure any JetBrains IDEs\n\nManual setup instructions:\n%s", jc.getManualSetupInstructions(repoURL)))
 	}
 
-	log.Info(fmt.Sprintf("Successfully configured %d out of %d JetBrains IDE(s)", modifiedCount, len(jc.detectedIDEs)))
+	log.Info("Successfully configured", modifiedCount, "out of", len(jc.detectedIDEs), "JetBrains IDE(s)")
 	log.Info("Repository URL:", repoURL)
 	log.Info("Please restart your JetBrains IDEs to apply changes")
 
@@ -268,7 +268,7 @@ func (jc *JetbrainsCommand) createBackup(ide IDEInstallation) error {
 	}
 
 	jc.backupPaths[ide.PropertiesPath] = backupPath
-	log.Info(fmt.Sprintf("	Backup created at: %s", backupPath))
+	log.Info("	Backup created at: " + backupPath)
 	return nil
 }
 
@@ -297,7 +297,7 @@ func (jc *JetbrainsCommand) restoreBackup(ide IDEInstallation) error {
 		return fmt.Errorf("failed to restore backup: %w", err)
 	}
 
-	log.Info(fmt.Sprintf("	Backup restored for %s", ide.Name))
+	log.Info("	Backup restored for " + ide.Name)
 	return nil
 }
 

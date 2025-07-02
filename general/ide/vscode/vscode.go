@@ -517,15 +517,15 @@ func (vic *VscodeInstallCommand) downloadAndInstallExtension(repoURL string) err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download extension: HTTP %d", resp.StatusCode)
 	}
 
 	// Create temporary file for the extension package
 	tempDir := os.TempDir()
-	extensionFileName := fmt.Sprintf("%s.%s.vsix", vic.publisher, vic.extensionName)
+	extensionFileName := vic.publisher + "." + vic.extensionName + ".vsix"
 	if vic.version != "" {
-		extensionFileName = fmt.Sprintf("%s.%s-%s.vsix", vic.publisher, vic.extensionName, vic.version)
+		extensionFileName = vic.publisher + "." + vic.extensionName + "-" + vic.version + ".vsix"
 	}
 	tempFile := filepath.Join(tempDir, extensionFileName)
 

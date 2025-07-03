@@ -3,14 +3,15 @@ package token
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strings"
 )
 
 const (
@@ -73,6 +74,9 @@ type OidcParams struct {
 	JobId          string
 	RunId          string
 	Repository     string
+	VcsUrl         string
+	VcsBranch      string
+	VcsRevision    string
 }
 
 type ExchangeCommandOutputStruct struct {
@@ -130,6 +134,21 @@ func (otc *OidcTokenExchangeCommand) SetJobId(jobId string) *OidcTokenExchangeCo
 
 func (otc *OidcTokenExchangeCommand) SetRepository(repo string) *OidcTokenExchangeCommand {
 	otc.Repository = repo
+	return otc
+}
+
+func (otc *OidcTokenExchangeCommand) SetVcsUrl(vcsUrl string) *OidcTokenExchangeCommand {
+	otc.VcsUrl = vcsUrl
+	return otc
+}
+
+func (otc *OidcTokenExchangeCommand) SetVcsBranch(vcsBranch string) *OidcTokenExchangeCommand {
+	otc.VcsBranch = vcsBranch
+	return otc
+}
+
+func (otc *OidcTokenExchangeCommand) SetVcsRevision(vcsRevision string) *OidcTokenExchangeCommand {
+	otc.VcsRevision = vcsRevision
 	return otc
 }
 
@@ -191,5 +210,14 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams.Repo = otc.Repository
 	oidcTokenParams.Audience = otc.Audience
 	oidcTokenParams.ProviderName = otc.ProviderName
+	oidcTokenParams.ProviderType = otc.ProviderType.String()
+	oidcTokenParams.Context = &services.Context{
+		VcsCommit: &services.VcsCommit{
+			VcsUrl:   otc.VcsUrl,
+			Branch:   otc.VcsBranch,
+			Revision: otc.VcsRevision,
+		},
+	}
+
 	return oidcTokenParams
 }

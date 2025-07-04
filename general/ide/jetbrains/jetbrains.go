@@ -203,14 +203,8 @@ func (jc *JetbrainsCommand) detectJetBrainsIDEs() error {
 		// Set the full config directory path
 		ide.ConfigDir = filepath.Join(configBasePath, dirName)
 
-		// Check for idea.properties file
-		propertiesPath := filepath.Join(ide.ConfigDir, "idea.properties")
-		if _, err := os.Stat(propertiesPath); err == nil {
-			ide.PropertiesPath = propertiesPath
-		} else {
-			// Create idea.properties if it doesn't exist
-			ide.PropertiesPath = propertiesPath
-		}
+		// Set idea.properties file path
+		ide.PropertiesPath = filepath.Join(ide.ConfigDir, "idea.properties")
 
 		jc.detectedIDEs = append(jc.detectedIDEs, *ide)
 	}

@@ -132,7 +132,9 @@ func (vc *VscodeCommand) checkWritePermissions() error {
 		}
 		return fmt.Errorf("failed to check write permissions: %w", err)
 	}
-	file.Close()
+	if closeErr := file.Close(); closeErr != nil {
+		return fmt.Errorf("failed to close file: %w", closeErr)
+	}
 	return nil
 }
 
@@ -535,7 +537,9 @@ func (vic *VscodeInstallCommand) downloadAndInstallExtension(repoURL string) err
 	defer os.Remove(tempFile) // Clean up temp file
 
 	_, err = io.Copy(out, resp.Body)
-	out.Close()
+	if closeErr := out.Close(); closeErr != nil {
+		return fmt.Errorf("failed to close temp file: %w", closeErr)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to save extension package: %w", err)
 	}
@@ -543,13 +547,14 @@ func (vic *VscodeInstallCommand) downloadAndInstallExtension(repoURL string) err
 	log.Info("Installing extension using VSCode CLI...")
 
 	// Install extension using VSCode's CLI
-	var cmd *exec.Cmd
+	var codeCmd string
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("code.cmd", "--install-extension", tempFile, "--force")
+		codeCmd = "code.cmd"
 	} else {
-		cmd = exec.Command("code", "--install-extension", tempFile, "--force")
+		codeCmd = "code"
 	}
 
+	cmd := exec.Command(codeCmd, "--install-extension", tempFile, "--force")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("failed to install extension via VSCode CLI: %w\nOutput: %s", err, string(output))

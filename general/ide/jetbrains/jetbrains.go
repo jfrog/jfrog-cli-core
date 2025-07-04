@@ -131,7 +131,7 @@ func (jc *JetbrainsCommand) Run() error {
 // buildRepositoryURL constructs the complete repository URL
 func (jc *JetbrainsCommand) buildRepositoryURL() string {
 	baseURL := strings.TrimSuffix(jc.artifactoryURL, "/")
-	return fmt.Sprintf("%s/artifactory/%s", baseURL, jc.repoKey)
+	return fmt.Sprintf("%s/artifactory/api/jetbrainsplugins/%s", baseURL, jc.repoKey)
 }
 
 // validateRepository checks if the repository is accessible

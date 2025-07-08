@@ -38,6 +38,39 @@ func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, erro
 	return configMap, errorutils.CheckError(err)
 }
 
+func ConvertTemplateToMaps(tuc TemplateUserCommand) ([]map[string]interface{}, error) {
+	content, err := fileutils.ReadFile(tuc.TemplatePath())
+	if errorutils.CheckError(err) != nil {
+		return nil, err
+	}
+	// Replace vars string-by-string if needed
+	if len(tuc.Vars()) > 0 {
+		templateVars := coreutils.SpecVarsStringToMap(tuc.Vars())
+		content = coreutils.ReplaceVars(content, templateVars)
+	}
+
+	var (
+		configMap    []map[string]interface{}
+		unmarshalErr error
+	)
+
+	unmarshalErr = json.Unmarshal(content, &configMap)
+	if unmarshalErr == nil {
+		return configMap, nil
+	}
+
+	var singleMap map[string]interface{}
+	err = json.Unmarshal(content, &singleMap)
+	if err != nil {
+		if unmarshalErr != nil {
+			return nil, errorutils.CheckError(unmarshalErr)
+		}
+		return nil, errorutils.CheckError(err)
+	}
+
+	return []map[string]interface{}{singleMap}, nil
+}
+
 func ValidateMapEntry(key string, value interface{}, writersMap map[string]ioutils.AnswerWriter) error {
 	if _, ok := writersMap[key]; !ok {
 		return errorutils.CheckErrorf("template syntax error: unknown key: \"" + key + "\".")

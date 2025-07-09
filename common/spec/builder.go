@@ -35,6 +35,7 @@ type builder struct {
 	transitive              bool
 	targetPathInArchive     string
 	include                 []string
+	repoOnly                bool
 }
 
 func NewBuilder() *builder {
@@ -73,6 +74,11 @@ func (b *builder) BypassArchiveInspection(bypassArchiveInspection bool) *builder
 
 func (b *builder) Props(props string) *builder {
 	b.props = props
+	return b
+}
+
+func (b *builder) RepoOnly(repoOnly bool) *builder {
+	b.repoOnly = repoOnly
 	return b
 }
 

@@ -21,15 +21,15 @@ type TemplateUserCommand interface {
 	Vars() string
 }
 
-func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, error) {
+func ConvertTemplateToMap(templateUserCommand TemplateUserCommand) (map[string]interface{}, error) {
 	// Read the template file
-	content, err := fileutils.ReadFile(tuc.TemplatePath())
+	content, err := fileutils.ReadFile(templateUserCommand.TemplatePath())
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
 	// Replace vars string-by-string if needed
-	if len(tuc.Vars()) > 0 {
-		templateVars := coreutils.SpecVarsStringToMap(tuc.Vars())
+	if len(templateUserCommand.Vars()) > 0 {
+		templateVars := coreutils.SpecVarsStringToMap(templateUserCommand.Vars())
 		content = coreutils.ReplaceVars(content, templateVars)
 	}
 	// Unmarshal template to a map
@@ -38,37 +38,30 @@ func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, erro
 	return configMap, errorutils.CheckError(err)
 }
 
-func ConvertTemplateToMaps(tuc TemplateUserCommand) ([]map[string]interface{}, error) {
-	content, err := fileutils.ReadFile(tuc.TemplatePath())
+func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) ([]map[string]interface{}, error) {
+	content, err := fileutils.ReadFile(templateUserCommand.TemplatePath())
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
 	// Replace vars string-by-string if needed
-	if len(tuc.Vars()) > 0 {
-		templateVars := coreutils.SpecVarsStringToMap(tuc.Vars())
+	if len(templateUserCommand.Vars()) > 0 {
+		templateVars := coreutils.SpecVarsStringToMap(templateUserCommand.Vars())
 		content = coreutils.ReplaceVars(content, templateVars)
 	}
 
-	var (
-		configMap    []map[string]interface{}
-		unmarshalErr error
-	)
-
-	unmarshalErr = json.Unmarshal(content, &configMap)
-	if unmarshalErr == nil {
-		return configMap, nil
+	var multiRepoCreateEntities []map[string]interface{}
+	err = json.Unmarshal(content, &multiRepoCreateEntities)
+	if err == nil {
+		return multiRepoCreateEntities, nil
 	}
 
-	var singleMap map[string]interface{}
-	err = json.Unmarshal(content, &singleMap)
+	var repoCreateEntity map[string]interface{}
+	err = json.Unmarshal(content, &repoCreateEntity)
 	if err != nil {
-		if unmarshalErr != nil {
-			return nil, errorutils.CheckError(unmarshalErr)
-		}
 		return nil, errorutils.CheckError(err)
 	}
 
-	return []map[string]interface{}{singleMap}, nil
+	return []map[string]interface{}{repoCreateEntity}, nil
 }
 
 func ValidateMapEntry(key string, value interface{}, writersMap map[string]ioutils.AnswerWriter) error {

@@ -40,8 +40,8 @@ func ConvertTemplateToMap(templateUserCommand TemplateUserCommand) (map[string]i
 
 func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) ([]map[string]interface{}, error) {
 	content, err := fileutils.ReadFile(templateUserCommand.TemplatePath())
-	if errorutils.CheckError(err) != nil {
-		return nil, err
+	if err != nil {
+		return nil, errorutils.CheckError(err)
 	}
 	// Replace vars string-by-string if needed
 	if len(templateUserCommand.Vars()) > 0 {
@@ -49,19 +49,28 @@ func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) ([]map[strin
 		content = coreutils.ReplaceVars(content, templateVars)
 	}
 
+	isArray := checkTemplateType(content)
+
 	var multiRepoCreateEntities []map[string]interface{}
 	err = json.Unmarshal(content, &multiRepoCreateEntities)
-	if err == nil {
+	if err != nil && isArray {
+		return nil, errorutils.CheckError(err)
+	} else if err == nil {
 		return multiRepoCreateEntities, nil
 	}
 
 	var repoCreateEntity map[string]interface{}
 	err = json.Unmarshal(content, &repoCreateEntity)
-	if err != nil {
-		return nil, errorutils.CheckError(err)
+	if err == nil {
+		return []map[string]interface{}{repoCreateEntity}, nil
 	}
 
-	return []map[string]interface{}{repoCreateEntity}, nil
+	return nil, err
+}
+
+func checkTemplateType(content []byte) bool {
+	trimmedContent := strings.TrimSpace(string(content))
+	return len(trimmedContent) > 1 && trimmedContent[0] == '[' && trimmedContent[len(trimmedContent)-1] == ']'
 }
 
 func ValidateMapEntry(key string, value interface{}, writersMap map[string]ioutils.AnswerWriter) error {

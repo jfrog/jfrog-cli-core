@@ -38,7 +38,7 @@ func ConvertTemplateToMap(templateUserCommand TemplateUserCommand) (map[string]i
 	return configMap, errorutils.CheckError(err)
 }
 
-func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) ([]map[string]interface{}, error) {
+func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) (interface{}, error) {
 	content, err := fileutils.ReadFile(templateUserCommand.TemplatePath())
 	if err != nil {
 		return nil, errorutils.CheckError(err)
@@ -62,7 +62,7 @@ func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) ([]map[strin
 	var repoCreateEntity map[string]interface{}
 	err = json.Unmarshal(content, &repoCreateEntity)
 	if err == nil {
-		return []map[string]interface{}{repoCreateEntity}, nil
+		return repoCreateEntity, nil
 	}
 
 	return nil, errorutils.CheckError(err)

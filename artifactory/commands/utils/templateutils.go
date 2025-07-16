@@ -49,14 +49,14 @@ func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) ([]map[strin
 		content = coreutils.ReplaceVars(content, templateVars)
 	}
 
-	isArray := checkTemplateType(content)
-
 	var multiRepoCreateEntities []map[string]interface{}
 	err = json.Unmarshal(content, &multiRepoCreateEntities)
-	if err != nil && isArray {
-		return nil, errorutils.CheckError(err)
-	} else if err == nil {
+	if err == nil {
 		return multiRepoCreateEntities, nil
+	}
+
+	if _, ok := err.(*json.SyntaxError); ok {
+		return nil, errorutils.CheckError(err)
 	}
 
 	var repoCreateEntity map[string]interface{}
@@ -65,12 +65,7 @@ func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) ([]map[strin
 		return []map[string]interface{}{repoCreateEntity}, nil
 	}
 
-	return nil, err
-}
-
-func checkTemplateType(content []byte) bool {
-	trimmedContent := strings.TrimSpace(string(content))
-	return len(trimmedContent) > 1 && trimmedContent[0] == '[' && trimmedContent[len(trimmedContent)-1] == ']'
+	return nil, errorutils.CheckError(err)
 }
 
 func ValidateMapEntry(key string, value interface{}, writersMap map[string]ioutils.AnswerWriter) error {

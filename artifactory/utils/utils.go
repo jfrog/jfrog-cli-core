@@ -22,6 +22,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	artifactoryServices "github.com/jfrog/jfrog-client-go/artifactory/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	clientConfig "github.com/jfrog/jfrog-client-go/config"
 	"github.com/jfrog/jfrog-client-go/distribution"
@@ -342,6 +343,23 @@ func ValidateRepoExists(repoKey string, serviceDetails auth.ServiceDetails) erro
 
 	if !exists {
 		return errorutils.CheckErrorf("The repository '" + repoKey + "' does not exist.")
+	}
+	return nil
+}
+
+// ValidateRepoType checks if the repository exists and is of the expected package type (e.g., "vscode", "jetbrains").
+func ValidateRepoType(repoKey string, serviceDetails auth.ServiceDetails, expectedType string) error {
+	servicesManager, err := createServiceManager(serviceDetails)
+	if err != nil {
+		return err
+	}
+	repoDetails := &artifactoryServices.RepositoryDetails{}
+	err = servicesManager.GetRepository(repoKey, repoDetails)
+	if err != nil {
+		return fmt.Errorf("failed to fetch repository details for %q: %w", repoKey, err)
+	}
+	if !strings.EqualFold(repoDetails.PackageType, expectedType) {
+		return fmt.Errorf("repository '%s' is of type '%s', but expected type is '%s'", repoKey, repoDetails.PackageType, expectedType)
 	}
 	return nil
 }

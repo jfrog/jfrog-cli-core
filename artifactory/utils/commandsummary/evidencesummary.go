@@ -107,7 +107,7 @@ func (es *EvidenceSummary) formatSubjectWithLink(evidence EvidenceSummaryData) s
 		displayName = evidence.Subject
 	}
 
-	viewLink := ""
+	var viewLink string
 	subjectType := es.formatSubjectType(evidence.SubjectType)
 	if evidenceUrl != "" {
 		viewLink = fmt.Sprintf(`%s <a href="%s">%s</a>`, subjectType, evidenceUrl, displayName)

@@ -2,11 +2,12 @@ package config
 
 import (
 	"errors"
+	"sync"
+	"time"
+
 	"github.com/jfrog/jfrog-client-go/access"
 	accessservices "github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"sync"
-	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/lock"
@@ -113,7 +114,7 @@ func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAcc
 		newAccessToken, err = refreshAccessTokenAndWriteToConfig(serverConfiguration, currentAccessToken)
 		return
 	}
-	err = errorutils.CheckErrorf("unsupported refreshable token type: " + string(tokenType))
+	err = errorutils.CheckErrorf("unsupported refreshable token type: %s", string(tokenType))
 	return
 }
 
@@ -151,7 +152,7 @@ func refreshAccessTokenAndWriteToConfig(serverConfiguration *ServerDetails, curr
 	// Try refreshing tokens
 	newToken, err := refreshExpiredAccessToken(serverConfiguration, currentAccessToken, serverConfiguration.RefreshToken)
 	if err != nil {
-		return "", errorutils.CheckErrorf("Refresh access token failed: " + err.Error())
+		return "", errorutils.CheckErrorf("Refresh access token failed: %s", err.Error())
 	}
 	err = writeNewTokens(serverConfiguration, tokenRefreshServerId, newToken.AccessToken, newToken.RefreshToken, AccessToken)
 	return newToken.AccessToken, err

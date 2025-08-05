@@ -23,7 +23,7 @@ func JpdAdd(flags *JpdAddFlags) error {
 		return err
 	}
 	if resp.StatusCode != http.StatusCreated {
-		return errorutils.CheckErrorf(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
+		return errorutils.CheckErrorf("%s. %s", resp.Status, utils.ReadMissionControlHttpMessage(body))
 	}
 
 	log.Debug("Mission Control response: " + resp.Status)

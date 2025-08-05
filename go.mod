@@ -1,6 +1,6 @@
 module github.com/jfrog/jfrog-cli-core/v2
 
-go 1.23.7
+go 1.24.4
 
 require github.com/c-bata/go-prompt v0.2.5 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 
@@ -13,9 +13,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.5.4
 	github.com/jedib0t/go-pretty/v6 v6.6.5
-	github.com/jfrog/build-info-go v1.10.14
+	github.com/jfrog/build-info-go v1.10.15
 	github.com/jfrog/gofrog v1.7.6
-	github.com/jfrog/jfrog-client-go v1.54.3
+	github.com/jfrog/jfrog-client-go v1.54.4
 	github.com/magiconair/properties v1.8.9
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c

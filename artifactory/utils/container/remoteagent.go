@@ -65,7 +65,7 @@ func (rabib *RemoteAgentBuildInfoBuilder) handleManifest(resultMap map[string]*u
 		log.Debug("Found manifest.json. Proceeding to create build-info.")
 		return resultMap, manifest, nil
 	}
-	return nil, nil, errorutils.CheckErrorf(`couldn't find image "` + rabib.buildInfoBuilder.image.name + `" manifest in Artifactory`)
+	return nil, nil, errorutils.CheckErrorf(`couldn't find image "%s" manifest in Artifactory`, rabib.buildInfoBuilder.image.name)
 }
 
 func (rabib *RemoteAgentBuildInfoBuilder) handleFatManifestImage(results map[string]*utils.ResultItem) (map[string][]*utils.ResultItem, *utils.ResultItem, *FatManifest, error) {
@@ -79,7 +79,7 @@ func (rabib *RemoteAgentBuildInfoBuilder) handleFatManifestImage(results map[str
 		multiPlatformImages, err := performMultiPlatformImageSearch(fatManifestRootPath, rabib.buildInfoBuilder.serviceManager)
 		return multiPlatformImages, fatManifestResult, fatManifest, err
 	}
-	return nil, nil, nil, errorutils.CheckErrorf(`couldn't find image "` + rabib.buildInfoBuilder.image.name + `" fat manifest in Artifactory`)
+	return nil, nil, nil, errorutils.CheckErrorf(`couldn't find image "%s" fat manifest in Artifactory`, rabib.buildInfoBuilder.image.name)
 }
 
 // Search image manifest or fat-manifest of and image.

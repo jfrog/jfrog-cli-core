@@ -219,7 +219,7 @@ func GetResolutionOnlyConfiguration(projectType ProjectType) (*RepositoryConfig,
 		return nil, err
 	}
 	if !exists {
-		return nil, errorutils.CheckErrorf(projectType.String() + " Project configuration does not exist.")
+		return nil, errorutils.CheckErrorf("%s Project configuration does not exist.", projectType.String())
 	}
 	return ReadResolutionOnlyConfiguration(confFilePath)
 }

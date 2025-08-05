@@ -5,11 +5,12 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	ioutils "github.com/jfrog/gofrog/io"
 	"io"
 	"os"
 	"strconv"
 	"syscall"
+
+	ioutils "github.com/jfrog/gofrog/io"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
@@ -147,7 +148,7 @@ func encrypt(secret string, key string) (string, error) {
 		return "", nil
 	}
 	if len(key) != 32 {
-		return "", errorutils.CheckErrorf(encryptErrorPrefix + "Wrong length for master key. Key should have a length of exactly: " + strconv.Itoa(masterKeyLength) + " bytes")
+		return "", errorutils.CheckErrorf("%s Wrong length for master key. Key should have a length of exactly: %s bytes", encryptErrorPrefix, strconv.Itoa(masterKeyLength))
 	}
 	c, err := aes.NewCipher([]byte(key))
 	if err != nil {

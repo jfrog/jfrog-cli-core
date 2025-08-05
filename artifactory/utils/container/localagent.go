@@ -192,5 +192,5 @@ func handleForeignLayer(layerMediaType, layerFileName string) error {
 		log.Info(fmt.Sprintf("Foreign layer: %s is missing in Artifactory and therefore will not be added to the build-info.", layerFileName))
 		return nil
 	}
-	return errorutils.CheckErrorf("Could not find layer: " + layerFileName + " in Artifactory")
+	return errorutils.CheckErrorf("Could not find layer: %s in Artifactory", layerFileName)
 }

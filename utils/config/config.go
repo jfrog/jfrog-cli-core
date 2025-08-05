@@ -851,7 +851,7 @@ func (serverDetails *ServerDetails) GetAuthenticationCredentials() (string, stri
 	} else if serverDetails.ArtifactoryUrl != "" {
 		errMissingCredsMsg += serverDetails.ArtifactoryUrl
 	}
-	return "", "", errorutils.CheckErrorf(errMissingCredsMsg)
+	return "", "", errors.New(errMissingCredsMsg)
 }
 
 func (missionControlDetails *MissionControlDetails) GetAccessToken() string {

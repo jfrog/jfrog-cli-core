@@ -1,15 +1,16 @@
 package utils
 
 import (
+	"os"
+	"path"
+	"strings"
+
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/ioutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"golang.org/x/exp/slices"
-	"os"
-	"path"
-	"strings"
 
 	"github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -77,7 +78,7 @@ func IsRemoteRepo(repoName string, serviceManager artifactory.ArtifactoryService
 	repoDetails := &services.RepositoryDetails{}
 	err := serviceManager.GetRepository(repoName, &repoDetails)
 	if err != nil {
-		return false, errorutils.CheckErrorf("failed to get details for repository '" + repoName + "'. Error:\n" + err.Error())
+		return false, errorutils.CheckErrorf("failed to get details for repository '%s'. Error:\n%s", repoName, err.Error())
 	}
 	return repoDetails.GetRepoType() == "remote", nil
 }

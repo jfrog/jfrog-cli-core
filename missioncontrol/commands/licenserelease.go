@@ -17,7 +17,7 @@ func LicenseRelease(bucketId, jpdId string, mcDetails *config.ServerDetails) err
 		Name: jpdId}
 	requestContent, err := json.Marshal(postContent)
 	if err != nil {
-		return errorutils.CheckErrorf("Failed to marshal json: " + err.Error())
+		return errorutils.CheckErrorf("Failed to marshal json: %s", err.Error())
 	}
 	missionControlUrl := mcDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/release"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(mcDetails)

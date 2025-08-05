@@ -291,7 +291,7 @@ func (tcc *TransferConfigCommand) verifyConfigImportPlugin() error {
 
 	// Unexpected status received: 403 if the user is not admin, 500+ if there is a server error
 	messageFormat := fmt.Sprintf("Target server response: %s.\n%s", resp.Status, body)
-	return errorutils.CheckErrorf(messageFormat)
+	return errors.New(messageFormat)
 }
 
 // Creates the Pre-checks runner for the config import command

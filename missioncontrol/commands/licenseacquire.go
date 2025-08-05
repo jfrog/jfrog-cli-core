@@ -19,7 +19,7 @@ func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDe
 	}
 	requestContent, err := json.Marshal(postContent)
 	if err != nil {
-		return errorutils.CheckErrorf("Failed to marshal json: " + err.Error())
+		return errorutils.CheckErrorf("Failed to marshal json: %s", err.Error())
 	}
 	missionControlUrl := serverDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/acquire"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(serverDetails)

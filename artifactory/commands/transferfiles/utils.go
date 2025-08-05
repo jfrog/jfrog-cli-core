@@ -417,7 +417,7 @@ func uploadChunkWhenPossibleHandler(pcWrapper *producerConsumerWrapper, phaseBas
 		shouldStop := uploadChunkWhenPossible(pcWrapper, phaseBase, chunk, uploadTokensChan, errorsChannelMng)
 		if shouldStop {
 			// The specific error that triggered the stop is already in the errors channel
-			return errorutils.CheckErrorf(logMsgPrefix + "stopped")
+			return errorutils.CheckErrorf("%sstopped", logMsgPrefix)
 		}
 		return nil
 	}

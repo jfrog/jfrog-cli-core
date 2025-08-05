@@ -70,10 +70,10 @@ func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) (interface{}
 
 func ValidateMapEntry(key string, value interface{}, writersMap map[string]ioutils.AnswerWriter) error {
 	if _, ok := writersMap[key]; !ok {
-		return errorutils.CheckErrorf("template syntax error: unknown key: \"" + key + "\".")
+		return errorutils.CheckErrorf("template syntax error: unknown key: \"%s\".", key)
 	}
 	if _, ok := value.(string); !ok {
-		return errorutils.CheckErrorf("template syntax error: the value for the  key: \"" + key + "\" is not a string type.")
+		return errorutils.CheckErrorf("template syntax error: the value for the  key: \"%s\" is not a string type.", key)
 	}
 	return nil
 }

@@ -92,7 +92,7 @@ func (sm *RepoSnapshotManager) CalculateTransferredFilesAndSize() (totalFilesCou
 // Returns the node corresponding to the directory in the provided relative path. Path should be provided without the repository name.
 func (sm *RepoSnapshotManager) LookUpNode(relativePath string) (requestedNode *Node, err error) {
 	if relativePath == "" {
-		return nil, errorutils.CheckErrorf(getLookUpNodeError(relativePath) + "- unexpected empty path provided to look up")
+		return nil, errorutils.CheckErrorf("%s- unexpected empty path provided to look up", getLookUpNodeError(relativePath))
 	}
 	relativePath = strings.TrimSuffix(relativePath, "/")
 	if relativePath == "." {
@@ -107,7 +107,7 @@ func (sm *RepoSnapshotManager) LookUpNode(relativePath string) (requestedNode *N
 		return nil, err
 	}
 	if requestedNode == nil {
-		return nil, errorutils.CheckErrorf(getLookUpNodeError(relativePath))
+		return nil, errors.New(getLookUpNodeError(relativePath))
 	}
 	return
 }

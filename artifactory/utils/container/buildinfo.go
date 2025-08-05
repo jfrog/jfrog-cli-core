@@ -71,7 +71,7 @@ func newBuildInfoBuilder(image *Image, repository, buildName, buildNumber, proje
 	repoDetails := &services.RepositoryDetails{}
 	err = serviceManager.GetRepository(repository, &repoDetails)
 	if err != nil {
-		return nil, errorutils.CheckErrorf("failed to get details for repository '" + repository + "'. Error:\n" + err.Error())
+		return nil, errorutils.CheckErrorf("failed to get details for repository '%s'. Error:\n%s", repository, err.Error())
 	}
 
 	builder.repositoryDetails.isRemote = repoDetails.GetRepoType() == "remote"
@@ -324,11 +324,11 @@ func GetImageTagWithDigest(filePath string) (*Image, string, error) {
 	// Try read Kaniko/oc file.
 	splittedData := strings.Split(string(data), `@`)
 	if len(splittedData) != 2 {
-		return nil, "", errorutils.CheckErrorf(`unexpected file format "` + filePath + `". The file should include one line in the following format: image-tag@sha256`)
+		return nil, "", errorutils.CheckErrorf(`unexpected file format "%s". The file should include one line in the following format: image-tag@sha256`, filePath)
 	}
 	tag, sha256 := splittedData[0], strings.Trim(splittedData[1], "\n")
 	if tag == "" || sha256 == "" {
-		err = errorutils.CheckErrorf(`missing image-tag/sha256 in file: "` + filePath + `"`)
+		err = errorutils.CheckErrorf(`missing image-tag/sha256 in file: "%s"`, filePath)
 		if err != nil {
 			return nil, "", err
 		}
@@ -609,7 +609,7 @@ func getDependenciesFromManifestConfig(candidateLayers map[string]*utils.ResultI
 	dependencies = append(dependencies, getManifestDependency(manifestSearchResults))
 	imageDetails, found := candidateLayers[digestToLayer(imageSha2)]
 	if !found {
-		return nil, errorutils.CheckErrorf("failed to collect build-info. Image '" + imageSha2 + "' was not found in Artifactory")
+		return nil, errorutils.CheckErrorf("failed to collect build-info. Image '%s' was not found in Artifactory", imageSha2)
 	}
 
 	return append(dependencies, imageDetails.ToDependency()), nil

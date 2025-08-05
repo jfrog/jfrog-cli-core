@@ -87,10 +87,10 @@ func GetEncryptedPasswordFromArtifactory(artifactoryAuth auth.ServiceDetails, in
 	if resp.StatusCode == http.StatusConflict {
 		message := "\nYour Artifactory server is not configured to encrypt passwords.\n" +
 			"You may use \"art config --enc-password=false\""
-		return "", errorutils.CheckErrorf(message)
+		return "", errors.New(message)
 	}
 
-	return "", errorutils.CheckErrorf("Artifactory response: " + resp.Status + "\n" + clientUtils.IndentJson(body))
+	return "", errorutils.CheckErrorf("Artifactory response: %s\n%s", resp.Status, clientUtils.IndentJson(body))
 }
 
 func CreateServiceManager(serverDetails *config.ServerDetails, httpRetries, httpRetryWaitMilliSecs int, isDryRun bool) (artifactory.ArtifactoryServicesManager, error) {
@@ -342,7 +342,7 @@ func ValidateRepoExists(repoKey string, serviceDetails auth.ServiceDetails) erro
 	}
 
 	if !exists {
-		return errorutils.CheckErrorf("The repository '" + repoKey + "' does not exist.")
+		return errorutils.CheckErrorf("The repository '%s' does not exist.", repoKey)
 	}
 	return nil
 }

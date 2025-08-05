@@ -36,7 +36,7 @@ func GetOutputFormat(formatFlagVal string) (format OutputFormat, err error) {
 		case string(CycloneDx):
 			format = CycloneDx
 		default:
-			err = errorutils.CheckErrorf("only the following output formats are supported: " + coreutils.ListToText(OutputFormats))
+			err = errorutils.CheckErrorf("only the following output formats are supported: %s", coreutils.ListToText(OutputFormats))
 		}
 	}
 	return

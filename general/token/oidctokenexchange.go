@@ -211,13 +211,8 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams.Audience = otc.Audience
 	oidcTokenParams.ProviderName = otc.ProviderName
 	oidcTokenParams.ProviderType = otc.ProviderType.String()
-	oidcTokenParams.Context = &services.Context{
-		VcsCommit: &services.VcsCommit{
-			VcsUrl:   otc.VcsUrl,
-			Branch:   otc.VcsBranch,
-			Revision: otc.VcsRevision,
-		},
-	}
+	oidcTokenParams.Branch = otc.VcsBranch
+	oidcTokenParams.Revision = otc.VcsRevision
 
 	return oidcTokenParams
 }

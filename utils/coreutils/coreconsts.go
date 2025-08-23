@@ -57,6 +57,8 @@ const (
 	// Set by the setup-jfrog-cli GitHub Action to identify specific command usage scenarios.
 	// True if an automatic build publication was triggered.
 	UsageAutoPublishedBuild = "JFROG_CLI_USAGE_AUTO_BUILD_PUBLISHED"
+	// Custom browser command for web login, useful for WSL2 environments
+	BrowserCommand = "JFROG_CLI_BROWSER_COMMAND"
 
 	// Deprecated and replaced with TransitiveDownload
 	TransitiveDownloadExperimental = "JFROG_CLI_TRANSITIVE_DOWNLOAD_EXPERIMENTAL"

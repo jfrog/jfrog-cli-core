@@ -7,7 +7,7 @@ import (
 
 const (
 	releaseBundleEvidenceFormat = "%sui/artifactory/lifecycle?range=Any+Time&bundleName=%s&repositoryKey=%s&releaseBundleVersion=%s&activeVersionTab=Evidence+Graph"
-	buildEvidenceFormat         = "%sui/builds/%s/%s/%s/Evidence/%s?buildRepo=%s"
+	buildEvidenceFormat         = "%sui/builds/%s/%s/%s/Evidence?buildRepo=%s"
 	artifactEvidenceFormat      = "%sui/repos/tree/Evidence/%s?clearFilter=true"
 )
 
@@ -56,7 +56,6 @@ func generateBuildEvidenceUrl(data EvidenceSummaryData, section summarySection) 
 		url.QueryEscape(data.BuildName),
 		data.BuildNumber,
 		data.BuildTimestamp,
-		url.QueryEscape(data.BuildName),
 		data.RepoKey)
 
 	return addGitHubTrackingToUrl(urlStr, section)

@@ -73,7 +73,7 @@ func TestGenerateEvidenceUrlByType(t *testing.T) {
 				BuildTimestamp: "1234567890",
 				RepoKey:        "artifactory-build-info",
 			},
-			expectedURL: "https://myplatform.com/ui/builds/my-build/123/1234567890/Evidence/my-build?buildRepo=artifactory-build-info&gh_job_id=JFrog+CLI+Core+Tests&gh_section=evidence&m=3&s=1",
+			expectedURL: "https://myplatform.com/ui/builds/my-build/123/1234567890/Evidence?buildRepo=artifactory-build-info&gh_job_id=JFrog+CLI+Core+Tests&gh_section=evidence&m=3&s=1",
 		},
 		{
 			name: "Build with special characters in name",
@@ -85,7 +85,7 @@ func TestGenerateEvidenceUrlByType(t *testing.T) {
 				BuildTimestamp: "1234567890",
 				RepoKey:        "artifactory-build-info",
 			},
-			expectedURL: "https://myplatform.com/ui/builds/my+build+with+spaces/123/1234567890/Evidence/my+build+with+spaces?buildRepo=artifactory-build-info&gh_job_id=JFrog+CLI+Core+Tests&gh_section=evidence&m=3&s=1",
+			expectedURL: "https://myplatform.com/ui/builds/my+build+with+spaces/123/1234567890/Evidence?buildRepo=artifactory-build-info&gh_job_id=JFrog+CLI+Core+Tests&gh_section=evidence&m=3&s=1",
 		},
 		{
 			name: "Invalid release bundle falls back to artifact URL",

@@ -2,6 +2,7 @@ package visibility
 
 import (
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -76,7 +77,11 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 	}
 
 	if metricsData != nil {
-		labels.Flags = strings.Join(metricsData.FlagsUsed, ",")
+		if len(metricsData.FlagsUsed) > 0 {
+			flags := append([]string(nil), metricsData.FlagsUsed...)
+			sort.Strings(flags)
+			labels.Flags = strings.Join(flags, ",")
+		}
 		labels.Platform = metricsData.OS
 		labels.Architecture = metricsData.Architecture
 		if metricsData.IsCI {

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/docs/common"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/urfave/cli"
@@ -367,13 +368,14 @@ func convertBoolFlag(f BoolFlag) cli.Flag {
 	}
 }
 
-// Wrap the base's ActionFunc with our own, while retrieving needed information from the Context.
+// getActionFunc creates an action function that converts CLI context and collects metrics
 func getActionFunc(cmd Command) cli.ActionFunc {
 	return func(baseContext *cli.Context) error {
 		pluginContext, err := ConvertContext(baseContext, cmd.Flags...)
 		if err != nil {
 			return err
 		}
+		commands.SetContextFlags(pluginContext.FlagsUsed)
 		return cmd.Action(pluginContext)
 	}
 }
@@ -406,8 +408,15 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	c.stringFlags = make(map[string]string)
 	c.boolFlags = make(map[string]bool)
 
+	// Collect flag names that were set by user
+	var flagsUsed []string
+
 	// Loop over all plugin's known flags.
 	for _, flag := range originalFlags {
+		if baseContext.IsSet(flag.GetName()) {
+			flagsUsed = append(flagsUsed, flag.GetName())
+		}
+
 		if stringFlag, ok := flag.(StringFlag); ok {
 			finalValue, err := getValueForStringFlag(stringFlag, baseContext)
 			if err != nil {
@@ -419,16 +428,18 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 		}
 		if boolFlag, ok := flag.(BoolFlag); ok {
 			val := getValueForBoolFlag(boolFlag, baseContext)
-			// Only store the flag if:
-			// - The user explicitly set it, OR
-			// - The resolved value is 'true' (e.g., default is true and user didn't override it)
-			// This avoids adding unnecessary 'false' flags that aren't relevant.
 			if baseContext.IsSet(boolFlag.Name) || val {
-				// Store the flag and its resolved value in the context map
 				c.boolFlags[boolFlag.Name] = val
 			}
 		}
 	}
+
+	c.FlagsUsed = flagsUsed
+
+	if c.CommandName != "" {
+		commands.CollectMetrics(c.CommandName, flagsUsed)
+	}
+
 	return nil
 }
 

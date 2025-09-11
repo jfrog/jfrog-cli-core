@@ -8,7 +8,6 @@
 | Branch |                                                                                                                                                                                            Status                                                                                                                                                                                            |
 |:------:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
 | master | [![Test](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml?query=branch%3Amaster) [![Static Analysis](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml/badge.svg?branch=master)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml) |
-|  dev   |     [![Test](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml/badge.svg?branch=dev)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/test.yml?query=branch%3Adev) [![Static Analysis](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml/badge.svg?branch=dev)](https://github.com/jfrog/jfrog-cli-core/actions/workflows/analysis.yml)      |
 
 ## General
 
@@ -21,7 +20,6 @@ We welcome pull requests from the community.
 ### Guidelines
 
 - If the existing tests do not already cover your changes, please add tests.
-- Pull requests should be created on the **dev** branch.
 - Please use gofmt for formatting the code before submitting the pull request.
 
 # Tests

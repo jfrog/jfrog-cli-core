@@ -44,7 +44,7 @@ func TestCollectMetrics(t *testing.T) {
 				CISystem: func() string {
 					ci := detectCISystem()
 					if ci == "" {
-						return "unknown"
+						return ""
 					} else {
 						return ci
 					}
@@ -64,7 +64,7 @@ func TestCollectMetrics(t *testing.T) {
 				CISystem: func() string {
 					ci := detectCISystem()
 					if ci == "" {
-						return "unknown"
+						return ""
 					} else {
 						return ci
 					}
@@ -84,7 +84,7 @@ func TestCollectMetrics(t *testing.T) {
 				CISystem: func() string {
 					ci := detectCISystem()
 					if ci == "" {
-						return "unknown"
+						return ""
 					} else {
 						return ci
 					}
@@ -168,7 +168,7 @@ func TestGetCollectedMetricsDoesNotClearData(t *testing.T) {
 	}
 
 	// Manually clear and verify
-	ClearCollectedMetrics(commandName)
+	ClearAllMetrics()
 	metrics3 := GetCollectedMetrics(commandName)
 	if metrics3 != nil {
 		t.Error("Expected metrics to be cleared after explicit clear")
@@ -226,7 +226,9 @@ func TestDetectCISystem(t *testing.T) {
 
 			// Set the specific test environment variable
 			if tt.envVar != "" {
-				os.Setenv(tt.envVar, tt.envValue)
+				if err := os.Setenv(tt.envVar, tt.envValue); err != nil {
+					t.Fatalf("failed setting env %s: %v", tt.envVar, err)
+				}
 			}
 
 			result := detectCISystem()
@@ -251,13 +253,15 @@ func TestIsRunningInContainer(t *testing.T) {
 	originalContainer := os.Getenv("container")
 	defer func() {
 		if originalContainer != "" {
-			os.Setenv("container", originalContainer)
+			_ = os.Setenv("container", originalContainer)
 		} else {
 			os.Unsetenv("container")
 		}
 	}()
 
-	os.Setenv("container", "docker")
+	if err := os.Setenv("container", "docker"); err != nil {
+		t.Fatalf("failed setting env container: %v", err)
+	}
 	if !isRunningInContainer() {
 		t.Error("Expected container detection when 'container' env var is set")
 	}
@@ -268,56 +272,17 @@ func TestIsRunningInContainer(t *testing.T) {
 	originalK8s := os.Getenv("KUBERNETES_SERVICE_HOST")
 	defer func() {
 		if originalK8s != "" {
-			os.Setenv("KUBERNETES_SERVICE_HOST", originalK8s)
+			_ = os.Setenv("KUBERNETES_SERVICE_HOST", originalK8s)
 		} else {
 			os.Unsetenv("KUBERNETES_SERVICE_HOST")
 		}
 	}()
 
-	os.Setenv("KUBERNETES_SERVICE_HOST", "10.96.0.1")
+	if err := os.Setenv("KUBERNETES_SERVICE_HOST", "10.96.0.1"); err != nil {
+		t.Fatalf("failed setting env KUBERNETES_SERVICE_HOST: %v", err)
+	}
 	if !isRunningInContainer() {
 		t.Error("Expected container detection when Kubernetes env var is set")
-	}
-}
-
-func TestSanitizeFlags(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    []string
-		expected []string
-	}{
-		{
-			name:     "Basic flags",
-			input:    []string{"verbose", "recursive", "threads"},
-			expected: []string{"verbose", "recursive", "threads"},
-		},
-		{
-			name:     "Empty flags",
-			input:    []string{},
-			expected: []string{},
-		},
-		{
-			name:     "Single flag",
-			input:    []string{"dry-run"},
-			expected: []string{"dry-run"},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.input
-
-			if len(result) != len(tt.expected) {
-				t.Errorf("Expected %d flags, got %d", len(tt.expected), len(result))
-				return
-			}
-
-			for i, flag := range tt.expected {
-				if result[i] != flag {
-					t.Errorf("Expected flag %s at index %d, got %s", flag, i, result[i])
-				}
-			}
-		})
 	}
 }
 
@@ -428,19 +393,23 @@ func TestE2EGitHubActionsEnvironment(t *testing.T) {
 	originalGH := os.Getenv("GITHUB_ACTIONS")
 	originalCI := os.Getenv("CI")
 
-	os.Setenv("GITHUB_ACTIONS", "true")
-	os.Setenv("CI", "true")
+	if err := os.Setenv("GITHUB_ACTIONS", "true"); err != nil {
+		t.Fatalf("failed setting GITHUB_ACTIONS: %v", err)
+	}
+	if err := os.Setenv("CI", "true"); err != nil {
+		t.Fatalf("failed setting CI: %v", err)
+	}
 
 	defer func() {
 		if originalGH == "" {
 			os.Unsetenv("GITHUB_ACTIONS")
 		} else {
-			os.Setenv("GITHUB_ACTIONS", originalGH)
+			_ = os.Setenv("GITHUB_ACTIONS", originalGH)
 		}
 		if originalCI == "" {
 			os.Unsetenv("CI")
 		} else {
-			os.Setenv("CI", originalCI)
+			_ = os.Setenv("CI", originalCI)
 		}
 	}()
 
@@ -622,7 +591,7 @@ func TestE2EMetricsClearing(t *testing.T) {
 	}
 
 	// Clear metrics explicitly
-	ClearCollectedMetrics(commandName)
+	ClearAllMetrics()
 
 	// Try to retrieve again (should be nil after clearing)
 	metrics2 := GetCollectedMetrics(commandName)
@@ -634,17 +603,32 @@ func TestE2EMetricsClearing(t *testing.T) {
 func TestE2EEnvironmentDetection(t *testing.T) {
 	ClearAllMetrics()
 
-	// Test Jenkins detection
-	originalJenkins := os.Getenv("JENKINS_URL")
-	os.Setenv("JENKINS_URL", "http://jenkins.test")
-
+	// Test Jenkins detection - isolate from existing CI env (e.g., GitHub Actions)
+	ciEnvVars := []string{
+		"JENKINS_URL", "TRAVIS", "CIRCLECI", "GITHUB_ACTIONS",
+		"GITLAB_CI", "BUILDKITE", "BAMBOO_BUILD_KEY", "TF_BUILD",
+		"TEAMCITY_VERSION", "DRONE", "BITBUCKET_BUILD_NUMBER",
+		"CODEBUILD_BUILD_ID", "CI",
+	}
+	originalEnv := make(map[string]string, len(ciEnvVars))
+	for _, envVar := range ciEnvVars {
+		originalEnv[envVar] = os.Getenv(envVar)
+		os.Unsetenv(envVar)
+	}
 	defer func() {
-		if originalJenkins == "" {
-			os.Unsetenv("JENKINS_URL")
-		} else {
-			os.Setenv("JENKINS_URL", originalJenkins)
+		for k, v := range originalEnv {
+			if v == "" {
+				os.Unsetenv(k)
+			} else {
+				_ = os.Setenv(k, v)
+			}
 		}
 	}()
+
+	// Set Jenkins env var explicitly
+	if err := os.Setenv("JENKINS_URL", "http://jenkins.test"); err != nil {
+		t.Fatalf("failed setting JENKINS_URL: %v", err)
+	}
 
 	commandName := "jenkins-test"
 	flags := []string{"test-flag"}
@@ -917,7 +901,7 @@ func TestMetricsIntegrationFlow(t *testing.T) {
 	}
 
 	// Simulate cleanup done in reportUsageToVisibilitySystem
-	ClearCollectedMetrics(commandName)
+	ClearAllMetrics()
 
 	// Verify metrics are cleared after cleanup
 	metricsAfter := GetCollectedMetrics(commandName)

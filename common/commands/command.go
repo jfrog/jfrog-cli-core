@@ -34,8 +34,11 @@ func Exec(command Command) error {
 	flags := GetContextFlags()
 	CollectMetrics(commandName, flags)
 	channel := make(chan bool)
+	// Triggers the report usage.
 	go reportUsage(command, channel)
+	// Invoke the command interface
 	err := command.Run()
+	// Waits for the signal from the report usage to be done.
 	<-channel
 	return err
 }
@@ -111,8 +114,9 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 
 	commandName := command.CommandName()
 	metricsData := GetCollectedMetrics(commandName)
+	var visibilityMetricsData *visibility.MetricsData
 	if metricsData != nil {
-		visibilityMetricsData := &visibility.MetricsData{
+		visibilityMetricsData = &visibility.MetricsData{
 			Flags:        metricsData.Flags,
 			Platform:     metricsData.Platform,
 			Architecture: metricsData.Architecture,
@@ -120,11 +124,8 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 			CISystem:     metricsData.CISystem,
 			IsContainer:  metricsData.IsContainer,
 		}
-		commandsCountMetric = visibility.NewCommandsCountMetricWithEnhancedData(commandName, visibilityMetricsData)
-		ClearCollectedMetrics(commandName)
-	} else {
-		commandsCountMetric = visibility.NewCommandsCountMetric(commandName)
 	}
+	commandsCountMetric = visibility.NewCommandsCountMetricWithEnhancedData(commandName, visibilityMetricsData)
 
 	if err := visibility.NewVisibilitySystemManager(serverDetails).SendUsage(commandsCountMetric); err != nil {
 		log.Debug("Visibility System Usage reporting:", err.Error())

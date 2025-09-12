@@ -32,17 +32,18 @@ func CollectMetrics(commandName string, flags []string) {
 	ciSystem := detectCISystem()
 	isCI := ciSystem != ""
 
-	if ciSystem == "" {
-		ciSystem = "unknown"
-	}
-
 	metricsData := &MetricsData{
 		Flags:        flags,
 		Platform:     runtime.GOOS,
 		Architecture: runtime.GOARCH,
 		IsCI:         isCI,
-		CISystem:     ciSystem,
-		IsContainer:  isRunningInContainer(),
+		CISystem: func() string {
+			if isCI {
+				return ciSystem
+			}
+			return ""
+		}(),
+		IsContainer: isRunningInContainer(),
 	}
 
 	globalMetricsCollector.metricsData[commandName] = metricsData
@@ -150,13 +151,6 @@ func isRunningInContainer() bool {
 	}
 
 	return false
-}
-
-// ClearCollectedMetrics removes metrics data for a specific command
-func ClearCollectedMetrics(commandName string) {
-	globalMetricsCollector.mu.Lock()
-	defer globalMetricsCollector.mu.Unlock()
-	delete(globalMetricsCollector.metricsData, commandName)
 }
 
 // SetContextFlags stores flags for the current command execution

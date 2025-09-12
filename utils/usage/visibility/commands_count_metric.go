@@ -54,22 +54,8 @@ func NewCommandsCountMetric(commandName string) services.VisibilityMetric {
 }
 
 func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *MetricsData) services.VisibilityMetric {
-	labels := &commandsCountLabels{
-		ProductID:                            coreutils.GetCliUserAgentName(),
-		ProductVersion:                       coreutils.GetCliUserAgentVersion(),
-		FeatureID:                            commandName,
-		ProviderType:                         os.Getenv(coreutils.OidcProviderType),
-		JobID:                                os.Getenv(coreutils.CIJobID),
-		RunID:                                os.Getenv(coreutils.CIRunID),
-		GitRepo:                              os.Getenv(coreutils.SourceCodeRepository),
-		GhTokenForCodeScanningAlertsProvided: os.Getenv("JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED"),
-		Flags:                                "",
-		Platform:                             "",
-		Architecture:                         "",
-		IsCI:                                 "",
-		CISystem:                             "",
-		IsContainer:                          "",
-	}
+	metric := NewCommandsCountMetric(commandName)
+	labels, _ := metric.Labels.(*commandsCountLabels)
 
 	if metricsData != nil {
 		if len(metricsData.Flags) > 0 {
@@ -93,9 +79,5 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 		}
 	}
 
-	return services.VisibilityMetric{
-		Value:  1,
-		Name:   "jfcli_commands_count",
-		Labels: labels,
-	}
+	return metric
 }

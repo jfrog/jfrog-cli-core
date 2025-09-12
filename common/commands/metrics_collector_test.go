@@ -194,7 +194,9 @@ func TestDetectCISystem(t *testing.T) {
 	defer func() {
 		for envVar, value := range originalEnv {
 			if value != "" {
-				os.Setenv(envVar, value)
+				if err := os.Setenv(envVar, value); err != nil {
+					t.Logf("failed restoring %s: %v", envVar, err)
+				}
 			} else {
 				os.Unsetenv(envVar)
 			}

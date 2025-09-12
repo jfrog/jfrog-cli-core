@@ -45,6 +45,7 @@ func Exec(command Command) error {
 
 // ExecAndThenReportUsage runs the command and then triggers a usage report.
 // Used for commands which don't have the full server details before execution.
+// For example: oidc exchange command, which will get access token only after execution.
 func ExecAndThenReportUsage(cc Command) (err error) {
 	commandName := cc.CommandName()
 	flags := GetContextFlags()

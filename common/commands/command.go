@@ -29,14 +29,10 @@ type Command interface {
 	CommandName() string
 }
 
-// Exec executes a command and collects enhanced metrics
 func Exec(command Command) error {
 	commandName := command.CommandName()
 	flags := GetContextFlags()
-
-	log.Debug("Exec() collecting metrics for command:", commandName, "with flags:", flags)
 	CollectMetrics(commandName, flags)
-
 	channel := make(chan bool)
 	go reportUsage(command, channel)
 	err := command.Run()
@@ -118,9 +114,7 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 
 	commandName := command.CommandName()
 	metricsData := GetCollectedMetrics(commandName)
-
 	if metricsData != nil {
-		log.Debug("Using enhanced metrics for command:", commandName)
 		visibilityMetricsData := &visibility.MetricsData{
 			FlagsUsed:    metricsData.FlagsUsed,
 			OS:           metricsData.OS,
@@ -132,7 +126,6 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 		commandsCountMetric = visibility.NewCommandsCountMetricWithEnhancedData(commandName, visibilityMetricsData)
 		ClearCollectedMetrics(commandName)
 	} else {
-		log.Debug("No enhanced metrics found for command:", commandName, "- using standard metric")
 		commandsCountMetric = visibility.NewCommandsCountMetric(commandName)
 	}
 

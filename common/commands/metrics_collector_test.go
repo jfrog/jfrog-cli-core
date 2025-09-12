@@ -13,6 +13,13 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/usage/visibility"
 )
 
+// ClearAllMetrics clears all stored metrics
+func ClearAllMetrics() {
+	globalMetricsCollector.mu.Lock()
+	defer globalMetricsCollector.mu.Unlock()
+	globalMetricsCollector.data = make(map[string]*MetricsData)
+}
+
 func TestCollectMetrics(t *testing.T) {
 	// Clear any existing metrics
 	globalMetricsCollector.mu.Lock()

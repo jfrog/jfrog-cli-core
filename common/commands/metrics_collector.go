@@ -23,6 +23,7 @@ type metricsCollector struct {
 	data map[string]*MetricsData
 }
 
+var contextFlags []string
 var globalMetricsCollector = &metricsCollector{
 	data: make(map[string]*MetricsData),
 }
@@ -163,42 +164,14 @@ func ClearCollectedMetrics(commandName string) {
 	delete(globalMetricsCollector.data, commandName)
 }
 
-// ClearAllMetrics clears all stored metrics
-func ClearAllMetrics() {
-	globalMetricsCollector.mu.Lock()
-	defer globalMetricsCollector.mu.Unlock()
-	globalMetricsCollector.data = make(map[string]*MetricsData)
-}
-
-var contextFlags []string
-var contextFlagsMutex sync.Mutex
-
 // SetContextFlags stores flags for the current command execution
 func SetContextFlags(flags []string) {
-	contextFlagsMutex.Lock()
-	defer contextFlagsMutex.Unlock()
 	contextFlags = append([]string(nil), flags...)
 }
 
 // GetContextFlags retrieves and clears the stored flags
 func GetContextFlags() []string {
-	contextFlagsMutex.Lock()
-	defer contextFlagsMutex.Unlock()
 	flags := contextFlags
 	contextFlags = nil
 	return flags
-}
-
-// TransferMetrics moves metrics from one command name to another.
-// Useful when collecting metrics with a temporary key that needs to be moved to the actual command name.
-func TransferMetrics(fromCommandName, toCommandName string) bool {
-	globalMetricsCollector.mu.Lock()
-	defer globalMetricsCollector.mu.Unlock()
-
-	if metricsData, exists := globalMetricsCollector.data[fromCommandName]; exists {
-		globalMetricsCollector.data[toCommandName] = metricsData
-		delete(globalMetricsCollector.data, fromCommandName)
-		return true
-	}
-	return false
 }

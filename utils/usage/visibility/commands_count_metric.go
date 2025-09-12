@@ -22,7 +22,7 @@ type commandsCountLabels struct {
 	ProductID                            string `json:"product_id"`
 	ProductVersion                       string `json:"product_version"`
 	FeatureID                            string `json:"feature_id"`
-	OIDCUsed                             string `json:"oidc_used"`
+	ProviderType                         string `json:"provider_type"`
 	JobID                                string `json:"job_id"`
 	RunID                                string `json:"run_id"`
 	GitRepo                              string `json:"git_repo"`
@@ -43,7 +43,7 @@ func NewCommandsCountMetric(commandName string) services.VisibilityMetric {
 			ProductID:                            coreutils.GetCliUserAgentName(),
 			ProductVersion:                       coreutils.GetCliUserAgentVersion(),
 			FeatureID:                            commandName,
-			OIDCUsed:                             os.Getenv(coreutils.OidcProviderType),
+			ProviderType:                         os.Getenv(coreutils.OidcProviderType),
 			JobID:                                os.Getenv(coreutils.CIJobID),
 			RunID:                                os.Getenv(coreutils.CIRunID),
 			GitRepo:                              os.Getenv(coreutils.SourceCodeRepository),
@@ -63,10 +63,10 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 		ProductID:                            coreutils.GetCliUserAgentName(),
 		ProductVersion:                       coreutils.GetCliUserAgentVersion(),
 		FeatureID:                            commandName,
-		OIDCUsed:                             os.Getenv("JFROG_CLI_USAGE_OIDC_USED"),
-		JobID:                                os.Getenv("JFROG_CLI_USAGE_JOB_ID"),
-		RunID:                                os.Getenv("JFROG_CLI_USAGE_RUN_ID"),
-		GitRepo:                              os.Getenv("JFROG_CLI_USAGE_GIT_REPO"),
+		ProviderType:                         os.Getenv(coreutils.OidcProviderType),
+		JobID:                                os.Getenv(coreutils.CIJobID),
+		RunID:                                os.Getenv(coreutils.CIRunID),
+		GitRepo:                              os.Getenv(coreutils.SourceCodeRepository),
 		GhTokenForCodeScanningAlertsProvided: os.Getenv("JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED"),
 		Flags:                                "",
 		Platform:                             "",

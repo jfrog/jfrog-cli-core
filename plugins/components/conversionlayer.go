@@ -368,7 +368,7 @@ func convertBoolFlag(f BoolFlag) cli.Flag {
 	}
 }
 
-// getActionFunc creates an action function that converts CLI context and collects metrics
+// getActionFunc wrap the base's ActionFunc with our own, while retrieving needed information from the Context.
 func getActionFunc(cmd Command) cli.ActionFunc {
 	return func(baseContext *cli.Context) error {
 		pluginContext, err := ConvertContext(baseContext, cmd.Flags...)
@@ -428,18 +428,20 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 		}
 		if boolFlag, ok := flag.(BoolFlag); ok {
 			val := getValueForBoolFlag(boolFlag, baseContext)
+			// Only store the flag if:
+			// - The user explicitly set it, OR
+			// - The resolved value is 'true' (e.g., default is true and user didn't override it)
+			// This avoids adding unnecessary 'false' flags that aren't relevant.
 			if baseContext.IsSet(boolFlag.Name) || val {
+				// Store the flag and its resolved value in the context map
 				c.boolFlags[boolFlag.Name] = val
 			}
 		}
 	}
-
 	c.FlagsUsed = flagsUsed
-
 	if c.CommandName != "" {
 		commands.CollectMetrics(c.CommandName, flagsUsed)
 	}
-
 	return nil
 }
 

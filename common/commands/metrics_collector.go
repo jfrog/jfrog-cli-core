@@ -5,30 +5,25 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	metrics "github.com/jfrog/jfrog-cli-core/v2/utils/metrics"
 )
 
-// MetricsData holds enhanced metrics information for command execution
-type MetricsData struct {
-	FlagsUsed    []string `json:"flags_used,omitempty"`
-	OS           string   `json:"os,omitempty"`
-	Architecture string   `json:"architecture,omitempty"`
-	IsCI         bool     `json:"is_ci,omitempty"`
-	CISystem     string   `json:"ci_system,omitempty"`
-	IsContainer  bool     `json:"is_container,omitempty"`
-}
+// MetricsData is shared from utils/metrics to avoid import cycles.
+type MetricsData = metrics.MetricsData
 
 // metricsCollector provides thread-safe collection and storage of command metrics
 type metricsCollector struct {
-	mu   sync.RWMutex
-	data map[string]*MetricsData
+	mu          sync.RWMutex
+	metricsData map[string]*MetricsData
 }
 
 var contextFlags []string
 var globalMetricsCollector = &metricsCollector{
-	data: make(map[string]*MetricsData),
+	metricsData: make(map[string]*MetricsData),
 }
 
-// CollectMetrics stores enhanced metrics data for a command execution.
+// CollectMetrics stores enhanced metrics information for a command execution.
 // Collects system information, CI environment details, and container detection.
 func CollectMetrics(commandName string, flags []string) {
 	globalMetricsCollector.mu.Lock()
@@ -42,22 +37,22 @@ func CollectMetrics(commandName string, flags []string) {
 	}
 
 	metricsData := &MetricsData{
-		FlagsUsed:    flags,
-		OS:           runtime.GOOS,
+		Flags:        flags,
+		Platform:     runtime.GOOS,
 		Architecture: runtime.GOARCH,
 		IsCI:         isCI,
 		CISystem:     ciSystem,
 		IsContainer:  isRunningInContainer(),
 	}
 
-	globalMetricsCollector.data[commandName] = metricsData
+	globalMetricsCollector.metricsData[commandName] = metricsData
 }
 
 // GetCollectedMetrics retrieves collected metrics for a command.
 // Returns a copy of the metrics data without clearing the original.
 func GetCollectedMetrics(commandName string) *MetricsData {
 	globalMetricsCollector.mu.RLock()
-	metrics, exists := globalMetricsCollector.data[commandName]
+	metrics, exists := globalMetricsCollector.metricsData[commandName]
 	globalMetricsCollector.mu.RUnlock()
 
 	if !exists {
@@ -65,8 +60,8 @@ func GetCollectedMetrics(commandName string) *MetricsData {
 	}
 
 	return &MetricsData{
-		FlagsUsed:    append([]string(nil), metrics.FlagsUsed...),
-		OS:           metrics.OS,
+		Flags:        append([]string(nil), metrics.Flags...),
+		Platform:     metrics.Platform,
 		Architecture: metrics.Architecture,
 		IsCI:         metrics.IsCI,
 		CISystem:     metrics.CISystem,
@@ -161,7 +156,7 @@ func isRunningInContainer() bool {
 func ClearCollectedMetrics(commandName string) {
 	globalMetricsCollector.mu.Lock()
 	defer globalMetricsCollector.mu.Unlock()
-	delete(globalMetricsCollector.data, commandName)
+	delete(globalMetricsCollector.metricsData, commandName)
 }
 
 // SetContextFlags stores flags for the current command execution

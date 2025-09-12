@@ -45,10 +45,7 @@ func Exec(command Command) error {
 func ExecAndThenReportUsage(cc Command) (err error) {
 	commandName := cc.CommandName()
 	flags := GetContextFlags()
-
-	log.Debug("ExecAndThenReportUsage() collecting metrics for command:", commandName, "with flags:", flags)
 	CollectMetrics(commandName, flags)
-
 	if err = cc.Run(); err != nil {
 		return
 	}
@@ -116,8 +113,8 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 	metricsData := GetCollectedMetrics(commandName)
 	if metricsData != nil {
 		visibilityMetricsData := &visibility.MetricsData{
-			FlagsUsed:    metricsData.FlagsUsed,
-			OS:           metricsData.OS,
+			Flags:        metricsData.Flags,
+			Platform:     metricsData.Platform,
 			Architecture: metricsData.Architecture,
 			IsCI:         metricsData.IsCI,
 			CISystem:     metricsData.CISystem,

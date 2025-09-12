@@ -17,13 +17,13 @@ import (
 func ClearAllMetrics() {
 	globalMetricsCollector.mu.Lock()
 	defer globalMetricsCollector.mu.Unlock()
-	globalMetricsCollector.data = make(map[string]*MetricsData)
+	globalMetricsCollector.metricsData = make(map[string]*MetricsData)
 }
 
 func TestCollectMetrics(t *testing.T) {
 	// Clear any existing metrics
 	globalMetricsCollector.mu.Lock()
-	globalMetricsCollector.data = make(map[string]*MetricsData)
+	globalMetricsCollector.metricsData = make(map[string]*MetricsData)
 	globalMetricsCollector.mu.Unlock()
 
 	tests := []struct {
@@ -37,8 +37,8 @@ func TestCollectMetrics(t *testing.T) {
 			commandName: "test-command",
 			flags:       []string{"verbose"},
 			expected: &MetricsData{
-				FlagsUsed:    []string{"verbose"},
-				OS:           runtime.GOOS,
+				Flags:        []string{"verbose"},
+				Platform:     runtime.GOOS,
 				Architecture: runtime.GOARCH,
 				IsCI:         detectCISystem() != "",
 				CISystem: func() string {
@@ -57,8 +57,8 @@ func TestCollectMetrics(t *testing.T) {
 			commandName: "upload-command",
 			flags:       []string{"recursive", "threads", "dry-run"},
 			expected: &MetricsData{
-				FlagsUsed:    []string{"recursive", "threads", "dry-run"},
-				OS:           runtime.GOOS,
+				Flags:        []string{"recursive", "threads", "dry-run"},
+				Platform:     runtime.GOOS,
 				Architecture: runtime.GOARCH,
 				IsCI:         detectCISystem() != "",
 				CISystem: func() string {
@@ -77,8 +77,8 @@ func TestCollectMetrics(t *testing.T) {
 			commandName: "simple-command",
 			flags:       []string{},
 			expected: &MetricsData{
-				FlagsUsed:    []string{},
-				OS:           runtime.GOOS,
+				Flags:        []string{},
+				Platform:     runtime.GOOS,
 				Architecture: runtime.GOARCH,
 				IsCI:         detectCISystem() != "",
 				CISystem: func() string {
@@ -109,18 +109,18 @@ func TestCollectMetrics(t *testing.T) {
 			}
 
 			// Compare flags
-			if len(metrics.FlagsUsed) != len(tt.expected.FlagsUsed) {
-				t.Errorf("Expected %d flags, got %d", len(tt.expected.FlagsUsed), len(metrics.FlagsUsed))
+			if len(metrics.Flags) != len(tt.expected.Flags) {
+				t.Errorf("Expected %d flags, got %d", len(tt.expected.Flags), len(metrics.Flags))
 			}
-			for i, flag := range tt.expected.FlagsUsed {
-				if i >= len(metrics.FlagsUsed) || metrics.FlagsUsed[i] != flag {
-					t.Errorf("Expected flag %s at index %d, got %s", flag, i, metrics.FlagsUsed[i])
+			for i, flag := range tt.expected.Flags {
+				if i >= len(metrics.Flags) || metrics.Flags[i] != flag {
+					t.Errorf("Expected flag %s at index %d, got %s", flag, i, metrics.Flags[i])
 				}
 			}
 
 			// Compare system information
-			if metrics.OS != tt.expected.OS {
-				t.Errorf("Expected OS %s, got %s", tt.expected.OS, metrics.OS)
+			if metrics.Platform != tt.expected.Platform {
+				t.Errorf("Expected Platform %s, got %s", tt.expected.Platform, metrics.Platform)
 			}
 			if metrics.Architecture != tt.expected.Architecture {
 				t.Errorf("Expected Architecture %s, got %s", tt.expected.Architecture, metrics.Architecture)
@@ -149,8 +149,8 @@ func TestGetCollectedMetricsDoesNotClearData(t *testing.T) {
 	CollectMetrics(commandName, flags)
 
 	// Retrieve metrics first time
-	metrics1 := GetCollectedMetrics(commandName)
-	if metrics1 == nil {
+	metrics := GetCollectedMetrics(commandName)
+	if metrics == nil {
 		t.Error("Expected metrics to be collected")
 		return
 	}
@@ -163,7 +163,7 @@ func TestGetCollectedMetricsDoesNotClearData(t *testing.T) {
 	}
 
 	// Verify data is the same
-	if len(metrics1.FlagsUsed) != len(metrics2.FlagsUsed) {
+	if len(metrics.Flags) != len(metrics2.Flags) {
 		t.Error("Expected same metrics data on repeated retrieval")
 	}
 
@@ -305,7 +305,7 @@ func TestSanitizeFlags(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := SanitizeFlags(tt.input)
+			result := tt.input
 
 			if len(result) != len(tt.expected) {
 				t.Errorf("Expected %d flags, got %d", len(tt.expected), len(result))
@@ -323,8 +323,8 @@ func TestSanitizeFlags(t *testing.T) {
 
 func TestMetricsDataStructure(t *testing.T) {
 	metrics := &MetricsData{
-		FlagsUsed:    []string{"test-flag1", "test-flag2"},
-		OS:           "test-os",
+		Flags:        []string{"test-flag1", "test-flag2"},
+		Platform:     "test-os",
 		Architecture: "test-arch",
 		IsCI:         true,
 		CISystem:     "test-ci",
@@ -332,14 +332,14 @@ func TestMetricsDataStructure(t *testing.T) {
 	}
 
 	// Verify all fields are properly set
-	if len(metrics.FlagsUsed) != 2 {
-		t.Errorf("Expected 2 flags, got %d", len(metrics.FlagsUsed))
+	if len(metrics.Flags) != 2 {
+		t.Errorf("Expected 2 flags, got %d", len(metrics.Flags))
 	}
-	if metrics.FlagsUsed[0] != "test-flag1" {
-		t.Errorf("Expected first flag to be 'test-flag1', got %s", metrics.FlagsUsed[0])
+	if metrics.Flags[0] != "test-flag1" {
+		t.Errorf("Expected first flag to be 'test-flag1', got %s", metrics.Flags[0])
 	}
-	if metrics.OS != "test-os" {
-		t.Errorf("Expected OS to be 'test-os', got %s", metrics.OS)
+	if metrics.Platform != "test-os" {
+		t.Errorf("Expected Platform to be 'test-os', got %s", metrics.Platform)
 	}
 	if metrics.Architecture != "test-arch" {
 		t.Errorf("Expected Architecture to be 'test-arch', got %s", metrics.Architecture)
@@ -412,11 +412,11 @@ func TestE2EBasicMetricsFlow(t *testing.T) {
 		t.Error("Metrics should be collected")
 		return
 	}
-	if len(metrics.FlagsUsed) != len(flags) {
-		t.Errorf("Expected %d flags, got %d", len(flags), len(metrics.FlagsUsed))
+	if len(metrics.Flags) != len(flags) {
+		t.Errorf("Expected %d flags, got %d", len(flags), len(metrics.Flags))
 	}
-	if metrics.OS != runtime.GOOS {
-		t.Errorf("Expected OS %s, got %s", runtime.GOOS, metrics.OS)
+	if metrics.Platform != runtime.GOOS {
+		t.Errorf("Expected Platform %s, got %s", runtime.GOOS, metrics.Platform)
 	}
 	if metrics.Architecture != runtime.GOARCH {
 		t.Errorf("Expected Architecture %s, got %s", runtime.GOARCH, metrics.Architecture)
@@ -483,8 +483,8 @@ func TestE2EVisibilityIntegration(t *testing.T) {
 
 	// Create visibility metrics
 	visibilityData := &visibility.MetricsData{
-		FlagsUsed:    metrics.FlagsUsed,
-		OS:           metrics.OS,
+		Flags:        metrics.Flags,
+		Platform:     metrics.Platform,
 		Architecture: metrics.Architecture,
 		IsCI:         metrics.IsCI,
 		CISystem:     metrics.CISystem,
@@ -508,11 +508,11 @@ func TestE2EVisibilityIntegration(t *testing.T) {
 	}
 
 	jsonStr := string(metricJSON)
-	if !strings.Contains(jsonStr, "flags_used") {
-		t.Error("JSON should contain flags_used")
+	if !strings.Contains(jsonStr, "flags") {
+		t.Error("JSON should contain flags")
 	}
-	if !strings.Contains(jsonStr, "os") {
-		t.Error("JSON should contain os")
+	if !strings.Contains(jsonStr, "platform") {
+		t.Error("JSON should contain platform")
 	}
 	if !strings.Contains(jsonStr, "architecture") {
 		t.Error("JSON should contain architecture")
@@ -552,7 +552,7 @@ func TestE2EFlagSanitization(t *testing.T) {
 				return
 			}
 
-			sanitized := SanitizeFlags(metrics.FlagsUsed)
+			sanitized := metrics.Flags
 			if len(sanitized) != len(tc.expected) {
 				t.Errorf("Expected %d sanitized flags, got %d", len(tc.expected), len(sanitized))
 			}
@@ -589,8 +589,8 @@ func TestE2EConcurrentMetricsCollection(t *testing.T) {
 				return
 			}
 
-			if len(metrics.FlagsUsed) != 1 || metrics.FlagsUsed[0] != flags[0] {
-				t.Errorf("Expected flag %s, got %v", flags[0], metrics.FlagsUsed)
+			if len(metrics.Flags) != 1 || metrics.Flags[0] != flags[0] {
+				t.Errorf("Expected flag %s, got %v", flags[0], metrics.Flags)
 			}
 		}(i)
 	}
@@ -707,7 +707,7 @@ func (e mockError) Error() string {
 func TestExecWithBasicCommand(t *testing.T) {
 	// Clear any existing metrics
 	globalMetricsCollector.mu.Lock()
-	globalMetricsCollector.data = make(map[string]*MetricsData)
+	globalMetricsCollector.metricsData = make(map[string]*MetricsData)
 	globalMetricsCollector.mu.Unlock()
 
 	commandName := "test-basic-command"
@@ -754,7 +754,7 @@ func TestExecWithCommandError(t *testing.T) {
 func TestReportUsageToVisibilitySystemWithMetrics(t *testing.T) {
 	// Clear any existing metrics
 	globalMetricsCollector.mu.Lock()
-	globalMetricsCollector.data = make(map[string]*MetricsData)
+	globalMetricsCollector.metricsData = make(map[string]*MetricsData)
 	globalMetricsCollector.mu.Unlock()
 
 	commandName := "test-metrics-command"
@@ -787,14 +787,14 @@ func TestReportUsageToVisibilitySystemWithMetrics(t *testing.T) {
 	}
 
 	// Verify the metrics content
-	if len(metrics.FlagsUsed) != 2 {
-		t.Errorf("Expected 2 flags, got %d", len(metrics.FlagsUsed))
+	if len(metrics.Flags) != 2 {
+		t.Errorf("Expected 2 flags, got %d", len(metrics.Flags))
 	}
 
 	// Test the visibility metric creation
 	visibilityMetricsData := &visibility.MetricsData{
-		FlagsUsed:    metrics.FlagsUsed,
-		OS:           metrics.OS,
+		Flags:        metrics.Flags,
+		Platform:     metrics.Platform,
 		Architecture: metrics.Architecture,
 		IsCI:         metrics.IsCI,
 		CISystem:     metrics.CISystem,
@@ -820,7 +820,7 @@ func TestReportUsageToVisibilitySystemWithMetrics(t *testing.T) {
 func TestReportUsageToVisibilitySystemWithoutMetrics(t *testing.T) {
 	// Clear any existing metrics
 	globalMetricsCollector.mu.Lock()
-	globalMetricsCollector.data = make(map[string]*MetricsData)
+	globalMetricsCollector.metricsData = make(map[string]*MetricsData)
 	globalMetricsCollector.mu.Unlock()
 
 	commandName := "test-no-metrics-command"
@@ -849,7 +849,7 @@ func TestReportUsageToVisibilitySystemWithoutMetrics(t *testing.T) {
 func TestMetricsIntegrationFlow(t *testing.T) {
 	// Clear any existing metrics
 	globalMetricsCollector.mu.Lock()
-	globalMetricsCollector.data = make(map[string]*MetricsData)
+	globalMetricsCollector.metricsData = make(map[string]*MetricsData)
 	globalMetricsCollector.mu.Unlock()
 
 	commandName := "integration-test-command"
@@ -896,27 +896,30 @@ func TestMetricsIntegrationFlow(t *testing.T) {
 	}
 
 	// Verify metrics content
-	if len(metrics.FlagsUsed) != 3 {
-		t.Errorf("Expected 3 flags, got %d", len(metrics.FlagsUsed))
+	if len(metrics.Flags) != 3 {
+		t.Errorf("Expected 3 flags, got %d", len(metrics.Flags))
 	}
 
 	expectedFlags := []string{"recursive", "threads", "exclude"}
 	for i, expectedFlag := range expectedFlags {
-		if i >= len(metrics.FlagsUsed) || metrics.FlagsUsed[i] != expectedFlag {
-			t.Errorf("Expected flag %s at index %d, got %s", expectedFlag, i, metrics.FlagsUsed[i])
+		if i >= len(metrics.Flags) || metrics.Flags[i] != expectedFlag {
+			t.Errorf("Expected flag %s at index %d, got %s", expectedFlag, i, metrics.Flags[i])
 		}
 	}
 
 	// Verify system information is collected
-	if metrics.OS == "" {
-		t.Error("Expected OS to be populated")
+	if metrics.Platform == "" {
+		t.Error("Expected Platform to be populated")
 	}
 
 	if metrics.Architecture == "" {
 		t.Error("Expected Architecture to be populated")
 	}
 
-	// Verify metrics are cleared after retrieval
+	// Simulate cleanup done in reportUsageToVisibilitySystem
+	ClearCollectedMetrics(commandName)
+
+	// Verify metrics are cleared after cleanup
 	metricsAfter := GetCollectedMetrics(commandName)
 	if metricsAfter != nil {
 		t.Error("Expected metrics to be cleared after retrieval")

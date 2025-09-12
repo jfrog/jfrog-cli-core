@@ -6,17 +6,12 @@ import (
 	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	metrics "github.com/jfrog/jfrog-cli-core/v2/utils/metrics"
 	"github.com/jfrog/jfrog-client-go/jfconnect/services"
 )
 
-type MetricsData struct {
-	FlagsUsed    []string `json:"flags_used,omitempty"`
-	OS           string   `json:"os,omitempty"`
-	Architecture string   `json:"architecture,omitempty"`
-	IsCI         bool     `json:"is_ci,omitempty"`
-	CISystem     string   `json:"ci_system,omitempty"`
-	IsContainer  bool     `json:"is_container,omitempty"`
-}
+// MetricsData is shared from utils/metrics to avoid import cycles.
+type MetricsData = metrics.MetricsData
 
 type commandsCountLabels struct {
 	ProductID                            string `json:"product_id"`
@@ -77,12 +72,12 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 	}
 
 	if metricsData != nil {
-		if len(metricsData.FlagsUsed) > 0 {
-			flags := append([]string(nil), metricsData.FlagsUsed...)
+		if len(metricsData.Flags) > 0 {
+			flags := append([]string(nil), metricsData.Flags...)
 			sort.Strings(flags)
 			labels.Flags = strings.Join(flags, ",")
 		}
-		labels.Platform = metricsData.OS
+		labels.Platform = metricsData.Platform
 		labels.Architecture = metricsData.Architecture
 		if metricsData.IsCI {
 			labels.IsCI = "true"

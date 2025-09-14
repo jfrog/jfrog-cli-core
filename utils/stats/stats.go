@@ -143,7 +143,7 @@ func NewGenericResultsWriter(data interface{}, format string) *GenericResultsWri
 	}
 }
 
-type StatsFunc func(client *httpclient.HttpClient, sd *config.ServerDetails, hd httputils.HttpClientDetails) (interface{}, error)
+type StatsFunc func(client *httpclient.HttpClient, artifactoryUrl string, hd httputils.HttpClientDetails) (interface{}, error)
 
 func getCommandMap() map[string]StatsFunc {
 	return map[string]StatsFunc{
@@ -178,24 +178,26 @@ func GetStats(outputFormat string, product string, accessToken string) error {
 
 	commandFunc, ok := commandMap[product]
 
+	serverUrl := serverDetails.GetUrl()
+
 	if product != "" {
 		if !ok {
 			err = fmt.Errorf("unknown product: %s", product)
 			return err
 		} else {
-			_ = GetStatsForProduct(commandFunc, product, outputFormat, client, serverDetails, httpClientDetails)
+			_ = GetStatsForProduct(commandFunc, product, outputFormat, client, serverUrl, httpClientDetails)
 		}
 	} else {
 		for productName, commandAPI := range commandMap {
-			_ = GetStatsForProduct(commandAPI, productName, outputFormat, client, serverDetails, httpClientDetails)
+			_ = GetStatsForProduct(commandAPI, productName, outputFormat, client, serverUrl, httpClientDetails)
 		}
 	}
 
 	return nil
 }
 
-func GetStatsForProduct(commandAPI StatsFunc, productName string, outputFormat string, client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) error {
-	body, err := commandAPI(client, serverDetails, httpClientDetails)
+func GetStatsForProduct(commandAPI StatsFunc, productName string, outputFormat string, client *httpclient.HttpClient, artifactoryUrl string, httpClientDetails httputils.HttpClientDetails) error {
+	body, err := commandAPI(client, artifactoryUrl, httpClientDetails)
 	if err != nil {
 		err = NewGenericResultsWriter(err, outputFormat).Print()
 		if err != nil {
@@ -542,8 +544,8 @@ func printErrorMessage(apiError *clientStats.APIError) {
 	log.Output("Suggestion - ", apiError.Suggestion)
 }
 
-func GetArtifactoryStats(client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetArtifactoryStats(client, serverDetails, httpClientDetails)
+func GetArtifactoryStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+	body, err := clientStats.GetArtifactoryStats(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -554,8 +556,8 @@ func GetArtifactoryStats(client *httpclient.HttpClient, serverDetails *config.Se
 	return &stats, nil
 }
 
-func GetRepositoriesStats(client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetRepositoriesStats(client, serverDetails, httpClientDetails)
+func GetRepositoriesStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+	body, err := clientStats.GetRepositoriesStats(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -566,8 +568,8 @@ func GetRepositoriesStats(client *httpclient.HttpClient, serverDetails *config.S
 	return &repos, nil
 }
 
-func GetXrayPolicies(client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetXrayPolicies(client, serverDetails, httpClientDetails)
+func GetXrayPolicies(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+	body, err := clientStats.GetXrayPolicies(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -578,8 +580,8 @@ func GetXrayPolicies(client *httpclient.HttpClient, serverDetails *config.Server
 	return &policies, nil
 }
 
-func GetXrayWatches(client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetXrayWatches(client, serverDetails, httpClientDetails)
+func GetXrayWatches(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+	body, err := clientStats.GetXrayWatches(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -590,8 +592,8 @@ func GetXrayWatches(client *httpclient.HttpClient, serverDetails *config.ServerD
 	return &watches, nil
 }
 
-func GetProjectsStats(client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetProjectsStats(client, serverDetails, httpClientDetails)
+func GetProjectsStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+	body, err := clientStats.GetProjectsStats(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -602,8 +604,8 @@ func GetProjectsStats(client *httpclient.HttpClient, serverDetails *config.Serve
 	return &projects, nil
 }
 
-func GetJPDsStats(client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetJPDsStats(client, serverDetails, httpClientDetails)
+func GetJPDsStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+	body, err := clientStats.GetJPDsStats(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}
@@ -614,8 +616,8 @@ func GetJPDsStats(client *httpclient.HttpClient, serverDetails *config.ServerDet
 	return &jpdList, nil
 }
 
-func GetReleaseBundlesStats(client *httpclient.HttpClient, serverDetails *config.ServerDetails, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetReleaseBundlesStats(client, serverDetails, httpClientDetails)
+func GetReleaseBundlesStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+	body, err := clientStats.GetReleaseBundlesStats(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}

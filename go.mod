@@ -1,4 +1,4 @@
-module github.com/jfrog/jfrog-cli-core/v2
+module github.com/naveenku-jfrog/jfrog-cli-core/v2
 
 go 1.24.6
 
@@ -15,6 +15,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jfrog/build-info-go v1.10.17
 	github.com/jfrog/gofrog v1.7.6
+	github.com/jfrog/jfrog-cli-core/v2 v2.59.7
 	github.com/jfrog/jfrog-client-go v1.54.7
 	github.com/magiconair/properties v1.8.10
 	github.com/manifoldco/promptui v0.9.0

@@ -10,6 +10,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	clientStats "github.com/jfrog/jfrog-client-go/utils/stats"
 	"os"
+	"os/exec"
 )
 
 type ArtifactoryInfo struct {
@@ -157,8 +158,17 @@ func getCommandMap() map[string]StatsFunc {
 	}
 }
 
-func GetStats(outputFormat string, product string, accessToken string) error {
-	serverDetails, err := config.GetDefaultServerConf()
+func RunJfrogPing(serverID string) error {
+	cmd := exec.Command("jf", "rt", "ping", "--server-id="+serverID)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("command 'jf rt ping' failed: %w\nOutput: %s", err, string(output))
+	}
+	return nil
+}
+
+func GetStats(outputFormat string, product string, accessToken string, serverId string) error {
+	serverDetails, err := config.GetSpecificConfig(serverId, true, false)
 	if err != nil {
 		return err
 	}
@@ -179,6 +189,15 @@ func GetStats(outputFormat string, product string, accessToken string) error {
 	commandFunc, ok := commandMap[product]
 
 	serverUrl := serverDetails.GetUrl()
+
+	if httpClientDetails.AccessToken == "" {
+		_ = RunJfrogPing(serverDetails.ServerId)
+	}
+
+	serverDetails, err = config.GetSpecificConfig(serverId, true, false)
+	if err != nil {
+		return err
+	}
 
 	if product != "" {
 		if !ok {
@@ -388,7 +407,6 @@ func (rw *GenericResultsWriter) printSimple() error {
 			log.Warn("An unexpected data type was received and cannot be printed as a detailed error.")
 		}
 	}
-
 	return nil
 }
 

@@ -268,7 +268,7 @@ func (rw *GenericResultsWriter) printTable() error {
 
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.SetStyle(table.StyleLight)
+	t.SetStyle(table.StyleDouble)
 
 	switch v := rw.data.(type) {
 	case *ArtifactoryInfo:
@@ -293,6 +293,7 @@ func (rw *GenericResultsWriter) printTable() error {
 		}
 	}
 	t.Render()
+	log.Output()
 	return nil
 }
 
@@ -413,6 +414,7 @@ func printRepositoriesSimple(repos *[]RepositoryDetails) {
 	log.Output("--- Repositories Summary by Type ---")
 	if len(*repos) == 0 {
 		log.Output("No Repositories Available")
+		log.Output()
 		return
 	}
 	counts := getRepositoryCounts(repos)
@@ -437,65 +439,100 @@ func printReleaseBundlesSimple(rbResponse *ReleaseBundleResponse) {
 	log.Output("--- Available Release Bundles ---")
 	if len(rbResponse.ReleaseBundles) == 0 {
 		log.Output("No Release Bundles Available")
+		log.Output()
 		return
 	}
-	for _, rb := range rbResponse.ReleaseBundles {
-		log.Output("- ", rb.ReleaseBundleName)
+	for index, rb := range rbResponse.ReleaseBundles {
+		log.Output("ReleaseBundle: ", index+1)
+		log.Output("ReleaseBundleName: ", rb.ReleaseBundleName)
+		log.Output("RepositoryKey: ", rb.RepositoryKey)
+		log.Output("ProjectKey:", rb.ProjectKey)
+		log.Output()
 	}
-	log.Output()
 }
 
 func printArtifactoryStats(stats *ArtifactoryInfo) {
 	log.Output("--- Artifactory Statistics Summary ---")
-	log.Output("Total No of Artifacts: ", stats.BinariesSummary.ArtifactsCount)
+	log.Output("Total No of Binaries: ", stats.BinariesSummary.BinariesCount)
 	log.Output("Total Binaries Size: ", stats.BinariesSummary.BinariesSize)
-	log.Output("Total Storage Used: ", stats.BinariesSummary.ArtifactsSize)
+	log.Output("Total No of Artifacts: ", stats.BinariesSummary.ArtifactsCount)
+	log.Output("Total Artifacts Size: ", stats.BinariesSummary.ArtifactsSize)
 	log.Output("Storage Type: ", stats.FileStoreSummary.StorageType)
 	log.Output()
 }
 
 func printXrayPoliciesStats(policies *[]XrayPolicy) {
 	log.Output("--- Xray Policies ---")
-	for _, policy := range *policies {
-		log.Output("- ", policy.Name)
-	}
 	if len(*policies) == 0 {
 		log.Output("No Xray Policies Available")
+		log.Output()
+		return
 	}
-	log.Output()
+	for index, policy := range *policies {
+		log.Output("Policy: ", index+1)
+		log.Output("Name: ", policy.Name)
+		log.Output("Type: ", policy.Type)
+		log.Output("Author: ", policy.Author)
+		log.Output("Created: ", policy.Created)
+		log.Output("Modified: ", policy.Modified)
+		log.Output()
+	}
 }
 
 func printXrayWatchesStats(watches *[]XrayWatch) {
 	log.Output("--- Enforced Xray Watches ---")
-	for _, watch := range *watches {
-		log.Output("- ", watch.GeneralData.Name)
-	}
 	if len(*watches) == 0 {
 		log.Output("No Xray Watches Available")
+		log.Output()
+		return
 	}
-	log.Output()
+	for _, watch := range *watches {
+		log.Output("Name: ", watch.GeneralData.Name)
+		for _, resource := range watch.ProjectResources.Resources {
+			log.Output("Name:", resource.Name)
+			log.Output("Type:", resource.Type)
+			log.Output("BinMgrID:", resource.BinMgrID)
+		}
+		log.Output("")
+	}
 }
 
 func printProjectsStats(projects *[]Project) {
 	log.Output("--- Available Projects ---")
-	for _, project := range *projects {
-		log.Output("- ", project.DisplayName)
-	}
 	if len(*projects) == 0 {
 		log.Output("No Projects Available")
+		log.Output()
+		return
 	}
-	log.Output()
+	for index, project := range *projects {
+		log.Output("Project: ", index+1)
+		log.Output("Name: ", project.DisplayName)
+		log.Output("Key: ", project.ProjectKey)
+		if project.Description != "" {
+			log.Output("Description: ", project.Description)
+		} else {
+			log.Output("Description: NA")
+		}
+		log.Output()
+	}
 }
 
 func printJPDsStats(jpdList *[]JPD) {
 	log.Output("--- Available JPDs ---")
-	for _, jpd := range *jpdList {
-		log.Output("- ", jpd.Name)
-	}
 	if len(*jpdList) == 0 {
 		log.Output("No JPDs Info Available")
+		log.Output()
+		return
 	}
-	log.Output()
+	for index, jpd := range *jpdList {
+		log.Output("JPD: ", index+1)
+		log.Output("Name: ", jpd.Name)
+		log.Output("URL: ", jpd.URL)
+		log.Output("Status: ", jpd.Status.Code)
+		log.Output("Detailed Status: ", jpd.Status.Message)
+		log.Output("Local: ", jpd.Local)
+		log.Output()
+	}
 }
 
 func printErrorMessage(apiError *clientStats.APIError) {

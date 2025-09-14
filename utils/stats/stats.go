@@ -238,25 +238,18 @@ func (rw *GenericResultsWriter) printJson() error {
 		switch rw.data.(type) {
 		case *ArtifactoryInfo:
 			msg = "Artifacts: No Artifacts Available"
-			break
 		case *[]RepositoryDetails:
 			msg = "Repositories: No Repository Available"
-			break
 		case *[]XrayPolicy:
 			msg = "Policies: No Xray Policy Available"
-			break
 		case *[]XrayWatch:
 			msg = "Watches: No Xray Watch Available"
-			break
 		case *[]Project:
 			msg = "Projects: No Project Available"
-			break
 		case *[]JPD:
 			msg = "JPDs: No JPD Available"
-			break
 		case *ReleaseBundleResponse:
 			msg = "Release Bundles: No Release Bundle Info Available"
-			break
 		}
 		jsonBytes, err = json.MarshalIndent(msg, "", "  ")
 		if err != nil {
@@ -296,7 +289,7 @@ func (rw *GenericResultsWriter) printTable() error {
 		if apiErr, ok := v.(*clientStats.APIError); ok {
 			printErrorTable(t, apiErr)
 		} else {
-			t.AppendRow(table.Row{"An unexpected error occurred: " + v.(error).Error()})
+			log.Warn("Table format is not supported for this unknown data type.")
 		}
 	}
 	t.Render()
@@ -386,7 +379,11 @@ func (rw *GenericResultsWriter) printSimple() error {
 	case *[]RepositoryDetails:
 		printRepositoriesSimple(v)
 	default:
-		printErrorMessage(rw.data.(*clientStats.APIError))
+		if apiErr, ok := rw.data.(*clientStats.APIError); ok {
+			printErrorMessage(apiErr)
+		} else {
+			log.Warn("An unexpected data type was received and cannot be printed as a detailed error.")
+		}
 	}
 
 	return nil
@@ -466,7 +463,6 @@ func printXrayPoliciesStats(policies *[]XrayPolicy) {
 		log.Output("No Xray Policies Available")
 	}
 	log.Output()
-	return
 }
 
 func printXrayWatchesStats(watches *[]XrayWatch) {
@@ -478,7 +474,6 @@ func printXrayWatchesStats(watches *[]XrayWatch) {
 		log.Output("No Xray Watches Available")
 	}
 	log.Output()
-	return
 }
 
 func printProjectsStats(projects *[]Project) {
@@ -490,7 +485,6 @@ func printProjectsStats(projects *[]Project) {
 		log.Output("No Projects Available")
 	}
 	log.Output()
-	return
 }
 
 func printJPDsStats(jpdList *[]JPD) {
@@ -502,7 +496,6 @@ func printJPDsStats(jpdList *[]JPD) {
 		log.Output("No JPDs Info Available")
 	}
 	log.Output()
-	return
 }
 
 func printErrorMessage(apiError *clientStats.APIError) {

@@ -198,6 +198,7 @@ func GetStats(outputFormat string, product string, accessToken string, serverId 
 	if err != nil {
 		return err
 	}
+	httpClientDetails.AccessToken = serverDetails.AccessToken
 
 	if product != "" {
 		if !ok {

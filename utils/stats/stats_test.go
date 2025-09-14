@@ -72,7 +72,6 @@ func setupTestClient(t *testing.T) (*httpclient.HttpClient, httputils.HttpClient
 
 	isAdminToken := IsAdminToken(client, serverUrl, serverDetails.AccessToken, httpClientDetails)
 
-	fmt.Println("Admin token : ", isAdminToken)
 	assert.NoError(t, err)
 	return client, httpClientDetails, serverDetails, isAdminToken
 }

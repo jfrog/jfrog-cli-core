@@ -33,6 +33,7 @@ const (
 	SubjectTypeBuild         SubjectType = "build"
 	SubjectTypePackage       SubjectType = "package"
 	SubjectTypeReleaseBundle SubjectType = "release-bundle"
+	SubjectTypeApplication   SubjectType = "application"
 )
 
 type EvidenceSummary struct {
@@ -145,6 +146,8 @@ func (es *EvidenceSummary) formatSubjectType(subjectType SubjectType) string {
 		return "🧩"
 	case SubjectTypeArtifact:
 		return "📄"
+	case SubjectTypeApplication:
+		return "📱"
 	default:
 		return ""
 	}

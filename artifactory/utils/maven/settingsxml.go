@@ -3,12 +3,37 @@ package maven
 import (
 	"encoding/xml"
 	"fmt"
-	mavenv1 "github.com/apache/camel-k/v2/pkg/apis/camel/v1"
-	"github.com/apache/camel-k/v2/pkg/util/maven"
 	"os"
 	"path/filepath"
 	"strings"
 )
+
+// Settings represents the Maven settings.xml structure
+type Settings struct {
+	XMLName           xml.Name
+	XMLNs             string   `xml:"xmlns,attr"`
+	XMLNsXsi          string   `xml:"xmlns:xsi,attr"`
+	XsiSchemaLocation string   `xml:"xsi:schemaLocation,attr"`
+	LocalRepository   string   `xml:"localRepository"`
+	Servers           []Server `xml:"servers>server,omitempty"`
+	Mirrors           []Mirror `xml:"mirrors>mirror,omitempty"`
+}
+
+// Mirror represents a Maven mirror configuration
+type Mirror struct {
+	ID       string `xml:"id"`
+	Name     string `xml:"name,omitempty"`
+	URL      string `xml:"url"`
+	MirrorOf string `xml:"mirrorOf"`
+}
+
+// Server represents a Maven server configuration with credentials
+type Server struct {
+	XMLName  xml.Name `xml:"server"`
+	ID       string   `xml:"id,omitempty"`
+	Username string   `xml:"username,omitempty"`
+	Password string   `xml:"password,omitempty"`
+}
 
 // ArtifactoryMirrorID is the ID used for the Artifactory mirror.
 const ArtifactoryMirrorID = "artifactory-mirror"
@@ -16,7 +41,7 @@ const ArtifactoryMirrorID = "artifactory-mirror"
 // SettingsXmlManager manages the maven settings file (`settings.xml`).
 type SettingsXmlManager struct {
 	path     string
-	settings maven.Settings
+	settings Settings
 }
 
 // NewSettingsXmlManager creates a new SettingsXmlManager instance.
@@ -45,7 +70,7 @@ func (sxm *SettingsXmlManager) loadSettings() error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// If file does not exist, initialize with empty settings
-			sxm.settings = maven.Settings{
+			sxm.settings = Settings{
 				XMLName: xml.Name{Local: "settings"},
 			}
 			return nil
@@ -82,11 +107,11 @@ func (sxm *SettingsXmlManager) ConfigureArtifactoryMirror(artifactoryUrl, repoNa
 // updateMirror finds the existing mirror or creates a new one and updates it with the provided details.
 func (sxm *SettingsXmlManager) updateMirror(artifactoryUrl, repoName string) error {
 	// Create the new mirror with the provided details
-	updatedMirror := maven.Mirror{
+	updatedMirror := Mirror{
 		ID:       ArtifactoryMirrorID,
 		Name:     repoName,
 		MirrorOf: "*",
-		URL:      strings.TrimSuffix(artifactoryUrl, "/") + "/" + repoName,
+		URL:      strings.TrimRight(artifactoryUrl, "/") + "/" + repoName,
 	}
 
 	// Find if the mirror already exists
@@ -111,7 +136,7 @@ func (sxm *SettingsXmlManager) updateMirror(artifactoryUrl, repoName string) err
 // updateServerCredentials updates or adds server credentials in the settings.
 func (sxm *SettingsXmlManager) updateServerCredentials(username, password string) error {
 	// Create the new server with the provided credentials
-	updatedServer := mavenv1.Server{
+	updatedServer := Server{
 		ID:       ArtifactoryMirrorID,
 		Username: username,
 		Password: password,

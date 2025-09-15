@@ -154,7 +154,7 @@ func getCommandMap() map[string]StatsFunc {
 		"rb":  GetReleaseBundlesStats,
 		"jpd": GetJPDsStats,
 		"rt":  GetArtifactoryStats,
-		"pr":  GetProjectsStats,
+		"pj":  GetProjectsStats,
 	}
 }
 

@@ -3,20 +3,23 @@ package coreStats
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/http/httpclient"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	clientStats "github.com/jfrog/jfrog-client-go/utils/stats"
-	"os"
-	"os/exec"
+	"github.com/pterm/pterm"
+	"strings"
 )
+
+const displayLimit = 5
 
 type ArtifactoryInfo struct {
 	BinariesSummary         BinariesSummary     `json:"binariesSummary"`
 	FileStoreSummary        FileStoreSummary    `json:"fileStoreSummary"`
 	RepositoriesSummaryList []RepositorySummary `json:"repositoriesSummaryList"`
+	ProjectsCount           int                 `json:"-"`
+	RepositoriesDetails     []RepositoryDetails `json:"-"`
 }
 
 type BinariesSummary struct {
@@ -148,24 +151,19 @@ type StatsFunc func(client *httpclient.HttpClient, artifactoryUrl string, hd htt
 
 func getCommandMap() map[string]StatsFunc {
 	return map[string]StatsFunc{
-		"rt":  GetArtifactoryStats,
-		"rpr": GetRepositoriesStats,
-		"xrp": GetXrayPolicies,
-		"xrw": GetXrayWatches,
-		"pr":  GetProjectsStats,
 		"rb":  GetReleaseBundlesStats,
 		"jpd": GetJPDsStats,
+		"rt":  GetArtifactoryStats,
+		"pr":  GetProjectsStats,
 	}
 }
 
-func RunJfrogPing(serverID string) error {
-	cmd := exec.Command("jf", "rt", "ping", "--server-id="+serverID)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("command 'jf rt ping' failed: %w\nOutput: %s", err, string(output))
-	}
-	return nil
+var needAdminTokenMap = map[string]bool{
+	"PROJECTS": true,
+	"JPD":      true,
 }
+
+var needAdminToken = false
 
 func GetStats(outputFormat string, product string, accessToken string, serverId string) error {
 	serverDetails, err := config.GetSpecificConfig(serverId, true, false)
@@ -173,7 +171,7 @@ func GetStats(outputFormat string, product string, accessToken string, serverId 
 		return err
 	}
 
-	httpClientDetails := httputils.HttpClientDetails{AccessToken: serverDetails.AccessToken}
+	httpClientDetails := httputils.HttpClientDetails{AccessToken: serverDetails.AccessToken, User: serverDetails.User, Password: serverDetails.Password}
 	if accessToken != "" {
 		httpClientDetails.AccessToken = accessToken
 	}
@@ -186,52 +184,65 @@ func GetStats(outputFormat string, product string, accessToken string, serverId 
 
 	commandMap := getCommandMap()
 
-	commandFunc, ok := commandMap[product]
-
 	serverUrl := serverDetails.GetUrl()
 
-	if httpClientDetails.AccessToken == "" {
-		_ = RunJfrogPing(serverDetails.ServerId)
-	}
+	var allResults []interface{}
 
-	serverDetails, err = config.GetSpecificConfig(serverId, true, false)
-	if err != nil {
-		return err
-	}
-	httpClientDetails.AccessToken = serverDetails.AccessToken
+	projectsCount := 0
+
+	productOrder := []string{"rt", "jpd", "pr", "rb"}
 
 	if product != "" {
-		if !ok {
-			err = fmt.Errorf("unknown product: %s", product)
-			return err
+		if commandFunc, ok := commandMap[product]; ok {
+			results, err := GetStatsForProduct(commandFunc, client, serverUrl, httpClientDetails)
+			if err != nil {
+				allResults = append(allResults, err)
+			} else {
+				allResults = append(allResults, results)
+			}
 		} else {
-			_ = GetStatsForProduct(commandFunc, product, outputFormat, client, serverUrl, httpClientDetails)
+			return fmt.Errorf("unknown product: %s", product)
 		}
 	} else {
-		for productName, commandAPI := range commandMap {
-			_ = GetStatsForProduct(commandAPI, productName, outputFormat, client, serverUrl, httpClientDetails)
+		for _, productName := range productOrder {
+			if commandFunc, ok := commandMap[productName]; ok {
+				results, err := GetStatsForProduct(commandFunc, client, serverUrl, httpClientDetails)
+				if productName == "pr" && results != nil {
+					projects := results.(*[]Project)
+					projectsCount = len(*projects)
+				} else if productName == "rt" && results != nil {
+					artifactoryInfo := results.(*ArtifactoryInfo)
+					artifactoryInfo.ProjectsCount = projectsCount
+					allResults = append(allResults, artifactoryInfo)
+					continue
+				}
+				if err != nil {
+					allResults = append(allResults, err)
+				} else {
+					allResults = append(allResults, results)
+				}
+			}
 		}
 	}
+	return printAllResults(allResults, outputFormat)
+}
 
+func printAllResults(results []interface{}, outputFormat string) error {
+	for _, result := range results {
+		err := NewGenericResultsWriter(result, outputFormat).Print()
+		if err != nil {
+			log.Error("Failed to print result:", err)
+		}
+	}
 	return nil
 }
 
-func GetStatsForProduct(commandAPI StatsFunc, productName string, outputFormat string, client *httpclient.HttpClient, artifactoryUrl string, httpClientDetails httputils.HttpClientDetails) error {
+func GetStatsForProduct(commandAPI StatsFunc, client *httpclient.HttpClient, artifactoryUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
 	body, err := commandAPI(client, artifactoryUrl, httpClientDetails)
 	if err != nil {
-		err = NewGenericResultsWriter(err, outputFormat).Print()
-		if err != nil {
-			log.Error(productName, " : ", err)
-			return err
-		}
-	} else {
-		err := NewGenericResultsWriter(body, outputFormat).Print()
-		if err != nil {
-			log.Error(productName, " : ", err)
-			return err
-		}
+		return nil, err
 	}
-	return nil
+	return body, nil
 }
 
 func (rw *GenericResultsWriter) Print() error {
@@ -239,7 +250,7 @@ func (rw *GenericResultsWriter) Print() error {
 	case "json", "simplejson":
 		return rw.printJson()
 	case "table":
-		return rw.printTable()
+		return rw.printDashboard()
 	default:
 		return rw.printSimple()
 	}
@@ -260,12 +271,6 @@ func (rw *GenericResultsWriter) printJson() error {
 		switch rw.data.(type) {
 		case *ArtifactoryInfo:
 			msg = "Artifacts: No Artifacts Available"
-		case *[]RepositoryDetails:
-			msg = "Repositories: No Repository Available"
-		case *[]XrayPolicy:
-			msg = "Policies: No Xray Policy Available"
-		case *[]XrayWatch:
-			msg = "Watches: No Xray Watch Available"
 		case *[]Project:
 			msg = "Projects: No Project Available"
 		case *[]JPD:
@@ -283,102 +288,181 @@ func (rw *GenericResultsWriter) printJson() error {
 	return nil
 }
 
-func (rw *GenericResultsWriter) printTable() error {
+func (rw *GenericResultsWriter) printDashboard() error {
 	if rw.data == nil {
 		return nil
 	}
 
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.SetStyle(table.StyleDouble)
-
 	switch v := rw.data.(type) {
 	case *ArtifactoryInfo:
-		printArtifactoryStatsTable(t, v)
-	case *[]XrayPolicy:
-		printXrayPoliciesTable(t, v)
-	case *[]XrayWatch:
-		printXrayWatchesTable(t, v)
+		printArtifactoryDashboard(v)
 	case *[]Project:
-		printProjectsTable(t, v)
+		printProjectsDashboard(v)
 	case *[]JPD:
-		printJPDsTable(t, v)
+		printJPDsDashboard(v)
 	case *ReleaseBundleResponse:
-		printReleaseBundlesTable(t, v)
-	case *[]RepositoryDetails:
-		printRepositoriesTable(t, v)
-	default:
-		if apiErr, ok := v.(*clientStats.APIError); ok {
-			printErrorTable(t, apiErr)
-		} else {
-			log.Warn("Table format is not supported for this unknown data type.")
-		}
+		printReleaseBundlesDashboard(v)
+	case *clientStats.APIError:
+		printErrorDashboard(v)
+	case *clientStats.GenericError:
+		printGenericErrorDashboard(v)
 	}
-	t.Render()
-	log.Output()
 	return nil
 }
 
-func printArtifactoryStatsTable(t table.Writer, stats *ArtifactoryInfo) {
-	t.AppendHeader(table.Row{"ARTIFACTS METRIC", "COUNT"})
-	t.AppendRows([]table.Row{
-		{"Total No of Artifacts", stats.BinariesSummary.ArtifactsCount},
-		{"Total Binaries Size:", stats.BinariesSummary.BinariesSize},
-		{"Total Storage Used: ", stats.BinariesSummary.ArtifactsSize},
-		{"Storage Type: ", stats.FileStoreSummary.StorageType},
-	})
-	t.Render()
-	t.ResetRows()
-	t.ResetHeaders()
+func printArtifactoryDashboard(stats *ArtifactoryInfo) {
+	pterm.Println("📦 Artifactory Summary")
+	projectCount := pterm.LightCyan(stats.ProjectsCount)
+	if stats.BinariesSummary.BinariesCount == string("0") && needAdminToken {
+		projectCount = pterm.LightRed("No Admin Token")
+	}
+
+	summaryTableData := pterm.TableData{
+		{"Metric", "Value"},
+		{"Total Projects", projectCount},
+		{"Total Binaries", pterm.LightCyan(stats.BinariesSummary.BinariesCount)},
+		{"Total Binaries Size", pterm.LightCyan(stats.BinariesSummary.BinariesSize)},
+		{"Total Artifacts ", pterm.LightCyan(stats.BinariesSummary.ArtifactsCount)},
+		{"Total Artifacts Size", pterm.LightCyan(stats.BinariesSummary.ArtifactsSize)},
+		{"Storage Type", pterm.LightCyan(stats.FileStoreSummary.StorageType)},
+	}
+	pterm.DefaultTable.WithHasHeader().WithData(summaryTableData).Render()
+
+	repoTypeCounts := make(map[string]int)
+
+	for _, repo := range stats.RepositoriesSummaryList {
+		if repo.RepoKey != "TOTAL" && repo.RepoType != "NA" {
+			repoTypeCounts[repo.RepoType]++
+		}
+	}
+
+	breakdownData := pterm.TableData{{"Repository Type", "Count"}}
+	for repoType, count := range repoTypeCounts {
+		breakdownData = append(breakdownData, []string{pterm.LightMagenta(repoType), pterm.LightGreen(fmt.Sprintf("%d", count))})
+	}
+	pterm.DefaultTable.WithHasHeader().WithData(breakdownData).Render()
 }
 
-func printXrayPoliciesTable(t table.Writer, policies *[]XrayPolicy) {
-	if len(*policies) == 0 {
-		t.AppendRow(table.Row{"No Policy Available"})
-		return
-	}
-	t.AppendHeader(table.Row{"Policy Name", "Type", "Author"})
-	for _, policy := range *policies {
-		t.AppendRow(table.Row{policy.Name, policy.Type, policy.Author})
-	}
-}
-
-func printXrayWatchesTable(t table.Writer, watches *[]XrayWatch) {
-	if len(*watches) == 0 {
-		t.AppendRow(table.Row{"No Watches Available"})
-		return
-	}
-	t.AppendHeader(table.Row{"Watch Name"})
-	for _, watch := range *watches {
-		t.AppendRow(table.Row{watch.GeneralData.Name})
-	}
-}
-
-func printProjectsTable(t table.Writer, projects *[]Project) {
+func printProjectsDashboard(projects *[]Project) {
+	pterm.Println("📁 Projects")
 	if len(*projects) == 0 {
-		t.AppendRow(table.Row{"No Projects Available"})
+		pterm.Warning.Println("No Projects found.")
 		return
 	}
-	t.AppendHeader(table.Row{"Project Key", "Display Name"})
-	for _, project := range *projects {
-		t.AppendRow(table.Row{project.ProjectKey, project.DisplayName})
+	loopRange := len(*projects)
+	if loopRange > displayLimit {
+		loopRange = displayLimit
 	}
+	actualProjectsCount := len(*projects)
+
+	tableData := pterm.TableData{{"Project Key", "Display Name"}}
+	for i := 0; i < loopRange; i++ {
+		project := (*projects)[i]
+		tableData = append(tableData, []string{pterm.LightBlue(project.ProjectKey), project.DisplayName})
+	}
+
+	tableString, _ := pterm.DefaultTable.WithHasHeader().WithData(tableData).Srender()
+	trimmedTable := strings.TrimSuffix(tableString, "\n")
+
+	pterm.Print(trimmedTable)
+	if actualProjectsCount > displayLimit {
+		pterm.Println(pterm.Yellow(fmt.Sprintf("\n...and %d more projects.", actualProjectsCount-displayLimit)))
+	}
+	pterm.Print("\n")
 }
 
-func printJPDsTable(t table.Writer, jpdList *[]JPD) {
-	if len(*jpdList) == 0 {
-		t.AppendRow(table.Row{"No JPDs Available"})
+func printJPDsDashboard(jpdList *[]JPD) {
+	pterm.Println("🛰️ JFrog Platform Deployments (JPDs)")
+	if jpdList == nil || len(*jpdList) == 0 {
+		pterm.Warning.Println("No JPDs found.")
+		pterm.Println()
 		return
 	}
-	t.AppendHeader(table.Row{"JPD Name", "URL", "Status"})
-	for _, jpd := range *jpdList {
-		t.AppendRow(table.Row{jpd.Name, jpd.URL, jpd.Status.Code})
+
+	loopRange := len(*jpdList)
+	if loopRange > displayLimit {
+		loopRange = displayLimit
 	}
+	actualCount := len(*jpdList)
+
+	tableData := pterm.TableData{{"Name", "URL", "Status"}}
+	for i := 0; i < loopRange; i++ {
+		jpd := (*jpdList)[i]
+		var status string
+		if jpd.Status.Code == "ONLINE" {
+			status = pterm.LightGreen(jpd.Status.Code)
+		} else {
+			status = pterm.LightRed(jpd.Status.Code)
+		}
+		tableData = append(tableData, []string{pterm.LightCyan(jpd.Name), jpd.URL, status})
+	}
+
+	tableString, _ := pterm.DefaultTable.WithHasHeader().WithData(tableData).Srender()
+	pterm.Print(strings.TrimSuffix(tableString, "\n"))
+
+	if actualCount > displayLimit {
+		pterm.Print(pterm.Yellow(fmt.Sprintf("\n...and %d more JPDs.\n", actualCount-displayLimit)))
+	}
+	pterm.Print("\n\n")
 }
 
-func printErrorTable(t table.Writer, apiError *clientStats.APIError) {
-	t.AppendHeader(table.Row{"Product", "Status", "Text", "Suggestion"})
-	t.AppendRow(table.Row{apiError.Product, apiError.StatusCode, apiError.StatusText, apiError.Suggestion})
+func printReleaseBundlesDashboard(rbResponse *ReleaseBundleResponse) {
+	pterm.Println("🚀 Release Bundles")
+	if rbResponse == nil || len(rbResponse.ReleaseBundles) == 0 {
+		pterm.Warning.Println("No Release Bundles found.")
+		pterm.Println()
+		return
+	}
+
+	loopRange := len(rbResponse.ReleaseBundles)
+	if loopRange > displayLimit {
+		loopRange = displayLimit
+	}
+	actualCount := len(rbResponse.ReleaseBundles)
+
+	tableData := pterm.TableData{{"Release Bundle Name", "Project Key", "Repository Key"}}
+	for i := 0; i < loopRange; i++ {
+		rb := rbResponse.ReleaseBundles[i]
+		tableData = append(tableData, []string{
+			pterm.LightGreen(rb.ReleaseBundleName),
+			rb.ProjectKey,
+			pterm.LightYellow(rb.RepositoryKey),
+		})
+	}
+
+	tableString, _ := pterm.DefaultTable.WithHasHeader().WithData(tableData).Srender()
+	pterm.Print(strings.TrimSuffix(tableString, "\n"))
+
+	if actualCount > displayLimit {
+		pterm.Print(pterm.Yellow(fmt.Sprintf("\n...and %d more release bundles.\n", actualCount-displayLimit)))
+	}
+	pterm.Print("\n\n")
+}
+
+func printErrorDashboard(apiError *clientStats.APIError) {
+	_, ok := needAdminTokenMap[apiError.Product]
+	Suggestion := ""
+	if apiError.StatusCode >= 400 && apiError.StatusCode < 500 && ok {
+		Suggestion = "Need Admin Token"
+		needAdminToken = true
+	} else {
+		Suggestion = apiError.Suggestion
+	}
+
+	tableData := pterm.TableData{
+		{"Product: ", apiError.Product},
+		{"Status Code", pterm.LightRed(fmt.Sprintf("%d", apiError.StatusCode))},
+		{"Status", pterm.LightRed(apiError.StatusText)},
+		{"Suggestion", pterm.LightYellow(Suggestion)},
+	}
+	pterm.DefaultTable.WithHasHeader().WithData(tableData).Render()
+}
+
+func printGenericErrorDashboard(err *clientStats.GenericError) {
+	tableData := pterm.TableData{
+		{err.Product, err.Err.Error()},
+	}
+	pterm.DefaultTable.WithBoxed(true).WithData(tableData).Render()
 }
 
 func (rw *GenericResultsWriter) printSimple() error {
@@ -389,133 +473,59 @@ func (rw *GenericResultsWriter) printSimple() error {
 	switch v := rw.data.(type) {
 	case *ArtifactoryInfo:
 		printArtifactoryStats(v)
-	case *[]XrayPolicy:
-		printXrayPoliciesStats(v)
-	case *[]XrayWatch:
-		printXrayWatchesStats(v)
 	case *[]Project:
 		printProjectsStats(v)
 	case *[]JPD:
 		printJPDsStats(v)
 	case *ReleaseBundleResponse:
 		printReleaseBundlesSimple(v)
-	case *[]RepositoryDetails:
-		printRepositoriesSimple(v)
-	default:
-		if apiErr, ok := rw.data.(*clientStats.APIError); ok {
-			printErrorMessage(apiErr)
-		} else {
-			log.Warn("An unexpected data type was received and cannot be printed as a detailed error.")
-		}
+	case *clientStats.APIError:
+		printErrorMessage(v)
+	case *clientStats.GenericError:
+		printGenericError(v)
 	}
 	return nil
 }
 
-func getRepositoryCounts(repos *[]RepositoryDetails) map[string]int {
-	counts := make(map[string]int)
-	for _, repo := range *repos {
-		counts[repo.Type]++
-	}
-	return counts
-}
-
-func printRepositoriesTable(t table.Writer, repos *[]RepositoryDetails) {
-	if len(*repos) == 0 {
-		t.AppendRow(table.Row{"No Repositories Available"})
-		return
-	}
-	counts := getRepositoryCounts(repos)
-	t.AppendHeader(table.Row{"Repository Type", "Count"})
-	for repoType, count := range counts {
-		t.AppendRow(table.Row{repoType, count})
-	}
-}
-
-func printRepositoriesSimple(repos *[]RepositoryDetails) {
-	log.Output("--- Repositories Summary by Type ---")
-	if len(*repos) == 0 {
-		log.Output("No Repositories Available")
-		log.Output()
-		return
-	}
-	counts := getRepositoryCounts(repos)
-	for repoType, count := range counts {
-		log.Output("- ", repoType, ": ", count)
-	}
-	log.Output()
-}
-
-func printReleaseBundlesTable(t table.Writer, rbResponse *ReleaseBundleResponse) {
-	if len(rbResponse.ReleaseBundles) == 0 {
-		t.AppendRow(table.Row{"No Release Bundles Available"})
-		return
-	}
-	t.AppendHeader(table.Row{"Release Bundle Name", "Project Key", "Repository Key"})
-	for _, rb := range rbResponse.ReleaseBundles {
-		t.AppendRow(table.Row{rb.ReleaseBundleName, rb.ProjectKey, rb.RepositoryKey})
-	}
-}
-
 func printReleaseBundlesSimple(rbResponse *ReleaseBundleResponse) {
-	log.Output("--- Available Release Bundles ---")
+	log.Output("--- Release Bundles ---")
 	if len(rbResponse.ReleaseBundles) == 0 {
 		log.Output("No Release Bundles Available")
 		log.Output()
 		return
 	}
-	for index, rb := range rbResponse.ReleaseBundles {
-		log.Output("ReleaseBundle: ", index+1)
+	loopRange := len(rbResponse.ReleaseBundles)
+	if loopRange > displayLimit {
+		loopRange = displayLimit
+	}
+	actualProjectsCount := len(rbResponse.ReleaseBundles)
+	for i := 0; i < loopRange; i++ {
+		rb := rbResponse.ReleaseBundles[i]
+		log.Output("ReleaseBundle: ", i+1)
 		log.Output("ReleaseBundleName: ", rb.ReleaseBundleName)
 		log.Output("RepositoryKey: ", rb.RepositoryKey)
 		log.Output("ProjectKey:", rb.ProjectKey)
 		log.Output()
 	}
+	if actualProjectsCount > displayLimit {
+		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more release bundles, try JSON format", actualProjectsCount-displayLimit)))
+	}
+	log.Output()
 }
 
 func printArtifactoryStats(stats *ArtifactoryInfo) {
-	log.Output("--- Artifactory Statistics Summary ---")
+	projectCount := pterm.Normal(stats.ProjectsCount)
+	if stats.ProjectsCount == 0 && needAdminToken {
+		projectCount = pterm.Normal("No Admin Token")
+	}
+	log.Output("--- Artifactory Statistics ---")
+	log.Output("Total Projects: ", projectCount)
 	log.Output("Total No of Binaries: ", stats.BinariesSummary.BinariesCount)
 	log.Output("Total Binaries Size: ", stats.BinariesSummary.BinariesSize)
 	log.Output("Total No of Artifacts: ", stats.BinariesSummary.ArtifactsCount)
 	log.Output("Total Artifacts Size: ", stats.BinariesSummary.ArtifactsSize)
 	log.Output("Storage Type: ", stats.FileStoreSummary.StorageType)
 	log.Output()
-}
-
-func printXrayPoliciesStats(policies *[]XrayPolicy) {
-	log.Output("--- Xray Policies ---")
-	if len(*policies) == 0 {
-		log.Output("No Xray Policies Available")
-		log.Output()
-		return
-	}
-	for index, policy := range *policies {
-		log.Output("Policy: ", index+1)
-		log.Output("Name: ", policy.Name)
-		log.Output("Type: ", policy.Type)
-		log.Output("Author: ", policy.Author)
-		log.Output("Created: ", policy.Created)
-		log.Output("Modified: ", policy.Modified)
-		log.Output()
-	}
-}
-
-func printXrayWatchesStats(watches *[]XrayWatch) {
-	log.Output("--- Enforced Xray Watches ---")
-	if len(*watches) == 0 {
-		log.Output("No Xray Watches Available")
-		log.Output()
-		return
-	}
-	for _, watch := range *watches {
-		log.Output("Name: ", watch.GeneralData.Name)
-		for _, resource := range watch.ProjectResources.Resources {
-			log.Output("Name:", resource.Name)
-			log.Output("Type:", resource.Type)
-			log.Output("BinMgrID:", resource.BinMgrID)
-		}
-		log.Output("")
-	}
 }
 
 func printProjectsStats(projects *[]Project) {
@@ -525,8 +535,14 @@ func printProjectsStats(projects *[]Project) {
 		log.Output()
 		return
 	}
-	for index, project := range *projects {
-		log.Output("Project: ", index+1)
+	loopRange := len(*projects)
+	if loopRange > displayLimit {
+		loopRange = displayLimit
+	}
+	actualProjectsCount := len(*projects)
+	for i := 0; i < loopRange; i++ {
+		project := (*projects)[i]
+		log.Output("Project: ", i+1)
 		log.Output("Name: ", project.DisplayName)
 		log.Output("Key: ", project.ProjectKey)
 		if project.Description != "" {
@@ -536,6 +552,10 @@ func printProjectsStats(projects *[]Project) {
 		}
 		log.Output()
 	}
+	if actualProjectsCount > displayLimit {
+		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more projects, try JSON format", actualProjectsCount-displayLimit)))
+	}
+	log.Output()
 }
 
 func printJPDsStats(jpdList *[]JPD) {
@@ -545,8 +565,14 @@ func printJPDsStats(jpdList *[]JPD) {
 		log.Output()
 		return
 	}
-	for index, jpd := range *jpdList {
-		log.Output("JPD: ", index+1)
+	loopRange := len(*jpdList)
+	if loopRange > displayLimit {
+		loopRange = displayLimit
+	}
+	actualProjectsCount := len(*jpdList)
+	for i := 0; i < loopRange; i++ {
+		jpd := (*jpdList)[i]
+		log.Output("JPD: ", i+1)
 		log.Output("Name: ", jpd.Name)
 		log.Output("URL: ", jpd.URL)
 		log.Output("Status: ", jpd.Status.Code)
@@ -554,13 +580,31 @@ func printJPDsStats(jpdList *[]JPD) {
 		log.Output("Local: ", jpd.Local)
 		log.Output()
 	}
+	if actualProjectsCount > displayLimit {
+		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more JPDs, try JSON format", actualProjectsCount-displayLimit)))
+	}
 }
 
 func printErrorMessage(apiError *clientStats.APIError) {
+	_, ok := needAdminTokenMap[apiError.Product]
+	Suggestion := ""
+	if apiError.StatusCode >= 400 && apiError.StatusCode < 500 && ok {
+		Suggestion = "Need Admin Token"
+		needAdminToken = true
+	} else {
+		Suggestion = apiError.Suggestion
+	}
 	log.Output("---", apiError.Product, "---")
 	log.Output("StatusCode - ", apiError.StatusCode)
 	log.Output("StatusText - ", apiError.StatusText)
-	log.Output("Suggestion - ", apiError.Suggestion)
+	log.Output("Suggestion - ", Suggestion)
+	log.Output()
+}
+
+func printGenericError(err *clientStats.GenericError) {
+	log.Output("---", err.Product, "---")
+	log.Output("Error:  ", err.Err.Error())
+	log.Output()
 }
 
 func GetArtifactoryStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
@@ -572,43 +616,15 @@ func GetArtifactoryStats(client *httpclient.HttpClient, serverUrl string, httpCl
 	if err := json.Unmarshal(body, &stats); err != nil {
 		return nil, fmt.Errorf("error parsing Artifactory JSON: %w", err)
 	}
-	return &stats, nil
-}
 
-func GetRepositoriesStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetRepositoriesStats(client, serverUrl, httpClientDetails)
+	body, err = clientStats.GetRepositoriesStats(client, serverUrl, httpClientDetails)
 	if err != nil {
 		return nil, err
 	}
-	var repos []RepositoryDetails
-	if err := json.Unmarshal(body, &repos); err != nil {
+	if err := json.Unmarshal(body, &stats.RepositoriesDetails); err != nil {
 		return nil, fmt.Errorf("error parsing repositories JSON: %w", err)
 	}
-	return &repos, nil
-}
-
-func GetXrayPolicies(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetXrayPolicies(client, serverUrl, httpClientDetails)
-	if err != nil {
-		return nil, err
-	}
-	var policies []XrayPolicy
-	if err := json.Unmarshal(body, &policies); err != nil {
-		return nil, fmt.Errorf("error parsing policies JSON: %w", err)
-	}
-	return &policies, nil
-}
-
-func GetXrayWatches(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
-	body, err := clientStats.GetXrayWatches(client, serverUrl, httpClientDetails)
-	if err != nil {
-		return nil, err
-	}
-	var watches []XrayWatch
-	if err := json.Unmarshal(body, &watches); err != nil {
-		return nil, fmt.Errorf("error parsing Watches JSON: %w", err)
-	}
-	return &watches, nil
+	return &stats, nil
 }
 
 func GetProjectsStats(client *httpclient.HttpClient, serverUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {

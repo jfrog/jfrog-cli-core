@@ -110,12 +110,12 @@ github.com/jedib0t/go-pretty/v6 v6.6.8 h1:JnnzQeRz2bACBobIaa/r+nqjvws4yEhcmaZ4n1
 github.com/jedib0t/go-pretty/v6 v6.6.8/go.mod h1:YwC5CE4fJ1HFUDeivSV1r//AmANFHyqczZk+U6BDALU=
 github.com/jfrog/archiver/v3 v3.6.1 h1:LOxnkw9pOn45DzCbZNFV6K0+6dCsQ0L8mR3ZcujO5eI=
 github.com/jfrog/archiver/v3 v3.6.1/go.mod h1:VgR+3WZS4N+i9FaDwLZbq+jeU4B4zctXL+gL4EMzfLw=
-github.com/jfrog/build-info-go v1.10.17 h1:wnVd9KkyFGQgNL+oU1wXyJB7/Ui9O/MqUnNKUMsyoRw=
-github.com/jfrog/build-info-go v1.10.17/go.mod h1:szdz9+WzB7+7PGnILLUgyY+OF5qD5geBT7UGNIxibyw=
+github.com/jfrog/build-info-go v1.8.9-0.20250910075402-a0c1a53e465a h1:cKO89K5ciCPImTMTdEePz/wvPJVIPwIOK3G2zXv1ITE=
+github.com/jfrog/build-info-go v1.8.9-0.20250910075402-a0c1a53e465a/go.mod h1:szdz9+WzB7+7PGnILLUgyY+OF5qD5geBT7UGNIxibyw=
 github.com/jfrog/gofrog v1.7.6 h1:QmfAiRzVyaI7JYGsB7cxfAJePAZTzFz0gRWZSE27c6s=
 github.com/jfrog/gofrog v1.7.6/go.mod h1:ntr1txqNOZtHplmaNd7rS4f8jpA5Apx8em70oYEe7+4=
-github.com/jfrog/jfrog-client-go v1.54.7 h1:S1geo9T5ZCAb7EkXSv+NJ0K8+yhDsxlrybHTosCilIg=
-github.com/jfrog/jfrog-client-go v1.54.7/go.mod h1:cOy7Pn34bGtjp0eWHADTRJG5Er0qVnJIz04u+NGEpcQ=
+github.com/jfrog/jfrog-client-go v1.54.8-0.20250915095642-2bfe57d4024b h1:+DpINXngfb4nTYF+euZLY5+5JFJe2/AUHKgZca/mMuE=
+github.com/jfrog/jfrog-client-go v1.54.8-0.20250915095642-2bfe57d4024b/go.mod h1:N600vg2QEPUXVr76+EPhGsU7pLphrbP8YG4gWbNTss8=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
@@ -230,8 +230,8 @@ github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSW
 github.com/terminalstatic/go-xsd-validate v0.1.6 h1:TenYeQ3eY631qNi1/cTmLH/s2slHPRKTTHT+XSHkepo=
 github.com/terminalstatic/go-xsd-validate v0.1.6/go.mod h1:18lsvYFofBflqCrvo1umpABZ99+GneNTw2kEEc8UPJw=
 github.com/ulikunitz/xz v0.5.8/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
-github.com/ulikunitz/xz v0.5.12 h1:37Nm15o69RwBkXM0J6A5OlE67RZTfzUxTj8fB3dfcsc=
-github.com/ulikunitz/xz v0.5.12/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
+github.com/ulikunitz/xz v0.5.14 h1:uv/0Bq533iFdnMHZdRBTOlaNMdb1+ZxXIlHDZHIHcvg=
+github.com/ulikunitz/xz v0.5.14/go.mod h1:nbz6k7qbPmH4IRqmfOplQw/tblSgqTqBwxkY0oWt/14=
 github.com/urfave/cli v1.22.17 h1:SYzXoiPfQjHBbkYxbew5prZHS1TOLT3ierW8SYLqtVQ=
 github.com/urfave/cli v1.22.17/go.mod h1:b0ht0aqgH/6pBYzzxURyrM4xXNgsoT/n2ZzwQiEhNVo=
 github.com/vbauerster/mpb/v8 v8.10.2 h1:2uBykSHAYHekE11YvJhKxYmLATKHAGorZwFlyNw4hHM=

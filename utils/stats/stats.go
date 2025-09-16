@@ -163,8 +163,6 @@ var needAdminTokenMap = map[string]bool{
 	"JPD":      true,
 }
 
-var needAdminToken = false
-
 func GetStats(outputFormat string, product string, accessToken string, serverId string) error {
 	serverDetails, err := config.GetSpecificConfig(serverId, true, false)
 	if err != nil {
@@ -186,63 +184,49 @@ func GetStats(outputFormat string, product string, accessToken string, serverId 
 
 	serverUrl := serverDetails.GetUrl()
 
-	var allResults []interface{}
-
-	projectsCount := 0
-
-	productOrder := []string{"rt", "jpd", "pr", "rb"}
+	allResultsMap := make(map[string]interface{})
 
 	if product != "" {
 		if commandFunc, ok := commandMap[product]; ok {
-			results, err := GetStatsForProduct(commandFunc, client, serverUrl, httpClientDetails)
-			if err != nil {
-				allResults = append(allResults, err)
-			} else {
-				allResults = append(allResults, results)
+			allResultsMap[product] = GetStatsForProduct(commandFunc, client, serverUrl, httpClientDetails)
+			if product == "rt" {
+				allResultsMap["pj"] = GetStatsForProduct(commandMap["pj"], client, serverUrl, httpClientDetails)
+				updateProjectInArtifactory(allResultsMap)
+				delete(allResultsMap, "pj")
 			}
 		} else {
 			return fmt.Errorf("unknown product: %s", product)
 		}
 	} else {
-		for _, productName := range productOrder {
-			if commandFunc, ok := commandMap[productName]; ok {
-				results, err := GetStatsForProduct(commandFunc, client, serverUrl, httpClientDetails)
-				if productName == "pr" && results != nil {
-					projects := results.(*[]Project)
-					projectsCount = len(*projects)
-				} else if productName == "rt" && results != nil {
-					artifactoryInfo := results.(*ArtifactoryInfo)
-					artifactoryInfo.ProjectsCount = projectsCount
-					allResults = append(allResults, artifactoryInfo)
-					continue
-				}
-				if err != nil {
-					allResults = append(allResults, err)
-				} else {
-					allResults = append(allResults, results)
-				}
-			}
+		for product, productAPI := range commandMap {
+			allResultsMap[product] = GetStatsForProduct(productAPI, client, serverUrl, httpClientDetails)
 		}
+		updateProjectInArtifactory(allResultsMap)
 	}
-	return printAllResults(allResults, outputFormat)
+
+	return printAllResults(allResultsMap, outputFormat)
 }
 
-func printAllResults(results []interface{}, outputFormat string) error {
-	for _, result := range results {
-		err := NewGenericResultsWriter(result, outputFormat).Print()
-		if err != nil {
-			log.Error("Failed to print result:", err)
+func printAllResults(results map[string]interface{}, outputFormat string) error {
+	productOrder := []string{"rt", "jpd", "pj", "rb"}
+	for _, product := range productOrder {
+		result, ok := results[product]
+		if ok {
+			err := NewGenericResultsWriter(result, outputFormat).Print()
+			if err != nil {
+				log.Error("Failed to print result:", err)
+			}
 		}
 	}
 	return nil
 }
 
-func GetStatsForProduct(commandAPI StatsFunc, client *httpclient.HttpClient, artifactoryUrl string, httpClientDetails httputils.HttpClientDetails) (interface{}, error) {
+func GetStatsForProduct(commandAPI StatsFunc, client *httpclient.HttpClient, artifactoryUrl string, httpClientDetails httputils.HttpClientDetails) interface{} {
 	body, err := commandAPI(client, artifactoryUrl, httpClientDetails)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return body, nil
+	return body
 }
 
 func (rw *GenericResultsWriter) Print() error {
@@ -312,14 +296,10 @@ func (rw *GenericResultsWriter) printDashboard() error {
 
 func printArtifactoryDashboard(stats *ArtifactoryInfo) {
 	pterm.Println("📦 Artifactory Summary")
-	projectCount := pterm.LightCyan(stats.ProjectsCount)
-	if stats.BinariesSummary.BinariesCount == string("0") && needAdminToken {
-		projectCount = pterm.LightRed("No Admin Token")
-	}
 
 	summaryTableData := pterm.TableData{
 		{"Metric", "Value"},
-		{"Total Projects", projectCount},
+		{"Total Projects", pterm.LightCyan(stats.ProjectsCount)},
 		{"Total Binaries", pterm.LightCyan(stats.BinariesSummary.BinariesCount)},
 		{"Total Binaries Size", pterm.LightCyan(stats.BinariesSummary.BinariesSize)},
 		{"Total Artifacts ", pterm.LightCyan(stats.BinariesSummary.ArtifactsCount)},
@@ -330,9 +310,9 @@ func printArtifactoryDashboard(stats *ArtifactoryInfo) {
 
 	repoTypeCounts := make(map[string]int)
 
-	for _, repo := range stats.RepositoriesSummaryList {
-		if repo.RepoKey != "TOTAL" && repo.RepoType != "NA" {
-			repoTypeCounts[repo.RepoType]++
+	for _, repo := range stats.RepositoriesDetails {
+		if repo.Type != "TOTAL" && repo.Type != "NA" {
+			repoTypeCounts[repo.Type]++
 		}
 	}
 
@@ -366,7 +346,7 @@ func printProjectsDashboard(projects *[]Project) {
 
 	pterm.Print(trimmedTable)
 	if actualProjectsCount > displayLimit {
-		pterm.Println(pterm.Yellow(fmt.Sprintf("\n...and %d more projects.", actualProjectsCount-displayLimit)))
+		pterm.Println(pterm.Yellow(fmt.Sprintf("\n...and %d more projects. Refer JSON output format for complete list.", actualProjectsCount-displayLimit)))
 	}
 	pterm.Print("\n")
 }
@@ -401,7 +381,7 @@ func printJPDsDashboard(jpdList *[]JPD) {
 	pterm.Print(strings.TrimSuffix(tableString, "\n"))
 
 	if actualCount > displayLimit {
-		pterm.Print(pterm.Yellow(fmt.Sprintf("\n...and %d more JPDs.\n", actualCount-displayLimit)))
+		pterm.Print(pterm.Yellow(fmt.Sprintf("\n...and %d more JPDs. Refer JSON output format for complete list.\n", actualCount-displayLimit)))
 	}
 	pterm.Print("\n\n")
 }
@@ -434,7 +414,7 @@ func printReleaseBundlesDashboard(rbResponse *ReleaseBundleResponse) {
 	pterm.Print(strings.TrimSuffix(tableString, "\n"))
 
 	if actualCount > displayLimit {
-		pterm.Print(pterm.Yellow(fmt.Sprintf("\n...and %d more release bundles.\n", actualCount-displayLimit)))
+		pterm.Print(pterm.Yellow(fmt.Sprintf("\n...and %d more release bundles. Refer JSON output format for complete list.\n", actualCount-displayLimit)))
 	}
 	pterm.Print("\n\n")
 }
@@ -444,7 +424,6 @@ func printErrorDashboard(apiError *clientStats.APIError) {
 	Suggestion := ""
 	if apiError.StatusCode >= 400 && apiError.StatusCode < 500 && ok {
 		Suggestion = "Need Admin Token"
-		needAdminToken = true
 	} else {
 		Suggestion = apiError.Suggestion
 	}
@@ -508,23 +487,31 @@ func printReleaseBundlesSimple(rbResponse *ReleaseBundleResponse) {
 		log.Output()
 	}
 	if actualProjectsCount > displayLimit {
-		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more release bundles, try JSON format", actualProjectsCount-displayLimit)))
+		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more release bundles, try JSON format for complete list", actualProjectsCount-displayLimit)))
 	}
 	log.Output()
 }
 
 func printArtifactoryStats(stats *ArtifactoryInfo) {
-	projectCount := pterm.Normal(stats.ProjectsCount)
-	if stats.ProjectsCount == 0 && needAdminToken {
-		projectCount = pterm.Normal("No Admin Token")
-	}
 	log.Output("--- Artifactory Statistics ---")
-	log.Output("Total Projects: ", projectCount)
+	log.Output("Total Projects: ", stats.ProjectsCount)
 	log.Output("Total No of Binaries: ", stats.BinariesSummary.BinariesCount)
 	log.Output("Total Binaries Size: ", stats.BinariesSummary.BinariesSize)
 	log.Output("Total No of Artifacts: ", stats.BinariesSummary.ArtifactsCount)
 	log.Output("Total Artifacts Size: ", stats.BinariesSummary.ArtifactsSize)
 	log.Output("Storage Type: ", stats.FileStoreSummary.StorageType)
+	log.Output()
+
+	repoTypeCounts := make(map[string]int)
+	for _, repo := range stats.RepositoriesDetails {
+		if repo.Type != "TOTAL" && repo.Type != "NA" {
+			repoTypeCounts[repo.Type]++
+		}
+	}
+	log.Output("--- Repositories Details ---")
+	for repoType, count := range repoTypeCounts {
+		log.Output(repoType, ": ", count)
+	}
 	log.Output()
 }
 
@@ -553,7 +540,7 @@ func printProjectsStats(projects *[]Project) {
 		log.Output()
 	}
 	if actualProjectsCount > displayLimit {
-		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more projects, try JSON format", actualProjectsCount-displayLimit)))
+		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more projects, try JSON format for complete list", actualProjectsCount-displayLimit)))
 	}
 	log.Output()
 }
@@ -581,7 +568,7 @@ func printJPDsStats(jpdList *[]JPD) {
 		log.Output()
 	}
 	if actualProjectsCount > displayLimit {
-		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more JPDs, try JSON format", actualProjectsCount-displayLimit)))
+		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more JPDs, try JSON format for complete list", actualProjectsCount-displayLimit)))
 	}
 }
 
@@ -590,7 +577,6 @@ func printErrorMessage(apiError *clientStats.APIError) {
 	Suggestion := ""
 	if apiError.StatusCode >= 400 && apiError.StatusCode < 500 && ok {
 		Suggestion = "Need Admin Token"
-		needAdminToken = true
 	} else {
 		Suggestion = apiError.Suggestion
 	}
@@ -661,4 +647,15 @@ func GetReleaseBundlesStats(client *httpclient.HttpClient, serverUrl string, htt
 		return nil, fmt.Errorf("error parsing ReleaseBundles JSON: %w", err)
 	}
 	return &releaseBundles, nil
+}
+
+func updateProjectInArtifactory(allResultsMap map[string]interface{}) {
+	projectsCount := 0
+	if allResultsMap["pj"] != nil && allResultsMap["rt"] != nil {
+		projects := allResultsMap["pj"].(*[]Project)
+		projectsCount = len(*projects)
+		artifactoryInfo := allResultsMap["rt"].(*ArtifactoryInfo)
+		artifactoryInfo.ProjectsCount = projectsCount
+		allResultsMap["rt"] = artifactoryInfo
+	}
 }

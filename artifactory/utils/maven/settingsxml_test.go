@@ -27,8 +27,10 @@ func TestNewSettingsXmlManager(t *testing.T) {
 
 	// Set up a test home directory
 	originalHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", originalHome)
-	os.Setenv("HOME", tempDir)
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
+	_ = os.Setenv("HOME", tempDir)
 
 	// Test with non-existing settings file
 	manager, err := NewSettingsXmlManager()
@@ -168,8 +170,7 @@ func TestUpdateServerCredentials_NewServer(t *testing.T) {
 		},
 	}
 
-	err := manager.updateServerCredentials("testuser", "testpass")
-	assert.NoError(t, err, "Expected no error")
+	manager.updateServerCredentials("testuser", "testpass")
 
 	if len(manager.settings.Servers) != 1 {
 		t.Errorf("Expected 1 server, got %d", len(manager.settings.Servers))
@@ -202,8 +203,7 @@ func TestUpdateServerCredentials_ExistingServer(t *testing.T) {
 		},
 	}
 
-	err := manager.updateServerCredentials("newuser", "newpass")
-	assert.NoError(t, err, "Expected no error")
+	manager.updateServerCredentials("newuser", "newpass")
 
 	if len(manager.settings.Servers) != 1 {
 		t.Errorf("Expected 1 server, got %d", len(manager.settings.Servers))
@@ -310,8 +310,10 @@ func TestConfigureArtifactoryMirror_NoCredentials(t *testing.T) {
 
 	// Set up a test home directory
 	originalHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", originalHome)
-	os.Setenv("HOME", tempDir)
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+	}()
+	_ = os.Setenv("HOME", tempDir)
 
 	manager, err := NewSettingsXmlManager()
 	assert.NoError(t, err, "Failed to create manager")
@@ -557,8 +559,7 @@ func TestConfigureArtifactoryDeployment(t *testing.T) {
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure deployment
-	err = manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
-	assert.NoError(t, err, "Failed to configure deployment")
+	manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
 
 	// Write settings for this isolation test (helper function doesn't write)
 	err = manager.writeSettingsToFile()
@@ -606,8 +607,7 @@ func TestDeploymentProfile_AltDeploymentRepository(t *testing.T) {
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure deployment using proper structs
-	err = manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
-	assert.NoError(t, err, "Failed to configure deployment")
+	manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
 
 	// Write settings for this isolation test (helper function doesn't write)
 	err = manager.writeSettingsToFile()

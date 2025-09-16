@@ -20,6 +20,8 @@ func GetCliLogLevel() log.LevelType {
 		return log.WARN
 	case "DEBUG":
 		return log.DEBUG
+	case "VERBOSE":
+		return log.VERBOSE
 	default:
 		return log.INFO
 	}

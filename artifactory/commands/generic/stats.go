@@ -627,11 +627,15 @@ func (ss Stats) GetArtifactoryStats(serverUrl string) (interface{}, error) {
 }
 
 func (ss Stats) GetProjectsStats(serverUrl string) (interface{}, error) {
-	projects, err := ss.AccessManager.GetProjectsStats()
+	body, err := ss.AccessManager.GetProjectsStats()
 	if err != nil {
 		return nil, err
 	}
-	return projects, nil
+	var projects []Project
+	if err := json.Unmarshal(body, &projects); err != nil {
+		return nil, fmt.Errorf("error parsing Projects JSON: %w", err)
+	}
+	return &projects, nil
 }
 
 func (ss Stats) GetJPDsStats(serverUrl string) (interface{}, error) {

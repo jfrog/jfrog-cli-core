@@ -6,42 +6,21 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	v1 "github.com/apache/camel-k/v2/pkg/apis/camel/v1"
+	"github.com/apache/camel-k/v2/pkg/util/maven"
 )
-
-// Settings represents the Maven settings.xml structure
-type Settings struct {
-	XMLName           xml.Name
-	XMLNs             string   `xml:"xmlns,attr"`
-	XMLNsXsi          string   `xml:"xmlns:xsi,attr"`
-	XsiSchemaLocation string   `xml:"xsi:schemaLocation,attr"`
-	LocalRepository   string   `xml:"localRepository"`
-	Servers           []Server `xml:"servers>server,omitempty"`
-	Mirrors           []Mirror `xml:"mirrors>mirror,omitempty"`
-}
-
-// Mirror represents a Maven mirror configuration
-type Mirror struct {
-	ID       string `xml:"id"`
-	Name     string `xml:"name,omitempty"`
-	URL      string `xml:"url"`
-	MirrorOf string `xml:"mirrorOf"`
-}
-
-// Server represents a Maven server configuration with credentials
-type Server struct {
-	XMLName  xml.Name `xml:"server"`
-	ID       string   `xml:"id,omitempty"`
-	Username string   `xml:"username,omitempty"`
-	Password string   `xml:"password,omitempty"`
-}
 
 // ArtifactoryMirrorID is the ID used for the Artifactory mirror.
 const ArtifactoryMirrorID = "artifactory-mirror"
 
+// ArtifactoryDeployProfileID is the ID used for the Artifactory deployment profile.
+const ArtifactoryDeployProfileID = "artifactory-deploy"
+
 // SettingsXmlManager manages the maven settings file (`settings.xml`).
 type SettingsXmlManager struct {
 	path     string
-	settings Settings
+	settings maven.Settings
 }
 
 // NewSettingsXmlManager creates a new SettingsXmlManager instance.
@@ -70,7 +49,7 @@ func (sxm *SettingsXmlManager) loadSettings() error {
 	if err != nil {
 		if os.IsNotExist(err) {
 			// If file does not exist, initialize with empty settings
-			sxm.settings = Settings{
+			sxm.settings = maven.Settings{
 				XMLName: xml.Name{Local: "settings"},
 			}
 			return nil
@@ -86,32 +65,110 @@ func (sxm *SettingsXmlManager) loadSettings() error {
 	return nil
 }
 
-// ConfigureArtifactoryMirror updates or adds the Artifactory mirror and its credentials in the settings.
-func (sxm *SettingsXmlManager) ConfigureArtifactoryMirror(artifactoryUrl, repoName, username, password string) error {
+// configureArtifactoryMirror updates or adds the Artifactory mirror in the settings.
+func (sxm *SettingsXmlManager) configureArtifactoryMirror(repoUrl, repoName string) error {
 	// Find or create the mirror and update it with the provided details
-	if err := sxm.updateMirror(artifactoryUrl, repoName); err != nil {
-		return err
+	return sxm.updateMirror(repoUrl, repoName)
+}
+
+// configureArtifactoryDeployment configures Maven to deploy/push artifacts to Artifactory by default
+// This adds a profile with altDeploymentRepository properties that override any pom.xml distributionManagement
+// Uses the same server credentials as the mirror configuration (artifactory-mirror)
+func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) error {
+	// Create deployment profile with Maven Deploy Plugin properties using camel-k structs
+	// Source: apache/maven-deploy-plugin/src/main/java/org/apache/maven/plugins/deploy/DeployMojo.java
+	altDeploymentRepo := fmt.Sprintf("%s::default::%s", ArtifactoryMirrorID, repoUrl)
+
+	// Create deployment profile with auto-activation
+	deployProfile := maven.Profile{
+		ID: ArtifactoryDeployProfileID,
+		Properties: &v1.Properties{
+			"altDeploymentRepository": altDeploymentRepo,
+		},
+		Activation: &maven.Activation{
+			ActiveByDefault: true, // Auto-activate this profile
+		},
 	}
 
-	// Update server credentials if needed
-	if username != "" && password != "" {
-		if err := sxm.updateServerCredentials(username, password); err != nil {
-			return err
+	// Find if the profile already exists and update it, or add new one
+	var foundProfile bool
+	for i, profile := range sxm.settings.Profiles {
+		if profile.ID == ArtifactoryDeployProfileID {
+			// Update existing profile - preserve existing properties
+			if profile.Properties == nil {
+				profile.Properties = &v1.Properties{}
+			}
+			// Set/update only our deployment property, preserve others
+			(*profile.Properties)["altDeploymentRepository"] = altDeploymentRepo
+
+			// Set activation if not already set
+			if profile.Activation == nil {
+				profile.Activation = &maven.Activation{
+					ActiveByDefault: true,
+				}
+			} else {
+				profile.Activation.ActiveByDefault = true
+			}
+
+			sxm.settings.Profiles[i] = profile
+			foundProfile = true
+			break
 		}
 	}
 
-	// Write the updated settings back to the settings.xml file
+	if !foundProfile {
+		// Add the new deployment profile with Properties and Activation
+		sxm.settings.Profiles = append(sxm.settings.Profiles, deployProfile)
+	}
+
+	return nil
+}
+
+// ConfigureArtifactoryRepository configures both downloading and deployment to Artifactory
+// This is the main public API that sets up complete Artifactory integration using the same repository
+// for both download (via mirrors) and deployment (via altDeploymentRepository)
+func (sxm *SettingsXmlManager) ConfigureArtifactoryRepository(artifactoryUrl, repoName, username, password string) error {
+	// Load settings once at the beginning
+	err := sxm.loadSettings()
+	if err != nil {
+		return fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	// Build repository URL once for both mirror and deployment
+	repoUrl := strings.TrimRight(artifactoryUrl, "/") + "/" + repoName
+
+	// Set server credentials once (used by both mirror and deployment)
+	if username != "" && password != "" {
+		err = sxm.updateServerCredentials(username, password)
+		if err != nil {
+			return fmt.Errorf("failed to configure server credentials: %w", err)
+		}
+	}
+
+	// Configure download mirror (without credentials)
+	err = sxm.configureArtifactoryMirror(repoUrl, repoName)
+	if err != nil {
+		return fmt.Errorf("failed to configure Artifactory download mirror: %w", err)
+	}
+
+	// Configure deployment to the same repository (without credentials)
+	err = sxm.configureArtifactoryDeployment(repoUrl)
+	if err != nil {
+		return fmt.Errorf("failed to configure Artifactory deployment: %w", err)
+	}
+
+	// Write settings once at the end
 	return sxm.writeSettingsToFile()
 }
 
 // updateMirror finds the existing mirror or creates a new one and updates it with the provided details.
-func (sxm *SettingsXmlManager) updateMirror(artifactoryUrl, repoName string) error {
+func (sxm *SettingsXmlManager) updateMirror(repoUrl, repoName string) error {
 	// Create the new mirror with the provided details
-	updatedMirror := Mirror{
+	updatedMirror := maven.Mirror{
 		ID:       ArtifactoryMirrorID,
 		Name:     repoName,
 		MirrorOf: "*",
-		URL:      strings.TrimRight(artifactoryUrl, "/") + "/" + repoName,
+		URL:      repoUrl,
 	}
 
 	// Find if the mirror already exists
@@ -136,7 +193,7 @@ func (sxm *SettingsXmlManager) updateMirror(artifactoryUrl, repoName string) err
 // updateServerCredentials updates or adds server credentials in the settings.
 func (sxm *SettingsXmlManager) updateServerCredentials(username, password string) error {
 	// Create the new server with the provided credentials
-	updatedServer := Server{
+	updatedServer := v1.Server{
 		ID:       ArtifactoryMirrorID,
 		Username: username,
 		Password: password,

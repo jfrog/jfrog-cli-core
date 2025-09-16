@@ -31,16 +31,22 @@ type SettingsXmlManager struct {
 // NewSettingsXmlManager creates a new SettingsXmlManager instance.
 // It automatically loads the existing settings from the `settings.xml` file if it exists.
 func NewSettingsXmlManager() (*SettingsXmlManager, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user home directory: %w", err)
+	// Check HOME environment variable first (for cross-platform compatibility, especially in tests)
+	homeDir := os.Getenv("HOME")
+	if homeDir == "" {
+		// Fall back to OS-specific user home directory
+		var err error
+		homeDir, err = os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		}
 	}
 	manager := &SettingsXmlManager{
 		path: filepath.Join(homeDir, ".m2", "settings.xml"),
 	}
 
 	// Load existing settings from file
-	err = manager.loadSettings()
+	err := manager.loadSettings()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load settings from %s: %w", manager.path, err)
 	}

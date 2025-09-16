@@ -76,53 +76,76 @@ func (sxm *SettingsXmlManager) configureArtifactoryMirror(repoUrl, repoName stri
 	return sxm.updateMirror(repoUrl, repoName)
 }
 
-// configureArtifactoryDeployment configures Maven to deploy/push artifacts to Artifactory by default
-// This adds a profile with altDeploymentRepository properties that override any pom.xml distributionManagement
-// Uses the same server credentials as the mirror configuration (artifactory-mirror)
-func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) error {
-	// Create deployment profile with Maven Deploy Plugin properties using camel-k structs
-	// Source: apache/maven-deploy-plugin/src/main/java/org/apache/maven/plugins/deploy/DeployMojo.java
-	altDeploymentRepo := fmt.Sprintf("%s::default::%s", ArtifactoryMirrorID, repoUrl)
+// buildAltDeploymentRepoString creates the altDeploymentRepository string for Maven Deploy Plugin
+func buildAltDeploymentRepoString(repoUrl string) string {
+	return fmt.Sprintf("%s::default::%s", ArtifactoryMirrorID, repoUrl)
+}
 
-	// Create deployment profile with auto-activation
-	deployProfile := maven.Profile{
+// findDeploymentProfileIndex finds the index of the deployment profile in settings.Profiles
+// Returns -1 if not found
+func (sxm *SettingsXmlManager) findDeploymentProfileIndex() int {
+	for i, profile := range sxm.settings.Profiles {
+		if profile.ID == ArtifactoryDeployProfileID {
+			return i
+		}
+	}
+	return -1
+}
+
+// updateExistingDeploymentProfile updates an existing deployment profile at the given index
+func (sxm *SettingsXmlManager) updateExistingDeploymentProfile(profileIndex int, altDeploymentRepo string) {
+	profile := sxm.settings.Profiles[profileIndex]
+
+	// Initialize properties if nil
+	if profile.Properties == nil {
+		profile.Properties = &mavenv1.Properties{}
+	}
+
+	// Set/update deployment property (preserve others)
+	(*profile.Properties)[AltDeploymentRepositoryProperty] = altDeploymentRepo
+
+	// Set activation
+	if profile.Activation == nil {
+		profile.Activation = &maven.Activation{
+			ActiveByDefault: true,
+		}
+	} else {
+		profile.Activation.ActiveByDefault = true
+	}
+
+	// Update the profile in settings
+	sxm.settings.Profiles[profileIndex] = profile
+}
+
+// createNewDeploymentProfile creates a new deployment profile
+func createNewDeploymentProfile(altDeploymentRepo string) maven.Profile {
+	return maven.Profile{
 		ID: ArtifactoryDeployProfileID,
 		Properties: &mavenv1.Properties{
 			AltDeploymentRepositoryProperty: altDeploymentRepo,
 		},
 		Activation: &maven.Activation{
-			ActiveByDefault: true, // Auto-activate this profile
+			ActiveByDefault: true,
 		},
 	}
+}
 
-	// Find if the profile already exists and update it, or add new one
-	var foundProfile bool
-	for i, profile := range sxm.settings.Profiles {
-		if profile.ID == ArtifactoryDeployProfileID {
-			// Update existing profile - preserve existing properties
-			if profile.Properties == nil {
-				profile.Properties = &mavenv1.Properties{}
-			}
-			// Set/update only our deployment property, preserve others
-			(*profile.Properties)[AltDeploymentRepositoryProperty] = altDeploymentRepo
+// configureArtifactoryDeployment configures Maven to deploy/push artifacts to Artifactory by default
+// This adds a profile with altDeploymentRepository properties that override any pom.xml distributionManagement
+// Uses the same server credentials as the mirror configuration (artifactory-mirror)
+func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) error {
+	// Build the altDeploymentRepository string for Maven Deploy Plugin
+	// Source: apache/maven-deploy-plugin/src/main/java/org/apache/maven/plugins/deploy/DeployMojo.java
+	altDeploymentRepo := buildAltDeploymentRepoString(repoUrl)
 
-			// Set activation if not already set
-			if profile.Activation == nil {
-				profile.Activation = &maven.Activation{
-					ActiveByDefault: true,
-				}
-			} else {
-				profile.Activation.ActiveByDefault = true
-			}
-
-			sxm.settings.Profiles[i] = profile
-			foundProfile = true
-			break
-		}
-	}
-
-	if !foundProfile {
-		// Add the new deployment profile with Properties and Activation
+	// Find existing profile or create new one
+	profileIndex := sxm.findDeploymentProfileIndex()
+	if profileIndex >= 0 {
+		// Update existing profile
+		sxm.updateExistingDeploymentProfile(profileIndex, altDeploymentRepo)
+	} else {
+		// Create and add new profile
+		deployProfile := createNewDeploymentProfile(altDeploymentRepo)
 		sxm.settings.Profiles = append(sxm.settings.Profiles, deployProfile)
 	}
 

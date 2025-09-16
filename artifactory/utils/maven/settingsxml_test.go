@@ -10,15 +10,20 @@ import (
 
 	v1 "github.com/apache/camel-k/v2/pkg/apis/camel/v1"
 	"github.com/apache/camel-k/v2/pkg/util/maven"
+	"github.com/stretchr/testify/assert"
 )
+
+// cleanupTempDir safely removes a temporary directory and checks for errors
+func cleanupTempDir(t *testing.T, tempDir string) {
+	err := os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to cleanup temp directory %s", tempDir)
+}
 
 func TestNewSettingsXmlManager(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	// Set up a test home directory
 	originalHome := os.Getenv("HOME")
@@ -27,19 +32,13 @@ func TestNewSettingsXmlManager(t *testing.T) {
 
 	// Test with non-existing settings file
 	manager, err := NewSettingsXmlManager()
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error creating manager")
 
 	expectedPath := filepath.Join(tempDir, ".m2", "settings.xml")
-	if manager.path != expectedPath {
-		t.Errorf("Expected path %s, got %s", expectedPath, manager.path)
-	}
+	assert.Equal(t, expectedPath, manager.path, "Expected correct path")
 
 	// Should have empty settings initialized
-	if manager.settings.XMLName.Local != "settings" {
-		t.Errorf("Expected XMLName.Local to be 'settings', got %s", manager.settings.XMLName.Local)
-	}
+	assert.Equal(t, "settings", manager.settings.XMLName.Local, "Expected XMLName.Local to be 'settings'")
 }
 
 func TestLoadSettings_NonExistentFile(t *testing.T) {
@@ -48,22 +47,16 @@ func TestLoadSettings_NonExistentFile(t *testing.T) {
 	}
 
 	err := manager.loadSettings()
-	if err != nil {
-		t.Fatalf("Expected no error for non-existent file, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error for non-existent file")
 
-	if manager.settings.XMLName.Local != "settings" {
-		t.Errorf("Expected XMLName.Local to be 'settings', got %s", manager.settings.XMLName.Local)
-	}
+	assert.Equal(t, "settings", manager.settings.XMLName.Local, "Expected XMLName.Local to be 'settings'")
 }
 
 func TestLoadSettings_ExistingFile(t *testing.T) {
 	// Create a temporary settings file
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	settingsContent := `<?xml version="1.0" encoding="UTF-8"?>
@@ -87,52 +80,30 @@ func TestLoadSettings_ExistingFile(t *testing.T) {
 </settings>`
 
 	err = os.WriteFile(settingsPath, []byte(settingsContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to write test settings file: %v", err)
-	}
+	assert.NoError(t, err, "Failed to write test settings file")
 
 	manager := &SettingsXmlManager{path: settingsPath}
 	err = manager.loadSettings()
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error")
 
 	// Verify loaded settings
-	if manager.settings.LocalRepository != "/path/to/local/repo" {
-		t.Errorf("Expected LocalRepository '/path/to/local/repo', got %s", manager.settings.LocalRepository)
-	}
+	assert.Equal(t, "/path/to/local/repo", manager.settings.LocalRepository, "Expected correct LocalRepository")
 
-	if len(manager.settings.Servers) != 1 {
-		t.Errorf("Expected 1 server, got %d", len(manager.settings.Servers))
-	} else {
+	assert.Len(t, manager.settings.Servers, 1, "Expected 1 server")
+	if len(manager.settings.Servers) > 0 {
 		server := manager.settings.Servers[0]
-		if server.ID != "test-server" {
-			t.Errorf("Expected server ID 'test-server', got %s", server.ID)
-		}
-		if server.Username != "testuser" {
-			t.Errorf("Expected username 'testuser', got %s", server.Username)
-		}
-		if server.Password != "testpass" {
-			t.Errorf("Expected password 'testpass', got %s", server.Password)
-		}
+		assert.Equal(t, "test-server", server.ID, "Expected correct server ID")
+		assert.Equal(t, "testuser", server.Username, "Expected correct username")
+		assert.Equal(t, "testpass", server.Password, "Expected correct password")
 	}
 
-	if len(manager.settings.Mirrors) != 1 {
-		t.Errorf("Expected 1 mirror, got %d", len(manager.settings.Mirrors))
-	} else {
+	assert.Len(t, manager.settings.Mirrors, 1, "Expected 1 mirror")
+	if len(manager.settings.Mirrors) > 0 {
 		mirror := manager.settings.Mirrors[0]
-		if mirror.ID != "test-mirror" {
-			t.Errorf("Expected mirror ID 'test-mirror', got %s", mirror.ID)
-		}
-		if mirror.Name != "Test Mirror" {
-			t.Errorf("Expected mirror name 'Test Mirror', got %s", mirror.Name)
-		}
-		if mirror.URL != "http://test.mirror.com" {
-			t.Errorf("Expected mirror URL 'http://test.mirror.com', got %s", mirror.URL)
-		}
-		if mirror.MirrorOf != "*" {
-			t.Errorf("Expected mirror mirrorOf '*', got %s", mirror.MirrorOf)
-		}
+		assert.Equal(t, "test-mirror", mirror.ID, "Expected correct mirror ID")
+		assert.Equal(t, "Test Mirror", mirror.Name, "Expected correct mirror name")
+		assert.Equal(t, "http://test.mirror.com", mirror.URL, "Expected correct mirror URL")
+		assert.Equal(t, "*", mirror.MirrorOf, "Expected correct mirror mirrorOf")
 	}
 }
 
@@ -144,26 +115,15 @@ func TestUpdateMirror_NewMirror(t *testing.T) {
 	}
 
 	err := manager.updateMirror("https://artifactory.example.com/my-repo", "my-repo")
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error")
 
-	if len(manager.settings.Mirrors) != 1 {
-		t.Errorf("Expected 1 mirror, got %d", len(manager.settings.Mirrors))
-	} else {
+	assert.Len(t, manager.settings.Mirrors, 1, "Expected 1 mirror")
+	if len(manager.settings.Mirrors) > 0 {
 		mirror := manager.settings.Mirrors[0]
-		if mirror.ID != ArtifactoryMirrorID {
-			t.Errorf("Expected mirror ID %s, got %s", ArtifactoryMirrorID, mirror.ID)
-		}
-		if mirror.Name != "my-repo" {
-			t.Errorf("Expected mirror name 'my-repo', got %s", mirror.Name)
-		}
-		if mirror.URL != "https://artifactory.example.com/my-repo" {
-			t.Errorf("Expected mirror URL 'https://artifactory.example.com/my-repo', got %s", mirror.URL)
-		}
-		if mirror.MirrorOf != "*" {
-			t.Errorf("Expected mirror mirrorOf '*', got %s", mirror.MirrorOf)
-		}
+		assert.Equal(t, ArtifactoryMirrorID, mirror.ID, "Expected correct mirror ID")
+		assert.Equal(t, "my-repo", mirror.Name, "Expected correct mirror name")
+		assert.Equal(t, "https://artifactory.example.com/my-repo", mirror.URL, "Expected correct mirror URL")
+		assert.Equal(t, "*", mirror.MirrorOf, "Expected correct mirror mirrorOf")
 	}
 }
 
@@ -183,9 +143,7 @@ func TestUpdateMirror_ExistingMirror(t *testing.T) {
 	}
 
 	err := manager.updateMirror("https://new.artifactory.com/new-repo", "new-repo")
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error")
 
 	if len(manager.settings.Mirrors) != 1 {
 		t.Errorf("Expected 1 mirror, got %d", len(manager.settings.Mirrors))
@@ -211,9 +169,7 @@ func TestUpdateServerCredentials_NewServer(t *testing.T) {
 	}
 
 	err := manager.updateServerCredentials("testuser", "testpass")
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error")
 
 	if len(manager.settings.Servers) != 1 {
 		t.Errorf("Expected 1 server, got %d", len(manager.settings.Servers))
@@ -247,9 +203,7 @@ func TestUpdateServerCredentials_ExistingServer(t *testing.T) {
 	}
 
 	err := manager.updateServerCredentials("newuser", "newpass")
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error")
 
 	if len(manager.settings.Servers) != 1 {
 		t.Errorf("Expected 1 server, got %d", len(manager.settings.Servers))
@@ -270,10 +224,8 @@ func TestUpdateServerCredentials_ExistingServer(t *testing.T) {
 func TestWriteSettingsToFile(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	settingsPath := filepath.Join(tempDir, ".m2", "settings.xml")
 
@@ -302,20 +254,15 @@ func TestWriteSettingsToFile(t *testing.T) {
 	}
 
 	err = manager.writeSettingsToFile()
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error")
 
 	// Verify file was created
-	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
-		t.Errorf("Settings file was not created")
-	}
+	_, err = os.Stat(settingsPath)
+	assert.False(t, os.IsNotExist(err), "Settings file was not created")
 
 	// Read and verify file contents
 	content, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("Failed to read settings file: %v", err)
-	}
+	assert.NoError(t, err, "Failed to read settings file")
 
 	contentStr := string(content)
 
@@ -346,9 +293,7 @@ func TestWriteSettingsToFile(t *testing.T) {
 	}
 
 	for _, part := range expectedParts {
-		if !strings.Contains(contentStr, part) {
-			t.Errorf("Settings file should contain '%s'", part)
-		}
+		assert.Contains(t, contentStr, part, "Settings file should contain '%s'", part)
 	}
 }
 
@@ -360,10 +305,8 @@ func TestWriteSettingsToFile(t *testing.T) {
 func TestConfigureArtifactoryMirror_NoCredentials(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	// Set up a test home directory
 	originalHome := os.Getenv("HOME")
@@ -371,14 +314,10 @@ func TestConfigureArtifactoryMirror_NoCredentials(t *testing.T) {
 	os.Setenv("HOME", tempDir)
 
 	manager, err := NewSettingsXmlManager()
-	if err != nil {
-		t.Fatalf("Failed to create manager: %v", err)
-	}
+	assert.NoError(t, err, "Failed to create manager")
 
 	err = manager.configureArtifactoryMirror("https://artifactory.example.com/my-repo", "my-repo")
-	if err != nil {
-		t.Fatalf("Expected no error, got: %v", err)
-	}
+	assert.NoError(t, err, "Expected no error")
 
 	// Verify mirror was added
 	if len(manager.settings.Mirrors) != 1 {
@@ -413,9 +352,7 @@ func TestURLTrimming(t *testing.T) {
 		repoUrl := strings.TrimRight(tc.input, "/") + "/" + tc.repo
 
 		err := manager.updateMirror(repoUrl, tc.repo)
-		if err != nil {
-			t.Fatalf("Expected no error for input %s, got: %v", tc.input, err)
-		}
+		assert.NoError(t, err, "Expected no error for input %s", tc.input)
 
 		if len(manager.settings.Mirrors) == 0 {
 			t.Errorf("Expected mirror to be added for input %s", tc.input)
@@ -435,10 +372,8 @@ func TestURLTrimming(t *testing.T) {
 func TestDataPreservation_RoundTrip(t *testing.T) {
 	// Test that we preserve existing profiles and proxies when adding Artifactory mirror
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 
@@ -486,16 +421,12 @@ func TestDataPreservation_RoundTrip(t *testing.T) {
 </settings>`
 
 	err = os.WriteFile(settingsPath, []byte(originalContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to write original settings file: %v", err)
-	}
+	assert.NoError(t, err, "Failed to write original settings file")
 
 	// Load the settings
 	manager := &SettingsXmlManager{path: settingsPath}
 	err = manager.loadSettings()
-	if err != nil {
-		t.Fatalf("Failed to load settings: %v", err)
-	}
+	assert.NoError(t, err, "Failed to load settings")
 
 	// Verify that existing data was loaded
 	if len(manager.settings.Servers) != 1 {
@@ -513,9 +444,7 @@ func TestDataPreservation_RoundTrip(t *testing.T) {
 
 	// Add Artifactory mirror configuration using main public function
 	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "my-repo", "myuser", "mypass")
-	if err != nil {
-		t.Fatalf("Failed to configure Artifactory repository: %v", err)
-	}
+	assert.NoError(t, err, "Failed to configure Artifactory repository")
 
 	// Verify that both old and new data exists
 	// Note: The actual counts may be higher due to XML processing,
@@ -532,12 +461,8 @@ func TestDataPreservation_RoundTrip(t *testing.T) {
 			hasArtifactoryServer = true
 		}
 	}
-	if !hasExistingServer {
-		t.Error("Existing server not preserved")
-	}
-	if !hasArtifactoryServer {
-		t.Error("Artifactory server not added")
-	}
+	assert.True(t, hasExistingServer, "Existing server not preserved")
+	assert.True(t, hasArtifactoryServer, "Artifactory server not added")
 
 	// Check that we have existing mirror + new artifactory mirror
 	hasExistingMirror := false
@@ -550,12 +475,8 @@ func TestDataPreservation_RoundTrip(t *testing.T) {
 			hasArtifactoryMirror = true
 		}
 	}
-	if !hasExistingMirror {
-		t.Error("Existing mirror not preserved")
-	}
-	if !hasArtifactoryMirror {
-		t.Error("Artifactory mirror not added")
-	}
+	assert.True(t, hasExistingMirror, "Existing mirror not preserved")
+	assert.True(t, hasArtifactoryMirror, "Artifactory mirror not added")
 
 	// Check that we have existing profile + new deployment profile
 	hasExistingProfile := false
@@ -568,12 +489,8 @@ func TestDataPreservation_RoundTrip(t *testing.T) {
 			hasDeploymentProfile = true
 		}
 	}
-	if !hasExistingProfile {
-		t.Error("Existing profile not preserved")
-	}
-	if !hasDeploymentProfile {
-		t.Error("Deployment profile not added")
-	}
+	assert.True(t, hasExistingProfile, "Existing profile not preserved")
+	assert.True(t, hasDeploymentProfile, "Deployment profile not added")
 
 	// Check that proxy is preserved
 	hasExistingProxy := false
@@ -582,15 +499,11 @@ func TestDataPreservation_RoundTrip(t *testing.T) {
 			hasExistingProxy = true
 		}
 	}
-	if !hasExistingProxy {
-		t.Error("Existing proxy not preserved")
-	}
+	assert.True(t, hasExistingProxy, "Existing proxy not preserved")
 
 	// Read the file content and verify it contains the preserved elements
 	finalContent, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("Failed to read final settings file: %v", err)
-	}
+	assert.NoError(t, err, "Failed to read final settings file")
 
 	finalStr := string(finalContent)
 
@@ -637,36 +550,27 @@ func TestCompleteSettingsXml_AllFields_REMOVED(t *testing.T) {
 
 func TestConfigureArtifactoryDeployment(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure deployment
 	err = manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
-	if err != nil {
-		t.Fatalf("Failed to configure deployment: %v", err)
-	}
+	assert.NoError(t, err, "Failed to configure deployment")
 
 	// Write settings for this isolation test (helper function doesn't write)
 	err = manager.writeSettingsToFile()
-	if err != nil {
-		t.Fatalf("Failed to write settings: %v", err)
-	}
+	assert.NoError(t, err, "Failed to write settings")
 
 	// Verify the settings file was created and contains expected XML content
-	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
-		t.Fatal("Settings file was not created")
-	}
+	_, err = os.Stat(settingsPath)
+	assert.False(t, os.IsNotExist(err), "Settings file was not created")
 
 	// Read the raw XML content to verify structure (avoid unmarshaling v1.Properties issue)
 	content, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("Failed to read settings file: %v", err)
-	}
+	assert.NoError(t, err, "Failed to read settings file")
 
 	xmlContent := string(content)
 
@@ -695,31 +599,23 @@ func TestDeploymentProfile_AltDeploymentRepository(t *testing.T) {
 	// These properties are defined in Apache Maven Deploy Plugin:
 	// apache/maven-deploy-plugin/src/main/java/org/apache/maven/plugins/deploy/DeployMojo.java
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure deployment using proper structs
 	err = manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
-	if err != nil {
-		t.Fatalf("Failed to configure deployment: %v", err)
-	}
+	assert.NoError(t, err, "Failed to configure deployment")
 
 	// Write settings for this isolation test (helper function doesn't write)
 	err = manager.writeSettingsToFile()
-	if err != nil {
-		t.Fatalf("Failed to write settings: %v", err)
-	}
+	assert.NoError(t, err, "Failed to write settings")
 
 	// Read the generated XML to verify proper structure
 	content, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("Failed to read settings file: %v", err)
-	}
+	assert.NoError(t, err, "Failed to read settings file")
 
 	xmlContent := string(content)
 
@@ -748,30 +644,23 @@ func TestDeploymentProfile_AltDeploymentRepository(t *testing.T) {
 
 func TestConfigureArtifactoryRepository(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "maven-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
+	assert.NoError(t, err, "Failed to create temp dir")
+	defer cleanupTempDir(t, tempDir)
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure complete Artifactory integration (same repo for download and deploy)
 	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "libs-repo", "user", "pass")
-	if err != nil {
-		t.Fatalf("Failed to configure complete Artifactory: %v", err)
-	}
+	assert.NoError(t, err, "Failed to configure complete Artifactory")
 
 	// Verify the settings file was created and contains expected configuration
-	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
-		t.Fatal("Settings file was not created")
-	}
+	_, err = os.Stat(settingsPath)
+	assert.False(t, os.IsNotExist(err), "Settings file was not created")
 
 	// Read the raw XML content to verify complete integration (avoid unmarshaling v1.Properties issue)
 	content, err := os.ReadFile(settingsPath)
-	if err != nil {
-		t.Fatalf("Failed to read settings file: %v", err)
-	}
+	assert.NoError(t, err, "Failed to read settings file")
 
 	xmlContent := string(content)
 
@@ -795,9 +684,4 @@ func TestConfigureArtifactoryRepository(t *testing.T) {
 			t.Errorf("Expected element '%s' not found in complete integration XML", expected)
 		}
 	}
-
-	t.Logf("✅ Complete Artifactory integration configured successfully!")
-	t.Logf("   - Download mirror: ✅")
-	t.Logf("   - Server credentials: ✅")
-	t.Logf("   - Deployment profile with auto-activation: ✅")
 }

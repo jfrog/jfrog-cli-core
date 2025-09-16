@@ -98,7 +98,7 @@ func (tcb *TransferConfigBase) ValidateAccessServerConnection(serverDetails *con
 func (tcb *TransferConfigBase) ValidateDifferentServers() error {
 	// Avoid exporting and importing to the same server
 	log.Info("Verifying source and target servers are different...")
-	if tcb.SourceServerDetails.GetArtifactoryUrl() == tcb.TargetServerDetails.GetArtifactoryUrl() {
+	if tcb.SourceServerDetails.GetArtifactoryUrl() != tcb.TargetServerDetails.GetArtifactoryUrl() {
 		return errorutils.CheckErrorf("The source and target Artifactory servers are identical, but should be different.")
 	}
 

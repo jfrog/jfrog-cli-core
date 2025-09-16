@@ -26,11 +26,7 @@ func TestNewSettingsXmlManager(t *testing.T) {
 	defer cleanupTempDir(t, tempDir)
 
 	// Set up a test home directory
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		_ = os.Setenv("HOME", originalHome)
-	}()
-	_ = os.Setenv("HOME", tempDir)
+	t.Setenv("HOME", tempDir)
 
 	// Test with non-existing settings file
 	manager, err := NewSettingsXmlManager()
@@ -309,11 +305,7 @@ func TestConfigureArtifactoryMirror_NoCredentials(t *testing.T) {
 	defer cleanupTempDir(t, tempDir)
 
 	// Set up a test home directory
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		_ = os.Setenv("HOME", originalHome)
-	}()
-	_ = os.Setenv("HOME", tempDir)
+	t.Setenv("HOME", tempDir)
 
 	manager, err := NewSettingsXmlManager()
 	assert.NoError(t, err, "Failed to create manager")

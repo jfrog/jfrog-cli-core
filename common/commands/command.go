@@ -11,6 +11,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/usage/visibility"
 	rtClient "github.com/jfrog/jfrog-client-go/artifactory"
 	"github.com/jfrog/jfrog-client-go/artifactory/usage"
+	"github.com/jfrog/jfrog-client-go/jfconnect/services"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
@@ -29,6 +30,9 @@ type Command interface {
 }
 
 func Exec(command Command) error {
+	commandName := command.CommandName()
+	flags := GetContextFlags()
+	CollectMetrics(commandName, flags)
 	channel := make(chan bool)
 	// Triggers the report usage.
 	go reportUsage(command, channel)
@@ -39,10 +43,13 @@ func Exec(command Command) error {
 	return err
 }
 
-// ExecAndThenReportUsage runs the command and then triggers a usage report
-// Is used for commands which don't have the full server details before execution
+// ExecAndThenReportUsage runs the command and then triggers a usage report.
+// Used for commands which don't have the full server details before execution.
 // For example: oidc exchange command, which will get access token only after execution.
 func ExecAndThenReportUsage(cc Command) (err error) {
+	commandName := cc.CommandName()
+	flags := GetContextFlags()
+	CollectMetrics(commandName, flags)
 	if err = cc.Run(); err != nil {
 		return
 	}
@@ -102,8 +109,25 @@ func reportUsage(command Command, channel chan<- bool) {
 	wg.Wait()
 }
 
+// reportUsageToVisibilitySystem sends enhanced metrics to the visibility system
 func reportUsageToVisibilitySystem(command Command, serverDetails *config.ServerDetails) {
-	commandsCountMetric := visibility.NewCommandsCountMetric(command.CommandName())
+	var commandsCountMetric services.VisibilityMetric
+
+	commandName := command.CommandName()
+	metricsData := GetCollectedMetrics(commandName)
+	var visibilityMetricsData *visibility.MetricsData
+	if metricsData != nil {
+		visibilityMetricsData = &visibility.MetricsData{
+			Flags:        metricsData.Flags,
+			Platform:     metricsData.Platform,
+			Architecture: metricsData.Architecture,
+			IsCI:         metricsData.IsCI,
+			CISystem:     metricsData.CISystem,
+			IsContainer:  metricsData.IsContainer,
+		}
+	}
+	commandsCountMetric = visibility.NewCommandsCountMetricWithEnhancedData(commandName, visibilityMetricsData)
+
 	if err := visibility.NewVisibilitySystemManager(serverDetails).SendUsage(commandsCountMetric); err != nil {
 		log.Debug("Visibility System Usage reporting:", err.Error())
 	}

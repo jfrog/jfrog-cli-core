@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jfrog/gofrog/datastructures"
+	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/docs/common"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/urfave/cli"
@@ -367,13 +368,14 @@ func convertBoolFlag(f BoolFlag) cli.Flag {
 	}
 }
 
-// Wrap the base's ActionFunc with our own, while retrieving needed information from the Context.
+// getActionFunc wrap the base's ActionFunc with our own, while retrieving needed information from the Context.
 func getActionFunc(cmd Command) cli.ActionFunc {
 	return func(baseContext *cli.Context) error {
 		pluginContext, err := ConvertContext(baseContext, cmd.Flags...)
 		if err != nil {
 			return err
 		}
+		commands.SetContextFlags(pluginContext.FlagsUsed)
 		return cmd.Action(pluginContext)
 	}
 }
@@ -406,8 +408,15 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 	c.stringFlags = make(map[string]string)
 	c.boolFlags = make(map[string]bool)
 
+	// Collect flag names that were set by user
+	var flagsUsed []string
+
 	// Loop over all plugin's known flags.
 	for _, flag := range originalFlags {
+		if baseContext.IsSet(flag.GetName()) {
+			flagsUsed = append(flagsUsed, flag.GetName())
+		}
+
 		if stringFlag, ok := flag.(StringFlag); ok {
 			finalValue, err := getValueForStringFlag(stringFlag, baseContext)
 			if err != nil {
@@ -428,6 +437,10 @@ func fillFlagMaps(c *Context, baseContext *cli.Context, originalFlags []Flag) er
 				c.boolFlags[boolFlag.Name] = val
 			}
 		}
+	}
+	c.FlagsUsed = flagsUsed
+	if c.CommandName != "" {
+		commands.CollectMetrics(c.CommandName, flagsUsed)
 	}
 	return nil
 }

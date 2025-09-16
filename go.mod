@@ -1,4 +1,4 @@
-module github.com/naveenku-jfrog/jfrog-cli-core/v2
+module github.com/jfrog/jfrog-cli-core/v2
 
 go 1.24.6
 
@@ -15,7 +15,6 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jfrog/build-info-go v1.11.0
 	github.com/jfrog/gofrog v1.7.6
-	github.com/jfrog/jfrog-cli-core/v2 v2.59.7
 	github.com/jfrog/jfrog-client-go v1.54.7
 	github.com/magiconair/properties v1.8.10
 	github.com/manifoldco/promptui v0.9.0
@@ -120,7 +119,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace github.com/jfrog/jfrog-client-go => github.com/naveenku-jfrog/jfrog-client-go v1.54.2-0.20250916165712-4a12c3b15b7d
+replace github.com/jfrog/jfrog-client-go => github.com/naveenku-jfrog/jfrog-client-go v1.54.2-0.20250916213545-9389822e2963
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go dev
 

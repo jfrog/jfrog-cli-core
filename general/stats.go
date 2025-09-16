@@ -1,4 +1,4 @@
-package generic
+package general
 
 import (
 	"encoding/json"
@@ -6,10 +6,14 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-client-go/access"
+	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/artifactory"
+	clientServices "github.com/jfrog/jfrog-client-go/artifactory/services"
 	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
-	clientStats "github.com/jfrog/jfrog-client-go/artifactory/stats"
+	jpd "github.com/jfrog/jfrog-client-go/jpd"
+	"github.com/jfrog/jfrog-client-go/lifecycle"
 	"github.com/jfrog/jfrog-client-go/utils/log"
+
 	"github.com/pterm/pterm"
 	"strings"
 )
@@ -17,13 +21,15 @@ import (
 const displayLimit = 5
 
 type Stats struct {
-	ServicesManager artifactory.ArtifactoryServicesManager
-	AccessManager   access.AccessServicesManager
-	ProductName     string
-	FormatOutput    string
-	AccessToken     string
-	ServerId        string
-	ServerUrl       string
+	ServicesManager         artifactory.ArtifactoryServicesManager
+	AccessManager           access.AccessServicesManager
+	LifecycleServiceManager lifecycle.LifecycleServicesManager
+	JPDServicesManager      jpd.JPDServicesManager
+	FilterName              string
+	FormatOutput            string
+	AccessToken             string
+	ServerId                string
+	ServerUrl               string
 }
 
 func NewStatsCommand() *Stats {
@@ -34,8 +40,8 @@ func (s *Stats) SetServicesManager(manager artifactory.ArtifactoryServicesManage
 	return s
 }
 
-func (s *Stats) SetProductName(name string) *Stats {
-	s.ProductName = name
+func (s *Stats) SetFilterName(name string) *Stats {
+	s.FilterName = name
 	return s
 }
 
@@ -59,19 +65,33 @@ func (ss *Stats) Run() error {
 	if err != nil {
 		return err
 	}
+	if ss.AccessToken != "" {
+		serverDetails.AccessToken = ss.AccessToken
+	}
 
 	servicesManager, err := utils.CreateServiceManager(serverDetails, -1, 0, false)
 	if err != nil {
 		return err
 	}
 	ss.ServicesManager = servicesManager
-	serverDetails.AccessToken = ss.AccessToken
 
 	accessManager, err := utils.CreateAccessServiceManager(serverDetails, false)
 	if err != nil {
 		return err
 	}
 	ss.AccessManager = *accessManager
+
+	lifecycleServicesManager, err := utils.CreateLifecycleServiceManager(serverDetails, false)
+	if err != nil {
+		return err
+	}
+	ss.LifecycleServiceManager = *lifecycleServicesManager
+
+	jpdServiceManager, err := CreateJPDServiceManager(serverDetails, false)
+	if err != nil {
+		return err
+	}
+	ss.JPDServicesManager = *jpdServiceManager
 
 	err = ss.GetStats(serverDetails.GetUrl())
 	if err != nil {
@@ -82,7 +102,7 @@ func (ss *Stats) Run() error {
 
 type ArtifactoryInfo struct {
 	StorageInfo         clientUtils.StorageInfo
-	RepositoriesDetails []RepositoryDetails `json:"-"`
+	RepositoriesDetails []clientServices.RepositoryDetails `json:"-"`
 	ProjectsCount       int
 }
 
@@ -94,13 +114,6 @@ type Resource struct {
 	Type     string `json:"type"`
 	Name     string `json:"name"`
 	BinMgrID string `json:"bin_mgr_id"`
-}
-
-type Project struct {
-	DisplayName     string          `json:"display_name"`
-	Description     string          `json:"description"`
-	AdminPrivileges AdminPrivileges `json:"admin_privileges"`
-	ProjectKey      string          `json:"project_key"`
 }
 
 type AdminPrivileges struct {
@@ -119,6 +132,16 @@ type JPD struct {
 	Licenses []License `json:"licenses"`
 }
 
+func (j JPD) String() string {
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("Name: %s\n", j.Name))
+	builder.WriteString(fmt.Sprintf("URL: %s\n", j.URL))
+	builder.WriteString(fmt.Sprintf("Status: %s\n", j.Status.Code))
+	builder.WriteString(fmt.Sprintf("Detailed Status: %s\n", j.Status.Message))
+	builder.WriteString(fmt.Sprintf("Local: %t\n", j.Local))
+	return builder.String()
+}
+
 type Status struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -135,6 +158,12 @@ type License struct {
 	LicensedTo string `json:"licensed_to"`
 }
 
+type RepositoryDetails struct {
+	Key         string `json:"key"`
+	Type        string `json:"type"`
+	PackageType string `json:"packageType"`
+}
+
 type ReleaseBundleResponse struct {
 	ReleaseBundles []ReleaseBundleInfo `json:"release_bundles"`
 }
@@ -145,10 +174,14 @@ type ReleaseBundleInfo struct {
 	ProjectKey        string `json:"project_key"`
 }
 
-type RepositoryDetails struct {
-	Key         string `json:"key"`
-	Type        string `json:"type"`
-	PackageType string `json:"packageType"`
+func (rb ReleaseBundleInfo) String() string {
+	var builder strings.Builder
+
+	builder.WriteString(fmt.Sprintf("ReleaseBundleName: %s\n", rb.ReleaseBundleName))
+	builder.WriteString(fmt.Sprintf("RepositoryKey: %s\n", rb.RepositoryKey))
+	builder.WriteString(fmt.Sprintf("ProjectKey: %s\n", rb.ProjectKey))
+
+	return builder.String()
 }
 
 type GenericResultsWriter struct {
@@ -163,7 +196,7 @@ func NewGenericResultsWriter(data interface{}, format string) *GenericResultsWri
 	}
 }
 
-type StatsFunc func(string) (interface{}, error)
+type StatsFunc func(serverUrl string) (interface{}, error)
 
 func (ss Stats) GetCommandMap() map[string]StatsFunc {
 	return map[string]StatsFunc{
@@ -181,7 +214,7 @@ var needAdminTokenMap = map[string]bool{
 
 var processingOrders = []string{"pj", "rt", "jpd", "rb"}
 
-var printingOrders = []string{"pj", "rt", "jpd", "rb"}
+var printingOrders = []string{"rt", "pj", "jpd", "rb"}
 
 func (ss Stats) GetStats(serverUrl string) error {
 
@@ -189,22 +222,22 @@ func (ss Stats) GetStats(serverUrl string) error {
 
 	allResultsMap := make(map[string]interface{})
 
-	product := ss.ProductName
+	filter := ss.FilterName
 
-	if product != "" {
-		if commandFunc, ok := commandMap[product]; ok {
-			allResultsMap[product] = GetStatsForProduct(commandFunc, serverUrl)
-			if product == "rt" {
-				allResultsMap["pj"] = GetStatsForProduct(commandMap["pj"], serverUrl)
+	if filter != "" {
+		if commandFunc, ok := commandMap[filter]; ok {
+			allResultsMap[filter] = GetStatsUsingFilter(commandFunc, serverUrl)
+			if filter == "rt" {
+				allResultsMap["pj"] = GetStatsUsingFilter(commandMap["pj"], serverUrl)
 				updateProjectInArtifactory(&allResultsMap)
 				delete(allResultsMap, "pj")
 			}
 		} else {
-			return fmt.Errorf("unknown product: %s", product)
+			return fmt.Errorf("unknown filter: %s", filter)
 		}
 	} else {
-		for _, product := range processingOrders {
-			allResultsMap[product] = GetStatsForProduct(commandMap[product], serverUrl)
+		for _, filter := range processingOrders {
+			allResultsMap[filter] = GetStatsUsingFilter(commandMap[filter], serverUrl)
 		}
 		updateProjectInArtifactory(&allResultsMap)
 	}
@@ -224,7 +257,7 @@ func (ss Stats) PrintAllResults(results map[string]interface{}) error {
 	return nil
 }
 
-func GetStatsForProduct(commandAPI StatsFunc, serverUrl string) interface{} {
+func GetStatsUsingFilter(commandAPI StatsFunc, serverUrl string) interface{} {
 	body, err := commandAPI(serverUrl)
 	if err != nil {
 		return err
@@ -258,15 +291,13 @@ func (rw *GenericResultsWriter) printJson() error {
 		switch rw.data.(type) {
 		case *ArtifactoryInfo:
 			msg = "Artifacts: No Artifacts Available"
-		case []Project:
+		case []services.Project:
 			msg = "Projects: No Project Available"
 		case *[]JPD:
 			msg = "JPDs: No JPD Available"
 		case *ReleaseBundleResponse:
 			msg = "Release Bundles: No Release Bundle Info Available"
-		case clientStats.APIError:
-			msg = fmt.Sprintf("API Errors: %s", rw.data.(error).Error())
-		case clientStats.GenericError:
+		case jpd.GenericError:
 			msg = fmt.Sprintf("Errors: %s", rw.data.(error).Error())
 		}
 		jsonBytes, err = json.MarshalIndent(msg, "", "  ")
@@ -287,15 +318,13 @@ func (rw *GenericResultsWriter) printDashboard() error {
 	switch v := rw.data.(type) {
 	case *ArtifactoryInfo:
 		printArtifactoryDashboard(v)
-	case []Project:
+	case []services.Project:
 		printProjectsDashboard(v)
 	case *[]JPD:
 		printJPDsDashboard(v)
 	case *ReleaseBundleResponse:
 		printReleaseBundlesDashboard(v)
-	case *clientStats.APIError:
-		printErrorDashboard(v)
-	case *clientStats.GenericError:
+	case *jpd.GenericError:
 		printGenericErrorDashboard(v)
 	}
 	return nil
@@ -330,7 +359,7 @@ func printArtifactoryDashboard(stats *ArtifactoryInfo) {
 	pterm.DefaultTable.WithHasHeader().WithData(breakdownData).Render()
 }
 
-func printProjectsDashboard(projects []Project) {
+func printProjectsDashboard(projects []services.Project) {
 	pterm.Println("📁 Projects")
 	if len(projects) == 0 {
 		pterm.Warning.Println("No Projects found.")
@@ -426,25 +455,7 @@ func printReleaseBundlesDashboard(rbResponse *ReleaseBundleResponse) {
 	pterm.Print("\n\n")
 }
 
-func printErrorDashboard(apiError *clientStats.APIError) {
-	_, ok := needAdminTokenMap[apiError.Product]
-	Suggestion := ""
-	if apiError.StatusCode >= 400 && apiError.StatusCode < 500 && ok {
-		Suggestion = "Need Admin Token"
-	} else {
-		Suggestion = apiError.Suggestion
-	}
-
-	tableData := pterm.TableData{
-		{"Product: ", apiError.Product},
-		{"Status Code", pterm.LightRed(fmt.Sprintf("%d", apiError.StatusCode))},
-		{"Status", pterm.LightRed(apiError.StatusText)},
-		{"Suggestion", pterm.LightYellow(Suggestion)},
-	}
-	pterm.DefaultTable.WithHasHeader().WithData(tableData).Render()
-}
-
-func printGenericErrorDashboard(err *clientStats.GenericError) {
+func printGenericErrorDashboard(err *jpd.GenericError) {
 	tableData := pterm.TableData{
 		{err.Product, err.Err},
 	}
@@ -459,15 +470,13 @@ func (rw *GenericResultsWriter) printSimple() error {
 	switch v := rw.data.(type) {
 	case *ArtifactoryInfo:
 		printArtifactoryStats(v)
-	case []Project:
+	case []services.Project:
 		printProjectsStats(v)
 	case *[]JPD:
 		printJPDsStats(v)
 	case *ReleaseBundleResponse:
 		printReleaseBundlesSimple(v)
-	case *clientStats.APIError:
-		printErrorMessage(v)
-	case *clientStats.GenericError:
+	case *jpd.GenericError:
 		printGenericError(v)
 	}
 	return nil
@@ -487,11 +496,7 @@ func printReleaseBundlesSimple(rbResponse *ReleaseBundleResponse) {
 	actualProjectsCount := len(rbResponse.ReleaseBundles)
 	for i := 0; i < loopRange; i++ {
 		rb := rbResponse.ReleaseBundles[i]
-		log.Output("ReleaseBundle: ", i+1)
-		log.Output("ReleaseBundleName: ", rb.ReleaseBundleName)
-		log.Output("RepositoryKey: ", rb.RepositoryKey)
-		log.Output("ProjectKey:", rb.ProjectKey)
-		log.Output()
+		log.Output(rb)
 	}
 	if actualProjectsCount > displayLimit {
 		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more release bundles, try JSON format for complete list", actualProjectsCount-displayLimit)))
@@ -522,7 +527,7 @@ func printArtifactoryStats(stats *ArtifactoryInfo) {
 	log.Output()
 }
 
-func printProjectsStats(projects []Project) {
+func printProjectsStats(projects []services.Project) {
 	log.Output("--- Available Projects ---")
 	if len(projects) == 0 {
 		log.Output("No Projects Available")
@@ -535,16 +540,8 @@ func printProjectsStats(projects []Project) {
 	}
 	actualProjectsCount := len(projects)
 	for i := 0; i < loopRange; i++ {
-		project := (projects)[i]
-		log.Output("Project: ", i+1)
-		log.Output("Name: ", project.DisplayName)
-		log.Output("Key: ", project.ProjectKey)
-		if project.Description != "" {
-			log.Output("Description: ", project.Description)
-		} else {
-			log.Output("Description: NA")
-		}
-		log.Output()
+		project := projects[i]
+		log.Output(project)
 	}
 	if actualProjectsCount > displayLimit {
 		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more projects, try JSON format for complete list", actualProjectsCount-displayLimit)))
@@ -566,35 +563,14 @@ func printJPDsStats(jpdList *[]JPD) {
 	actualProjectsCount := len(*jpdList)
 	for i := 0; i < loopRange; i++ {
 		jpd := (*jpdList)[i]
-		log.Output("JPD: ", i+1)
-		log.Output("Name: ", jpd.Name)
-		log.Output("URL: ", jpd.URL)
-		log.Output("Status: ", jpd.Status.Code)
-		log.Output("Detailed Status: ", jpd.Status.Message)
-		log.Output("Local: ", jpd.Local)
-		log.Output()
+		log.Output(jpd)
 	}
 	if actualProjectsCount > displayLimit {
 		log.Output(pterm.Yellow(fmt.Sprintf("...and %d more JPDs, try JSON format for complete list", actualProjectsCount-displayLimit)))
 	}
 }
 
-func printErrorMessage(apiError *clientStats.APIError) {
-	_, ok := needAdminTokenMap[apiError.Product]
-	Suggestion := ""
-	if apiError.StatusCode == 401 && ok {
-		Suggestion = "Need Admin Token"
-	} else {
-		Suggestion = apiError.Suggestion
-	}
-	log.Output("---", apiError.Product, "---")
-	log.Output("StatusCode - ", apiError.StatusCode)
-	log.Output("StatusText - ", apiError.StatusText)
-	log.Output("Suggestion - ", Suggestion)
-	log.Output()
-}
-
-func printGenericError(err *clientStats.GenericError) {
+func printGenericError(err *jpd.GenericError) {
 	_, ok := needAdminTokenMap[err.Product]
 	Suggestion := ""
 	if ok {
@@ -611,35 +587,27 @@ func (ss Stats) GetArtifactoryStats(serverUrl string) (interface{}, error) {
 	var artifactoryStats ArtifactoryInfo
 	storageInfo, err := ss.ServicesManager.GetStorageInfo()
 	if err != nil {
-		return nil, err
+		return nil, jpd.NewGenericError("ARTIFACTORY", err.Error())
 	}
 	artifactoryStats.StorageInfo = *storageInfo
-	body, err := ss.ServicesManager.GetRepositoriesStats(serverUrl)
+	repositoriesDetails, err := ss.ServicesManager.GetAllRepositories()
 	if err != nil {
-		return nil, err
+		return nil, jpd.NewGenericError("ARTIFACTORY", err.Error())
 	}
-	var repositoriesDetails []RepositoryDetails
-	if err := json.Unmarshal(body, &repositoriesDetails); err != nil {
-		return nil, fmt.Errorf("error parsing repositories JSON: %w", err)
-	}
-	artifactoryStats.RepositoriesDetails = repositoriesDetails
+	artifactoryStats.RepositoriesDetails = *repositoriesDetails
 	return &artifactoryStats, nil
 }
 
 func (ss Stats) GetProjectsStats(serverUrl string) (interface{}, error) {
-	body, err := ss.AccessManager.GetProjectsStats()
+	projects, err := ss.AccessManager.GetAllProjects()
 	if err != nil {
-		return nil, err
+		return nil, jpd.NewGenericError("PROJECTS", err.Error())
 	}
-	var projects []Project
-	if err := json.Unmarshal(body, &projects); err != nil {
-		return nil, fmt.Errorf("error parsing Projects JSON: %w", err)
-	}
-	return &projects, nil
+	return projects, nil
 }
 
 func (ss Stats) GetJPDsStats(serverUrl string) (interface{}, error) {
-	body, err := ss.ServicesManager.GetJPDsStats(serverUrl)
+	body, err := ss.JPDServicesManager.GetJPDsStats(serverUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -651,7 +619,7 @@ func (ss Stats) GetJPDsStats(serverUrl string) (interface{}, error) {
 }
 
 func (ss Stats) GetReleaseBundlesStats(serverUrl string) (interface{}, error) {
-	body, err := ss.ServicesManager.GetReleaseBundlesStats(serverUrl)
+	body, err := ss.LifecycleServiceManager.GetReleaseBundlesStats(serverUrl)
 	if err != nil {
 		return nil, err
 	}
@@ -675,7 +643,7 @@ func updateProjectInArtifactory(allResultsMap *map[string]interface{}) {
 		return
 	}
 
-	projects, ok := pjResult.([]Project)
+	projects, ok := pjResult.([]services.Project)
 	if !ok {
 		return
 	}

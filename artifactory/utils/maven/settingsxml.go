@@ -11,11 +11,16 @@ import (
 	"github.com/apache/camel-k/v2/pkg/util/maven"
 )
 
-// ArtifactoryMirrorID is the ID used for the Artifactory mirror.
-const ArtifactoryMirrorID = "artifactory-mirror"
+const (
+	// ArtifactoryMirrorID is the ID used for the Artifactory mirror.
+	ArtifactoryMirrorID = "artifactory-mirror"
 
-// ArtifactoryDeployProfileID is the ID used for the Artifactory deployment profile.
-const ArtifactoryDeployProfileID = "artifactory-deploy"
+	// ArtifactoryDeployProfileID is the ID used for the Artifactory deployment profile.
+	ArtifactoryDeployProfileID = "artifactory-deploy"
+
+	// AltDeploymentRepositoryProperty is the Maven property for overriding deployment repository.
+	AltDeploymentRepositoryProperty = "altDeploymentRepository"
+)
 
 // SettingsXmlManager manages the maven settings file (`settings.xml`).
 type SettingsXmlManager struct {
@@ -41,43 +46,6 @@ func NewSettingsXmlManager() (*SettingsXmlManager, error) {
 	}
 
 	return manager, nil
-}
-
-// ConfigureArtifactoryRepository configures both downloading and deployment to Artifactory
-// This is the main public API that sets up complete Artifactory integration using the same repository
-// for both download (via mirrors) and deployment (via altDeploymentRepository)
-func (sxm *SettingsXmlManager) ConfigureArtifactoryRepository(artifactoryUrl, repoName, username, password string) error {
-	// Load settings once at the beginning
-	err := sxm.loadSettings()
-	if err != nil {
-		return fmt.Errorf("failed to load settings: %w", err)
-	}
-
-	// Build repository URL once for both mirror and deployment
-	repoUrl := strings.TrimRight(artifactoryUrl, "/") + "/" + repoName
-
-	// Set server credentials once (used by both mirror and deployment)
-	if username != "" && password != "" {
-		err = sxm.updateServerCredentials(username, password)
-		if err != nil {
-			return fmt.Errorf("failed to configure server credentials: %w", err)
-		}
-	}
-
-	// Configure download mirror (without credentials)
-	err = sxm.configureArtifactoryMirror(repoUrl, repoName)
-	if err != nil {
-		return fmt.Errorf("failed to configure Artifactory download mirror: %w", err)
-	}
-
-	// Configure deployment to the same repository (without credentials)
-	err = sxm.configureArtifactoryDeployment(repoUrl)
-	if err != nil {
-		return fmt.Errorf("failed to configure Artifactory deployment: %w", err)
-	}
-
-	// Write settings once at the end
-	return sxm.writeSettingsToFile()
 }
 
 // loadSettings reads the settings.xml file and unmarshals it into the Settings struct.
@@ -120,7 +88,7 @@ func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) er
 	deployProfile := maven.Profile{
 		ID: ArtifactoryDeployProfileID,
 		Properties: &mavenv1.Properties{
-			"altDeploymentRepository": altDeploymentRepo,
+			AltDeploymentRepositoryProperty: altDeploymentRepo,
 		},
 		Activation: &maven.Activation{
 			ActiveByDefault: true, // Auto-activate this profile
@@ -136,7 +104,7 @@ func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) er
 				profile.Properties = &mavenv1.Properties{}
 			}
 			// Set/update only our deployment property, preserve others
-			(*profile.Properties)["altDeploymentRepository"] = altDeploymentRepo
+			(*profile.Properties)[AltDeploymentRepositoryProperty] = altDeploymentRepo
 
 			// Set activation if not already set
 			if profile.Activation == nil {
@@ -159,6 +127,43 @@ func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) er
 	}
 
 	return nil
+}
+
+// ConfigureArtifactoryRepository configures both downloading and deployment to Artifactory
+// This is the main public API that sets up complete Artifactory integration using the same repository
+// for both download (via mirrors) and deployment (via altDeploymentRepository)
+func (sxm *SettingsXmlManager) ConfigureArtifactoryRepository(artifactoryUrl, repoName, username, password string) error {
+	// Load settings once at the beginning
+	err := sxm.loadSettings()
+	if err != nil {
+		return fmt.Errorf("failed to load settings: %w", err)
+	}
+
+	// Build repository URL once for both mirror and deployment
+	repoUrl := strings.TrimRight(artifactoryUrl, "/") + "/" + repoName
+
+	// Set server credentials once (used by both mirror and deployment)
+	if username != "" && password != "" {
+		err = sxm.updateServerCredentials(username, password)
+		if err != nil {
+			return fmt.Errorf("failed to configure server credentials: %w", err)
+		}
+	}
+
+	// Configure download mirror (without credentials)
+	err = sxm.configureArtifactoryMirror(repoUrl, repoName)
+	if err != nil {
+		return fmt.Errorf("failed to configure Artifactory download mirror: %w", err)
+	}
+
+	// Configure deployment to the same repository (without credentials)
+	err = sxm.configureArtifactoryDeployment(repoUrl)
+	if err != nil {
+		return fmt.Errorf("failed to configure Artifactory deployment: %w", err)
+	}
+
+	// Write settings once at the end
+	return sxm.writeSettingsToFile()
 }
 
 // updateMirror finds the existing mirror or creates a new one and updates it with the provided details.

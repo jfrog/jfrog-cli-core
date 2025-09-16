@@ -2,9 +2,10 @@ package commandsummary
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-client-go/utils/log"
 	"strings"
 	"time"
+
+	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const evidenceHeaderSize = 3
@@ -22,6 +23,8 @@ type EvidenceSummaryData struct {
 	BuildTimestamp       string      `json:"buildTimestamp"`
 	ReleaseBundleName    string      `json:"releaseBundleName"`
 	ReleaseBundleVersion string      `json:"releaseBundleVersion"`
+	ApplicationKey       string      `json:"applicationKey"`
+	ApplicationVersion   string      `json:"applicationVersion"`
 	RepoKey              string      `json:"repoKey"`
 	CreatedAt            time.Time   `json:"createdAt"`
 }

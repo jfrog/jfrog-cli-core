@@ -139,7 +139,9 @@ func createNewDeploymentProfile(altDeploymentRepo string) maven.Profile {
 // configureArtifactoryDeployment configures Maven to deploy/push artifacts to Artifactory by default
 // This adds a profile with altDeploymentRepository properties that override any pom.xml distributionManagement
 // Uses the same server credentials as the mirror configuration (artifactory-mirror)
-func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) {
+//
+//nolint:unparam
+func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) error {
 	// Build the altDeploymentRepository string for Maven Deploy Plugin
 	// Source: apache/maven-deploy-plugin/src/main/java/org/apache/maven/plugins/deploy/DeployMojo.java
 	altDeploymentRepo := buildAltDeploymentRepoString(repoUrl)
@@ -154,6 +156,7 @@ func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) {
 		deployProfile := createNewDeploymentProfile(altDeploymentRepo)
 		sxm.settings.Profiles = append(sxm.settings.Profiles, deployProfile)
 	}
+	return nil
 }
 
 // ConfigureArtifactoryRepository configures both downloading and deployment to Artifactory
@@ -171,7 +174,10 @@ func (sxm *SettingsXmlManager) ConfigureArtifactoryRepository(artifactoryUrl, re
 
 	// Set server credentials once (used by both mirror and deployment)
 	if username != "" && password != "" {
-		sxm.updateServerCredentials(username, password)
+		err = sxm.updateServerCredentials(username, password)
+		if err != nil {
+			return fmt.Errorf("failed to update server credentials: %w", err)
+		}
 	}
 
 	// Configure download mirror (without credentials)
@@ -181,7 +187,10 @@ func (sxm *SettingsXmlManager) ConfigureArtifactoryRepository(artifactoryUrl, re
 	}
 
 	// Configure deployment to the same repository (without credentials)
-	sxm.configureArtifactoryDeployment(repoUrl)
+	err = sxm.configureArtifactoryDeployment(repoUrl)
+	if err != nil {
+		return fmt.Errorf("failed to configure Artifactory deployment: %w", err)
+	}
 
 	// Write settings once at the end
 	return sxm.writeSettingsToFile()
@@ -217,7 +226,9 @@ func (sxm *SettingsXmlManager) updateMirror(repoUrl, repoName string) error {
 }
 
 // updateServerCredentials updates or adds server credentials in the settings.
-func (sxm *SettingsXmlManager) updateServerCredentials(username, password string) {
+//
+//nolint:unparam
+func (sxm *SettingsXmlManager) updateServerCredentials(username, password string) error {
 	// Create the new server with the provided credentials
 	updatedServer := mavenv1.Server{
 		ID:       ArtifactoryMirrorID,
@@ -240,6 +251,7 @@ func (sxm *SettingsXmlManager) updateServerCredentials(username, password string
 	if !foundServer {
 		sxm.settings.Servers = append(sxm.settings.Servers, updatedServer)
 	}
+	return nil
 }
 
 // writeSettingsToFile writes the updated settings to the settings.xml file.
@@ -252,12 +264,12 @@ func (sxm *SettingsXmlManager) writeSettingsToFile() error {
 
 	// Add XML header and write to file
 	data = append([]byte(xml.Header), data...)
-	err = os.MkdirAll(filepath.Dir(sxm.path), 0755)
+	err = os.MkdirAll(filepath.Dir(sxm.path), 0o755)
 	if err != nil {
 		return fmt.Errorf("failed to create directory for settings file: %w", err)
 	}
 
-	err = os.WriteFile(sxm.path, data, 0644)
+	err = os.WriteFile(sxm.path, data, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to write settings to file %s: %w", sxm.path, err)
 	}

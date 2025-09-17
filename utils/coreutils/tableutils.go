@@ -128,11 +128,11 @@ var StyleBorderless = table.Style{
 	Box: table.BoxStyle{
 		TopLeft: "", TopRight: "", BottomLeft: "", BottomRight: "",
 		Left: "", Right: "",
-		MiddleVertical: "  :  ",
+		MiddleVertical: "  :  ", // Your separator with padding
 	},
 	Options: table.Options{
 		DrawBorder:      false,
-		SeparateColumns: true,
+		SeparateColumns: true, // ADD THIS LINE: This tells the table to draw the separator.
 		SeparateHeader:  false,
 		SeparateRows:    false,
 	},
@@ -240,7 +240,6 @@ func PrintTableWithBorderless(rows interface{}, title string, footer string, emp
 	if err != nil || tableWriter == nil {
 		return
 	}
-	tableWriter.ResetHeaders()
 	tableWriter.SetStyle(StyleBorderless)
 	stdoutWriter := bufio.NewWriter(os.Stdout)
 	defer func() {

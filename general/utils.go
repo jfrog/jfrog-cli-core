@@ -3,9 +3,6 @@ package general
 import (
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	clientConfig "github.com/jfrog/jfrog-client-go/config"
-	jpdService "github.com/jfrog/jfrog-client-go/jpd"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"net"
 	"net/url"
@@ -43,25 +40,4 @@ func ConfigServerAsDefault(server *config.ServerDetails, serverId string, intera
 	return commands.NewConfigCommand(commands.AddOrEdit, serverId).
 		SetInteractive(interactive).SetUseWebLogin(webLogin).
 		SetDetails(server).SetMakeDefault(true).Run()
-}
-
-func CreateJPDServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*jpdService.JPDServicesManager, error) {
-	certsPath, err := coreutils.GetJfrogCertsDir()
-	if err != nil {
-		return nil, err
-	}
-	evdAuth, err := serviceDetails.CreateEvidenceAuthConfig()
-	if err != nil {
-		return nil, err
-	}
-	serviceConfig, err := clientConfig.NewConfigBuilder().
-		SetServiceDetails(evdAuth).
-		SetCertificatesPath(certsPath).
-		SetInsecureTls(serviceDetails.InsecureTls).
-		SetDryRun(isDryRun).
-		Build()
-	if err != nil {
-		return nil, err
-	}
-	return jpdService.NewJPDServicesManager(serviceConfig)
 }

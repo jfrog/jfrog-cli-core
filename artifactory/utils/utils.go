@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	jpdService "github.com/jfrog/jfrog-client-go/jpd"
 	"io"
 	"net/http"
 	"net/url"
@@ -221,6 +222,27 @@ func CreateLifecycleServiceManager(serviceDetails *config.ServerDetails, isDryRu
 		return nil, err
 	}
 	return lifecycle.New(serviceConfig)
+}
+
+func CreateJPDServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*jpdService.JPDServicesManager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	evdAuth, err := serviceDetails.CreateEvidenceAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(evdAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serviceDetails.InsecureTls).
+		SetDryRun(isDryRun).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return jpdService.NewJPDServicesManager(serviceConfig)
 }
 
 func CreateEvidenceServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*evidence.EvidenceServicesManager, error) {

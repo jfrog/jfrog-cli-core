@@ -15,11 +15,11 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jfrog/build-info-go v1.11.0
 	github.com/jfrog/gofrog v1.7.6
-	github.com/jfrog/jfrog-client-go v1.54.7
+	github.com/jfrog/jfrog-cli-artifactory v0.0.0-00010101000000-000000000000
+	github.com/jfrog/jfrog-client-go v1.55.0
 	github.com/magiconair/properties v1.8.10
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
-	github.com/pterm/pterm v0.12.81
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.17
@@ -61,7 +61,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
+	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jfrog/archiver/v3 v3.6.1 // indirect
@@ -71,8 +71,8 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
@@ -84,6 +84,7 @@ require (
 	github.com/pjbgf/sha1cd v0.3.2 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	github.com/pterm/pterm v0.12.81 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
@@ -120,6 +121,8 @@ require (
 )
 
 replace github.com/jfrog/jfrog-client-go => github.com/naveenku-jfrog/jfrog-client-go v1.54.2-0.20250917035803-0202e6d9775b
+
+replace github.com/jfrog/jfrog-cli-artifactory => github.com/naveenku-jfrog/jfrog-cli-artifactory v0.0.0-20250917220908-f208522cb8f9
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go dev
 

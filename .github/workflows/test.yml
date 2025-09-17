@@ -21,7 +21,10 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
       JFROG_CLI_LOG_LEVEL: "DEBUG"
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Setup Python3
         uses: actions/setup-python@v5

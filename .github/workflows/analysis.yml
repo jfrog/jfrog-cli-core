@@ -9,12 +9,17 @@ on:
     types: [opened, synchronize]
     branches:
       - "master"
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
   Static-Check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Setup Go with cache
         uses: jfrog/.github/actions/install-go-with-cache@main
@@ -27,6 +32,9 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          fetch-depth: 0
 
       - name: Setup Go with cache
         uses: jfrog/.github/actions/install-go-with-cache@main
@@ -39,6 +47,8 @@ jobs:
     steps:
       - name: Checkout Source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Check for uncommented replace instructions
         run: |

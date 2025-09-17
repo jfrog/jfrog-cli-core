@@ -56,6 +56,7 @@ type Context struct {
 	boolFlags        map[string]bool
 	PrintCommandHelp func(commandName string) error
 	ParentContext    *Context
+	FlagsUsed        []string
 }
 
 func (c *Context) GetStringFlagValue(flagName string) string {

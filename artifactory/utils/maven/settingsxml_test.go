@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -19,16 +20,7 @@ func TestNewSettingsXmlManager(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Set up a test home directory
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		err := os.Setenv("HOME", originalHome)
-		if err != nil {
-			t.Logf("Failed to set HOME environment variable: %v", err)
-		}
-	}()
-
-	err := os.Setenv("HOME", tempDir)
-	require.NoError(t, err)
+	setHomeDir(t, tempDir)
 
 	// Test with non-existing settings file
 	manager, err := NewSettingsXmlManager()
@@ -303,15 +295,7 @@ func TestConfigureArtifactoryMirror_NoCredentials(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Set up a test home directory
-	originalHome := os.Getenv("HOME")
-	defer func() {
-		err := os.Setenv("HOME", originalHome)
-		if err != nil {
-			t.Logf("Failed to set HOME environment variable: %v", err)
-		}
-	}()
-	err := os.Setenv("HOME", tempDir)
-	require.NoError(t, err)
+	setHomeDir(t, tempDir)
 
 	manager, err := NewSettingsXmlManager()
 	assert.NoError(t, err, "Failed to create manager")
@@ -676,4 +660,24 @@ func TestConfigureArtifactoryRepository(t *testing.T) {
 			t.Errorf("Expected element '%s' not found in complete integration XML", expected)
 		}
 	}
+}
+
+func setHomeDir(t *testing.T, tempDir string) {
+	originalHome, err := os.UserHomeDir()
+	require.NoError(t, err)
+
+	homeEnv := "HOME"
+	if runtime.GOOS == "windows" {
+		homeEnv = "USERPROFILE"
+	}
+
+	err = os.Setenv(homeEnv, tempDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err := os.Setenv(homeEnv, originalHome)
+		if err != nil {
+			t.Logf("Failed to set %s environment variable: %v", homeEnv, err)
+		}
+	})
 }

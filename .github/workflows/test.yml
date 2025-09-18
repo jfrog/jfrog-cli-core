@@ -21,10 +21,13 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
       JFROG_CLI_LOG_LEVEL: "DEBUG"
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Setup Python3
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.x"
 
@@ -37,7 +40,7 @@ jobs:
           nuget-version: 6.x
 
       - name: Install dotnet
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "6.x"
 

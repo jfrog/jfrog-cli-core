@@ -5,30 +5,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	v1 "github.com/apache/camel-k/v2/pkg/apis/camel/v1"
 	"github.com/apache/camel-k/v2/pkg/util/maven"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-// cleanupTempDir safely removes a temporary directory and checks for errors
-func cleanupTempDir(t *testing.T, tempDir string) {
-	err := os.RemoveAll(tempDir)
-	assert.NoError(t, err, "Failed to cleanup temp directory %s", tempDir)
-}
 
 func TestNewSettingsXmlManager(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	// Set up a test home directory
-	originalHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", originalHome)
-	os.Setenv("HOME", tempDir)
+	setHomeDir(t, tempDir)
 
 	// Test with non-existing settings file
 	manager, err := NewSettingsXmlManager()
@@ -54,9 +46,7 @@ func TestLoadSettings_NonExistentFile(t *testing.T) {
 
 func TestLoadSettings_ExistingFile(t *testing.T) {
 	// Create a temporary settings file
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	settingsContent := `<?xml version="1.0" encoding="UTF-8"?>
@@ -79,7 +69,7 @@ func TestLoadSettings_ExistingFile(t *testing.T) {
   </mirrors>
 </settings>`
 
-	err = os.WriteFile(settingsPath, []byte(settingsContent), 0644)
+	err := os.WriteFile(settingsPath, []byte(settingsContent), 0o644)
 	assert.NoError(t, err, "Failed to write test settings file")
 
 	manager := &SettingsXmlManager{path: settingsPath}
@@ -223,9 +213,7 @@ func TestUpdateServerCredentials_ExistingServer(t *testing.T) {
 
 func TestWriteSettingsToFile(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	settingsPath := filepath.Join(tempDir, ".m2", "settings.xml")
 
@@ -253,7 +241,7 @@ func TestWriteSettingsToFile(t *testing.T) {
 		},
 	}
 
-	err = manager.writeSettingsToFile()
+	err := manager.writeSettingsToFile()
 	assert.NoError(t, err, "Expected no error")
 
 	// Verify file was created
@@ -304,14 +292,10 @@ func TestWriteSettingsToFile(t *testing.T) {
 
 func TestConfigureArtifactoryMirror_NoCredentials(t *testing.T) {
 	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	// Set up a test home directory
-	originalHome := os.Getenv("HOME")
-	defer os.Setenv("HOME", originalHome)
-	os.Setenv("HOME", tempDir)
+	setHomeDir(t, tempDir)
 
 	manager, err := NewSettingsXmlManager()
 	assert.NoError(t, err, "Failed to create manager")
@@ -371,9 +355,7 @@ func TestURLTrimming(t *testing.T) {
 
 func TestDataPreservation_RoundTrip(t *testing.T) {
 	// Test that we preserve existing profiles and proxies when adding Artifactory mirror
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 
@@ -420,7 +402,7 @@ func TestDataPreservation_RoundTrip(t *testing.T) {
   </mirrors>
 </settings>`
 
-	err = os.WriteFile(settingsPath, []byte(originalContent), 0644)
+	err := os.WriteFile(settingsPath, []byte(originalContent), 0o644)
 	assert.NoError(t, err, "Failed to write original settings file")
 
 	// Load the settings
@@ -549,15 +531,13 @@ func TestCompleteSettingsXml_AllFields_REMOVED(t *testing.T) {
 }
 
 func TestConfigureArtifactoryDeployment(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure deployment
-	err = manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
+	err := manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
 	assert.NoError(t, err, "Failed to configure deployment")
 
 	// Write settings for this isolation test (helper function doesn't write)
@@ -598,15 +578,13 @@ func TestDeploymentProfile_AltDeploymentRepository(t *testing.T) {
 	// Test that deployment profile uses proper Maven Deploy Plugin properties
 	// These properties are defined in Apache Maven Deploy Plugin:
 	// apache/maven-deploy-plugin/src/main/java/org/apache/maven/plugins/deploy/DeployMojo.java
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure deployment using proper structs
-	err = manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
+	err := manager.configureArtifactoryDeployment("https://artifactory.example.com/deploy-repo")
 	assert.NoError(t, err, "Failed to configure deployment")
 
 	// Write settings for this isolation test (helper function doesn't write)
@@ -643,15 +621,13 @@ func TestDeploymentProfile_AltDeploymentRepository(t *testing.T) {
 }
 
 func TestConfigureArtifactoryRepository(t *testing.T) {
-	tempDir, err := os.MkdirTemp("", "maven-test")
-	assert.NoError(t, err, "Failed to create temp dir")
-	defer cleanupTempDir(t, tempDir)
+	tempDir := t.TempDir()
 
 	settingsPath := filepath.Join(tempDir, "settings.xml")
 	manager := &SettingsXmlManager{path: settingsPath}
 
 	// Configure complete Artifactory integration (same repo for download and deploy)
-	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "libs-repo", "user", "pass")
+	err := manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "libs-repo", "user", "pass")
 	assert.NoError(t, err, "Failed to configure complete Artifactory")
 
 	// Verify the settings file was created and contains expected configuration
@@ -684,4 +660,24 @@ func TestConfigureArtifactoryRepository(t *testing.T) {
 			t.Errorf("Expected element '%s' not found in complete integration XML", expected)
 		}
 	}
+}
+
+func setHomeDir(t *testing.T, tempDir string) {
+	originalHome, err := os.UserHomeDir()
+	require.NoError(t, err)
+
+	homeEnv := "HOME"
+	if runtime.GOOS == "windows" {
+		homeEnv = "USERPROFILE"
+	}
+
+	err = os.Setenv(homeEnv, tempDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err := os.Setenv(homeEnv, originalHome)
+		if err != nil {
+			t.Logf("Failed to set %s environment variable: %v", homeEnv, err)
+		}
+	})
 }

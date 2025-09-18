@@ -16,6 +16,10 @@ type Stats struct {
 	DisplayLimit int
 }
 
+type CommandRunner interface {
+	Run() error
+}
+
 func NewStatsCommand() *Stats {
 	return &Stats{DisplayLimit: displayLimit}
 }
@@ -46,14 +50,15 @@ func (s *Stats) SetProduct(product string) *Stats {
 }
 
 func (ss *Stats) Run() error {
+	var cmd CommandRunner
 	switch ss.Product {
 	case "rt", "artifactory", "artifactories":
-		newStatsCommand := ss.NewArtifactoryStatsCommand()
-		return newStatsCommand.Run()
+		cmd = ss.NewArtifactoryStatsCommand()
 	default:
 		log.Error("Unknown product: " + ss.Product)
 		return nil
 	}
+	return cmd.Run()
 }
 
 func (ss *Stats) NewArtifactoryStatsCommand() *stats.StatsArtifactory {

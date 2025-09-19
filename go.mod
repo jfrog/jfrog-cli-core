@@ -117,7 +117,7 @@ require (
 
 replace github.com/jfrog/jfrog-client-go => github.com/naveenku-jfrog/jfrog-client-go v1.54.2-0.20250919081841-59d05ef23724
 
-replace github.com/jfrog/jfrog-cli-artifactory => /Users/naveenku/Desktop/eco-matrix/jfrog-cli-artifactory
+replace github.com/jfrog/jfrog-cli-artifactory => github.com/naveenku-jfrog/jfrog-cli-artifactory v0.0.0-20250919083219-75c448406505
 
 // replace github.com/jfrog/build-info-go => github.com/jfrog/build-info-go dev
 

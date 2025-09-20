@@ -245,7 +245,7 @@ func CreateEvidenceServiceManager(serviceDetails *config.ServerDetails, isDryRun
 	return evidence.New(serviceConfig)
 }
 
-func CreateApptrustServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*apptrust.ApptrustServicesManager, error) {
+func CreateApptrustServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (apptrust.ApptrustServiceManagerInterface, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err

@@ -15,6 +15,7 @@ import (
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
+	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -420,4 +421,105 @@ func assertCertsMigration(t *testing.T) {
 	assert.NoError(t, err)
 	// Verify only the certs were moved
 	assert.Len(t, files, 2)
+}
+
+func TestCreateAuthConfigAppendPreRequestFunctionBehavior(t *testing.T) {
+	test := []struct {
+		name                       string
+		serverDetails              *ServerDetails
+		shouldCallAppendPreRequest bool
+	}{
+		{
+			name: "DisableTokenRefreshTrue_NoRefreshTokens",
+			serverDetails: &ServerDetails{
+				ServerId:            "test-server",
+				AccessToken:         "access-token-123",
+				User:                "testuser",
+				Password:            "testpass",
+				DisableTokenRefresh: true,
+			},
+			shouldCallAppendPreRequest: false,
+		},
+		{
+			name: "DisableTokenRefreshTrue_WithRefreshToken",
+			serverDetails: &ServerDetails{
+				ServerId:            "test-server",
+				AccessToken:         "access-token-123",
+				RefreshToken:        "refresh-token-456",
+				User:                "testuser",
+				Password:            "testpass",
+				DisableTokenRefresh: true,
+			},
+			shouldCallAppendPreRequest: false,
+		},
+		{
+			name: "DisableTokenRefreshFalse_WithRefreshToken",
+			serverDetails: &ServerDetails{
+				ServerId:            "test-server",
+				AccessToken:         "access-token-123",
+				RefreshToken:        "refresh-token-456",
+				User:                "testuser",
+				Password:            "testpass",
+				DisableTokenRefresh: false,
+			},
+			shouldCallAppendPreRequest: true,
+		},
+		{
+			name: "DisableTokenRefreshDefault_WithRefreshToken",
+			serverDetails: &ServerDetails{
+				ServerId:     "test-server",
+				AccessToken:  "access-token-123",
+				RefreshToken: "refresh-token-456",
+				User:         "testuser",
+				Password:     "testpass",
+			},
+			shouldCallAppendPreRequest: true,
+		},
+		{
+			name: "DisableTokenRefreshTrue_WithArtifactoryRefreshToken",
+			serverDetails: &ServerDetails{
+				ServerId:                "test-server",
+				AccessToken:             "access-token-123",
+				ArtifactoryRefreshToken: "artifactory-refresh-token-789",
+				User:                    "testuser",
+				Password:                "testpass",
+				DisableTokenRefresh:     true,
+			},
+			shouldCallAppendPreRequest: true,
+		},
+		{
+			name: "DisableTokenRefreshFalse_WithArtifactoryRefreshToken",
+			serverDetails: &ServerDetails{
+				ServerId:                "test-server",
+				AccessToken:             "access-token-123",
+				ArtifactoryRefreshToken: "artifactory-refresh-token-789",
+				User:                    "testuser",
+				Password:                "testpass",
+				DisableTokenRefresh:     false,
+			},
+			shouldCallAppendPreRequest: true,
+		},
+	}
+
+	for _, tt := range test {
+		t.Run(tt.name, func(t *testing.T) {
+			artDetails := artifactoryAuth.NewArtifactoryDetails()
+			artDetails.SetUrl("https://test.com/artifactory/")
+
+			result, err := tt.serverDetails.createAuthConfig(artDetails)
+
+			assert.NoError(t, err)
+			assert.Equal(t, artDetails, result)
+
+			if tt.shouldCallAppendPreRequest {
+				// AppendPreRequestFunction was called - should use token refresh, not basic auth
+				assert.Equal(t, "", result.GetUser(), "User should be empty when AppendPreRequestFunction is called (token refresh enabled)")
+				assert.Equal(t, "", result.GetPassword(), "Password should be empty when AppendPreRequestFunction is called (token refresh enabled)")
+			} else {
+				// AppendPreRequestFunction was NOT called - should use basic auth
+				assert.Equal(t, tt.serverDetails.User, result.GetUser(), "User should be set when AppendPreRequestFunction is NOT called (basic auth)")
+				assert.Equal(t, tt.serverDetails.Password, result.GetPassword(), "Password should be set when AppendPreRequestFunction is NOT called (basic auth)")
+			}
+		})
+	}
 }

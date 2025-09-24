@@ -61,6 +61,7 @@ func CreateServerDetailsFromFlags(c *components.Context) (details *config.Server
 		details.ServerId = os.Getenv(coreutils.ServerID)
 	}
 	details.InsecureTls = c.GetBoolFlagValue("insecure-tls")
+	details.DisableTokenRefresh = c.GetBoolFlagValue("disable-token-refresh")
 	return
 }
 

@@ -15,7 +15,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jfrog/build-info-go v1.11.0
 	github.com/jfrog/gofrog v1.7.6
-	github.com/jfrog/jfrog-client-go v1.55.1-0.20250922120823-e64346ea079b
+	github.com/jfrog/jfrog-client-go v1.55.1-0.20250925090554-63938590da62
 	github.com/magiconair/properties v1.8.10
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -35,7 +35,7 @@ require (
 	github.com/BurntSushi/toml v1.5.0 // indirect
 	github.com/CycloneDX/cyclonedx-go v0.9.2 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/ProtonMail/go-crypto v1.1.6 // indirect
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
@@ -97,7 +97,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/crypto v0.42.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

@@ -15,6 +15,7 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	cliLog "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	accessAuth "github.com/jfrog/jfrog-client-go/access/auth"
+	apptrustAuth "github.com/jfrog/jfrog-client-go/apptrust/auth"
 	artifactoryAuth "github.com/jfrog/jfrog-client-go/artifactory/auth"
 	"github.com/jfrog/jfrog-client-go/auth"
 	catalogAuth "github.com/jfrog/jfrog-client-go/catalog/auth"
@@ -587,6 +588,7 @@ type ServerDetails struct {
 	EvidenceUrl                     string `json:"-"`
 	MetadataUrl                     string `json:"-"`
 	OnemodelUrl                     string `json:"-"`
+	ApptrustUrl                     string `json:"-"`
 	User                            string `json:"user,omitempty"`
 	Password                        string `json:"password,omitempty"`
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
@@ -686,6 +688,10 @@ func (serverDetails *ServerDetails) GetEvidenceUrl() string {
 	return serverDetails.EvidenceUrl
 }
 
+func (serverDetails *ServerDetails) GetApptrustUrl() string {
+	return serverDetails.ApptrustUrl
+}
+
 func (serverDetails *ServerDetails) GetMetadataUrl() string {
 	return serverDetails.MetadataUrl
 }
@@ -783,6 +789,12 @@ func (serverDetails *ServerDetails) CreateEvidenceAuthConfig() (auth.ServiceDeta
 	evdAuth := evidenceAuth.NewEvidenceDetails()
 	evdAuth.SetUrl(serverDetails.EvidenceUrl)
 	return serverDetails.createAuthConfig(evdAuth)
+}
+
+func (serverDetails *ServerDetails) CreateApptrustAuthConfig() (auth.ServiceDetails, error) {
+	apptrustAuth := apptrustAuth.NewApptrustDetails()
+	apptrustAuth.SetUrl(serverDetails.ApptrustUrl)
+	return serverDetails.createAuthConfig(apptrustAuth)
 }
 
 func (serverDetails *ServerDetails) CreateMetadataAuthConfig() (auth.ServiceDetails, error) {

@@ -64,6 +64,16 @@ func TestGenerateEvidenceUrlByType(t *testing.T) {
 			expectedURL: "", // Will be checked with custom assertion
 		},
 		{
+			name: "Application evidence URL",
+			data: EvidenceSummaryData{
+				Subject:            "app-versions/my-app/1.0.0/application-version.json.evd",
+				SubjectType:        SubjectTypeApplication,
+				ApplicationKey:     "my-app",
+				ApplicationVersion: "1.0.0",
+			},
+			expectedURL: "https://myplatform.com/ui/applications/management/my-app/versions/1.0.0?activeVersionTab=Content+Graph&gh_job_id=JFrog+CLI+Core+Tests&gh_section=evidence&m=3&s=1",
+		},
+		{
 			name: "Build evidence URL",
 			data: EvidenceSummaryData{
 				Subject:        "artifactory-build-info/my-build/123/1234567890.json",
@@ -94,6 +104,14 @@ func TestGenerateEvidenceUrlByType(t *testing.T) {
 				SubjectType: SubjectTypeReleaseBundle,
 			},
 			expectedURL: "https://myplatform.com/ui/repos/tree/Evidence/invalid/path?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=evidence&m=3&s=1",
+		},
+		{
+			name: "Invalid application falls back to artifact URL",
+			data: EvidenceSummaryData{
+				Subject:     "invalid/application/path",
+				SubjectType: SubjectTypeApplication,
+			},
+			expectedURL: "https://myplatform.com/ui/repos/tree/Evidence/invalid/application/path?clearFilter=true&gh_job_id=JFrog+CLI+Core+Tests&gh_section=evidence&m=3&s=1",
 		},
 		{
 			name: "Invalid build falls back to artifact URL",
@@ -128,7 +146,7 @@ func TestGenerateEvidenceUrlByType(t *testing.T) {
 					assert.Contains(t, url, "bundleName=my-bundle")
 					assert.Contains(t, url, "repositoryKey=release-bundles-v2")
 					assert.Contains(t, url, "releaseBundleVersion=1.0.0")
-					assert.Contains(t, url, "activeVersionTab=Evidence+Graph")
+					assert.Contains(t, url, "activeVersionTab=Content+Graph")
 					assert.Contains(t, url, "gh_job_id=JFrog+CLI+Core+Tests")
 					assert.Contains(t, url, "gh_section=evidence")
 					assert.Contains(t, url, "m=3")

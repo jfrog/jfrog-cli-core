@@ -1,5 +1,5 @@
- version: 2
- updates:
+version: 2
+updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
@@ -18,5 +18,6 @@
     groups:
       github-actions:
         update-types:
+          - major
           - minor
           - patch

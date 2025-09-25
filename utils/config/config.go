@@ -603,6 +603,7 @@ type ServerDetails struct {
 	IsDefault                       bool   `json:"isDefault,omitempty"`
 	InsecureTls                     bool   `json:"-"`
 	WebLogin                        bool   `json:"webLogin,omitempty"`
+	DisableTokenRefresh             bool   `json:"disableTokenRefresh,omitempty"`
 }
 
 // Deprecated
@@ -814,7 +815,7 @@ func (serverDetails *ServerDetails) createAuthConfig(details auth.ServiceDetails
 	// If refresh token is not empty, set a refresh handler and skip other credentials.
 	// First we check access's token, if empty we check artifactory's token.
 	switch {
-	case serverDetails.RefreshToken != "":
+	case serverDetails.RefreshToken != "" && !serverDetails.DisableTokenRefresh:
 		// Save serverId for refreshing if needed. If empty serverId is saved, default will be used.
 		tokenRefreshServerId = serverDetails.ServerId
 		details.AppendPreRequestFunction(AccessTokenRefreshPreRequestInterceptor)

@@ -13,10 +13,10 @@ import (
 func TestCreateCommandsCountMetric(t *testing.T) {
 	// Set environment variables for the test using SetEnvWithCallbackAndAssert
 	envVars := map[string]string{
-		coreutils.CIJobID:              "job123",
-		coreutils.CIRunID:              "run456",
-		coreutils.SourceCodeRepository: "test-repo",
-		coreutils.OidcProviderType:     token.GitHub.String(),
+		coreutils.CIJobID:          "job123",
+		coreutils.CIRunID:          "run456",
+		coreutils.CIVcsUrl:         "test-repo",
+		coreutils.OidcProviderType: token.GitHub.String(),
 		"JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED": "TRUE",
 	}
 	cleanupFuncs := []func(){}
@@ -169,9 +169,9 @@ func TestCommandsCountLabelsJSONSerialization(t *testing.T) {
 func TestEnhancedMetricsEnvironmentIntegration(t *testing.T) {
 	// Set environment variables for the test (using the keys consumed by the code)
 	envVars := map[string]string{
-		coreutils.CIJobID:              "test-job-123",
-		coreutils.CIRunID:              "test-run-456",
-		coreutils.SourceCodeRepository: "owner/repo",
+		coreutils.CIJobID:  "test-job-123",
+		coreutils.CIRunID:  "test-run-456",
+		coreutils.CIVcsUrl: "owner/repo",
 	}
 	cleanupFuncs := []func(){}
 	for key, value := range envVars {

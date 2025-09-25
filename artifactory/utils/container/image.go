@@ -1,6 +1,7 @@
 package container
 
 import (
+	"errors"
 	"net/http"
 	"path"
 	"strconv"
@@ -154,15 +155,15 @@ func (image *Image) GetRemoteRepo(serviceManager artifactory.ArtifactoryServices
 		return "", err
 	}
 	if resp.StatusCode == http.StatusForbidden {
-		return "", errorutils.CheckErrorf(getStatusForbiddenErrorMessage())
+		return "", errors.New(getStatusForbiddenErrorMessage())
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", errorutils.CheckErrorf("error while getting docker repository name. Artifactory response: " + resp.Status)
+		return "", errorutils.CheckErrorf("error while getting docker repository name. Artifactory response: %s", resp.Status)
 	}
 	if dockerRepo := resp.Header["X-Artifactory-Docker-Registry"]; len(dockerRepo) != 0 {
 		return dockerRepo[0], nil
 	}
-	return "", errorutils.CheckErrorf("couldn't find 'X-Artifactory-Docker-Registry' header  docker repository in artifactory")
+	return "", errors.New("couldn't find 'X-Artifactory-Docker-Registry' header  docker repository in artifactory")
 }
 
 // Returns the name of the repository containing the image in Artifactory.

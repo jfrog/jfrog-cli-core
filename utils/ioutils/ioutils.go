@@ -4,16 +4,17 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"github.com/jfrog/jfrog-client-go/utils/errorutils"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	"github.com/jfrog/jfrog-client-go/utils/log"
-	"golang.org/x/term"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/errorutils"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"golang.org/x/term"
 )
 
 // disallowUsingSavedPassword - Prevent changing username or url without changing the password.
@@ -145,7 +146,7 @@ func createRestoreFileFunc(filePath, backupFileName string) func() error {
 				}
 				return errorutils.CheckError(err)
 			}
-			return errorutils.CheckErrorf(createRestoreErrorPrefix(filePath, backupPath) + err.Error())
+			return errors.New(createRestoreErrorPrefix(filePath, backupPath) + err.Error())
 		}
 
 		if err := fileutils.MoveFile(backupPath, filePath); err != nil {

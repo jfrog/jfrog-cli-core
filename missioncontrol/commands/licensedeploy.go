@@ -20,7 +20,7 @@ func LicenseDeploy(bucketId, jpdId string, flags *LicenseDeployFlags) error {
 	}
 	requestContent, err := json.Marshal(postContent)
 	if err != nil {
-		return errorutils.CheckErrorf("Failed to marshal json: " + err.Error())
+		return errorutils.CheckErrorf("Failed to marshal json: %s", err.Error())
 	}
 	missionControlUrl := flags.ServerDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/deploy"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(flags.ServerDetails)

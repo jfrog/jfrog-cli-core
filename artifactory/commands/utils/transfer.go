@@ -2,15 +2,17 @@ package utils
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/gocarina/gocsv"
 	ioutils "github.com/jfrog/gofrog/io"
 	logutils "github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/jfrog/jfrog-client-go/http/jfroghttpclient"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
-	"net/http"
-	"time"
 )
 
 type ServerType string
@@ -40,7 +42,7 @@ func GetTransferPluginVersion(client *jfroghttpclient.JfrogHttpClient, url, plug
 		return "", errorutils.CheckErrorf("%sIt looks like the %s plugin is not installed on the %s server.", messageFormat, pluginName, serverType)
 	} else {
 		// 403 if the user is not admin, 500+ if there is a server error
-		return "", errorutils.CheckErrorf(messageFormat)
+		return "", errors.New(messageFormat)
 	}
 }
 

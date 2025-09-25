@@ -3,13 +3,14 @@ package commands
 import (
 	"errors"
 	"fmt"
-	generic "github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"net/url"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
 	"sync"
+
+	generic "github.com/jfrog/jfrog-cli-core/v2/general/token"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -134,7 +135,7 @@ func (cc *ConfigCommand) Run() (err error) {
 	case Clear:
 		err = cc.clear()
 	default:
-		err = fmt.Errorf("Not supported config command type: " + string(cc.cmdType))
+		err = fmt.Errorf("Not supported config command type: %s", string(cc.cmdType))
 	}
 	return
 }
@@ -233,7 +234,10 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetVcsUrl(os.Getenv(coreutils.CIVcsUrl)).
 		SetVcsBranch(os.Getenv(coreutils.CIVcsBranch)).
 		SetJobId(cc.oidcSetupParams.JobId).
-		SetRunId(cc.oidcSetupParams.RunId)
+		SetRunId(cc.oidcSetupParams.RunId).
+		SetVcsRevision(cc.oidcSetupParams.VcsRevision).
+		SetVcsBranch(cc.oidcSetupParams.VcsBranch).
+		SetVcsUrl(cc.oidcSetupParams.VcsUrl)
 
 	// Usage report will be sent only after execution in order to have valid token
 	err := ExecAndThenReportUsage(exchangeOidcTokenCmd)

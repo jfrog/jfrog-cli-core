@@ -3,14 +3,15 @@ package token
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+
 	rtUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/access/services"
 	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"os"
-	"strings"
 )
 
 const (

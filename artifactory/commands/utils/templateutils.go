@@ -21,15 +21,15 @@ type TemplateUserCommand interface {
 	Vars() string
 }
 
-func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, error) {
+func ConvertTemplateToMap(templateUserCommand TemplateUserCommand) (map[string]interface{}, error) {
 	// Read the template file
-	content, err := fileutils.ReadFile(tuc.TemplatePath())
+	content, err := fileutils.ReadFile(templateUserCommand.TemplatePath())
 	if errorutils.CheckError(err) != nil {
 		return nil, err
 	}
 	// Replace vars string-by-string if needed
-	if len(tuc.Vars()) > 0 {
-		templateVars := coreutils.SpecVarsStringToMap(tuc.Vars())
+	if len(templateUserCommand.Vars()) > 0 {
+		templateVars := coreutils.SpecVarsStringToMap(templateUserCommand.Vars())
 		content = coreutils.ReplaceVars(content, templateVars)
 	}
 	// Unmarshal template to a map
@@ -38,12 +38,42 @@ func ConvertTemplateToMap(tuc TemplateUserCommand) (map[string]interface{}, erro
 	return configMap, errorutils.CheckError(err)
 }
 
+func ConvertTemplateToMaps(templateUserCommand TemplateUserCommand) (interface{}, error) {
+	content, err := fileutils.ReadFile(templateUserCommand.TemplatePath())
+	if err != nil {
+		return nil, errorutils.CheckError(err)
+	}
+	// Replace vars string-by-string if needed
+	if len(templateUserCommand.Vars()) > 0 {
+		templateVars := coreutils.SpecVarsStringToMap(templateUserCommand.Vars())
+		content = coreutils.ReplaceVars(content, templateVars)
+	}
+
+	var multiRepoCreateEntities []map[string]interface{}
+	err = json.Unmarshal(content, &multiRepoCreateEntities)
+	if err == nil {
+		return multiRepoCreateEntities, nil
+	}
+
+	if _, ok := err.(*json.SyntaxError); ok {
+		return nil, errorutils.CheckError(err)
+	}
+
+	var repoCreateEntity map[string]interface{}
+	err = json.Unmarshal(content, &repoCreateEntity)
+	if err == nil {
+		return repoCreateEntity, nil
+	}
+
+	return nil, errorutils.CheckError(err)
+}
+
 func ValidateMapEntry(key string, value interface{}, writersMap map[string]ioutils.AnswerWriter) error {
 	if _, ok := writersMap[key]; !ok {
-		return errorutils.CheckErrorf("template syntax error: unknown key: \"" + key + "\".")
+		return errorutils.CheckErrorf("template syntax error: unknown key: \"%s\".", key)
 	}
 	if _, ok := value.(string); !ok {
-		return errorutils.CheckErrorf("template syntax error: the value for the  key: \"" + key + "\" is not a string type.")
+		return errorutils.CheckErrorf("template syntax error: the value for the  key: \"%s\" is not a string type.", key)
 	}
 	return nil
 }

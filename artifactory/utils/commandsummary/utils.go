@@ -47,6 +47,7 @@ const (
 	artifactsSection summarySection = "artifacts"
 	packagesSection  summarySection = "packages"
 	buildInfoSection summarySection = "buildInfo"
+	evidenceSection  summarySection = "evidence"
 )
 
 const (

@@ -84,7 +84,7 @@ func (containerManager *containerManager) OsCompatibility(image *Image) (string,
 	content = strings.Trim(content, "\n")
 	firstSeparator := strings.Index(content, ",")
 	if firstSeparator == -1 {
-		return "", "", errorutils.CheckErrorf("couldn't find OS and architecture of image:" + image.name)
+		return "", "", errorutils.CheckErrorf("couldn't find OS and architecture of image: %s", image.name)
 	}
 	return content[:firstSeparator], content[firstSeparator+1:], err
 }

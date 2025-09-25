@@ -184,7 +184,7 @@ func GetServerDetails(vConfig *viper.Viper) (*config.ServerDetails, error) {
 
 func CreateBuildInfoProps(buildArtifactsDetailsFile string, config *viper.Viper, projectType project.ProjectType) (map[string]string, error) {
 	if config.GetString("type") != projectType.String() {
-		return nil, errorutils.CheckErrorf("Incompatible build config, expected: " + projectType.String() + " got: " + config.GetString("type"))
+		return nil, errorutils.CheckErrorf("Incompatible build config, expected: %s, got: %s", projectType.String(), config.GetString("type"))
 	}
 	if err := setServerDetailsToConfig(ResolverPrefix, config); err != nil {
 		return nil, err
@@ -300,7 +300,7 @@ func setServerDetailsToConfig(contextPrefix string, vConfig *viper.Viper) error 
 		return err
 	}
 	if artDetails.GetArtifactoryUrl() == "" {
-		return errorutils.CheckErrorf("Server ID " + serverId + ": URL is required.")
+		return errorutils.CheckErrorf("Server ID %s URL is required.", serverId)
 	}
 	vConfig.Set(contextPrefix+Url, artDetails.GetArtifactoryUrl())
 

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -580,7 +581,7 @@ func validateRepositoryConfig(repository *project.Repository, errorPrefix string
 	snapshotRepo := repository.SnapshotRepo
 
 	if repository.ServerId != "" && repository.Repo == "" && releaseRepo == "" && snapshotRepo == "" {
-		return errorutils.CheckErrorf(errorPrefix + setRepositoryError)
+		return errors.New(errorPrefix + setRepositoryError)
 	}
 	// Server-id flag was not provided.
 	if repository.ServerId == "" {
@@ -601,7 +602,7 @@ func validateRepositoryConfig(repository *project.Repository, errorPrefix string
 		if serverId == "" {
 			// Repositories flags were provided.
 			if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
-				return errorutils.CheckErrorf(errorPrefix + setServerIdError)
+				return errors.New(errorPrefix + setServerIdError)
 			}
 		} else if repository.Repo != "" || releaseRepo != "" || snapshotRepo != "" {
 			// Server-id flag wasn't provided and repositories flags were provided - the default configured global server will be chosen.
@@ -610,7 +611,7 @@ func validateRepositoryConfig(repository *project.Repository, errorPrefix string
 	}
 	// Release/snapshot repositories should be entangled to each other.
 	if (releaseRepo == "" && snapshotRepo != "") || (releaseRepo != "" && snapshotRepo == "") {
-		return errorutils.CheckErrorf(errorPrefix + setSnapshotAndReleaseError)
+		return errors.New(errorPrefix + setSnapshotAndReleaseError)
 	}
 	return nil
 }
@@ -632,7 +633,7 @@ func readArtifactoryServer(useArtifactoryQuestion string) (string, error) {
 		return "", err
 	}
 	if len(serversIds) == 0 {
-		return "", errorutils.CheckErrorf("No Artifactory servers configured. Use the 'jfrog c add' command to set the Artifactory server details.")
+		return "", errors.New("No Artifactory servers configured. Use the 'jfrog c add' command to set the Artifactory server details.")
 	}
 
 	// Ask whether to use artifactory

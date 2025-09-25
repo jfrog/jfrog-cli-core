@@ -16,6 +16,7 @@ import (
 	"time"
 
 	ioutils "github.com/jfrog/gofrog/io"
+	"github.com/jfrog/jfrog-client-go/apptrust"
 	"github.com/jfrog/jfrog-client-go/evidence"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -242,6 +243,27 @@ func CreateEvidenceServiceManager(serviceDetails *config.ServerDetails, isDryRun
 		return nil, err
 	}
 	return evidence.New(serviceConfig)
+}
+
+func CreateApptrustServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (*apptrust.ApptrustServicesManager, error) {
+	certsPath, err := coreutils.GetJfrogCertsDir()
+	if err != nil {
+		return nil, err
+	}
+	apptrustAuth, err := serviceDetails.CreateApptrustAuthConfig()
+	if err != nil {
+		return nil, err
+	}
+	serviceConfig, err := clientConfig.NewConfigBuilder().
+		SetServiceDetails(apptrustAuth).
+		SetCertificatesPath(certsPath).
+		SetInsecureTls(serviceDetails.InsecureTls).
+		SetDryRun(isDryRun).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+	return apptrust.New(serviceConfig)
 }
 
 func CreateMetadataServiceManager(serviceDetails *config.ServerDetails, isDryRun bool) (metadata.Manager, error) {

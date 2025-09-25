@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	releaseBundleEvidenceFormat = "%sui/artifactory/lifecycle?range=Any+Time&bundleName=%s&repositoryKey=%s&releaseBundleVersion=%s&activeVersionTab=Evidence+Graph"
+	applicationEvidenceFormat   = "%sui/applications/management/%s/versions/%s?activeVersionTab=Content+Graph"
+	releaseBundleEvidenceFormat = "%sui/artifactory/lifecycle?range=Any+Time&bundleName=%s&repositoryKey=%s&releaseBundleVersion=%s&activeVersionTab=Content+Graph"
 	buildEvidenceFormat         = "%sui/builds/%s/%s/%s/Evidence?buildRepo=%s"
 	artifactEvidenceFormat      = "%sui/repos/tree/Evidence/%s?clearFilter=true"
 )
@@ -20,6 +21,8 @@ func GenerateEvidenceUrlByType(data EvidenceSummaryData, section summarySection)
 		return generateArtifactEvidenceUrl(data.Subject, section)
 	case SubjectTypeReleaseBundle:
 		return generateReleaseBundleEvidenceUrl(data, section)
+	case SubjectTypeApplication:
+		return generateApplicationEvidenceUrl(data, section)
 	case SubjectTypeBuild:
 		return generateBuildEvidenceUrl(data, section)
 	default:
@@ -42,6 +45,19 @@ func generateReleaseBundleEvidenceUrl(data EvidenceSummaryData, section summaryS
 		data.ReleaseBundleName,
 		data.RepoKey,
 		data.ReleaseBundleVersion)
+
+	return addGitHubTrackingToUrl(urlStr, section)
+}
+
+func generateApplicationEvidenceUrl(data EvidenceSummaryData, section summarySection) (string, error) {
+	if data.ApplicationKey == "" || data.ApplicationVersion == "" {
+		return generateArtifactEvidenceUrl(data.Subject, section)
+	}
+
+	urlStr := fmt.Sprintf(applicationEvidenceFormat,
+		StaticMarkdownConfig.GetPlatformUrl(),
+		data.ApplicationKey,
+		data.ApplicationVersion)
 
 	return addGitHubTrackingToUrl(urlStr, section)
 }

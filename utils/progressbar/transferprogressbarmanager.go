@@ -266,12 +266,16 @@ func (tpm *TransferProgressMng) NewGeneralProgBar() *TasksProgressBar {
 }
 
 func (tpm *TransferProgressMng) NewWorkingThreadsProg() *TasksProgressBar {
-	getVal := func() (workingThreadsNum int, err error) {
+	getVal := func() (workingThreadsNumUint64 uint64, err error) {
 		err = tpm.stateMng.Action(func(*state.TransferState) error {
-			workingThreadsNum = tpm.stateMng.WorkingThreads
+			workingThreadsNum, errConv := safeconvert.IntToUint(tpm.stateMng.WorkingThreads)
+			if errConv != nil {
+				log.Error(err)
+			}
+			workingThreadsNumUint64 = uint64(workingThreadsNum)
 			return nil
 		})
-		return workingThreadsNum, err
+		return workingThreadsNumUint64, err
 	}
 
 	return tpm.barMng.newCounterProgressBar(getVal, tpm.transferLabels.WorkingThreads, nil)
@@ -304,28 +308,22 @@ func (tpm *TransferProgressMng) NewTimeEstBar() *TasksProgressBar {
 }
 
 func (tpm *TransferProgressMng) NewVisitedFoldersBar() *TasksProgressBar {
-	getVals := func() (int, error) {
+	getVals := func() (uint64, error) {
 		if tpm.ignoreState {
 			return 0, nil
 		}
-		signedVisitedFolders, err := safeconvert.Uint64ToInt(tpm.stateMng.VisitedFolders)
-		if err != nil {
-			return 0, fmt.Errorf("failed to convert visited folders to int: %w", err)
-		}
+		signedVisitedFolders := tpm.stateMng.VisitedFolders
 		return signedVisitedFolders, nil
 	}
 	return tpm.barMng.newCounterProgressBar(getVals, tpm.transferLabels.VisitedFolders, nil)
 }
 
 func (tpm *TransferProgressMng) NewDelayedBar() *TasksProgressBar {
-	getVals := func() (int, error) {
+	getVals := func() (uint64, error) {
 		if tpm.ignoreState {
 			return 0, nil
 		}
-		signedDelayedFiles, err := safeconvert.Uint64ToInt(tpm.stateMng.DelayedFiles)
-		if err != nil {
-			return 0, fmt.Errorf("failed to convert delayed files to int: %w", err)
-		}
+		signedDelayedFiles := tpm.stateMng.DelayedFiles
 		return signedDelayedFiles, nil
 	}
 	counterDescription := func() string { return DelayedFilesContentNote }
@@ -333,11 +331,11 @@ func (tpm *TransferProgressMng) NewDelayedBar() *TasksProgressBar {
 }
 
 func (tpm *TransferProgressMng) NewErrorBar() *TasksProgressBar {
-	getVals := func() (transferFailures int, err error) {
+	getVals := func() (transferFailures uint64, err error) {
 		if tpm.ignoreState {
 			return 0, nil
 		}
-		signedTransferFailures, err := safeconvert.Uint64ToInt(tpm.stateMng.TransferFailures)
+		signedTransferFailures := tpm.stateMng.TransferFailures
 		if err != nil {
 			return 0, fmt.Errorf("failed to convert transfer failures to int: %w", err)
 		}

@@ -73,10 +73,9 @@ type OidcParams struct {
 	ApplicationKey string
 	JobId          string
 	RunId          string
-	Repository     string
+	VcsRevision    string
 	VcsUrl         string
 	VcsBranch      string
-	VcsRevision    string
 }
 
 type ExchangeCommandOutputStruct struct {
@@ -132,23 +131,18 @@ func (otc *OidcTokenExchangeCommand) SetJobId(jobId string) *OidcTokenExchangeCo
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) SetRepository(repo string) *OidcTokenExchangeCommand {
-	otc.Repository = repo
+func (otc *OidcTokenExchangeCommand) SetVcsRevision(revision string) *OidcTokenExchangeCommand {
+	otc.VcsRevision = revision
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) SetVcsUrl(vcsUrl string) *OidcTokenExchangeCommand {
-	otc.VcsUrl = vcsUrl
+func (otc *OidcTokenExchangeCommand) SetVcsUrl(url string) *OidcTokenExchangeCommand {
+	otc.VcsUrl = url
 	return otc
 }
 
-func (otc *OidcTokenExchangeCommand) SetVcsBranch(vcsBranch string) *OidcTokenExchangeCommand {
-	otc.VcsBranch = vcsBranch
-	return otc
-}
-
-func (otc *OidcTokenExchangeCommand) SetVcsRevision(vcsRevision string) *OidcTokenExchangeCommand {
-	otc.VcsRevision = vcsRevision
+func (otc *OidcTokenExchangeCommand) SetVcsBranch(branch string) *OidcTokenExchangeCommand {
+	otc.VcsBranch = branch
 	return otc
 }
 
@@ -207,17 +201,11 @@ func (otc *OidcTokenExchangeCommand) getOidcTokenParams() services.CreateOidcTok
 	oidcTokenParams.ApplicationKey = otc.ApplicationKey
 	oidcTokenParams.RunId = otc.RunId
 	oidcTokenParams.JobId = otc.JobId
-	oidcTokenParams.Repo = otc.Repository
+	oidcTokenParams.Repo = otc.VcsUrl
+	oidcTokenParams.Revision = otc.VcsRevision
+	oidcTokenParams.Branch = otc.VcsBranch
 	oidcTokenParams.Audience = otc.Audience
 	oidcTokenParams.ProviderName = otc.ProviderName
 	oidcTokenParams.ProviderType = otc.ProviderType.String()
-	oidcTokenParams.Context = &services.Context{
-		VcsCommit: &services.VcsCommit{
-			VcsUrl:   otc.VcsUrl,
-			Branch:   otc.VcsBranch,
-			Revision: otc.VcsRevision,
-		},
-	}
-
 	return oidcTokenParams
 }

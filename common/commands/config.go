@@ -230,7 +230,9 @@ func exchangeOidcTokenAndSetAccessToken(cc *ConfigCommand) error {
 		SetAudience(cc.oidcSetupParams.Audience).
 		SetApplicationKey(cc.oidcSetupParams.ApplicationKey).
 		SetProjectKey(cc.oidcSetupParams.ProjectKey).
-		SetRepository(cc.oidcSetupParams.Repository).
+		SetVcsRevision(os.Getenv(coreutils.CIVcsRevision)).
+		SetVcsUrl(os.Getenv(coreutils.CIVcsUrl)).
+		SetVcsBranch(os.Getenv(coreutils.CIVcsBranch)).
 		SetJobId(cc.oidcSetupParams.JobId).
 		SetRunId(cc.oidcSetupParams.RunId).
 		SetVcsRevision(cc.oidcSetupParams.VcsRevision).

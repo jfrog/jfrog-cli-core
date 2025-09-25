@@ -28,7 +28,7 @@ func NewCommandsCountMetric(commandName string) services.VisibilityMetric {
 			ProviderType:                         os.Getenv(coreutils.OidcProviderType),
 			JobID:                                os.Getenv(coreutils.CIJobID),
 			RunID:                                os.Getenv(coreutils.CIRunID),
-			GitRepo:                              os.Getenv(coreutils.SourceCodeRepository),
+			GitRepo:                              os.Getenv(coreutils.CIVcsUrl),
 			GhTokenForCodeScanningAlertsProvided: os.Getenv("JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED"),
 		},
 	}

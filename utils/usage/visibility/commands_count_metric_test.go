@@ -12,10 +12,10 @@ import (
 func TestCreateCommandsCountMetric(t *testing.T) {
 	// Set environment variables for the test using SetEnvWithCallbackAndAssert
 	envVars := map[string]string{
-		coreutils.CIJobID:              "job123",
-		coreutils.CIRunID:              "run456",
-		coreutils.SourceCodeRepository: "test-repo",
-		coreutils.OidcProviderType:     token.GitHub.String(),
+		coreutils.CIJobID:          "job123",
+		coreutils.CIRunID:          "run456",
+		coreutils.CIVcsUrl:         "test-repo",
+		coreutils.OidcProviderType: token.GitHub.String(),
 		"JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED": "TRUE",
 	}
 	cleanupFuncs := []func(){}

@@ -71,14 +71,14 @@ var (
 	EnvExclude     = "JFROG_CLI_ENV_EXCLUDE"
 	Project        = "JFROG_CLI_BUILD_PROJECT"
 	ApplicationKey = "JFROG_CLI_APPLICATION_KEY"
-	CIVcsRevision  = "JFROG_CLI_CI_VCS_REVISION"
-	CIVcsBranch    = "JFROG_CLI_CI_BRANCH"
-	CIVcsUrl       = "JFROG_CLI_CI_VCS_URL"
 	SigningKey     = "JFROG_CLI_SIGNING_KEY"
 	KeyAlias       = "JFROG_CLI_KEY_ALIAS"
 	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
 	// For CI runs
-	CIJobID = "JFROG_CLI_CI_JOB_ID"
-	CIRunID = "JFROG_CLI_CI_RUN_ID"
+	CIJobID       = "JFROG_CLI_CI_JOB_ID"
+	CIRunID       = "JFROG_CLI_CI_RUN_ID"
+	CIVcsRevision = "JFROG_CLI_CI_VCS_REVISION"
+	CIVcsBranch   = "JFROG_CLI_CI_BRANCH"
+	CIVcsUrl      = "JFROG_CLI_CI_VCS_URL"
 )

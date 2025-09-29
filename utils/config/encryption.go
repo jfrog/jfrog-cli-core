@@ -5,9 +5,11 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
+	"strings"
 	"syscall"
 
 	ioutils "github.com/jfrog/gofrog/io"
@@ -98,8 +100,22 @@ func handleSecrets(config *Config, handler secretHandler, key string) error {
 }
 
 func getEncryptionKey() (string, error) {
-	if key, exist := os.LookupEnv(coreutils.EncryptionKey); exist {
-		return key, nil
+	if keyOrPath, exist := os.LookupEnv(coreutils.EncryptionKey); exist {
+		if strings.HasSuffix(keyOrPath, ".key") {
+			fileInfo, err := os.Stat(keyOrPath)
+			if err != nil {
+				return "", fmt.Errorf("failed to stat encryption key file '%s': %w", keyOrPath, err)
+			}
+			if fileInfo.IsDir() {
+				return "", fmt.Errorf("encryption key path '%s' is a directory, not a file", keyOrPath)
+			}
+			keyBytes, readErr := os.ReadFile(keyOrPath)
+			if readErr != nil {
+				return "", fmt.Errorf("failed to read encryption key from file '%s': %w", keyOrPath, readErr)
+			}
+			return strings.TrimSpace(string(keyBytes)), nil
+		}
+		return keyOrPath, nil
 	}
 	return getEncryptionKeyFromSecurityConfFile()
 }

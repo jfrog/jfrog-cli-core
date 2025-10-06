@@ -8,7 +8,7 @@ require (
 	github.com/apache/camel-k/v2 v2.8.0
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
-	github.com/forPelevin/gomoji v1.3.1
+	github.com/forPelevin/gomoji v1.4.0
 	github.com/gocarina/gocsv v0.0.0-20240520201108-78e41c74b4b1
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.6.0

@@ -123,6 +123,21 @@ var DefaultMaxColWidth = 25
 // │ Noah │ 21  │ Pouch                     │ 456789    │
 // └──────┴─────┴───────────────────────────┴───────────┘
 
+var StyleBorderless = table.Style{
+	Name: "StyleBorderless",
+	Box: table.BoxStyle{
+		TopLeft: "", TopRight: "", BottomLeft: "", BottomRight: "",
+		Left: "", Right: "",
+		MiddleVertical: "  :  ",
+	},
+	Options: table.Options{
+		DrawBorder:      false,
+		SeparateColumns: true,
+		SeparateHeader:  false,
+		SeparateRows:    false,
+	},
+}
+
 func PrintTable(rows interface{}, title string, emptyTableMessage string, printExtended bool) (err error) {
 	if title != "" {
 		log.Output(title)
@@ -214,6 +229,37 @@ func PrepareTable(rows interface{}, emptyTableMessage string, printExtended bool
 	}
 
 	return tableWriter, nil
+}
+
+func PrintTableWithBorderless(rows interface{}, title string, footer string, emptyTableMessage string, printExtended bool) (err error) {
+	if title != "" {
+		log.Output(title)
+	}
+
+	tableWriter, err := PrepareTable(rows, emptyTableMessage, printExtended)
+	if err != nil || tableWriter == nil {
+		return
+	}
+	tableWriter.SetStyle(StyleBorderless)
+	stdoutWriter := bufio.NewWriter(os.Stdout)
+	defer func() {
+		err = errors.Join(err, stdoutWriter.Flush())
+	}()
+	tableWriter.SetOutputMirror(stdoutWriter)
+
+	tableWriter.Render()
+	if footer != "" {
+		cleanFooter := strings.TrimSpace(footer)
+		_, err = fmt.Fprint(stdoutWriter, cleanFooter)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(stdoutWriter)
+		if err != nil {
+			return err
+		}
+	}
+	return
 }
 
 func isColumnEmpty(rows reflect.Value, fieldIndex int) bool {

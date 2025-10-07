@@ -128,11 +128,11 @@ var StyleBorderless = table.Style{
 	Box: table.BoxStyle{
 		TopLeft: "", TopRight: "", BottomLeft: "", BottomRight: "",
 		Left: "", Right: "",
-		MiddleVertical: "  :  ", // Your separator with padding
+		MiddleVertical: "  :  ",
 	},
 	Options: table.Options{
 		DrawBorder:      false,
-		SeparateColumns: true, // ADD THIS LINE: This tells the table to draw the separator.
+		SeparateColumns: true,
 		SeparateHeader:  false,
 		SeparateRows:    false,
 	},

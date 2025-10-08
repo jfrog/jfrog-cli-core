@@ -240,6 +240,7 @@ func PrintTableWithBorderless(rows interface{}, title string, footer string, emp
 	if err != nil || tableWriter == nil {
 		return
 	}
+	tableWriter.ResetHeaders()
 	tableWriter.SetStyle(StyleBorderless)
 	stdoutWriter := bufio.NewWriter(os.Stdout)
 	defer func() {

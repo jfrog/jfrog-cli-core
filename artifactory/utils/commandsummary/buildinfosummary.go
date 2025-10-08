@@ -8,16 +8,17 @@ import (
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
-	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/container"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
 const (
-	basicSummaryUpgradeNotice = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
-	modulesTitle              = "📦 Modules published to Artifactory by this workflow"
-	minTableColumnLength      = 400
-	markdownSpaceFiller       = "&nbsp;"
-	NonScannedResult          = "non-scanned"
+	basicSummaryUpgradeNotice         = "<a href=\"%s\">🐸 Enable the linkage to Artifactory</a>\n\n"
+	modulesTitle                      = "📦 Modules published to Artifactory by this workflow"
+	minTableColumnLength              = 400
+	markdownSpaceFiller               = "&nbsp;"
+	NonScannedResult                  = "non-scanned"
+	ManifestJsonFile                  = "manifest.json"
+	AttestationsModuleIdPrefix string = "attestations"
 )
 
 var (
@@ -290,7 +291,7 @@ func isSupportedModule(module *buildInfo.Module) bool {
 		return false
 	}
 	if module.Type == buildInfo.Docker {
-		return !strings.HasPrefix(module.Id, container.AttestationsModuleIdPrefix)
+		return !strings.HasPrefix(module.Id, AttestationsModuleIdPrefix)
 	}
 	return true
 }
@@ -300,7 +301,7 @@ func createDockerMultiArchTitle(module *buildInfo.Module) string {
 		parentImageName := strings.Split(module.Parent, ":")[0]
 		var sha256 string
 		for _, artifact := range module.Artifacts {
-			if artifact.Name == container.ManifestJsonFile {
+			if artifact.Name == ManifestJsonFile {
 				sha256 = artifact.Sha256
 				break
 			}

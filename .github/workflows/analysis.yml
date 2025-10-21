@@ -59,3 +59,50 @@ jobs:
           else
             echo "✅ No uncommented replace directives found in go.mod"
           fi
+
+    Validate-cli-security:
+    name: Validate CLI Security Compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout CLI Core
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: Checkout CLI Security
+        uses: actions/checkout@v5
+        with:
+          repository: jfrog/jfrog-cli-security
+          ref: ${{ github.event.inputs.cli_security_branch || 'main' }}
+          path: cli-security
+
+      - name: Setup Go with cache
+        uses: jfrog/.github/actions/install-go-with-cache@main
+
+      - name: Get CLI Core absolute path
+        id: cli_core_path
+        run: |
+          CLI_CORE_PATH=$(pwd)
+          echo "cli_core_path=$CLI_CORE_PATH" >> $GITHUB_OUTPUT
+          echo "CLI Core path: $CLI_CORE_PATH"
+
+      - name: Modify CLI Security go.mod
+        run: |
+          cd cli-security
+
+          # Add replace directive to use local CLI Core
+          echo "" >> go.mod
+          echo "replace github.com/jfrog/jfrog-cli-core/v2 => ${{ steps.cli_core_path.outputs.cli_core_path }}" >> go.mod
+
+          # Run go mod tidy to clean up dependencies
+          go mod tidy
+
+          echo "Modified go.mod with replace directive:"
+          tail -5 go.mod
+
+      - name: Run go vet on CLI Security
+        run: |
+          cd cli-security
+          echo "Running go vet on CLI Security..."
+          go vet ./...
+          echo "✅ go vet completed successfully - no issues found"

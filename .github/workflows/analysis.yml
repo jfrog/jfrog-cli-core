@@ -79,7 +79,7 @@ jobs:
       - name: Replace To Local Core in Security CLI
         run: |
           cd security-cli
-          go mod edit -replace github.com/jfrog/jfrog-cli-core=../
+          go mod edit -replace github.com/jfrog/jfrog-cli-core/v2=${GITHUB_WORKSPACE}
           go mod tidy
 
       - name: Vet Security CLI

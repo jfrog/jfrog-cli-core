@@ -59,3 +59,29 @@ jobs:
           else
             echo "✅ No uncommented replace directives found in go.mod"
           fi
+
+  No-Security-Break:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Core Source
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+
+      - name: Checkout Security CLI Source - Dev branch
+        uses: actions/checkout@v5
+        with:
+          repository: jfrog/jfrog-security-cli
+          ref: dev
+          path: security-cli
+
+      - name: Replace To Local Core in Security CLI
+        run: |
+          cd security-cli
+          go mod edit -replace github.com/jfrog/jfrog-cli-core=../
+          go mod tidy
+
+      - name: Vet Security CLI
+        run: |
+          cd security-cli
+          go vet ./...

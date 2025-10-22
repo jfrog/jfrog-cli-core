@@ -2,7 +2,7 @@ name: "Static Analysis"
 on:
   push:
     branches:
-      - "validate_sec_action "
+      - "validate_sec_action"
       - "master"
     tags-ignore:
       - "**"

@@ -2,7 +2,6 @@ name: "Static Analysis"
 on:
   push:
     branches:
-      - "validate-cli-security-wf"
       - "master"
     tags-ignore:
       - "**"

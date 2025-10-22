@@ -72,7 +72,7 @@ jobs:
       - name: Checkout Security CLI Source - Dev branch
         uses: actions/checkout@v5
         with:
-          repository: jfrog/jfrog-security-cli
+          repository: jfrog/jfrog-cli-security
           ref: dev
           path: security-cli
 

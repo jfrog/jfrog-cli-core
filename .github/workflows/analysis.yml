@@ -65,24 +65,21 @@ jobs:
     name: Validate CLI-Security Compatibility
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout CLI Core
+      - name: Checkout CLI Core Source
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
-      - name: Checkout CLI Security
+      - name: Checkout Security CLI Source - Dev branch
         uses: actions/checkout@v5
         with:
           repository: jfrog/jfrog-cli-security
-          ref: main
+          ref: dev
           path: cli-security
-
-      - name: Setup Go with cache
-        uses: jfrog/.github/actions/install-go-with-cache@main
 
       - name: Replace To Local Core in Security CLI
         run: |
-          cd security-cli
+          cd cli-security
           go mod edit -replace github.com/jfrog/jfrog-cli-core/v2=${GITHUB_WORKSPACE}
           go mod tidy
 

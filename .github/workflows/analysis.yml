@@ -61,29 +61,38 @@ jobs:
             echo "✅ No uncommented replace directives found in go.mod"
           fi
 
-  Validate-cli-security:
-    name: Validate CLI-Security Compatibility
+  Validate-CLI-Compatibility:
+    name: Validate ${{ matrix.repo }} Compatibility
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - repo: jfrog-cli-security
+            branch: dev
+          - repo: jfrog-cli-artifactory
+            branch: main
+
     steps:
       - name: Checkout CLI Core Source
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
-      - name: Checkout Security CLI Source - Dev branch
+      - name: Checkout ${{ matrix.repo }} Source - ${{ matrix.branch }} branch
         uses: actions/checkout@v5
         with:
-          repository: jfrog/jfrog-cli-security
-          ref: dev
-          path: cli-security
+          repository: jfrog/${{ matrix.repo }}
+          ref: ${{ matrix.branch }}
+          path: ${{ matrix.repo }}
 
-      - name: Replace To Local Core in Security CLI
+      - name: Replace To Local Core in ${{ matrix.repo }}
         run: |
-          cd cli-security
+          cd ${{ matrix.repo }}
           go mod edit -replace github.com/jfrog/jfrog-cli-core/v2=${GITHUB_WORKSPACE}
           go mod tidy
 
-      - name: Run go vet on CLI Security
+      - name: Run go vet on ${{ matrix.repo }}
         run: |
-          cd cli-security
+          cd ${{ matrix.repo }}
           go vet ./...

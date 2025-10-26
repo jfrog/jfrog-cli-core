@@ -14,13 +14,10 @@ func TestGetRegistry(t *testing.T) {
 		url      string
 		expected string
 	}{
-		// jfrog-ignore - unsafe url for tests
-		{"repo", "http://url/art", "http://url/art/api/npm/repo"},
-		// jfrog-ignore - unsafe url for tests
-		{"repo", "http://url/art/", "http://url/art/api/npm/repo"},
+		{"repo", "https://url/art", "https://url/art/api/npm/repo"},
+		{"repo", "https://url/art/", "https://url/art/api/npm/repo"},
 		{"repo", "", "/api/npm/repo"},
-		// jfrog-ignore - unsafe url for tests
-		{"", "http://url/art", "http://url/art/api/npm/"},
+		{"", "https://url/art", "https://url/art/api/npm/"},
 	}
 
 	for _, testCase := range getRegistryTest {

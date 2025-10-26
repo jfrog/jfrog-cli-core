@@ -14,9 +14,12 @@ func TestGetRegistry(t *testing.T) {
 		url      string
 		expected string
 	}{
+		// jfrog-ignore - test URL
 		{"repo", "http://url/art", "http://url/art/api/npm/repo"},
+		// jfrog-ignore - test URL
 		{"repo", "http://url/art/", "http://url/art/api/npm/repo"},
 		{"repo", "", "/api/npm/repo"},
+		// jfrog-ignore - test URL
 		{"", "http://url/art", "http://url/art/api/npm/"},
 	}
 

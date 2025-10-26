@@ -353,7 +353,7 @@ func TestConfigureArtifactoryRepository_URLTrimming(t *testing.T) {
 			"For input '%s', expected URL '%s'", tc.input, tc.expected)
 
 		// Clean up for next iteration
-		os.Remove(settingsPath)
+		_ = os.Remove(settingsPath)
 	}
 }
 

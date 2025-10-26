@@ -144,8 +144,8 @@ func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 
 func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string) {
 	var yamlConfig = map[string]string{
-		ResolverPrefix + Url: "http://some.url.com",
-		DeployerPrefix + Url: "http://some.other.url.com",
+		ResolverPrefix + Url: "https://some.url.com",
+		DeployerPrefix + Url: "https://some.other.url.com",
 	}
 	var expectedProps map[string]interface{}
 	assert.NoError(t, utils.Unmarshal(expectedPropsFilePath, &expectedProps))

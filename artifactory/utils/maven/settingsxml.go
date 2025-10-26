@@ -1,14 +1,12 @@
 package maven
 
 import (
-	"encoding/xml"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
-	mavenv1 "github.com/apache/camel-k/v2/pkg/apis/camel/v1"
-	"github.com/apache/camel-k/v2/pkg/util/maven"
+	"github.com/beevik/etree"
 )
 
 const (
@@ -20,253 +18,202 @@ const (
 
 	// AltDeploymentRepositoryProperty is the Maven property for overriding deployment repository.
 	AltDeploymentRepositoryProperty = "altDeploymentRepository"
+
+	// mirrorOfAllRepositories configures the mirror to proxy all repositories.
+	mirrorOfAllRepositories = "*"
+
+	// XML element names
+	xmlElementSettings        = "settings"
+	xmlElementServers         = "servers"
+	xmlElementServer          = "server"
+	xmlElementMirrors         = "mirrors"
+	xmlElementMirror          = "mirror"
+	xmlElementProfiles        = "profiles"
+	xmlElementProfile         = "profile"
+	xmlElementID              = "id"
+	xmlElementUsername        = "username"
+	xmlElementPassword        = "password"
+	xmlElementName            = "name"
+	xmlElementURL             = "url"
+	xmlElementMirrorOf        = "mirrorOf"
+	xmlElementActivation      = "activation"
+	xmlElementActiveByDefault = "activeByDefault"
+	xmlElementProperties      = "properties"
+
+	// XML namespace constants
+	// jfrog-ignore - Maven XML namespace URL, required by specification
+	xmlnsURL = "http://maven.apache.org/SETTINGS/1.2.0"
+	// jfrog-ignore - W3C XML Schema namespace URL, standard specification
+	xmlnsXsi = "http://www.w3.org/2001/XMLSchema-instance"
+	// jfrog-ignore - Maven XSD schema URLs, required by specification
+	xsiSchemaLocationURL = "http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
 )
 
-// SettingsXmlManager manages the maven settings file (`settings.xml`).
+// SettingsXmlManager manages the Maven settings file (settings.xml).
+// It provides methods to read, modify, and write Maven configuration while
+// preserving all existing user settings.
 type SettingsXmlManager struct {
-	path     string
-	settings maven.Settings
+	path string          // Absolute path to the settings.xml file
+	doc  *etree.Document // XML document tree representation
 }
 
 // NewSettingsXmlManager creates a new SettingsXmlManager instance.
-// It automatically loads the existing settings from the `settings.xml` file if it exists.
+// It automatically loads the existing settings from the settings.xml file if it exists,
+// or initializes a new document with proper Maven XML structure if the file is not found.
+// The settings.xml location is determined by the user's home directory (~/.m2/settings.xml).
 func NewSettingsXmlManager() (*SettingsXmlManager, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user home directory: %w", err)
 	}
+	return NewSettingsXmlManagerWithPath(filepath.Join(homeDir, ".m2", "settings.xml"))
+}
+
+// NewSettingsXmlManagerWithPath creates a new SettingsXmlManager with a custom settings.xml path.
+// This is useful for testing or when using a non-standard Maven settings location.
+func NewSettingsXmlManagerWithPath(settingsPath string) (*SettingsXmlManager, error) {
 	manager := &SettingsXmlManager{
-		path: filepath.Join(homeDir, ".m2", "settings.xml"),
+		path: settingsPath,
+		doc:  etree.NewDocument(),
 	}
 
 	// Load existing settings from file
-	err = manager.loadSettings()
-	if err != nil {
-		return nil, fmt.Errorf("failed to load settings from %s: %w", manager.path, err)
-	}
+	manager.loadSettings()
 
 	return manager, nil
 }
 
-// loadSettings reads the settings.xml file and unmarshals it into the Settings struct.
-func (sxm *SettingsXmlManager) loadSettings() error {
-	file, err := os.ReadFile(sxm.path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// If file does not exist, initialize with empty settings
-			sxm.settings = maven.Settings{
-				XMLName: xml.Name{Local: "settings"},
-			}
-			return nil
-		}
-		return fmt.Errorf("failed to read settings file %s: %w", sxm.path, err)
+// loadSettings reads the settings.xml file or creates a new one if it doesn't exist.
+func (sxm *SettingsXmlManager) loadSettings() {
+	if err := sxm.doc.ReadFromFile(sxm.path); err != nil {
+		// If file doesn't exist, create a new settings document with proper structure
+		sxm.doc = etree.NewDocument()
+		sxm.doc.CreateProcInst("xml", `version="1.0" encoding="UTF-8"`)
+		root := sxm.doc.CreateElement(xmlElementSettings)
+		root.CreateAttr("xmlns", xmlnsURL)
+		root.CreateAttr("xmlns:xsi", xmlnsXsi)
+		root.CreateAttr("xsi:schemaLocation", xsiSchemaLocationURL)
 	}
-
-	// Unmarshal the file contents into the settings
-	err = xml.Unmarshal(file, &sxm.settings)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal settings from file %s: %w", sxm.path, err)
-	}
-	return nil
+	sxm.doc.Indent(2)
 }
 
-// configureArtifactoryMirror updates or adds the Artifactory mirror in the settings.
-func (sxm *SettingsXmlManager) configureArtifactoryMirror(repoUrl, repoName string) error {
-	// Find or create the mirror and update it with the provided details
-	return sxm.updateMirror(repoUrl, repoName)
-}
-
-// buildAltDeploymentRepoString creates the altDeploymentRepository string for Maven Deploy Plugin
-func buildAltDeploymentRepoString(repoUrl string) string {
-	return fmt.Sprintf("%s::default::%s", ArtifactoryMirrorID, repoUrl)
-}
-
-// findDeploymentProfileIndex finds the index of the deployment profile in settings.Profiles
-// Returns -1 if not found
-func (sxm *SettingsXmlManager) findDeploymentProfileIndex() int {
-	for i, profile := range sxm.settings.Profiles {
-		if profile.ID == ArtifactoryDeployProfileID {
-			return i
-		}
-	}
-	return -1
-}
-
-// updateExistingDeploymentProfile updates an existing deployment profile at the given index
-func (sxm *SettingsXmlManager) updateExistingDeploymentProfile(profileIndex int, altDeploymentRepo string) {
-	profile := sxm.settings.Profiles[profileIndex]
-
-	// Initialize properties if nil
-	if profile.Properties == nil {
-		profile.Properties = &mavenv1.Properties{}
-	}
-
-	// Set/update deployment property (preserve others)
-	(*profile.Properties)[AltDeploymentRepositoryProperty] = altDeploymentRepo
-
-	// Set activation
-	if profile.Activation == nil {
-		profile.Activation = &maven.Activation{
-			ActiveByDefault: true,
-		}
-	} else {
-		profile.Activation.ActiveByDefault = true
-	}
-
-	// Update the profile in settings
-	sxm.settings.Profiles[profileIndex] = profile
-}
-
-// createNewDeploymentProfile creates a new deployment profile
-func createNewDeploymentProfile(altDeploymentRepo string) maven.Profile {
-	return maven.Profile{
-		ID: ArtifactoryDeployProfileID,
-		Properties: &mavenv1.Properties{
-			AltDeploymentRepositoryProperty: altDeploymentRepo,
-		},
-		Activation: &maven.Activation{
-			ActiveByDefault: true,
-		},
-	}
-}
-
-// configureArtifactoryDeployment configures Maven to deploy/push artifacts to Artifactory by default
-// This adds a profile with altDeploymentRepository properties that override any pom.xml distributionManagement
-// Uses the same server credentials as the mirror configuration (artifactory-mirror)
+// ConfigureArtifactoryRepository configures Maven to use Artifactory for both downloading and deployment.
+// It updates or creates the following in settings.xml:
+//   - Mirror configuration for downloading artifacts from Artifactory
+//   - Server credentials for authentication (if username and password are provided)
+//   - Deployment profile with altDeploymentRepository property for mvn deploy
 //
-//nolint:unparam
-func (sxm *SettingsXmlManager) configureArtifactoryDeployment(repoUrl string) error {
-	// Build the altDeploymentRepository string for Maven Deploy Plugin
-	// Source: apache/maven-deploy-plugin/src/main/java/org/apache/maven/plugins/deploy/DeployMojo.java
-	altDeploymentRepo := buildAltDeploymentRepoString(repoUrl)
-
-	// Find existing profile or create new one
-	profileIndex := sxm.findDeploymentProfileIndex()
-	if profileIndex >= 0 {
-		// Update existing profile
-		sxm.updateExistingDeploymentProfile(profileIndex, altDeploymentRepo)
-	} else {
-		// Create and add new profile
-		deployProfile := createNewDeploymentProfile(altDeploymentRepo)
-		sxm.settings.Profiles = append(sxm.settings.Profiles, deployProfile)
-	}
-
-	return nil
-}
-
-// ConfigureArtifactoryRepository configures both downloading and deployment to Artifactory
-// This is the main public API that sets up complete Artifactory integration using the same repository
-// for both download (via mirrors) and deployment (via altDeploymentRepository)
+// All existing configuration in settings.xml is preserved.
+//
+// Parameters:
+//   - artifactoryUrl: Base URL of the Artifactory instance (e.g., "https://mycompany.jfrog.io/artifactory")
+//   - repoName: Name of the Artifactory repository (e.g., "maven-virtual")
+//   - username: Username for authentication (optional, can be empty for anonymous access)
+//   - password: Password or access token for authentication (optional, can be empty for anonymous access)
 func (sxm *SettingsXmlManager) ConfigureArtifactoryRepository(artifactoryUrl, repoName, username, password string) error {
-	// Load settings once at the beginning
-	err := sxm.loadSettings()
-	if err != nil {
-		return fmt.Errorf("failed to load settings: %w", err)
+	// Validate required parameters
+	if artifactoryUrl == "" {
+		return fmt.Errorf("artifactoryUrl cannot be empty")
+	}
+	if repoName == "" {
+		return fmt.Errorf("repoName cannot be empty")
 	}
 
-	// Build repository URL once for both mirror and deployment
+	// Build repository URL
 	repoUrl := strings.TrimRight(artifactoryUrl, "/") + "/" + repoName
 
-	// Set server credentials once (used by both mirror and deployment)
+	// Ensure we have a root <settings> element
+	root := sxm.doc.SelectElement(xmlElementSettings)
+	if root == nil {
+		return fmt.Errorf("invalid settings.xml: missing <%s> root element", xmlElementSettings)
+	}
+
+	// Configure server credentials
 	if username != "" && password != "" {
-		err = sxm.updateServerCredentials(username, password)
-		if err != nil {
-			return fmt.Errorf("failed to configure server credentials: %w", err)
-		}
+		sxm.configureServer(root, username, password)
 	}
 
-	// Configure download mirror (without credentials)
-	err = sxm.configureArtifactoryMirror(repoUrl, repoName)
-	if err != nil {
-		return fmt.Errorf("failed to configure Artifactory download mirror: %w", err)
-	}
+	// Configure mirror
+	sxm.configureMirror(root, repoUrl, repoName)
 
-	// Configure deployment to the same repository (without credentials)
-	err = sxm.configureArtifactoryDeployment(repoUrl)
-	if err != nil {
-		return fmt.Errorf("failed to configure Artifactory deployment: %w", err)
-	}
+	// Configure deployment profile
+	sxm.configureDeploymentProfile(root, repoUrl)
 
-	// Write settings once at the end
+	// Write settings to file
 	return sxm.writeSettingsToFile()
 }
 
-// updateMirror finds the existing mirror or creates a new one and updates it with the provided details.
-func (sxm *SettingsXmlManager) updateMirror(repoUrl, repoName string) error {
-	// Create the new mirror with the provided details
-	updatedMirror := maven.Mirror{
-		ID:       ArtifactoryMirrorID,
-		Name:     repoName,
-		MirrorOf: "*",
-		URL:      repoUrl,
-	}
+// configureServer updates or creates the server entry for authentication.
+func (sxm *SettingsXmlManager) configureServer(root *etree.Element, username, password string) {
+	servers := getOrCreateElement(root, xmlElementServers)
+	server := findOrCreateElementByID(servers, xmlElementServer, ArtifactoryMirrorID)
 
-	// Find if the mirror already exists
-	var foundMirror bool
-	for i, mirror := range sxm.settings.Mirrors {
-		if mirror.ID == ArtifactoryMirrorID {
-			// Override the existing mirror with the updated one
-			sxm.settings.Mirrors[i] = updatedMirror
-			foundMirror = true
-			break
-		}
-	}
-
-	// If the mirror doesn't exist, add it
-	if !foundMirror {
-		sxm.settings.Mirrors = append(sxm.settings.Mirrors, updatedMirror)
-	}
-
-	return nil
+	setOrCreateChildElement(server, xmlElementID, ArtifactoryMirrorID)
+	setOrCreateChildElement(server, xmlElementUsername, username)
+	setOrCreateChildElement(server, xmlElementPassword, password)
 }
 
-// updateServerCredentials updates or adds server credentials in the settings.
-//
-//nolint:unparam
-func (sxm *SettingsXmlManager) updateServerCredentials(username, password string) error {
-	// Create the new server with the provided credentials
-	updatedServer := mavenv1.Server{
-		ID:       ArtifactoryMirrorID,
-		Username: username,
-		Password: password,
-	}
+// configureMirror updates or creates the mirror entry.
+func (sxm *SettingsXmlManager) configureMirror(root *etree.Element, repoUrl, repoName string) {
+	mirrors := getOrCreateElement(root, xmlElementMirrors)
+	mirror := findOrCreateElementByID(mirrors, xmlElementMirror, ArtifactoryMirrorID)
 
-	// Find if the server already exists
-	var foundServer bool
-	for i, s := range sxm.settings.Servers {
-		if s.ID == ArtifactoryMirrorID {
-			// Override the existing server with the updated one
-			sxm.settings.Servers[i] = updatedServer
-			foundServer = true
-			break
-		}
-	}
-
-	// If the server doesn't exist, add it
-	if !foundServer {
-		sxm.settings.Servers = append(sxm.settings.Servers, updatedServer)
-	}
-
-	return nil
+	setOrCreateChildElement(mirror, xmlElementID, ArtifactoryMirrorID)
+	setOrCreateChildElement(mirror, xmlElementName, repoName)
+	setOrCreateChildElement(mirror, xmlElementURL, repoUrl)
+	setOrCreateChildElement(mirror, xmlElementMirrorOf, mirrorOfAllRepositories)
 }
 
-// writeSettingsToFile writes the updated settings to the settings.xml file.
+// configureDeploymentProfile updates or creates the deployment profile.
+func (sxm *SettingsXmlManager) configureDeploymentProfile(root *etree.Element, repoUrl string) {
+	altDeploymentRepo := fmt.Sprintf("%s::default::%s", ArtifactoryMirrorID, repoUrl)
+
+	profiles := getOrCreateElement(root, xmlElementProfiles)
+	profile := findOrCreateElementByID(profiles, xmlElementProfile, ArtifactoryDeployProfileID)
+
+	setOrCreateChildElement(profile, xmlElementID, ArtifactoryDeployProfileID)
+
+	activation := getOrCreateElement(profile, xmlElementActivation)
+	setOrCreateChildElement(activation, xmlElementActiveByDefault, "true")
+
+	properties := getOrCreateElement(profile, xmlElementProperties)
+	setOrCreateChildElement(properties, AltDeploymentRepositoryProperty, altDeploymentRepo)
+}
+
+// getOrCreateElement finds a child element or creates it if it doesn't exist.
+func getOrCreateElement(parent *etree.Element, name string) *etree.Element {
+	element := parent.SelectElement(name)
+	if element == nil {
+		element = parent.CreateElement(name)
+	}
+	return element
+}
+
+// findOrCreateElementByID finds an element with a specific ID or creates a new one.
+func findOrCreateElementByID(parent *etree.Element, elementName, id string) *etree.Element {
+	for _, elem := range parent.SelectElements(elementName) {
+		if idElem := elem.SelectElement(xmlElementID); idElem != nil && idElem.Text() == id {
+			return elem
+		}
+	}
+	return parent.CreateElement(elementName)
+}
+
+// setOrCreateChildElement sets or creates a child element with the given name and text.
+func setOrCreateChildElement(parent *etree.Element, name, text string) {
+	child := getOrCreateElement(parent, name)
+	child.SetText(text)
+}
+
+// writeSettingsToFile writes the document to the settings.xml file.
 func (sxm *SettingsXmlManager) writeSettingsToFile() error {
-	// Marshal the updated settings back to XML
-	data, err := xml.MarshalIndent(&sxm.settings, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal settings to XML: %w", err)
-	}
-
-	// Add XML header and write to file
-	data = append([]byte(xml.Header), data...)
-	err = os.MkdirAll(filepath.Dir(sxm.path), 0o755)
-	if err != nil {
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(sxm.path), 0o755); err != nil {
 		return fmt.Errorf("failed to create directory for settings file: %w", err)
 	}
 
-	err = os.WriteFile(sxm.path, data, 0o644)
-	if err != nil {
+	// Write to file
+	if err := sxm.doc.WriteToFile(sxm.path); err != nil {
 		return fmt.Errorf("failed to write settings to file %s: %w", sxm.path, err)
 	}
 

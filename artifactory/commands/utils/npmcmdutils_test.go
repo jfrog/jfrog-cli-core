@@ -14,10 +14,10 @@ func TestGetRegistry(t *testing.T) {
 		url      string
 		expected string
 	}{
-		{"repo", "http://url/art", "http://url/art/api/npm/repo"},
-		{"repo", "http://url/art/", "http://url/art/api/npm/repo"},
+		{"repo", "https://url/art", "https://url/art/api/npm/repo"},
+		{"repo", "https://url/art/", "https://url/art/api/npm/repo"},
 		{"repo", "", "/api/npm/repo"},
-		{"", "http://url/art", "http://url/art/api/npm/"},
+		{"", "https://url/art", "https://url/art/api/npm/"},
 	}
 
 	for _, testCase := range getRegistryTest {

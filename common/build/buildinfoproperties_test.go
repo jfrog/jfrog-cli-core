@@ -144,10 +144,8 @@ func TestCreateSimplePropertiesFileWithoutProxy(t *testing.T) {
 
 func createSimplePropertiesFile(t *testing.T, expectedPropsFilePath string) {
 	var yamlConfig = map[string]string{
-		// jfrog-ignore - test URL
-		ResolverPrefix + Url: "http://some.url.com",
-		// jfrog-ignore - test URL
-		DeployerPrefix + Url: "http://some.other.url.com",
+		ResolverPrefix + Url: "http://some.url.com",    // jfrog-ignore - test URL
+		DeployerPrefix + Url: "http://some.other.url.com", // jfrog-ignore - test URL
 	}
 	var expectedProps map[string]interface{}
 	assert.NoError(t, utils.Unmarshal(expectedPropsFilePath, &expectedProps))

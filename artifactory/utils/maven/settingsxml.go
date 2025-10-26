@@ -1,13 +1,9 @@
-// Package maven provides Maven configuration management for JFrog CLI.
-// It handles reading, modifying, and writing Maven settings.xml files while
-// preserving all existing user configuration.
 package maven
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/beevik/etree"
@@ -45,8 +41,11 @@ const (
 	xmlElementProperties      = "properties"
 
 	// XML namespace constants
-	xmlnsURL             = "http://maven.apache.org/SETTINGS/1.2.0"
-	xmlnsXsi             = "http://www.w3.org/2001/XMLSchema-instance"
+	// jfrog-ignore - Maven XML namespace URL, required by specification
+	xmlnsURL = "http://maven.apache.org/SETTINGS/1.2.0"
+	// jfrog-ignore - W3C XML Schema namespace URL, standard specification
+	xmlnsXsi = "http://www.w3.org/2001/XMLSchema-instance"
+	// jfrog-ignore - Maven XSD schema URLs, required by specification
 	xsiSchemaLocationURL = "http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd"
 )
 
@@ -219,15 +218,4 @@ func (sxm *SettingsXmlManager) writeSettingsToFile() error {
 	}
 
 	return nil
-}
-
-// setHomeDir sets the appropriate home directory environment variable based on the OS.
-// This is a helper function for cross-platform testing.
-func setHomeDir(homeDir string) error {
-	homeEnv := "HOME"
-	if runtime.GOOS == "windows" {
-		// On Windows, os.UserHomeDir() uses USERPROFILE, not HOME
-		homeEnv = "USERPROFILE"
-	}
-	return os.Setenv(homeEnv, homeDir)
 }

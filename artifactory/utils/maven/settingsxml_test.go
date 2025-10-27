@@ -834,6 +834,522 @@ func TestComprehensiveXMLPreservation(t *testing.T) {
 	t.Logf("   - Element counts correct: %d servers, %d mirrors, %d profiles", serverCount, mirrorCount, profileCount)
 }
 
+func TestValidateArtifactoryRepository_Configured(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Configure Artifactory
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+
+	// Validate configuration without parameters (existence check only)
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err := manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.True(t, isConfigured, "Artifactory should be fully configured")
+}
+
+func TestValidateArtifactoryRepository_ConfiguredWithValidation(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Configure Artifactory
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+
+	// Validate configuration with exact parameters
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err := manager.ValidateArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+	assert.True(t, isConfigured, "Artifactory should be fully configured with matching values")
+
+	// Validate with wrong URL - should return false
+	isConfigured, err = manager.ValidateArtifactoryRepository("https://wrong.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Validation should fail with wrong URL")
+
+	// Validate with wrong credentials - should return false
+	isConfigured, err = manager.ValidateArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "wronguser", "secret123")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Validation should fail with wrong username")
+}
+
+func TestValidateArtifactoryRepository_NotConfigured(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Create empty settings
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	// Validate empty configuration
+	isConfigured, err := manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Artifactory should not be configured")
+}
+
+func TestValidateArtifactoryRepository_PartiallyConfigured(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Create settings with only mirror and profile (no server credentials)
+	partialXML := `<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <mirrors>
+    <mirror>
+      <id>artifactory-mirror</id>
+      <url>https://artifactory.example.com/maven-virtual</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>artifactory-deploy</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <altDeploymentRepository>artifactory-mirror::default::https://artifactory.example.com/maven-virtual</altDeploymentRepository>
+      </properties>
+    </profile>
+  </profiles>
+</settings>`
+
+	err := os.WriteFile(settingsPath, []byte(partialXML), 0o644)
+	require.NoError(t, err)
+
+	// Validate partial configuration - should return false (not fully configured)
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err := manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Artifactory should not be fully configured (missing server)")
+}
+
+func TestValidateArtifactoryRepository_WithOtherConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Create settings with other configuration but no Artifactory config
+	existingXML := `<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <servers>
+    <server>
+      <id>other-server</id>
+      <username>otheruser</username>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+      <id>other-mirror</id>
+      <url>https://other.com</url>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>other-profile</id>
+    </profile>
+  </profiles>
+</settings>`
+
+	err := os.WriteFile(settingsPath, []byte(existingXML), 0o644)
+	require.NoError(t, err)
+
+	// Validate - should not find Artifactory config
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err := manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Artifactory should not be configured")
+}
+
+func TestArtifactoryRepository_CompleteFlow(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	artifactoryUrl := "https://artifactory.example.com"
+	repoName := "maven-virtual"
+	username := "admin"
+	password := "secret123"
+
+	// Step 1: Verify initially not configured
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err := manager.ValidateArtifactoryRepository(artifactoryUrl, repoName, username, password)
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Should not be configured initially")
+
+	// Step 2: Configure Artifactory
+	err = manager.ConfigureArtifactoryRepository(artifactoryUrl, repoName, username, password)
+	require.NoError(t, err)
+
+	// Step 3: Validate configuration exists (reload manager to simulate fresh read)
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err = manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.True(t, isConfigured, "Should be configured after ConfigureArtifactoryRepository")
+
+	// Step 4: Validate with exact values
+	isConfigured, err = manager.ValidateArtifactoryRepository(artifactoryUrl, repoName, username, password)
+	require.NoError(t, err)
+	assert.True(t, isConfigured, "Should validate with correct values")
+
+	// Step 5: Validate fails with wrong values
+	isConfigured, err = manager.ValidateArtifactoryRepository(artifactoryUrl, repoName, "wronguser", password)
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Should fail validation with wrong username")
+
+	// Step 6: Remove Artifactory configuration
+	err = manager.RemoveArtifactoryRepository(artifactoryUrl, repoName)
+	require.NoError(t, err)
+
+	// Step 7: Validate configuration is gone (reload manager)
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err = manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Should not be configured after RemoveArtifactoryRepository")
+
+	// Step 8: Verify file content - no Artifactory traces
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent := string(content)
+	assert.NotContains(t, xmlContent, "artifactory-mirror", "Mirror ID should be removed")
+	assert.NotContains(t, xmlContent, "artifactory-deploy", "Deploy profile ID should be removed")
+	assert.NotContains(t, xmlContent, username, "Username should be removed")
+	assert.NotContains(t, xmlContent, password, "Password should be removed")
+
+	t.Logf("✅ Complete flow test PASSED: Configure → Validate → Remove → Validate")
+}
+
+func TestArtifactoryRepository_CompleteFlowWithExistingConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Create settings with existing user configuration
+	existingXML := `<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <servers>
+    <server>
+      <id>my-server</id>
+      <username>myuser</username>
+      <password>mypass</password>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+      <id>my-mirror</id>
+      <url>https://my-mirror.com</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>my-profile</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+    </profile>
+  </profiles>
+</settings>`
+
+	err := os.WriteFile(settingsPath, []byte(existingXML), 0o644)
+	require.NoError(t, err)
+
+	artifactoryUrl := "https://artifactory.example.com"
+	repoName := "maven-virtual"
+	username := "admin"
+	password := "secret123"
+
+	// Step 1: Verify Artifactory not configured (but other config exists)
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err := manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Artifactory should not be configured initially")
+
+	// Step 2: Configure Artifactory
+	err = manager.ConfigureArtifactoryRepository(artifactoryUrl, repoName, username, password)
+	require.NoError(t, err)
+
+	// Step 3: Validate Artifactory is configured
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err = manager.ValidateArtifactoryRepository(artifactoryUrl, repoName, username, password)
+	require.NoError(t, err)
+	assert.True(t, isConfigured, "Artifactory should be configured")
+
+	// Step 4: Verify original config still exists
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent := string(content)
+	assert.Contains(t, xmlContent, "my-server", "Original server should be preserved")
+	assert.Contains(t, xmlContent, "my-mirror", "Original mirror should be preserved")
+	assert.Contains(t, xmlContent, "my-profile", "Original profile should be preserved")
+	assert.Contains(t, xmlContent, "myuser", "Original username should be preserved")
+
+	// Step 5: Remove Artifactory configuration
+	err = manager.RemoveArtifactoryRepository("", "")
+	require.NoError(t, err)
+
+	// Step 6: Validate Artifactory is removed
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	isConfigured, err = manager.ValidateArtifactoryRepository("", "", "", "")
+	require.NoError(t, err)
+	assert.False(t, isConfigured, "Artifactory should be removed")
+
+	// Step 7: Verify original config STILL exists after removal
+	content, err = os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent = string(content)
+	assert.Contains(t, xmlContent, "my-server", "Original server should still be preserved")
+	assert.Contains(t, xmlContent, "my-mirror", "Original mirror should still be preserved")
+	assert.Contains(t, xmlContent, "my-profile", "Original profile should still be preserved")
+	assert.Contains(t, xmlContent, "myuser", "Original username should still be preserved")
+	assert.NotContains(t, xmlContent, "artifactory-mirror", "Artifactory mirror should be removed")
+	assert.NotContains(t, xmlContent, "artifactory-deploy", "Artifactory profile should be removed")
+
+	t.Logf("✅ Complete flow with existing config test PASSED: Preserves user config through Configure → Remove cycle")
+}
+
+func TestRemoveArtifactoryRepository(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// First configure Artifactory
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+
+	// Verify configuration was added
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent := string(content)
+	assert.Contains(t, xmlContent, "artifactory-mirror")
+	assert.Contains(t, xmlContent, "artifactory-deploy")
+	assert.Contains(t, xmlContent, "admin")
+
+	// Now remove the configuration
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.RemoveArtifactoryRepository("https://artifactory.example.com", "maven-virtual")
+	require.NoError(t, err)
+
+	// Verify configuration was removed
+	content, err = os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent = string(content)
+	assert.NotContains(t, xmlContent, "artifactory-mirror")
+	assert.NotContains(t, xmlContent, "artifactory-deploy")
+	assert.NotContains(t, xmlContent, "admin")
+	assert.NotContains(t, xmlContent, "secret123")
+
+	// Should still have valid XML structure
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+	root := manager.doc.SelectElement(xmlElementSettings)
+	assert.NotNil(t, root)
+}
+
+func TestRemoveArtifactoryRepository_WithoutURL(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// First configure Artifactory
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+
+	// Remove without URL verification (should still work)
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.RemoveArtifactoryRepository("", "")
+	require.NoError(t, err)
+
+	// Verify configuration was removed
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent := string(content)
+	assert.NotContains(t, xmlContent, "artifactory-mirror")
+	assert.NotContains(t, xmlContent, "artifactory-deploy")
+}
+
+func TestRemoveArtifactoryRepository_URLMismatch(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Configure with one URL
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+
+	// Try to remove with different URL - should fail
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.RemoveArtifactoryRepository("https://different.example.com", "maven-virtual")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "mirror URL mismatch")
+
+	// Configuration should still be present
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent := string(content)
+	assert.Contains(t, xmlContent, "artifactory-mirror")
+}
+
+func TestRemoveArtifactoryRepository_PreservesOtherConfig(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Create settings with existing configuration
+	existingXML := `<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 http://maven.apache.org/xsd/settings-1.2.0.xsd">
+  <servers>
+    <server>
+      <id>my-server</id>
+      <username>myuser</username>
+      <password>mypass</password>
+    </server>
+  </servers>
+  <mirrors>
+    <mirror>
+      <id>my-mirror</id>
+      <url>https://my-mirror.com</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+  <profiles>
+    <profile>
+      <id>my-profile</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+    </profile>
+  </profiles>
+</settings>`
+
+	err := os.WriteFile(settingsPath, []byte(existingXML), 0o644)
+	require.NoError(t, err)
+
+	// Add Artifactory config
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+
+	// Remove Artifactory config
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.RemoveArtifactoryRepository("", "")
+	require.NoError(t, err)
+
+	// Verify original configuration is preserved
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent := string(content)
+
+	// Original config should be present
+	assert.Contains(t, xmlContent, "my-server")
+	assert.Contains(t, xmlContent, "myuser")
+	assert.Contains(t, xmlContent, "my-mirror")
+	assert.Contains(t, xmlContent, "my-profile")
+
+	// Artifactory config should be removed
+	assert.NotContains(t, xmlContent, "artifactory-mirror")
+	assert.NotContains(t, xmlContent, "artifactory-deploy")
+	assert.NotContains(t, xmlContent, "admin")
+}
+
+func TestRemoveArtifactoryRepository_Idempotent(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Create empty settings
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	// Try to remove from empty file - should not error
+	err = manager.RemoveArtifactoryRepository("", "")
+	assert.NoError(t, err)
+
+	// Remove again - should still not error (idempotent)
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.RemoveArtifactoryRepository("", "")
+	assert.NoError(t, err)
+}
+
+func TestRemoveArtifactoryRepository_RemovesEmptyContainers(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// Configure Artifactory only (no other servers/mirrors/profiles)
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.ConfigureArtifactoryRepository("https://artifactory.example.com", "maven-virtual", "admin", "secret123")
+	require.NoError(t, err)
+
+	// Remove configuration
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+
+	err = manager.RemoveArtifactoryRepository("", "")
+	require.NoError(t, err)
+
+	// Verify empty container elements are removed
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	xmlContent := string(content)
+
+	assert.NotContains(t, xmlContent, "<servers>")
+	assert.NotContains(t, xmlContent, "<mirrors>")
+	assert.NotContains(t, xmlContent, "<profiles>")
+
+	// Should still have valid root structure
+	assert.Contains(t, xmlContent, "<settings")
+}
+
 // Helper function to set home directory for cross-platform testing
 func setTestHomeDir(t *testing.T, tempDir string) {
 	originalHome, err := os.UserHomeDir()

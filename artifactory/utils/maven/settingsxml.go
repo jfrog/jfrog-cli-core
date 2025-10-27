@@ -97,6 +97,11 @@ func (sxm *SettingsXmlManager) loadSettings() {
 	sxm.doc.Indent(2)
 }
 
+// buildRepositoryURL constructs the full repository URL from base URL and repository name.
+func buildRepositoryURL(artifactoryUrl, repoName string) string {
+	return strings.TrimRight(artifactoryUrl, "/") + "/" + repoName
+}
+
 // ConfigureArtifactoryRepository configures Maven to use Artifactory for both downloading and deployment.
 // It updates or creates the following in settings.xml:
 //   - Mirror configuration for downloading artifacts from Artifactory
@@ -120,7 +125,7 @@ func (sxm *SettingsXmlManager) ConfigureArtifactoryRepository(artifactoryUrl, re
 	}
 
 	// Build repository URL
-	repoUrl := strings.TrimRight(artifactoryUrl, "/") + "/" + repoName
+	repoUrl := buildRepositoryURL(artifactoryUrl, repoName)
 
 	// Ensure we have a root <settings> element
 	root := sxm.doc.SelectElement(xmlElementSettings)
@@ -189,20 +194,215 @@ func getOrCreateElement(parent *etree.Element, name string) *etree.Element {
 	return element
 }
 
-// findOrCreateElementByID finds an element with a specific ID or creates a new one.
-func findOrCreateElementByID(parent *etree.Element, elementName, id string) *etree.Element {
+// findElementByID finds an element with a specific ID within a parent container.
+// Returns nil if not found.
+func findElementByID(parent *etree.Element, elementName, id string) *etree.Element {
 	for _, elem := range parent.SelectElements(elementName) {
 		if idElem := elem.SelectElement(xmlElementID); idElem != nil && idElem.Text() == id {
 			return elem
 		}
 	}
-	return parent.CreateElement(elementName)
+	return nil
+}
+
+// findOrCreateElementByID finds an element with a specific ID or creates a new one.
+func findOrCreateElementByID(parent *etree.Element, elementName, id string) *etree.Element {
+	elem := findElementByID(parent, elementName, id)
+	if elem == nil {
+		elem = parent.CreateElement(elementName)
+	}
+	return elem
+}
+
+// removeElementByID removes an element with a specific ID from its parent container.
+func removeElementByID(parent *etree.Element, elementName, id string) {
+	elem := findElementByID(parent, elementName, id)
+	if elem != nil {
+		parent.RemoveChild(elem)
+	}
+}
+
+// removeEmptyContainer removes a container element from its parent if it has no children.
+func removeEmptyContainer(root *etree.Element, containerName string) {
+	container := root.SelectElement(containerName)
+	if container != nil && len(container.ChildElements()) == 0 {
+		root.RemoveChild(container)
+	}
 }
 
 // setOrCreateChildElement sets or creates a child element with the given name and text.
 func setOrCreateChildElement(parent *etree.Element, name, text string) {
 	child := getOrCreateElement(parent, name)
 	child.SetText(text)
+}
+
+// ValidateArtifactoryRepository checks if Artifactory repository configuration exists in settings.xml
+// and optionally validates the configuration values match the expected parameters.
+// Returns true if all components (mirror, server, profile) are configured correctly, false otherwise.
+//
+// Parameters:
+//   - artifactoryUrl: Base URL to validate against (optional, can be empty to skip validation)
+//   - repoName: Repository name to validate against (optional, can be empty to skip validation)
+//   - username: Username to validate against (optional, can be empty to skip validation)
+//   - password: Password to validate against (optional, can be empty to skip validation)
+func (sxm *SettingsXmlManager) ValidateArtifactoryRepository(artifactoryUrl, repoName, username, password string) (bool, error) {
+	root := sxm.doc.SelectElement(xmlElementSettings)
+	if root == nil {
+		return false, fmt.Errorf("invalid settings.xml: missing <%s> root element", xmlElementSettings)
+	}
+
+	// Build expected repository URL if parameters provided
+	var expectedRepoUrl string
+	if artifactoryUrl != "" && repoName != "" {
+		expectedRepoUrl = buildRepositoryURL(artifactoryUrl, repoName)
+	}
+
+	// Check mirror configuration
+	mirrors := root.SelectElement(xmlElementMirrors)
+	mirrorConfigured := false
+	if mirrors != nil {
+		mirror := findElementByID(mirrors, xmlElementMirror, ArtifactoryMirrorID)
+		if mirror != nil {
+			mirrorConfigured = true
+			// Validate URL if provided
+			if expectedRepoUrl != "" {
+				urlElem := mirror.SelectElement(xmlElementURL)
+				if urlElem == nil || urlElem.Text() != expectedRepoUrl {
+					return false, nil
+				}
+			}
+		}
+	}
+
+	// Check server configuration
+	servers := root.SelectElement(xmlElementServers)
+	serverConfigured := false
+	if servers != nil {
+		server := findElementByID(servers, xmlElementServer, ArtifactoryMirrorID)
+		if server != nil {
+			serverConfigured = true
+			// Validate credentials if provided
+			if username != "" {
+				usernameElem := server.SelectElement(xmlElementUsername)
+				if usernameElem == nil || usernameElem.Text() != username {
+					return false, nil
+				}
+			}
+			if password != "" {
+				passwordElem := server.SelectElement(xmlElementPassword)
+				if passwordElem == nil || passwordElem.Text() != password {
+					return false, nil
+				}
+			}
+		}
+	}
+
+	// Check deployment profile
+	profiles := root.SelectElement(xmlElementProfiles)
+	profileConfigured := false
+	if profiles != nil {
+		profile := findElementByID(profiles, xmlElementProfile, ArtifactoryDeployProfileID)
+		if profile != nil {
+			profileConfigured = true
+			// Validate altDeploymentRepository if URL provided
+			if expectedRepoUrl != "" {
+				properties := profile.SelectElement(xmlElementProperties)
+				if properties != nil {
+					altDeployElem := properties.SelectElement(AltDeploymentRepositoryProperty)
+					expectedAltDeploy := fmt.Sprintf("%s::default::%s", ArtifactoryMirrorID, expectedRepoUrl)
+					if altDeployElem == nil || altDeployElem.Text() != expectedAltDeploy {
+						return false, nil
+					}
+				}
+			}
+		}
+	}
+
+	return mirrorConfigured && serverConfigured && profileConfigured, nil
+}
+
+// RemoveArtifactoryRepository removes all Artifactory configuration from settings.xml.
+// This includes:
+//   - Mirror configuration with ArtifactoryMirrorID
+//   - Server credentials with ArtifactoryMirrorID
+//   - Deployment profile with ArtifactoryDeployProfileID
+//
+// Parameters:
+//   - artifactoryUrl: Base URL of the Artifactory instance (used for verification, optional)
+//   - repoName: Name of the Artifactory repository (used for verification, optional)
+//
+// Returns an error if the settings.xml cannot be updated.
+func (sxm *SettingsXmlManager) RemoveArtifactoryRepository(artifactoryUrl, repoName string) error {
+	root := sxm.doc.SelectElement(xmlElementSettings)
+	if root == nil {
+		return fmt.Errorf("invalid settings.xml: missing <%s> root element", xmlElementSettings)
+	}
+
+	// Build repository URL for verification if provided
+	var repoUrl string
+	if artifactoryUrl != "" && repoName != "" {
+		repoUrl = buildRepositoryURL(artifactoryUrl, repoName)
+	}
+
+	// Remove mirror
+	if err := sxm.removeMirror(root, repoUrl); err != nil {
+		return err
+	}
+
+	// Remove server
+	sxm.removeServer(root)
+
+	// Remove deployment profile
+	sxm.removeDeploymentProfile(root)
+
+	// Write settings to file
+	return sxm.writeSettingsToFile()
+}
+
+// removeMirror removes the Artifactory mirror entry.
+func (sxm *SettingsXmlManager) removeMirror(root *etree.Element, expectedUrl string) error {
+	mirrors := root.SelectElement(xmlElementMirrors)
+	if mirrors == nil {
+		return nil
+	}
+
+	// Verify URL if provided before removing
+	if expectedUrl != "" {
+		mirror := findElementByID(mirrors, xmlElementMirror, ArtifactoryMirrorID)
+		if mirror != nil {
+			urlElem := mirror.SelectElement(xmlElementURL)
+			if urlElem != nil && urlElem.Text() != expectedUrl {
+				return fmt.Errorf("mirror URL mismatch: expected %s, found %s", expectedUrl, urlElem.Text())
+			}
+		}
+	}
+
+	removeElementByID(mirrors, xmlElementMirror, ArtifactoryMirrorID)
+	removeEmptyContainer(root, xmlElementMirrors)
+
+	return nil
+}
+
+// removeServer removes the Artifactory server entry.
+func (sxm *SettingsXmlManager) removeServer(root *etree.Element) {
+	servers := root.SelectElement(xmlElementServers)
+	if servers == nil {
+		return
+	}
+
+	removeElementByID(servers, xmlElementServer, ArtifactoryMirrorID)
+	removeEmptyContainer(root, xmlElementServers)
+}
+
+// removeDeploymentProfile removes the Artifactory deployment profile.
+func (sxm *SettingsXmlManager) removeDeploymentProfile(root *etree.Element) {
+	profiles := root.SelectElement(xmlElementProfiles)
+	if profiles == nil {
+		return
+	}
+
+	removeElementByID(profiles, xmlElementProfile, ArtifactoryDeployProfileID)
+	removeEmptyContainer(root, xmlElementProfiles)
 }
 
 // writeSettingsToFile writes the document to the settings.xml file.

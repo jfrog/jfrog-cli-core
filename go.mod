@@ -8,11 +8,11 @@ require (
 	github.com/beevik/etree v1.6.0
 	github.com/buger/jsonparser v1.1.1
 	github.com/chzyer/readline v1.5.1
-	github.com/forPelevin/gomoji v1.4.0
+	github.com/forPelevin/gomoji v1.4.1
 	github.com/gocarina/gocsv v0.0.0-20240520201108-78e41c74b4b1
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.6.0
-	github.com/jedib0t/go-pretty/v6 v6.6.8
+	github.com/jedib0t/go-pretty/v6 v6.6.9
 	github.com/jfrog/build-info-go v1.12.1
 	github.com/jfrog/gofrog v1.7.6
 	github.com/jfrog/jfrog-client-go v1.55.1-0.20251008045603-4ca43b3f3d45

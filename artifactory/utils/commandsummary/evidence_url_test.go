@@ -22,7 +22,7 @@ func TestGenerateEvidenceUrlByType(t *testing.T) {
 				return
 			}
 		} else {
-			os.Unsetenv(workflowEnvKey)
+			_ = os.Unsetenv(workflowEnvKey)
 		}
 	}()
 

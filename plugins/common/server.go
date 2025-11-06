@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/cliutils"
-	cliUtils "github.com/jfrog/jfrog-cli-core/v2/common/cliutils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -65,19 +64,19 @@ func CreateServerDetailsFromFlags(c *components.Context) (details *config.Server
 	return
 }
 
-func createServerDetailsFromFlags(c *components.Context, domain cliUtils.CommandDomain) (details *config.ServerDetails, err error) {
+func createServerDetailsFromFlags(c *components.Context, domain cliutils.CommandDomain) (details *config.ServerDetails, err error) {
 	details, err = CreateServerDetailsFromFlags(c)
 	if err != nil {
 		return
 	}
 	switch domain {
-	case cliUtils.Rt:
+	case cliutils.Rt:
 		details.ArtifactoryUrl = details.Url
-	case cliUtils.Xr:
+	case cliutils.Xr:
 		details.XrayUrl = details.Url
-	case cliUtils.Ds:
+	case cliutils.Ds:
 		details.DistributionUrl = details.Url
-	case cliUtils.Platform:
+	case cliutils.Platform:
 		return
 	}
 	details.Url = ""
@@ -87,6 +86,6 @@ func createServerDetailsFromFlags(c *components.Context, domain cliUtils.Command
 
 // Exclude refreshable tokens parameter should be true when working with external tools (build tools, curl, etc)
 // or when sending requests not via ArtifactoryHttpClient.
-func CreateServerDetailsWithConfigOffer(c *components.Context, excludeRefreshableTokens bool, domain cliUtils.CommandDomain) (*config.ServerDetails, error) {
+func CreateServerDetailsWithConfigOffer(c *components.Context, excludeRefreshableTokens bool, domain cliutils.CommandDomain) (*config.ServerDetails, error) {
 	return cliutils.CreateServerDetailsWithConfigOffer(func() (*config.ServerDetails, error) { return createServerDetailsFromFlags(c, domain) }, excludeRefreshableTokens)
 }

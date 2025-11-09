@@ -145,7 +145,6 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 // A command flag is prefixed by '-' or '--'.
 // Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
 // An argument is any provided candidate which is not a flag or a flag value.
-// The API path is the argument that doesn't start with '-' and isn't a known non-path value.
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 	// Look for the last non-flag argument, as the URL/path is typically at the end
 	lastNonFlagIndex := -1

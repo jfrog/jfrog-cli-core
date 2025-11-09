@@ -10,15 +10,35 @@ func TestFindNextArg(t *testing.T) {
 		{"-X", "GET", "arg1", "--foo", "bar"},
 		{"-X", "GET", "--server-idea", "foo", "/api/arg2"},
 		{"-XGET", "--foo", "bar", "--foo-bar", "meow", "arg3"},
+		{"-o", "helm.tar.gz", "-L", "-vvv", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{"-o", "helm.tar.gz", "-vvv", "-L", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{"-o", "helm.tar.gz", "-L", "-s", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{"-L", "-o", "helm.tar.gz", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{"-o", "helm.tar.gz", "-L", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{"-L", "-vvv", "-o", "helm.tar.gz", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{"-L", "-o", "helm.tar.gz", "-vvv", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{"-vvv", "-s", "-L", "api/test"},
+		{"-LsS", "api/test2"},
+		{"-ofile.txt", "-L", "api/test3"},
 	}
 
 	expected := []struct {
 		int
 		string
 	}{
-		{2, "arg1"},
+		{4, "bar"},
 		{4, "/api/arg2"},
 		{5, "arg3"},
+		{4, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{4, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{4, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{3, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{3, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{4, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{4, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+		{3, "api/test"},
+		{1, "api/test2"},
+		{2, "api/test3"},
 	}
 
 	for index, test := range args {

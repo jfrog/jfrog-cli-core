@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	buildInfo "github.com/jfrog/build-info-go/entities"
-	buildinfo "github.com/jfrog/build-info-go/entities"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -37,7 +37,17 @@ func (m *MockScanResult) GetVulnerabilities() string {
 	return m.Vulnerabilities
 }
 
-func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
+func prepareBuildInfoTest(t *testing.T) (*BuildInfoSummary, func()) {
+	// Set up test environment
+	originalWorkflow := os.Getenv(workflowEnvKey)
+	if originalWorkflow == "" {
+		// this make the test pass locally
+		err := os.Setenv(workflowEnvKey, "JFrog CLI Core Tests")
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_ = os.Setenv(workflowEnvKey, originalWorkflow)
+		})
+	}
 	// Mock the scan results defaults
 	StaticMarkdownConfig.scanResultsMapping = make(map[string]ScanResult)
 	StaticMarkdownConfig.scanResultsMapping[NonScannedResult] = &MockScanResult{
@@ -62,11 +72,11 @@ func prepareBuildInfoTest() (*BuildInfoSummary, func()) {
 const buildUrl = "http://myJFrogPlatform/builds/buildName/123?gh_job_id=JFrog+CLI+Core+Tests&gh_section=buildInfo"
 
 func TestBuildInfoTable(t *testing.T) {
-	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	buildInfoSummary, cleanUp := prepareBuildInfoTest(t)
 	defer func() {
 		cleanUp()
 	}()
-	var builds = []*buildinfo.BuildInfo{
+	var builds = []*buildInfo.BuildInfo{
 		{
 			Name:     "buildName",
 			Number:   "123",
@@ -89,26 +99,26 @@ func TestBuildInfoTable(t *testing.T) {
 }
 
 func TestBuildInfoModulesMaven(t *testing.T) {
-	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	buildInfoSummary, cleanUp := prepareBuildInfoTest(t)
 	defer func() {
 		cleanUp()
 	}()
-	var builds = []*buildinfo.BuildInfo{
+	var builds = []*buildInfo.BuildInfo{
 		{
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
 			BuildUrl: buildUrl,
-			Modules: []buildinfo.Module{
+			Modules: []buildInfo.Module{
 				{
 					Id:   "maven",
-					Type: buildinfo.Maven,
-					Artifacts: []buildinfo.Artifact{{
+					Type: buildInfo.Maven,
+					Artifacts: []buildInfo.Artifact{{
 						Name:                   "artifact1",
 						Path:                   "path/to/artifact1",
 						OriginalDeploymentRepo: "libs-release",
 					}},
-					Dependencies: []buildinfo.Dependency{{
+					Dependencies: []buildInfo.Dependency{{
 						Id: "dep1",
 					}},
 				},
@@ -131,52 +141,52 @@ func TestBuildInfoModulesMaven(t *testing.T) {
 }
 
 func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
-	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	buildInfoSummary, cleanUp := prepareBuildInfoTest(t)
 	defer func() {
 		cleanUp()
 	}()
-	var builds = []*buildinfo.BuildInfo{
+	var builds = []*buildInfo.BuildInfo{
 		{
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
 			BuildUrl: buildUrl,
-			Modules: []buildinfo.Module{
+			Modules: []buildInfo.Module{
 				{
 					Id:   "maven",
-					Type: buildinfo.Maven,
-					Artifacts: []buildinfo.Artifact{{
+					Type: buildInfo.Maven,
+					Artifacts: []buildInfo.Artifact{{
 						Name:                   "artifact1",
 						Path:                   "path/to/artifact1",
 						OriginalDeploymentRepo: "libs-release",
 					}},
-					Dependencies: []buildinfo.Dependency{{
+					Dependencies: []buildInfo.Dependency{{
 						Id: "dep1",
 					}},
 				},
 				{
 					Id:     "submodule1",
 					Parent: "maven",
-					Type:   buildinfo.Maven,
-					Artifacts: []buildinfo.Artifact{{
+					Type:   buildInfo.Maven,
+					Artifacts: []buildInfo.Artifact{{
 						Name:                   "artifact2",
 						Path:                   "path/to/artifact2",
 						OriginalDeploymentRepo: "libs-release",
 					}},
-					Dependencies: []buildinfo.Dependency{{
+					Dependencies: []buildInfo.Dependency{{
 						Id: "dep2",
 					}},
 				},
 				{
 					Id:     "submodule2",
 					Parent: "maven",
-					Type:   buildinfo.Maven,
-					Artifacts: []buildinfo.Artifact{{
+					Type:   buildInfo.Maven,
+					Artifacts: []buildInfo.Artifact{{
 						Name:                   "artifact3",
 						Path:                   "path/to/artifact3",
 						OriginalDeploymentRepo: "libs-release",
 					}},
-					Dependencies: []buildinfo.Dependency{{
+					Dependencies: []buildInfo.Dependency{{
 						Id: "dep3",
 					}},
 				},
@@ -199,21 +209,21 @@ func TestBuildInfoModulesMavenWithSubModules(t *testing.T) {
 }
 
 func TestBuildInfoModulesGradle(t *testing.T) {
-	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	buildInfoSummary, cleanUp := prepareBuildInfoTest(t)
 	defer func() {
 		cleanUp()
 	}()
-	var builds = []*buildinfo.BuildInfo{
+	var builds = []*buildInfo.BuildInfo{
 		{
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
 			BuildUrl: buildUrl,
-			Modules: []buildinfo.Module{
+			Modules: []buildInfo.Module{
 				{
 					Id:   "gradle",
-					Type: buildinfo.Gradle,
-					Artifacts: []buildinfo.Artifact{
+					Type: buildInfo.Gradle,
+					Artifacts: []buildInfo.Artifact{
 						{
 							Name:                   "gradleArtifact",
 							Path:                   "dir/gradleArtifact",
@@ -240,21 +250,21 @@ func TestBuildInfoModulesGradle(t *testing.T) {
 }
 
 func TestBuildInfoModulesGeneric(t *testing.T) {
-	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	buildInfoSummary, cleanUp := prepareBuildInfoTest(t)
 	defer func() {
 		cleanUp()
 	}()
-	var builds = []*buildinfo.BuildInfo{
+	var builds = []*buildInfo.BuildInfo{
 		{
 			Name:     "buildName",
 			Number:   "123",
 			Started:  "2024-05-05T12:47:20.803+0300",
 			BuildUrl: buildUrl,
-			Modules: []buildinfo.Module{
+			Modules: []buildInfo.Module{
 				{
 					Id:   "generic",
-					Type: buildinfo.Generic,
-					Artifacts: []buildinfo.Artifact{{
+					Type: buildInfo.Generic,
+					Artifacts: []buildInfo.Artifact{{
 						Name:                   "artifact2",
 						Path:                   "path/to/artifact2",
 						OriginalDeploymentRepo: "generic-local",
@@ -279,16 +289,16 @@ func TestBuildInfoModulesGeneric(t *testing.T) {
 }
 
 func TestDockerModule(t *testing.T) {
-	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	buildInfoSummary, cleanUp := prepareBuildInfoTest(t)
 	defer func() {
 		cleanUp()
 	}()
-	var builds = []*buildinfo.BuildInfo{
+	var builds = []*buildInfo.BuildInfo{
 		{
 			Name:    "dockerx",
 			Number:  "1",
 			Started: "2024-08-12T11:11:50.198+0300",
-			Modules: []buildinfo.Module{
+			Modules: []buildInfo.Module{
 				{
 					Properties: map[string]interface{}{
 						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
@@ -296,12 +306,12 @@ func TestDockerModule(t *testing.T) {
 					Type:   "docker",
 					Parent: "image:2",
 					Id:     "image:2",
-					Checksum: buildinfo.Checksum{
+					Checksum: buildInfo.Checksum{
 						Sha256: "aae9",
 					},
-					Artifacts: []buildinfo.Artifact{
+					Artifacts: []buildInfo.Artifact{
 						{
-							Checksum: buildinfo.Checksum{
+							Checksum: buildInfo.Checksum{
 								Sha1:   "32c1416f8430fbbabd82cb014c5e09c5fe702404",
 								Sha256: "aae9",
 								Md5:    "f568bfb1c9576a1f06235ebe0389d2d8",
@@ -332,26 +342,26 @@ func TestDockerModule(t *testing.T) {
 }
 
 func TestDockerMultiArchModule(t *testing.T) {
-	buildInfoSummary, cleanUp := prepareBuildInfoTest()
+	buildInfoSummary, cleanUp := prepareBuildInfoTest(t)
 	defer func() {
 		cleanUp()
 	}()
-	var builds = []*buildinfo.BuildInfo{
+	var builds = []*buildInfo.BuildInfo{
 		{
 			Name:    "dockerx",
 			Number:  "1",
 			Started: "2024-08-12T11:11:50.198+0300",
-			Modules: []buildinfo.Module{
+			Modules: []buildInfo.Module{
 				{
 					Properties: map[string]interface{}{
 						"docker.image.tag": "ecosysjfrog.jfrog.io/docker-local/multiarch-image:1",
 					},
 					Type: "docker",
 					Id:   "multiarch-image:1",
-					Artifacts: []buildinfo.Artifact{
+					Artifacts: []buildInfo.Artifact{
 						{
 							Type: "json",
-							Checksum: buildinfo.Checksum{
+							Checksum: buildInfo.Checksum{
 								Sha1:   "fa",
 								Sha256: "2217",
 								Md5:    "ba0",
@@ -366,9 +376,9 @@ func TestDockerMultiArchModule(t *testing.T) {
 					Type:   "docker",
 					Parent: "multiarch-image:1",
 					Id:     "linux/amd64/multiarch-image:1",
-					Artifacts: []buildinfo.Artifact{
+					Artifacts: []buildInfo.Artifact{
 						{
-							Checksum: buildinfo.Checksum{
+							Checksum: buildInfo.Checksum{
 								Sha1:   "32",
 								Sha256: "sha256:552c",
 								Md5:    "f56",
@@ -378,7 +388,7 @@ func TestDockerMultiArchModule(t *testing.T) {
 							OriginalDeploymentRepo: "docker-local",
 						},
 						{
-							Checksum: buildinfo.Checksum{
+							Checksum: buildInfo.Checksum{
 								Sha1:   "32c",
 								Sha256: "aae9",
 								Md5:    "f56",

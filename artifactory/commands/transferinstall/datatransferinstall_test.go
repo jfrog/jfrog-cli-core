@@ -2,12 +2,6 @@ package transferinstall
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/version"
-	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
-	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
-	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +11,13 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/jfrog/gofrog/version"
+	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
+	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
+	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPluginFileItemNameAndDirs(t *testing.T) {
@@ -148,7 +149,7 @@ func TestGetPluginDirDestination(t *testing.T) {
 		assert.NoError(t, err)
 		assert.True(t, dst.toPath() == originalDirPath.toPath(defaultSearchPath) || (dst.toPath() == v7DirPath.toPath(defaultSearchPath)))
 	} else {
-		assert.Errorf(t, err, notValidDestinationErr.Error())
+		assert.Errorf(t, err, errNotValidDestination.Error())
 	}
 
 	// Env var override
@@ -164,7 +165,7 @@ func TestGetPluginDirDestination(t *testing.T) {
 	assert.Equal(t, filepath.Join(testHomePath, testCustomDir, "confuse-"+artifactory, targetDir), dst.toPath())
 	cmd.SetJFrogHomePath("not_existing_dir")
 	_, err = cmd.getPluginDirDestination()
-	assert.Errorf(t, err, notValidDestinationErr.Error())
+	assert.Errorf(t, err, errNotValidDestination.Error())
 }
 
 func TestGetTransferSourceAndAction(t *testing.T) {

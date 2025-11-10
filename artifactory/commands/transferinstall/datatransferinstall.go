@@ -2,6 +2,13 @@ package transferinstall
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
+
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
@@ -10,12 +17,6 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/http"
-	"net/url"
-	"os"
-	"path"
-	"path/filepath"
-	"strings"
 )
 
 const (
@@ -36,9 +37,9 @@ var (
 	originalDirPath = FileItem{"etc", "plugins"}
 	v7DirPath       = FileItem{"var", "etc", "artifactory", "plugins"}
 	// Error types
-	notValidDestinationErr = fmt.Errorf("can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory.")
+	errNotValidDestination = fmt.Errorf("can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory")
 	downloadConnectionErr  = func(baseUrl, fileName, err string) error {
-		return fmt.Errorf("Could not download the plugin file - '%s' from '%s' due to the following error: '%s'. If this machine has no network access to the download URL, you can download these files from another machine and place them in a directory on this machine. You can then run this command again with the --dir command option, with the directory containing the files as the value.", fileName, baseUrl, err)
+		return fmt.Errorf("could not download the plugin file - '%s' from '%s' due to the following error: '%s'. If this machine has no network access to the download URL, you can download these files from another machine and place them in a directory on this machine. You can then run this command again with the --dir command option, with the directory containing the files as the value", fileName, baseUrl, err)
 	}
 	// Plugin files
 	transferPluginFiles = PluginFiles{
@@ -222,7 +223,7 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 			return
 		}
 		if !exists {
-			err = notValidDestinationErr
+			err = errNotValidDestination
 			return
 		}
 	}
@@ -242,7 +243,7 @@ func (idtp *InstallDataTransferPluginCommand) getPluginDirDestination() (target 
 		}
 	}
 
-	err = notValidDestinationErr
+	err = errNotValidDestination
 	return
 }
 

@@ -187,18 +187,18 @@ func TestDetectCISystem(t *testing.T) {
 
 	for _, envVar := range ciEnvVars {
 		originalEnv[envVar] = os.Getenv(envVar)
-		os.Unsetenv(envVar)
+		_ = os.Unsetenv(envVar)
 	}
 
 	// Restore environment after test
-	defer func() {
+		defer func() {
 		for envVar, value := range originalEnv {
 			if value != "" {
 				if err := os.Setenv(envVar, value); err != nil {
 					t.Logf("failed restoring %s: %v", envVar, err)
 				}
 			} else {
-				os.Unsetenv(envVar)
+				_ = os.Unsetenv(envVar)
 			}
 		}
 	}()
@@ -219,11 +219,11 @@ func TestDetectCISystem(t *testing.T) {
 		{"No CI", "", "", ""},
 	}
 
-	for _, tt := range tests {
+		for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear all CI environment variables
 			for _, envVar := range ciEnvVars {
-				os.Unsetenv(envVar)
+				_ = os.Unsetenv(envVar)
 			}
 
 			// Set the specific test environment variable
@@ -257,7 +257,7 @@ func TestIsRunningInContainer(t *testing.T) {
 		if originalContainer != "" {
 			_ = os.Setenv("container", originalContainer)
 		} else {
-			os.Unsetenv("container")
+			_ = os.Unsetenv("container")
 		}
 	}()
 
@@ -268,7 +268,7 @@ func TestIsRunningInContainer(t *testing.T) {
 		t.Error("Expected container detection when 'container' env var is set")
 	}
 
-	os.Unsetenv("container")
+	_ = os.Unsetenv("container")
 
 	// Test with Kubernetes environment
 	originalK8s := os.Getenv("KUBERNETES_SERVICE_HOST")
@@ -276,7 +276,7 @@ func TestIsRunningInContainer(t *testing.T) {
 		if originalK8s != "" {
 			_ = os.Setenv("KUBERNETES_SERVICE_HOST", originalK8s)
 		} else {
-			os.Unsetenv("KUBERNETES_SERVICE_HOST")
+			_ = os.Unsetenv("KUBERNETES_SERVICE_HOST")
 		}
 	}()
 
@@ -404,12 +404,12 @@ func TestE2EGitHubActionsEnvironment(t *testing.T) {
 
 	defer func() {
 		if originalGH == "" {
-			os.Unsetenv("GITHUB_ACTIONS")
+			_ = os.Unsetenv("GITHUB_ACTIONS")
 		} else {
 			_ = os.Setenv("GITHUB_ACTIONS", originalGH)
 		}
 		if originalCI == "" {
-			os.Unsetenv("CI")
+			_ = os.Unsetenv("CI")
 		} else {
 			_ = os.Setenv("CI", originalCI)
 		}
@@ -615,12 +615,12 @@ func TestE2EEnvironmentDetection(t *testing.T) {
 	originalEnv := make(map[string]string, len(ciEnvVars))
 	for _, envVar := range ciEnvVars {
 		originalEnv[envVar] = os.Getenv(envVar)
-		os.Unsetenv(envVar)
+		_ = os.Unsetenv(envVar)
 	}
 	defer func() {
 		for k, v := range originalEnv {
 			if v == "" {
-				os.Unsetenv(k)
+				_ = os.Unsetenv(k)
 			} else {
 				_ = os.Setenv(k, v)
 			}

@@ -34,7 +34,7 @@ func prepareEvidenceTest(t *testing.T) (*EvidenceSummary, func()) {
 				assert.Fail(t, "Failed to set workflow environment variable", err)
 			}
 		} else {
-			os.Unsetenv(workflowEnvKey)
+			_ = os.Unsetenv(workflowEnvKey)
 		}
 	}
 

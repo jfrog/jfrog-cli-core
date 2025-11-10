@@ -203,8 +203,8 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 }
 
 func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {
-	if !(serverDetails.ArtifactoryTokenRefreshInterval > 0 && serverDetails.ArtifactoryRefreshToken == "" && serverDetails.AccessToken == "") ||
-		(serverDetails.RefreshToken != "" && serverDetails.AccessToken != "") {
+	if (serverDetails.ArtifactoryTokenRefreshInterval <= 0 || serverDetails.ArtifactoryRefreshToken != "" || serverDetails.AccessToken != "") &&
+		(serverDetails.RefreshToken == "" || serverDetails.AccessToken == "") {
 		return nil
 	}
 	mutex.Lock()

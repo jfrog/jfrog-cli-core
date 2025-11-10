@@ -298,10 +298,11 @@ func writeMockResponse(t *testing.T, w http.ResponseWriter, resp interface{}) {
 
 func initPollUploadsTestMockServer(t *testing.T, totalChunkStatusVisits *int, totalUploadChunkVisits *int, file api.FileRepresentation) (*httptest.Server, *coreConfig.ServerDetails, artifactory.ArtifactoryServicesManager) {
 	return commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/"+utils.PluginsExecuteRestApi+"uploadChunk" {
+		switch r.RequestURI {
+		case "/" + utils.PluginsExecuteRestApi + "uploadChunk":
 			*totalUploadChunkVisits++
 			getUploadChunkMockResponse(t, w, totalUploadChunkVisits)
-		} else if r.RequestURI == "/"+utils.PluginsExecuteRestApi+syncChunks {
+		case "/" + utils.PluginsExecuteRestApi + syncChunks:
 			*totalChunkStatusVisits++
 			validateChunkStatusBody(t, r)
 			// If already visited chunk status, return status done this time.

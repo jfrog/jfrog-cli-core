@@ -633,7 +633,7 @@ func readArtifactoryServer(useArtifactoryQuestion string) (string, error) {
 		return "", err
 	}
 	if len(serversIds) == 0 {
-		return "", errors.New("No Artifactory servers configured. Use the 'jfrog c add' command to set the Artifactory server details.")
+		return "", errors.New("no Artifactory servers configured. Use the 'jfrog c add' command to set the Artifactory server details")
 	}
 
 	// Ask whether to use artifactory

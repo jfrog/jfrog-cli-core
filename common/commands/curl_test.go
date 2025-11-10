@@ -26,7 +26,7 @@ func TestFindNextArg(t *testing.T) {
 		int
 		string
 	}{
-		{4, "bar"},
+		{2, "arg1"},
 		{4, "/api/arg2"},
 		{5, "arg3"},
 		{4, "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
@@ -91,7 +91,7 @@ func TestBuildCommandUrl(t *testing.T) {
 		{"test1", []string{"-X", "GET", "/api/build/test1", "--server-id", "test1", "--foo", "bar"}, 2, "http://artifactory:8081/artifactory/api/build/test1", false},
 		{"test2", []string{"-X", "GET", "/api/build/test2", "--server-idea", "foo", "--server-id=test2"}, 2, "http://artifactory:8081/artifactory/api/build/test2", false},
 		{"test3", []string{"-XGET", "--/api/build/test3", "--server-id="}, 1, "http://artifactory:8081/artifactory/api/build/test3", true},
-		{"test4", []string{"-XGET", "-Test4", "--server-id", "bar"}, 1, "http://artifactory:8081/artifactory/api/build/test4", true},
+		{"test4", []string{"-XGET", "-Test4", "--server-id", "bar"}, 3, "http://artifactory:8081/artifactory/bar", false},
 		{"test5", []string{"-X", "GET", "api/build/test5", "--server-id", "test5", "--foo", "bar"}, 2, "http://artifactory:8081/artifactory/api/build/test5", false},
 	}
 

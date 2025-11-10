@@ -146,52 +146,51 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 // Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
 // An argument is any provided candidate which is not a flag or a flag value.
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
-	// Look for the last non-flag argument, as the URL/path is typically at the end
-	lastNonFlagIndex := -1
-	lastNonFlagValue := ""
+	cntArgs := -1
+	for range curlCmd.arguments {
+		cntArgs++
+	}
 
+	skipThisArg := false
 	for index, arg := range curlCmd.arguments {
-		// Skip flags (start with -)
-		if strings.HasPrefix(arg, "-") {
+		if skipThisArg && !strings.HasPrefix(arg, "-") && index == cntArgs {
+			return index, arg
+		}
+
+		// Check if shouldn't check current arg.
+		if skipThisArg && !strings.HasPrefix(arg, "-") {
+			skipThisArg = false
 			continue
 		}
 
-		// This is a potential API path
-		lastNonFlagIndex = index
-		lastNonFlagValue = arg
-	}
-
-	// If we found a non-flag argument, check if it might be a flag value
-	if lastNonFlagIndex > 0 {
-		prevArg := curlCmd.arguments[lastNonFlagIndex-1]
-
-		// Check if the previous argument is a flag that typically takes file/string values
-		// Only check the most common ones that could be confused with API paths
-		if prevArg == "-o" || prevArg == "--output" || // output file
-			prevArg == "-T" || prevArg == "--upload-file" || // upload file
-			prevArg == "-d" || prevArg == "--data" || // data
-			prevArg == "-u" || prevArg == "--user" { // credentials
-			// This might be a flag value, try to find another candidate
-			for i := lastNonFlagIndex - 1; i >= 0; i-- {
-				if !strings.HasPrefix(curlCmd.arguments[i], "-") &&
-					(i == 0 || curlCmd.arguments[i-1] == "-X" ||
-						curlCmd.arguments[i-1] == "--request" ||
-						!isPotentialValueFlag(curlCmd.arguments[i-1])) {
-					return i, curlCmd.arguments[i]
-				}
-			}
+		// If we were expecting a value but found a flag instead, reset skipThisArg
+		if skipThisArg && strings.HasPrefix(arg, "-") {
+			skipThisArg = false
 		}
+
+		// If starts with '--', meaning a flag which its value is at next slot.
+		if strings.HasPrefix(arg, "--") {
+			skipThisArg = true
+			continue
+		}
+
+		// Check if '-'.
+		if strings.HasPrefix(arg, "-") {
+			if len(arg) > 2 {
+				// Meaning that this flag also contains its value.
+				continue
+			}
+			// If reached here, means that the flag value is at the next arg.
+			skipThisArg = true
+			continue
+		}
+
+		// Found an argument
+		return index, arg
 	}
 
-	return lastNonFlagIndex, lastNonFlagValue
-}
-
-// Helper to check if a flag commonly takes values that could look like paths
-func isPotentialValueFlag(flag string) bool {
-	return flag == "-o" || flag == "--output" ||
-		flag == "-T" || flag == "--upload-file" ||
-		flag == "-d" || flag == "--data" ||
-		flag == "-u" || flag == "--user"
+	// If reached here, didn't find an argument.
+	return -1, ""
 }
 
 // Return true if the curl command includes credentials flag.

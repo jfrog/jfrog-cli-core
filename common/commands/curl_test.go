@@ -96,15 +96,15 @@ func TestBuildCommandUrl(t *testing.T) {
 		uriValue  string
 		expectErr bool
 	}{
-		{"test1", []string{"-X", "GET", "/api/build/test1", "--server-id", "test1", "--foo", "bar"}, 2, "http://artifactory:8081/artifactory/api/build/test1", false},
-		{"test2", []string{"-X", "GET", "/api/build/test2", "--server-idea", "foo", "--server-id=test2"}, 2, "http://artifactory:8081/artifactory/api/build/test2", false},
-		{"test3", []string{"-XGET", "--/api/build/test3", "--server-id="}, 1, "http://artifactory:8081/artifactory/api/build/test3", true},
-		{"test4", []string{"-XGET", "-Test4", "--server-id", "bar"}, 3, "http://artifactory:8081/artifactory/bar", false},
-		{"test5", []string{"-X", "GET", "api/build/test5", "--server-id", "test5", "--foo", "bar"}, 2, "http://artifactory:8081/artifactory/api/build/test5", false},
+		{"test1", []string{"-X", "GET", "/api/build/test1", "--server-id", "test1", "--foo", "bar"}, 2, "https://artifactory:8081/artifactory/api/build/test1", false},
+		{"test2", []string{"-X", "GET", "/api/build/test2", "--server-idea", "foo", "--server-id=test2"}, 2, "https://artifactory:8081/artifactory/api/build/test2", false},
+		{"test3", []string{"-XGET", "--/api/build/test3", "--server-id="}, 1, "https://artifactory:8081/artifactory/api/build/test3", true},
+		{"test4", []string{"-XGET", "-Test4", "--server-id", "bar"}, 3, "https://artifactory:8081/artifactory/bar", false},
+		{"test5", []string{"-X", "GET", "api/build/test5", "--server-id", "test5", "--foo", "bar"}, 2, "https://artifactory:8081/artifactory/api/build/test5", false},
 	}
 
 	command := &CurlCommand{}
-	urlPrefix := "http://artifactory:8081/artifactory/"
+	urlPrefix := "https://artifactory:8081/artifactory/"
 	for _, test := range tests {
 		command.arguments = test.arguments
 		t.Run(test.name, func(t *testing.T) {

@@ -39,6 +39,14 @@ func TestFindNextArg(t *testing.T) {
 		{3, "api/test"},
 		{1, "api/test2"},
 		{2, "api/test3"},
+		{-1, ""},
+		{4, "api/endpoint"},
+		{0, "api/endpoint"},
+		{2, "api/endpoint"},
+		{2, "api/endpoint"},
+		{-1, ""},
+		{-1, ""},
+		{-1, ""},
 	}
 
 	for index, test := range args {

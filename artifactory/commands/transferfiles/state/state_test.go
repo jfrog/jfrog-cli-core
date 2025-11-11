@@ -126,7 +126,7 @@ func TestGetTransferStateAndSnapshotLoading(t *testing.T) {
 	assert.NoError(t, stateManager.SaveStateAndSnapshots())
 	// Modify state again, and assert that the loaded state from snapshot was not modified and remained as saved.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(2, 3))
-	assert.NotEqual(t, stateManager.TransferState.CurrentRepo, originalState.CurrentRepo)
+	assert.NotEqual(t, stateManager.CurrentRepo, originalState.CurrentRepo)
 	assertGetTransferStateAndSnapshot(t, false, originalState, stateManager.repoTransferSnapshot, true)
 
 	// After repo fully transferred, expected to load state without snapshots.

@@ -76,7 +76,7 @@ func (p *Profiler) threadDumpToFile() (outputFilePath string, err error) {
 		return "", fmt.Errorf("failed to convert repetitions to int: %w", err)
 	}
 	for i := 0; i < signedRepetitions; i++ {
-		fmt.Fprintf(outputFile, "========== Thread dump #%d ==========\n", i)
+		_, _ = fmt.Fprintf(outputFile, "========== Thread dump #%d ==========\n", i)
 		prof := pprof.Lookup("goroutine")
 		if err = errorutils.CheckError(prof.WriteTo(outputFile, 1)); err != nil {
 			return

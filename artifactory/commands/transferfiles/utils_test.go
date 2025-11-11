@@ -101,7 +101,7 @@ func TestStopTransferOnArtifactoryNodes(t *testing.T) {
 			nodeId = "node-2"
 			stoppedNodeTwo = true
 		}
-		_, err := w.Write([]byte(fmt.Sprintf(`{"node_id": "%s"}`, nodeId)))
+		_, err := fmt.Fprintf(w, `{"node_id": "%s"}`, nodeId)
 		assert.NoError(t, err)
 		requestNumber++
 	})
@@ -231,7 +231,7 @@ func TestUpdateMaxUniqueSnapshots(t *testing.T) {
 		default:
 			assert.Fail(t, "tried to update the Max Unique Snapshots setting of a repository of an unsupported package type")
 		}
-		_, err = w.Write([]byte(fmt.Sprintf("Repository %s-local update successfully.", packageType)))
+		_, err = fmt.Fprintf(w, "Repository %s-local update successfully.", packageType)
 		assert.NoError(t, err)
 	})
 	defer testServer.Close()

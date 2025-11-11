@@ -135,7 +135,7 @@ func (cc *ConfigCommand) Run() (err error) {
 	case Clear:
 		err = cc.clear()
 	default:
-		err = fmt.Errorf("Not supported config command type: %s", string(cc.cmdType))
+		err = fmt.Errorf("not supported config command type: %s", string(cc.cmdType))
 	}
 	return
 }

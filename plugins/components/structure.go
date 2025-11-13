@@ -52,6 +52,8 @@ type Command struct {
 }
 
 type UsageOptions struct {
+	// Command name to be used in the usage instead of the actual command name.
+	CommandName string
 	// Special cases, each of these will be created as command usage option and the value appended as suffix for the command name.
 	Usage []string
 	// If true then the given usages will replace the auto generated usage. Otherwise the given usages will be appended to the auto generated usage.

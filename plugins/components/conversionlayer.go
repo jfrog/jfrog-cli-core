@@ -133,7 +133,11 @@ func createCommandUsages(cmd Command, convertedStringFlags map[string]StringFlag
 }
 
 func getCmdUsageString(cmd Command, namespaces ...string) string {
-	return strings.Join(append(removeEmptyValues(namespaces), cmd.Name), " ")
+	name := cmd.Name
+	if cmd.UsageOptions != nil && cmd.UsageOptions.CommandName != "" {
+		name = cmd.UsageOptions.CommandName
+	}
+	return strings.Join(append(removeEmptyValues(namespaces), name), " ")
 }
 
 // Generated usages are based on the command's flags and arguments:

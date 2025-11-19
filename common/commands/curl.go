@@ -146,34 +146,18 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 // Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
 // An argument is any provided candidate which is not a flag or a flag value.
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
-	cntArgs := 0
-	for range curlCmd.arguments {
-		cntArgs++
-	}
-
 	skipThisArg := false
 	for index, arg := range curlCmd.arguments {
-		if skipThisArg && !strings.HasPrefix(arg, "-") && index == cntArgs-1 {
-			return index, arg
-		}
-
 		// Check if shouldn't check current arg.
-		if skipThisArg && !strings.HasPrefix(arg, "-") {
+		if skipThisArg {
 			skipThisArg = false
 			continue
 		}
-
-		// If we were expecting a value but found a flag instead, reset skipThisArg
-		if skipThisArg && strings.HasPrefix(arg, "-") {
-			skipThisArg = false
-		}
-
 		// If starts with '--', meaning a flag which its value is at next slot.
 		if strings.HasPrefix(arg, "--") {
 			skipThisArg = true
 			continue
 		}
-
 		// Check if '-'.
 		if strings.HasPrefix(arg, "-") {
 			if len(arg) > 2 {

@@ -9,6 +9,7 @@ on:
   pull_request_target:
     branches:
       - master
+    types: [labeled]
 jobs:
   test:
     runs-on: ${{ matrix.os }}-latest

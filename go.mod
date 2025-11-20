@@ -26,7 +26,7 @@ require (
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/sync v0.18.0
 	golang.org/x/term v0.37.0
-	golang.org/x/text v0.30.0
+	golang.org/x/text v0.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -86,8 +86,8 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

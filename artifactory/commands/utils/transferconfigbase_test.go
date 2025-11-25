@@ -255,14 +255,15 @@ func testDeactivateKeyEncryption(t *testing.T, wasEncrypted bool) {
 	decrypted := false
 	reactivated := false
 	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.RequestURI == "/api/system/decrypt" {
+		switch r.RequestURI {
+		case "/api/system/decrypt":
 			if wasEncrypted {
 				w.WriteHeader(http.StatusOK)
 			} else {
 				w.WriteHeader(http.StatusConflict)
 			}
 			decrypted = true
-		} else if r.RequestURI == "/api/system/encrypt" {
+		case "/api/system/encrypt":
 			reactivated = true
 			w.WriteHeader(http.StatusOK)
 		}

@@ -92,7 +92,7 @@ func (es *EvidenceSummary) appendEvidenceRow(tableBuilder *strings.Builder, evid
 	evidenceType := es.formatEvidenceType(evidence)
 	verificationStatus := es.formatVerificationStatus(evidence.Verified)
 
-	tableBuilder.WriteString(fmt.Sprintf("<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n", subject, evidenceType, verificationStatus))
+	fmt.Fprintf(tableBuilder, "<tr><td>%s</td><td>%s</td><td>%s</td></tr>\n", subject, evidenceType, verificationStatus)
 }
 
 func (es *EvidenceSummary) formatSubjectWithLink(evidence EvidenceSummaryData) string {

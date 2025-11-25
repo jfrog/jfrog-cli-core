@@ -2,10 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"io"
 	"os/exec"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 
 	gofrogcmd "github.com/jfrog/gofrog/io"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -152,13 +153,11 @@ func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 			skipThisArg = false
 			continue
 		}
-
 		// If starts with '--', meaning a flag which its value is at next slot.
 		if strings.HasPrefix(arg, "--") {
 			skipThisArg = true
 			continue
 		}
-
 		// Check if '-'.
 		if strings.HasPrefix(arg, "-") {
 			if len(arg) > 2 {

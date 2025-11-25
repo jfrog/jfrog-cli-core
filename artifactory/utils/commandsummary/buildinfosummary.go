@@ -335,11 +335,11 @@ func appendBuildInfoRow(tableBuilder *strings.Builder, build *buildInfo.BuildInf
 		if err != nil {
 			return err
 		}
-		tableBuilder.WriteString(fmt.Sprintf("| [%s](%s) %s | %s | %s | \n", buildName, buildInfoUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
+		fmt.Fprintf(tableBuilder, "| [%s](%s) %s | %s | %s | \n", buildName, buildInfoUrl, appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities()))
 	} else {
 		upgradeMessage := fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage())
 		buildName = fmt.Sprintf(" %s %s", upgradeMessage, buildName)
-		tableBuilder.WriteString(fmt.Sprintf("| %s %s | %s | %s |\n", fitInsideMarkdownTable(buildName), appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities())))
+		fmt.Fprintf(tableBuilder, "| %s %s | %s | %s |\n", fitInsideMarkdownTable(buildName), appendSpacesToTableColumn(""), appendSpacesToTableColumn(buildScanResult.GetViolations()), appendSpacesToTableColumn(buildScanResult.GetVulnerabilities()))
 	}
 	return nil
 }

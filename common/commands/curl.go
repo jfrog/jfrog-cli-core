@@ -63,14 +63,11 @@ func (curlCmd *CurlCommand) Run() error {
 		return errorutils.CheckErrorf("Curl command must not include certificate flag (--cert or --key).")
 	}
 
-	// Get target url for the curl command.
-	uriIndex, targetUri, err := curlCmd.buildCommandUrl(curlCmd.url)
-	if err != nil {
+	// Build the full URL from the API path (first non-flag argument).
+	// Remove the API path and append the full URL at the end.
+	if err := curlCmd.buildAndAppendUrl(); err != nil {
 		return err
 	}
-
-	// Replace url argument with complete url.
-	curlCmd.arguments[uriIndex] = targetUri
 
 	cmdWithoutCreds := strings.Join(curlCmd.arguments, " ")
 	// Add credentials to curl command.
@@ -106,28 +103,81 @@ func (curlCmd *CurlCommand) addCommandCredentials() string {
 	return certificateHelpPrefix + "-u***:***"
 }
 
-func (curlCmd *CurlCommand) buildCommandUrl(url string) (uriIndex int, uriValue string, err error) {
-	// Find command's URL argument.
-	// Representing the target API for the Curl command.
-	uriIndex, uriValue = curlCmd.findUriValueAndIndex()
-	if uriIndex == -1 {
-		err = errorutils.CheckErrorf("Could not find argument in curl command.")
-		return
+// buildAndAppendUrl finds the first non-flag argument (the API path), removes it,
+// builds the full URL, and appends it at the end. This allows curl flags to appear in any order.
+func (curlCmd *CurlCommand) buildAndAppendUrl() error {
+	// Common curl flags that take a value in the next argument
+	flagsWithValues := map[string]bool{
+		"-X": true, "-H": true, "-d": true, "-o": true, "-A": true, "-e": true,
+		"-T": true, "-b": true, "-c": true, "-F": true, "-m": true, "-w": true,
+		"-x": true, "-y": true, "-z": true, "-C": true, "-K": true, "-E": true,
+		"--request": true, "--header": true, "--data": true, "--output": true,
+		"--user-agent": true, "--referer": true, "--upload-file": true,
+		"--cookie": true, "--cookie-jar": true, "--form": true, "--max-time": true,
+		"--write-out": true, "--proxy": true, "--cert": true, "--key": true,
+		"--cacert": true, "--capath": true, "--connect-timeout": true,
+		"--retry": true, "--retry-delay": true, "--retry-max-time": true,
+		"--speed-limit": true, "--speed-time": true, "--limit-rate": true,
+		"--max-filesize": true, "--max-redirs": true, "--data-binary": true,
+		"--data-urlencode": true, "--data-raw": true, "--data-ascii": true,
 	}
+
+	// Find the first non-flag argument (the API path)
+	// Skip arguments that are values for flags
+	apiPathIndex := -1
+	skipNext := false
+
+	for i, arg := range curlCmd.arguments {
+		// Skip if this is a flag value
+		if skipNext {
+			skipNext = false
+			continue
+		}
+
+		// Check if this is a flag
+		if strings.HasPrefix(arg, "-") {
+			// Check if it's a flag that takes a value (and value is not inline)
+			if flagsWithValues[arg] {
+				skipNext = true
+			}
+			// Check for long flags with inline values like --header=value
+			if strings.Contains(arg, "=") {
+				skipNext = false
+			}
+			// For short flags, check if value is inline like -XGET
+			if len(arg) > 2 && !strings.HasPrefix(arg, "--") {
+				skipNext = false
+			}
+			continue
+		}
+
+		// Found a non-flag argument that's not a flag value - this is the API path
+		apiPathIndex = i
+		break
+	}
+
+	if apiPathIndex == -1 {
+		return errorutils.CheckErrorf("Could not find API path argument in curl command.")
+	}
+
+	apiPath := curlCmd.arguments[apiPathIndex]
 
 	// If user provided full-url, throw an error.
-	if strings.HasPrefix(uriValue, "http://") || strings.HasPrefix(uriValue, "https://") {
-		err = errorutils.CheckErrorf("Curl command must not include full-url, but only the REST API URI (e.g '/api/system/ping').")
-		return
+	if strings.HasPrefix(apiPath, "http://") || strings.HasPrefix(apiPath, "https://") {
+		return errorutils.CheckErrorf("Curl command must not include full-url, but only the REST API URI (e.g '/api/system/ping').")
 	}
 
+	// Remove the API path from its current position
+	curlCmd.arguments = append(curlCmd.arguments[:apiPathIndex], curlCmd.arguments[apiPathIndex+1:]...)
+
 	// Trim '/' prefix if exists.
-	uriValue = strings.TrimPrefix(uriValue, "/")
+	apiPath = strings.TrimPrefix(apiPath, "/")
 
-	// Attach url to the api.
-	uriValue = url + uriValue
+	// Build full URL and append at the end
+	fullUrl := curlCmd.url + apiPath
+	curlCmd.arguments = append(curlCmd.arguments, fullUrl)
 
-	return
+	return nil
 }
 
 // Returns server details
@@ -139,42 +189,6 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 	}
 	coreutils.RemoveFlagFromCommand(&curlCmd.arguments, flagIndex, valueIndex)
 	return config.GetSpecificConfig(serverIdValue, true, true)
-}
-
-// Find the URL argument in the Curl Command.
-// A command flag is prefixed by '-' or '--'.
-// Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
-// An argument is any provided candidate which is not a flag or a flag value.
-func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
-	skipThisArg := false
-	for index, arg := range curlCmd.arguments {
-		// Check if shouldn't check current arg.
-		if skipThisArg {
-			skipThisArg = false
-			continue
-		}
-		// If starts with '--', meaning a flag which its value is at next slot.
-		if strings.HasPrefix(arg, "--") {
-			skipThisArg = true
-			continue
-		}
-		// Check if '-'.
-		if strings.HasPrefix(arg, "-") {
-			if len(arg) > 2 {
-				// Meaning that this flag also contains its value.
-				continue
-			}
-			// If reached here, means that the flag value is at the next arg.
-			skipThisArg = true
-			continue
-		}
-
-		// Found an argument
-		return index, arg
-	}
-
-	// If reached here, didn't find an argument.
-	return -1, ""
 }
 
 // Return true if the curl command includes credentials flag.

@@ -103,6 +103,17 @@ func TestCreateCommandUsages(t *testing.T) {
 			stringFlags: map[string]StringFlag{optStrFlag.Name: optStrFlag, strFlag.Name: strFlag},
 			expected:    override, // override is not expected to be changed upon using UsageOptions
 		},
+		{
+			name: "with custom command name",
+			cmd: Command{
+				Name:         cmdName,
+				Arguments:    []Argument{{Name: "first argument"}},
+				UsageOptions: &UsageOptions{CommandName: "custom-command"},
+			},
+			expected: []string{
+				fmt.Sprintf("%s custom-command <%s>", appNameSpace, "first argument"),
+			},
+		},
 	}
 
 	for _, test := range tests {

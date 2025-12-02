@@ -92,15 +92,15 @@ type File struct {
 	Symlinks                string
 	Transitive              string
 	TargetPathInArchive     string
-	include                 []string
-	Package                 string `json:"package,omitempty"`
+	Include                 []string `json:"include,omitempty"`
+	Package                 string   `json:"package,omitempty"`
 	Version                 string `json:"version,omitempty"`
 	Type                    string `json:"type,omitempty"`
 	RepoKey                 string `json:"repoKey,omitempty"`
 }
 
 func (f File) GetInclude() []string {
-	return f.include
+	return f.Include
 }
 
 func (f File) IsFlat(defaultValue bool) (bool, error) {
@@ -188,6 +188,7 @@ func (f *File) ToCommonParams() (*utils.CommonParams, error) {
 	params.Offset = f.Offset
 	params.Limit = f.Limit
 	params.ArchiveEntries = f.ArchiveEntries
+	params.Include = f.Include
 	return params, nil
 }
 

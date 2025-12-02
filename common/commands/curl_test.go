@@ -102,3 +102,106 @@ func TestBuildCommandUrl(t *testing.T) {
 		})
 	}
 }
+
+func TestFindUriWithStandaloneFlags(t *testing.T) {
+	tests := []struct {
+		name             string
+		arguments        []string
+		expectedUriIndex int
+		expectedUri      string
+	}{
+		{
+			name:             "regression_silent_show_error_verbose",
+			arguments:        []string{"-s", "--show-error", "api/repositories/dev-master-maven-local", "--verbose"},
+			expectedUriIndex: 2,
+			expectedUri:      "api/repositories/dev-master-maven-local",
+		},
+		{
+			name:             "bug_case_1_output_location_verbose",
+			arguments:        []string{"-o", "helm.tar.gz", "-L", "-vvv", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+			expectedUriIndex: 4,
+			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
+		},
+		{
+			name:             "bug_case_2_output_verbose_location",
+			arguments:        []string{"-o", "helm.tar.gz", "-vvv", "-L", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+			expectedUriIndex: 4,
+			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
+		},
+		{
+			name:             "bug_case_3_output_location_silent",
+			arguments:        []string{"-o", "helm.tar.gz", "-L", "-s", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+			expectedUriIndex: 4,
+			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
+		},
+		{
+			name:             "bug_case_4_location_output",
+			arguments:        []string{"-L", "-o", "helm.tar.gz", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+			expectedUriIndex: 3,
+			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
+		},
+		{
+			name:             "bug_case_5_output_location",
+			arguments:        []string{"-o", "helm.tar.gz", "-L", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+			expectedUriIndex: 3,
+			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
+		},
+		{
+			name:             "bug_case_6_location_verbose_output",
+			arguments:        []string{"-L", "-vvv", "-o", "helm.tar.gz", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+			expectedUriIndex: 4,
+			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
+		},
+		{
+			name:             "bug_case_7_location_output_verbose",
+			arguments:        []string{"-L", "-o", "helm.tar.gz", "-vvv", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
+			expectedUriIndex: 4,
+			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
+		},
+		{
+			name:             "multiple_standalone_flags_combined",
+			arguments:        []string{"-sS", "-L", "api/system/ping"},
+			expectedUriIndex: 2,
+			expectedUri:      "api/system/ping",
+		},
+		{
+			name:             "long_standalone_flags",
+			arguments:        []string{"--silent", "--show-error", "--location", "api/system/ping"},
+			expectedUriIndex: 3,
+			expectedUri:      "api/system/ping",
+		},
+		{
+			name:             "mixed_short_long_standalone",
+			arguments:        []string{"-X", "GET", "-H", "Content-Type: application/json", "--verbose", "--insecure", "api/repositories"},
+			expectedUriIndex: 6,
+			expectedUri:      "api/repositories",
+		},
+		{
+			name:             "inline_short_flag_value",
+			arguments:        []string{"-XPOST", "-HContent-Type:application/json", "-L", "api/repositories"},
+			expectedUriIndex: 3,
+			expectedUri:      "api/repositories",
+		},
+		{
+			name:             "long_flag_with_equals",
+			arguments:        []string{"--request=GET", "--header=Accept:application/json", "-v", "api/system/ping"},
+			expectedUriIndex: 3,
+			expectedUri:      "api/system/ping",
+		},
+	}
+
+	command := &CurlCommand{}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			command.arguments = test.arguments
+			actualIndex, actualUri := command.findUriValueAndIndex()
+
+			if actualIndex != test.expectedUriIndex {
+				t.Errorf("Expected URI index: %d, got: %d. Arguments: %v", test.expectedUriIndex, actualIndex, test.arguments)
+			}
+			if actualUri != test.expectedUri {
+				t.Errorf("Expected URI: %s, got: %s. Arguments: %v", test.expectedUri, actualUri, test.arguments)
+			}
+		})
+	}
+}

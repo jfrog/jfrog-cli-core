@@ -63,11 +63,14 @@ func (curlCmd *CurlCommand) Run() error {
 		return errorutils.CheckErrorf("Curl command must not include certificate flag (--cert or --key).")
 	}
 
-	// Build the full URL from the API path (first non-flag argument).
-	// Remove the API path and append the full URL at the end.
-	if err := curlCmd.buildAndAppendUrl(); err != nil {
+	// Get target url for the curl command.
+	uriIndex, targetUri, err := curlCmd.buildCommandUrl(curlCmd.url)
+	if err != nil {
 		return err
 	}
+
+	// Replace url argument with complete url.
+	curlCmd.arguments[uriIndex] = targetUri
 
 	cmdWithoutCreds := strings.Join(curlCmd.arguments, " ")
 	// Add credentials to curl command.
@@ -103,81 +106,28 @@ func (curlCmd *CurlCommand) addCommandCredentials() string {
 	return certificateHelpPrefix + "-u***:***"
 }
 
-// buildAndAppendUrl finds the first non-flag argument (the API path), removes it,
-// builds the full URL, and appends it at the end. This allows curl flags to appear in any order.
-func (curlCmd *CurlCommand) buildAndAppendUrl() error {
-	// Common curl flags that take a value in the next argument
-	flagsWithValues := map[string]bool{
-		"-X": true, "-H": true, "-d": true, "-o": true, "-A": true, "-e": true,
-		"-T": true, "-b": true, "-c": true, "-F": true, "-m": true, "-w": true,
-		"-x": true, "-y": true, "-z": true, "-C": true, "-K": true, "-E": true,
-		"--request": true, "--header": true, "--data": true, "--output": true,
-		"--user-agent": true, "--referer": true, "--upload-file": true,
-		"--cookie": true, "--cookie-jar": true, "--form": true, "--max-time": true,
-		"--write-out": true, "--proxy": true, "--cert": true, "--key": true,
-		"--cacert": true, "--capath": true, "--connect-timeout": true,
-		"--retry": true, "--retry-delay": true, "--retry-max-time": true,
-		"--speed-limit": true, "--speed-time": true, "--limit-rate": true,
-		"--max-filesize": true, "--max-redirs": true, "--data-binary": true,
-		"--data-urlencode": true, "--data-raw": true, "--data-ascii": true,
+func (curlCmd *CurlCommand) buildCommandUrl(url string) (uriIndex int, uriValue string, err error) {
+	// Find command's URL argument.
+	// Representing the target API for the Curl command.
+	uriIndex, uriValue = curlCmd.findUriValueAndIndex()
+	if uriIndex == -1 {
+		err = errorutils.CheckErrorf("Could not find argument in curl command.")
+		return
 	}
-
-	// Find the first non-flag argument (the API path)
-	// Skip arguments that are values for flags
-	apiPathIndex := -1
-	skipNext := false
-
-	for i, arg := range curlCmd.arguments {
-		// Skip if this is a flag value
-		if skipNext {
-			skipNext = false
-			continue
-		}
-
-		// Check if this is a flag
-		if strings.HasPrefix(arg, "-") {
-			// Check if it's a flag that takes a value (and value is not inline)
-			if flagsWithValues[arg] {
-				skipNext = true
-			}
-			// Check for long flags with inline values like --header=value
-			if strings.Contains(arg, "=") {
-				skipNext = false
-			}
-			// For short flags, check if value is inline like -XGET
-			if len(arg) > 2 && !strings.HasPrefix(arg, "--") {
-				skipNext = false
-			}
-			continue
-		}
-
-		// Found a non-flag argument that's not a flag value - this is the API path
-		apiPathIndex = i
-		break
-	}
-
-	if apiPathIndex == -1 {
-		return errorutils.CheckErrorf("Could not find API path argument in curl command.")
-	}
-
-	apiPath := curlCmd.arguments[apiPathIndex]
 
 	// If user provided full-url, throw an error.
-	if strings.HasPrefix(apiPath, "http://") || strings.HasPrefix(apiPath, "https://") {
-		return errorutils.CheckErrorf("Curl command must not include full-url, but only the REST API URI (e.g '/api/system/ping').")
+	if strings.HasPrefix(uriValue, "http://") || strings.HasPrefix(uriValue, "https://") {
+		err = errorutils.CheckErrorf("Curl command must not include full-url, but only the REST API URI (e.g '/api/system/ping').")
+		return
 	}
 
-	// Remove the API path from its current position
-	curlCmd.arguments = append(curlCmd.arguments[:apiPathIndex], curlCmd.arguments[apiPathIndex+1:]...)
-
 	// Trim '/' prefix if exists.
-	apiPath = strings.TrimPrefix(apiPath, "/")
+	uriValue = strings.TrimPrefix(uriValue, "/")
 
-	// Build full URL and append at the end
-	fullUrl := curlCmd.url + apiPath
-	curlCmd.arguments = append(curlCmd.arguments, fullUrl)
+	// Attach url to the api.
+	uriValue = url + uriValue
 
-	return nil
+	return
 }
 
 // Returns server details
@@ -189,6 +139,104 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 	}
 	coreutils.RemoveFlagFromCommand(&curlCmd.arguments, flagIndex, valueIndex)
 	return config.GetSpecificConfig(serverIdValue, true, true)
+}
+
+// curlBooleanFlags contains curl flags that do NOT take a value.
+var curlBooleanFlags = map[string]bool{
+	"-#": true, "-0": true, "-1": true, "-2": true, "-3": true, "-4": true, "-6": true,
+	"-a": true, "-B": true, "-f": true, "-g": true, "-G": true, "-I": true, "-i": true,
+	"-j": true, "-J": true, "-k": true, "-l": true, "-L": true, "-M": true, "-n": true,
+	"-N": true, "-O": true, "-p": true, "-q": true, "-R": true, "-s": true, "-S": true,
+	"-v": true, "-V": true, "-Z": true,
+	"--anyauth": true, "--append": true, "--basic": true, "--ca-native": true,
+	"--cert-status": true, "--compressed": true, "--compressed-ssh": true,
+	"--create-dirs": true, "--crlf": true, "--digest": true, "--disable": true,
+	"--disable-eprt": true, "--disable-epsv": true, "--disallow-username-in-url": true,
+	"--doh-cert-status": true, "--doh-insecure": true, "--fail": true,
+	"--fail-early": true, "--fail-with-body": true, "--false-start": true,
+	"--form-escape": true, "--ftp-create-dirs": true, "--ftp-pasv": true,
+	"--ftp-pret": true, "--ftp-skip-pasv-ip": true, "--ftp-ssl-ccc": true,
+	"--ftp-ssl-control": true, "--get": true, "--globoff": true,
+	"--haproxy-protocol": true, "--head": true, "--http0.9": true, "--http1.0": true,
+	"--http1.1": true, "--http2": true, "--http2-prior-knowledge": true,
+	"--http3": true, "--http3-only": true, "--ignore-content-length": true,
+	"--include": true, "--insecure": true, "--ipv4": true, "--ipv6": true,
+	"--junk-session-cookies": true, "--list-only": true, "--location": true,
+	"--location-trusted": true, "--mail-rcpt-allowfails": true, "--manual": true,
+	"--metalink": true, "--negotiate": true, "--netrc": true, "--netrc-optional": true,
+	"--next": true, "--no-alpn": true, "--no-buffer": true, "--no-clobber": true,
+	"--no-keepalive": true, "--no-npn": true, "--no-progress-meter": true,
+	"--no-sessionid": true, "--ntlm": true, "--ntlm-wb": true, "--parallel": true,
+	"--parallel-immediate": true, "--path-as-is": true, "--post301": true,
+	"--post302": true, "--post303": true, "--progress-bar": true,
+	"--proxy-anyauth": true, "--proxy-basic": true, "--proxy-ca-native": true,
+	"--proxy-digest": true, "--proxy-http2": true, "--proxy-insecure": true,
+	"--proxy-negotiate": true, "--proxy-ntlm": true, "--proxy-ssl-allow-beast": true,
+	"--proxy-ssl-auto-client-cert": true, "--proxy-tlsv1": true, "--proxytunnel": true,
+	"--raw": true, "--remote-header-name": true, "--remote-name": true,
+	"--remote-name-all": true, "--remote-time": true, "--remove-on-error": true,
+	"--retry-all-errors": true, "--retry-connrefused": true, "--sasl-ir": true,
+	"--show-error": true, "--silent": true, "--socks5-basic": true,
+	"--socks5-gssapi": true, "--socks5-gssapi-nec": true, "--ssl": true,
+	"--ssl-allow-beast": true, "--ssl-auto-client-cert": true, "--ssl-no-revoke": true,
+	"--ssl-reqd": true, "--ssl-revoke-best-effort": true, "--sslv2": true,
+	"--sslv3": true, "--styled-output": true, "--suppress-connect-headers": true,
+	"--tcp-fastopen": true, "--tcp-nodelay": true, "--tftp-no-options": true,
+	"--tlsv1": true, "--tlsv1.0": true, "--tlsv1.1": true, "--tlsv1.2": true,
+	"--tlsv1.3": true, "--tr-encoding": true, "--trace-ids": true,
+	"--trace-time": true, "--use-ascii": true, "--verbose": true, "--version": true,
+	"--xattr": true,
+}
+
+// Find the URL argument in the Curl Command.
+// A command flag is prefixed by '-' or '--'.
+// Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
+// An argument is any provided candidate which is not a flag or a flag value.
+func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
+	skipNextArg := false
+	for index, arg := range curlCmd.arguments {
+		// Check if this arg should be skipped (it's a value for the previous flag)
+		if skipNextArg {
+			skipNextArg = false
+			continue
+		}
+
+		// Check if this is a flag
+		if strings.HasPrefix(arg, "-") {
+			// Check for flags with inline values like --header=value or -XGET
+			if strings.HasPrefix(arg, "--") && strings.Contains(arg, "=") {
+				continue
+			}
+
+			// Check if this is a known standalone flag (no value needed)
+			if curlBooleanFlags[arg] {
+				continue
+			}
+
+			// For short flags (not starting with --)
+			if !strings.HasPrefix(arg, "--") && len(arg) > 2 {
+				// Could be inline value (e.g., -XGET, -ofile.txt) or combined flags (e.g., -vvv, -sS)
+				// Check if the base flag is standalone
+				baseFlag := arg[:2]
+				if curlBooleanFlags[baseFlag] {
+					// Combined standalone flags like -vvv or -sS, no skip needed
+					continue
+				}
+				// Inline value like -XGET or -ofile.txt, no skip needed
+				continue
+			}
+
+			// Flag not in standalone list - it takes a value in the next argument
+			skipNextArg = true
+			continue
+		}
+
+		// Found a non-flag argument - this is the URL/API path
+		return index, arg
+	}
+
+	// If reached here, didn't find an argument.
+	return -1, ""
 }
 
 // Return true if the curl command includes credentials flag.

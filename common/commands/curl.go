@@ -203,30 +203,36 @@ func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 
 		// Check if this is a flag
 		if strings.HasPrefix(arg, "-") {
-			// Check for flags with inline values like --header=value or -XGET
+			// Check for flags with inline values like --header=value
 			if strings.HasPrefix(arg, "--") && strings.Contains(arg, "=") {
 				continue
 			}
 
-			// Check if this is a known standalone flag (no value needed)
+			// Check if it a boolean flag
 			if curlBooleanFlags[arg] {
 				continue
 			}
 
-			// For short flags (not starting with --)
+			// For short flags
 			if !strings.HasPrefix(arg, "--") && len(arg) > 2 {
-				// Could be inline value (e.g., -XGET, -ofile.txt) or combined flags (e.g., -vvv, -sS)
-				// Check if the base flag is standalone
-				baseFlag := arg[:2]
-				if curlBooleanFlags[baseFlag] {
-					// Combined standalone flags like -vvv or -sS, no skip needed
-					continue
+				// find a flag that takes a value, everything after it is the inline value
+				for i := 1; i < len(arg); i++ {
+					charFlag := "-" + string(arg[i])
+					if !curlBooleanFlags[charFlag] {
+						// Found a flag that takes a value
+						if i < len(arg)-1 {
+							// Inline value exists (e.g., -XGET, -Lotest.txt)
+							break
+						}
+						// No inline value (e.g., -Lo, -sX), next arg is the value
+						skipNextArg = true
+						break
+					}
 				}
-				// Inline value like -XGET or -ofile.txt, no skip needed
 				continue
 			}
 
-			// Flag not in standalone list - it takes a value in the next argument
+			// Flag takes a value in the next argument
 			skipNextArg = true
 			continue
 		}
@@ -235,7 +241,6 @@ func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 		return index, arg
 	}
 
-	// If reached here, didn't find an argument.
 	return -1, ""
 }
 

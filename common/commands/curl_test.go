@@ -68,11 +68,31 @@ func TestBuildCommandUrl(t *testing.T) {
 		uriValue  string
 		expectErr bool
 	}{
-		{"test1", []string{"-X", "GET", "/api/build/test1", "--server-id", "test1", "--foo", "bar"}, 2, "https://artifactory:8081/artifactory/api/build/test1", false},
-		{"test2", []string{"-X", "GET", "/api/build/test2", "--server-idea", "foo", "--server-id=test2"}, 2, "https://artifactory:8081/artifactory/api/build/test2", false},
-		{"test3", []string{"-XGET", "--/api/build/test3", "--server-id="}, 1, "https://artifactory:8081/artifactory/api/build/test3", true},
-		{"test4", []string{"-XGET", "-Test4", "--server-id", "bar"}, 1, "https://artifactory:8081/artifactory/api/build/test4", true},
-		{"test5", []string{"-X", "GET", "api/build/test5", "--server-id", "test5", "--foo", "bar"}, 2, "https://artifactory:8081/artifactory/api/build/test5", false},
+		{"basicGetWithLeadingSlash", []string{"-X", "GET", "/api/build/test1", "--server-id", "test1", "--foo", "bar"}, 2, "https://artifactory:8081/artifactory/api/build/test1", false},
+		{"getWithInlineServerId", []string{"-X", "GET", "/api/build/test2", "--server-idea", "foo", "--server-id=test2"}, 2, "https://artifactory:8081/artifactory/api/build/test2", false},
+		{"uriStartsWithDashDash", []string{"-XGET", "--/api/build/test3", "--server-id="}, 1, "https://artifactory:8081/artifactory/api/build/test3", true},
+		{"uriStartsWithDash", []string{"-XGET", "-Test4", "--server-id", "bar"}, 1, "https://artifactory:8081/artifactory/api/build/test4", true},
+		{"basicGetWithoutLeadingSlash", []string{"-X", "GET", "api/build/test5", "--server-id", "test5", "--foo", "bar"}, 2, "https://artifactory:8081/artifactory/api/build/test5", false},
+		{"fullHTTP", []string{"-L", "http://example.com/api/test"}, -1, "", true},
+		{"fullHTTPS", []string{"-L", "https://example.com/api/test"}, -1, "", true},
+		{"noURI", []string{"-X", "GET", "-H", "Auth: token"}, -1, "", true},
+		{"onlyFlags", []string{"-L", "-v", "-s", "--insecure"}, -1, "", true},
+		{"specialChars", []string{"-X", "GET", "/api/test?param=value&foo=bar"}, 2, "https://artifactory:8081/artifactory/api/test?param=value&foo=bar", false},
+		{"uriWithSpaces", []string{"-X", "GET", "/api/test%20space"}, 2, "https://artifactory:8081/artifactory/api/test%20space", false},
+		{"multipleURIs", []string{"api/first", "-X", "GET", "api/second"}, 0, "https://artifactory:8081/artifactory/api/first", false},
+		{"dashInURI", []string{"-X", "GET", "-not-a-flag/api/test"}, -1, "", true},
+		{"booleanFlags", []string{"-L", "-k", "-v", "-s", "api/test"}, 4, "https://artifactory:8081/artifactory/api/test", false},
+		{"longBooleanFlags", []string{"--location", "--insecure", "--verbose", "api/test"}, 3, "https://artifactory:8081/artifactory/api/test", false},
+		{"embeddedValue", []string{"--header=Authorization: Bearer token", "-XPOST", "api/test"}, 2, "https://artifactory:8081/artifactory/api/test", false},
+		{"multipleEmbedded", []string{"--data=json", "--header=Content-Type: application/json", "api/test"}, 2, "https://artifactory:8081/artifactory/api/test", false},
+		{"combinedBoolean", []string{"-Lkvs", "api/test"}, 1, "https://artifactory:8081/artifactory/api/test", false},
+		{"combinedMixed", []string{"-LvX", "POST", "api/test"}, 2, "https://artifactory:8081/artifactory/api/test", false},
+		{"trailingValueFlag", []string{"api/test", "-X"}, 0, "https://artifactory:8081/artifactory/api/test", false},
+		{"trailingBooleanFlag", []string{"api/test", "-L"}, 0, "https://artifactory:8081/artifactory/api/test", false},
+		{"emptyArgs", []string{"-X", "GET", "", "api/test"}, 2, "https://artifactory:8081/artifactory/", false},
+		{"emptyFlagValue", []string{"-H", "", "api/test"}, 2, "https://artifactory:8081/artifactory/api/test", false},
+		{"uriFirst", []string{"api/test", "-X", "GET", "-L"}, 0, "https://artifactory:8081/artifactory/api/test", false},
+		{"realWorld", []string{"-sS", "-L", "-X", "POST", "-H", "Content-Type: application/json", "-d", `{"key":"value"}`, "--insecure", "api/repos/test"}, 9, "https://artifactory:8081/artifactory/api/repos/test", false},
 	}
 
 	command := &CurlCommand{}
@@ -103,7 +123,7 @@ func TestBuildCommandUrl(t *testing.T) {
 	}
 }
 
-func TestFindUriWithStandaloneFlags(t *testing.T) {
+func TestFindUriWithBooleanFlags(t *testing.T) {
 	tests := []struct {
 		name             string
 		arguments        []string
@@ -111,82 +131,202 @@ func TestFindUriWithStandaloneFlags(t *testing.T) {
 		expectedUri      string
 	}{
 		{
-			name:             "test1",
+			name:             "shortSilentWithLongVerbose",
 			arguments:        []string{"-s", "--show-error", "api/repositories/dev-master-maven-local", "--verbose"},
 			expectedUriIndex: 2,
 			expectedUri:      "api/repositories/dev-master-maven-local",
 		},
 		{
-			name:             "test2",
+			name:             "outputFlagWithCombinedVerbose",
 			arguments:        []string{"-o", "helm.tar.gz", "-L", "-vvv", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
 			expectedUriIndex: 4,
 			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
 		},
 		{
-			name:             "test3",
+			name:             "combinedVerboseBeforeLocation",
 			arguments:        []string{"-o", "helm.tar.gz", "-vvv", "-L", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
 			expectedUriIndex: 4,
 			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
 		},
 		{
-			name:             "test4",
+			name:             "outputWithLocationAndSilent",
 			arguments:        []string{"-o", "helm.tar.gz", "-L", "-s", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
 			expectedUriIndex: 4,
 			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
 		},
 		{
-			name:             "test5",
+			name:             "locationFirstThenOutput",
 			arguments:        []string{"-L", "-o", "helm.tar.gz", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
 			expectedUriIndex: 3,
 			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
 		},
 		{
-			name:             "test6",
+			name:             "outputThenLocationSimple",
 			arguments:        []string{"-o", "helm.tar.gz", "-L", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
 			expectedUriIndex: 3,
 			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
 		},
 		{
-			name:             "test7",
+			name:             "locationCombinedVerboseThenOutput",
 			arguments:        []string{"-L", "-vvv", "-o", "helm.tar.gz", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
 			expectedUriIndex: 4,
 			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
 		},
 		{
-			name:             "test8",
+			name:             "locationOutputThenCombinedVerbose",
 			arguments:        []string{"-L", "-o", "helm.tar.gz", "-vvv", "helm-sh/helm-v3.19.0-linux-amd64.tar.gz"},
 			expectedUriIndex: 4,
 			expectedUri:      "helm-sh/helm-v3.19.0-linux-amd64.tar.gz",
 		},
 		{
-			name:             "test9",
+			name:             "combinedSilentShowErrorWithLocation",
 			arguments:        []string{"-sS", "-L", "api/system/ping"},
 			expectedUriIndex: 2,
 			expectedUri:      "api/system/ping",
 		},
 		{
-			name:             "test10",
+			name:             "longFormSilentShowErrorLocation",
 			arguments:        []string{"--silent", "--show-error", "--location", "api/system/ping"},
 			expectedUriIndex: 3,
 			expectedUri:      "api/system/ping",
 		},
 		{
-			name:             "test11",
+			name:             "getWithHeaderAndBooleanFlags",
 			arguments:        []string{"-X", "GET", "-H", "Content-Type: application/json", "--verbose", "--insecure", "api/repositories"},
 			expectedUriIndex: 6,
 			expectedUri:      "api/repositories",
 		},
 		{
-			name:             "test12",
+			name:             "inlineRequestAndHeaderWithLocation",
 			arguments:        []string{"-XPOST", "-HContent-Type:application/json", "-L", "api/repositories"},
 			expectedUriIndex: 3,
 			expectedUri:      "api/repositories",
 		},
 		{
-			name:             "test13",
+			name:             "longFormInlineRequestAndHeader",
 			arguments:        []string{"--request=GET", "--header=Accept:application/json", "-v", "api/system/ping"},
 			expectedUriIndex: 3,
 			expectedUri:      "api/system/ping",
+		},
+		{
+			name:             "allShortBooleanFlags",
+			arguments:        []string{"-#", "-0", "-1", "-2", "-3", "-4", "-6", "-a", "-B", "-f", "-g", "-G", "-I", "-i", "api/test"},
+			expectedUriIndex: 14,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "mixedKnownUnknownFlags",
+			arguments:        []string{"-L", "-9", "possibleValue", "api/test"},
+			expectedUriIndex: 3,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "complexCombinedFlags",
+			arguments:        []string{"-sLkvo", "output.txt", "api/test"},
+			expectedUriIndex: 2,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "httpMethodsAsValues",
+			arguments:        []string{"-X", "PATCH", "-X", "OPTIONS", "-X", "TRACE", "api/test"},
+			expectedUriIndex: 6,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "quotedValues",
+			arguments:        []string{"-H", `Authorization: "Bearer token"`, "-H", "Accept: */*", "api/test"},
+			expectedUriIndex: 4,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "jsonData",
+			arguments:        []string{"-d", `{"test": "value", "array": [1,2,3]}`, "-H", "Content-Type: application/json", "api/test"},
+			expectedUriIndex: 4,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "fileReference",
+			arguments:        []string{"-d", "@/path/to/file.json", "-T", "/path/to/upload.tar", "api/test"},
+			expectedUriIndex: 4,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "repeatedBooleanFlags",
+			arguments:        []string{"-v", "-v", "-v", "-L", "-L", "api/test"},
+			expectedUriIndex: 5,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "urlEncodedData",
+			arguments:        []string{"--data-urlencode", "param=value&other=test", "api/test"},
+			expectedUriIndex: 2,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "proxySettings",
+			arguments:        []string{"-x", "proxy.server:8080", "-U", "proxyuser:pass", "api/test"},
+			expectedUriIndex: 4,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "certAndKeyFlags",
+			arguments:        []string{"-E", "/path/to/cert.pem", "--key", "/path/to/key.pem", "api/test"},
+			expectedUriIndex: 4,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "rangeHeader",
+			arguments:        []string{"-r", "0-1023", "-C", "-", "api/download/file"},
+			expectedUriIndex: 4,
+			expectedUri:      "api/download/file",
+		},
+		{
+			name:             "userAgentAndReferer",
+			arguments:        []string{"-A", "CustomUserAgent/1.0", "-e", "https://referrer.com", "api/test"},
+			expectedUriIndex: 4,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "formData",
+			arguments:        []string{"-F", "field1=value1", "-F", "field2=@file.txt", "-F", "field3=<file2.txt", "api/upload"},
+			expectedUriIndex: 6,
+			expectedUri:      "api/upload",
+		},
+		{
+			name:             "cookiesAndJar",
+			arguments:        []string{"-b", "cookies.txt", "-c", "newcookies.txt", "-b", "name=value", "api/test"},
+			expectedUriIndex: 6,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "speedAndTime",
+			arguments:        []string{"-Y", "1000", "-y", "30", "-m", "120", "api/test"},
+			expectedUriIndex: 6,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "retryOptions",
+			arguments:        []string{"--retry", "3", "--retry-delay", "5", "--retry-max-time", "60", "api/test"},
+			expectedUriIndex: 6,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "writeOutFormat",
+			arguments:        []string{"-w", `%{http_code}\n`, "-o", "/dev/null", "-s", "api/test"},
+			expectedUriIndex: 5,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "ipv6Address",
+			arguments:        []string{"-H", "Host: [::1]", "-6", "api/test"},
+			expectedUriIndex: 3,
+			expectedUri:      "api/test",
+		},
+		{
+			name:             "traceAndDump",
+			arguments:        []string{"--trace", "trace.txt", "--trace-ascii", "ascii.txt", "--dump-header", "headers.txt", "api/test"},
+			expectedUriIndex: 6,
+			expectedUri:      "api/test",
 		},
 	}
 

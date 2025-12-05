@@ -141,58 +141,64 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 	return config.GetSpecificConfig(serverIdValue, true, true)
 }
 
-// curlBooleanFlags contains curl flags that do NOT take a value.
-var curlBooleanFlags = map[string]bool{
-	"-#": true, "-0": true, "-1": true, "-2": true, "-3": true, "-4": true, "-6": true,
-	"-a": true, "-B": true, "-f": true, "-g": true, "-G": true, "-I": true, "-i": true,
-	"-j": true, "-J": true, "-k": true, "-l": true, "-L": true, "-M": true, "-n": true,
-	"-N": true, "-O": true, "-p": true, "-q": true, "-R": true, "-s": true, "-S": true,
-	"-v": true, "-V": true, "-Z": true,
-	"--anyauth": true, "--append": true, "--basic": true, "--ca-native": true,
-	"--cert-status": true, "--compressed": true, "--compressed-ssh": true,
-	"--create-dirs": true, "--crlf": true, "--digest": true, "--disable": true,
-	"--disable-eprt": true, "--disable-epsv": true, "--disallow-username-in-url": true,
-	"--doh-cert-status": true, "--doh-insecure": true, "--fail": true,
-	"--fail-early": true, "--fail-with-body": true, "--false-start": true,
-	"--form-escape": true, "--ftp-create-dirs": true, "--ftp-pasv": true,
-	"--ftp-pret": true, "--ftp-skip-pasv-ip": true, "--ftp-ssl-ccc": true,
-	"--ftp-ssl-control": true, "--get": true, "--globoff": true,
-	"--haproxy-protocol": true, "--head": true, "--http0.9": true, "--http1.0": true,
-	"--http1.1": true, "--http2": true, "--http2-prior-knowledge": true,
-	"--http3": true, "--http3-only": true, "--ignore-content-length": true,
-	"--include": true, "--insecure": true, "--ipv4": true, "--ipv6": true,
-	"--junk-session-cookies": true, "--list-only": true, "--location": true,
-	"--location-trusted": true, "--mail-rcpt-allowfails": true, "--manual": true,
-	"--metalink": true, "--negotiate": true, "--netrc": true, "--netrc-optional": true,
-	"--next": true, "--no-alpn": true, "--no-buffer": true, "--no-clobber": true,
-	"--no-keepalive": true, "--no-npn": true, "--no-progress-meter": true,
-	"--no-sessionid": true, "--ntlm": true, "--ntlm-wb": true, "--parallel": true,
-	"--parallel-immediate": true, "--path-as-is": true, "--post301": true,
-	"--post302": true, "--post303": true, "--progress-bar": true,
-	"--proxy-anyauth": true, "--proxy-basic": true, "--proxy-ca-native": true,
-	"--proxy-digest": true, "--proxy-http2": true, "--proxy-insecure": true,
-	"--proxy-negotiate": true, "--proxy-ntlm": true, "--proxy-ssl-allow-beast": true,
-	"--proxy-ssl-auto-client-cert": true, "--proxy-tlsv1": true, "--proxytunnel": true,
-	"--raw": true, "--remote-header-name": true, "--remote-name": true,
-	"--remote-name-all": true, "--remote-time": true, "--remove-on-error": true,
-	"--retry-all-errors": true, "--retry-connrefused": true, "--sasl-ir": true,
-	"--show-error": true, "--silent": true, "--socks5-basic": true,
-	"--socks5-gssapi": true, "--socks5-gssapi-nec": true, "--ssl": true,
-	"--ssl-allow-beast": true, "--ssl-auto-client-cert": true, "--ssl-no-revoke": true,
-	"--ssl-reqd": true, "--ssl-revoke-best-effort": true, "--sslv2": true,
-	"--sslv3": true, "--styled-output": true, "--suppress-connect-headers": true,
-	"--tcp-fastopen": true, "--tcp-nodelay": true, "--tftp-no-options": true,
-	"--tlsv1": true, "--tlsv1.0": true, "--tlsv1.1": true, "--tlsv1.2": true,
-	"--tlsv1.3": true, "--tr-encoding": true, "--trace-ids": true,
-	"--trace-time": true, "--use-ascii": true, "--verbose": true, "--version": true,
-	"--xattr": true,
-}
-
 // Find the URL argument in the Curl Command.
 // A command flag is prefixed by '-' or '--'.
 // Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
 // An argument is any provided candidate which is not a flag or a flag value.
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
+	// curlBooleanFlags is a set of curl flags that do NOT take a value.
+	curlBooleanFlags := map[string]struct{}{
+		"-#": {}, "-0": {}, "-1": {}, "-2": {}, "-3": {}, "-4": {}, "-6": {},
+		"-a": {}, "-B": {}, "-f": {}, "-g": {}, "-G": {}, "-I": {}, "-i": {},
+		"-j": {}, "-J": {}, "-k": {}, "-l": {}, "-L": {}, "-M": {}, "-n": {},
+		"-N": {}, "-O": {}, "-p": {}, "-q": {}, "-R": {}, "-s": {}, "-S": {},
+		"-v": {}, "-V": {}, "-Z": {},
+		"--anyauth": {}, "--append": {}, "--basic": {}, "--ca-native": {},
+		"--cert-status": {}, "--compressed": {}, "--compressed-ssh": {},
+		"--create-dirs": {}, "--crlf": {}, "--digest": {}, "--disable": {},
+		"--disable-eprt": {}, "--disable-epsv": {}, "--disallow-username-in-url": {},
+		"--doh-cert-status": {}, "--doh-insecure": {}, "--fail": {},
+		"--fail-early": {}, "--fail-with-body": {}, "--false-start": {},
+		"--form-escape": {}, "--ftp-create-dirs": {}, "--ftp-pasv": {},
+		"--ftp-pret": {}, "--ftp-skip-pasv-ip": {}, "--ftp-ssl-ccc": {},
+		"--ftp-ssl-control": {}, "--get": {}, "--globoff": {},
+		"--haproxy-protocol": {}, "--head": {}, "--http0.9": {}, "--http1.0": {},
+		"--http1.1": {}, "--http2": {}, "--http2-prior-knowledge": {},
+		"--http3": {}, "--http3-only": {}, "--ignore-content-length": {},
+		"--include": {}, "--insecure": {}, "--ipv4": {}, "--ipv6": {},
+		"--junk-session-cookies": {}, "--list-only": {}, "--location": {},
+		"--location-trusted": {}, "--mail-rcpt-allowfails": {}, "--manual": {},
+		"--metalink": {}, "--negotiate": {}, "--netrc": {}, "--netrc-optional": {},
+		"--next": {}, "--no-alpn": {}, "--no-buffer": {}, "--no-clobber": {},
+		"--no-keepalive": {}, "--no-npn": {}, "--no-progress-meter": {},
+		"--no-sessionid": {}, "--ntlm": {}, "--ntlm-wb": {}, "--parallel": {},
+		"--parallel-immediate": {}, "--path-as-is": {}, "--post301": {},
+		"--post302": {}, "--post303": {}, "--progress-bar": {},
+		"--proxy-anyauth": {}, "--proxy-basic": {}, "--proxy-ca-native": {},
+		"--proxy-digest": {}, "--proxy-http2": {}, "--proxy-insecure": {},
+		"--proxy-negotiate": {}, "--proxy-ntlm": {}, "--proxy-ssl-allow-beast": {},
+		"--proxy-ssl-auto-client-cert": {}, "--proxy-tlsv1": {}, "--proxytunnel": {},
+		"--raw": {}, "--remote-header-name": {}, "--remote-name": {},
+		"--remote-name-all": {}, "--remote-time": {}, "--remove-on-error": {},
+		"--retry-all-errors": {}, "--retry-connrefused": {}, "--sasl-ir": {},
+		"--show-error": {}, "--silent": {}, "--socks5-basic": {},
+		"--socks5-gssapi": {}, "--socks5-gssapi-nec": {}, "--ssl": {},
+		"--ssl-allow-beast": {}, "--ssl-auto-client-cert": {}, "--ssl-no-revoke": {},
+		"--ssl-reqd": {}, "--ssl-revoke-best-effort": {}, "--sslv2": {},
+		"--sslv3": {}, "--styled-output": {}, "--suppress-connect-headers": {},
+		"--tcp-fastopen": {}, "--tcp-nodelay": {}, "--tftp-no-options": {},
+		"--tlsv1": {}, "--tlsv1.0": {}, "--tlsv1.1": {}, "--tlsv1.2": {},
+		"--tlsv1.3": {}, "--tr-encoding": {}, "--trace-ids": {},
+		"--trace-time": {}, "--use-ascii": {}, "--verbose": {}, "--version": {},
+		"--xattr": {},
+	}
+
+	// isBooleanFlag checks if a flag is in the boolean flags
+	isBooleanFlag := func(flag string) bool {
+		_, exists := curlBooleanFlags[flag]
+		return exists
+	}
+
 	skipNextArg := false
 	for index, arg := range curlCmd.arguments {
 		// Check if this arg should be skipped (it's a value for the previous flag)
@@ -209,7 +215,7 @@ func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 			}
 
 			// Check if it a boolean flag
-			if curlBooleanFlags[arg] {
+			if isBooleanFlag(arg) {
 				continue
 			}
 
@@ -218,7 +224,7 @@ func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 				// find a flag that takes a value, everything after it is the inline value
 				for i := 1; i < len(arg); i++ {
 					charFlag := "-" + string(arg[i])
-					if !curlBooleanFlags[charFlag] {
+					if !isBooleanFlag(charFlag) {
 						// Found a flag that takes a value
 						if i < len(arg)-1 {
 							// Inline value exists (e.g., -XGET, -Lotest.txt)

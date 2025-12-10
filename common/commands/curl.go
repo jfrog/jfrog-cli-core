@@ -148,7 +148,7 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
 	// curlBooleanFlags is a set of curl flags that do NOT take a value.
 	curlBooleanFlags := map[string]struct{}{
-		"-#": {}, "-0": {}, "-1": {}, "-2": {}, "-3": {}, "-4": {}, "-6": {},
+		"-#": {}, "-:": {}, "-0": {}, "-1": {}, "-2": {}, "-3": {}, "-4": {}, "-6": {},
 		"-a": {}, "-B": {}, "-f": {}, "-g": {}, "-G": {}, "-I": {}, "-i": {},
 		"-j": {}, "-J": {}, "-k": {}, "-l": {}, "-L": {}, "-M": {}, "-n": {},
 		"-N": {}, "-O": {}, "-p": {}, "-q": {}, "-R": {}, "-s": {}, "-S": {},

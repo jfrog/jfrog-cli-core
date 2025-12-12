@@ -94,6 +94,19 @@ func (m *fullTransferPhase) skipPhase() {
 
 func (m *fullTransferPhase) run() error {
 	m.transferManager = newTransferManager(m.phaseBase, getDelayUploadComparisonFunctions(m.repoSummary.PackageType))
+
+	// If include patterns are provided, use AQL-based direct query instead of folder traversal
+	if len(m.includeFilesPatterns) > 0 {
+		return m.runWithAqlPatternFiltering()
+	}
+
+	// Default: use folder traversal
+	return m.runWithFolderTraversal()
+}
+
+// runWithFolderTraversal uses the traditional folder-by-folder traversal approach.
+// This is the default behavior when no include patterns are specified.
+func (m *fullTransferPhase) runWithFolderTraversal() error {
 	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
 			return nil
@@ -118,6 +131,75 @@ func (m *fullTransferPhase) run() error {
 		return consumeDelayFilesIfNoErrors(phase, addedDelayFiles)
 	}
 	return m.transferManager.doTransferWithProducerConsumer(action, delayAction)
+}
+
+// runWithAqlPatternFiltering uses a direct AQL query to fetch all files matching the include patterns.
+// This is more efficient than folder traversal when filtering is needed.
+func (m *fullTransferPhase) runWithAqlPatternFiltering() error {
+	log.Info("Using AQL-based pattern filtering for include patterns:", m.includeFilesPatterns)
+
+	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+			return nil
+		}
+
+		// Fetch all matching files using AQL with pattern filtering
+		paginationOffset := 0
+		for {
+			if ShouldStop(&m.phaseBase, &delayHelper, errorsChannelMng) {
+				return nil
+			}
+
+			result, lastPage, err := m.getPatternMatchingFiles(paginationOffset)
+			if err != nil {
+				return err
+			}
+
+			if len(result) == 0 {
+				if paginationOffset == 0 {
+					log.Info("No files found matching the include patterns")
+				}
+				break
+			}
+
+			// Convert results to file representations and upload
+			files := convertResultsToFileRepresentation(result)
+			shouldStop, err := uploadByChunks(files, uploadChunkChan, m.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
+			if err != nil || shouldStop {
+				return err
+			}
+
+			if lastPage {
+				break
+			}
+			paginationOffset++
+		}
+		return nil
+	}
+
+	delayAction := func(phase phaseBase, addedDelayFiles []string) error {
+		// Disable repo transfer snapshot as it is not used for delayed files.
+		if err := m.stateManager.SaveStateAndSnapshots(); err != nil {
+			return err
+		}
+		m.stateManager.DisableRepoTransferSnapshot()
+		return consumeDelayFilesIfNoErrors(phase, addedDelayFiles)
+	}
+
+	return m.transferManager.doTransferWithProducerConsumer(action, delayAction)
+}
+
+// getPatternMatchingFiles fetches files from source Artifactory using AQL with pattern filtering.
+func (m *fullTransferPhase) getPatternMatchingFiles(paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
+	query := generatePatternBasedAqlQuery(m.repoKey, m.includeFilesPatterns, paginationOffset, m.disabledDistinctiveAql)
+	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
+	if err != nil {
+		return []servicesUtils.ResultItem{}, false, err
+	}
+
+	lastPage = len(aqlResults.Results) < AqlPaginationLimit
+	result, err = m.locallyGeneratedFilter.FilterLocallyGenerated(aqlResults.Results)
+	return
 }
 
 type folderFullTransferHandlerFunc func(params folderParams) parallel.TaskFunc
@@ -242,14 +324,11 @@ func (m *fullTransferPhase) handleFoundChildFolder(params folderParams, pcWrappe
 	return
 }
 
+// Note: Pattern filtering is handled at AQL level when --include-files is provided.
+// This function is only called during folder traversal (when no patterns are specified).
 func (m *fullTransferPhase) handleFoundFile(pcWrapper *producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
 	node *reposnapshot.Node, item servicesUtils.ResultItem, curUploadChunk *api.UploadChunk) (err error) {
-	// Check if file matches include patterns (if any patterns are specified)
-	if !matchIncludeFilesPattern(item.Path, m.includeFilesPatterns) {
-		return // Skip this file - doesn't match pattern
-	}
-
 	file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 	delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
 	if delayed || stopped {

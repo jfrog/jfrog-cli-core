@@ -813,3 +813,91 @@ func filterFilesByPattern(files []api.FileRepresentation, patterns []string) []a
 	}
 	return filtered
 }
+
+// generatePatternBasedAqlQuery generates an AQL query that fetches all files matching the include patterns.
+// This is used when --include-files is provided, as an alternative to folder traversal.
+// The query uses $or to combine multiple pattern conditions.
+func generatePatternBasedAqlQuery(repoKey string, patterns []string, paginationOffset int, disabledDistinctiveAql bool) string {
+	// Build pattern conditions for AQL
+	patternConditions := generatePatternConditionsAql(patterns)
+
+	query := fmt.Sprintf(`items.find({"type":"file","repo":"%s"%s})`, repoKey, patternConditions)
+	query += `.include("repo","path","name","type","size")`
+	query += fmt.Sprintf(`.sort({"$asc":["path","name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
+	query += appendDistinctIfNeeded(disabledDistinctiveAql)
+	return query
+}
+
+// generatePatternConditionsAql generates the AQL $or conditions for pattern matching.
+// Returns a string like: ,"$or":[{"path":{"$match":"*pattern1*"}},{"path":{"$match":"*pattern2*"}}]
+// If no patterns, returns empty string.
+func generatePatternConditionsAql(patterns []string) string {
+	if len(patterns) == 0 {
+		return ""
+	}
+
+	var conditions []string
+	for _, pattern := range patterns {
+		// Convert user pattern to AQL path match pattern
+		aqlPattern := convertPatternToAqlMatch(pattern)
+		conditions = append(conditions, fmt.Sprintf(`{"path":{"$match":"%s"}}`, aqlPattern))
+	}
+
+	return `,"$or":[` + strings.Join(conditions, ",") + `]`
+}
+
+// convertPatternToAqlMatch converts a user-provided pattern to an AQL $match pattern.
+// Examples:
+//   - "folder/subfolder/*" -> "*folder/subfolder*"
+//   - "folder" -> "*folder*"
+//   - "folder/**" -> "*folder*"
+//   - "com/jfrog/app" -> "*com/jfrog/app*"
+func convertPatternToAqlMatch(pattern string) string {
+	// Remove trailing wildcards
+	pattern = strings.TrimSuffix(pattern, "/**")
+	pattern = strings.TrimSuffix(pattern, "/*")
+	pattern = strings.TrimSuffix(pattern, "/")
+
+	// Wrap with wildcards to match anywhere in the path
+	if !strings.HasPrefix(pattern, "*") {
+		pattern = "*" + pattern
+	}
+	if !strings.HasSuffix(pattern, "*") {
+		pattern += "*"
+	}
+	return pattern
+}
+
+// generateDiffAqlQueryWithPatterns generates a diff AQL query with pattern filtering.
+func generateDiffAqlQueryWithPatterns(repoKey, fromTimestamp, toTimestamp string, patterns []string, paginationOffset int, disabledDistinctiveAql bool) string {
+	patternOrCondition := generatePatternOrConditionForAnd(patterns)
+	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","type":"any"}%s]})`, fromTimestamp, toTimestamp, repoKey, patternOrCondition)
+	query += `.include("repo","path","name","type","modified","size")`
+	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
+}
+
+// generateDockerManifestAqlQueryWithPatterns generates a Docker manifest AQL query with pattern filtering.
+func generateDockerManifestAqlQueryWithPatterns(repoKey, fromTimestamp, toTimestamp string, patterns []string, paginationOffset int, disabledDistinctiveAql bool) string {
+	patternOrCondition := generatePatternOrConditionForAnd(patterns)
+	query := `items.find({"$and":`
+	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}%s`, repoKey, fromTimestamp, toTimestamp, patternOrCondition)
+	query += `]}).include("repo","path","name","type","modified")`
+	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
+}
+
+// generatePatternOrConditionForAnd generates pattern $or conditions for use inside $and arrays.
+// Returns a string like: ,{"$or":[{"path":{"$match":"*pattern1*"}},{"path":{"$match":"*pattern2*"}}]}
+// If no patterns, returns empty string.
+func generatePatternOrConditionForAnd(patterns []string) string {
+	if len(patterns) == 0 {
+		return ""
+	}
+
+	var conditions []string
+	for _, pattern := range patterns {
+		aqlPattern := convertPatternToAqlMatch(pattern)
+		conditions = append(conditions, fmt.Sprintf(`{"path":{"$match":"%s"}}`, aqlPattern))
+	}
+
+	return `,{"$or":[` + strings.Join(conditions, ",") + `]}`
+}

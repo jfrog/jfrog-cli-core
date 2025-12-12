@@ -1,11 +1,12 @@
 package cliutils
 
 import (
+	"strconv"
+	"strings"
+
 	speccore "github.com/jfrog/jfrog-cli-core/v2/common/spec"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
-	"strconv"
-	"strings"
 )
 
 func GetSpec(c *components.Context, isDownload, overrideFieldsIfSet bool) (specFiles *speccore.SpecFiles, err error) {
@@ -58,6 +59,14 @@ func OverrideFieldsIfSet(spec *speccore.File, c *components.Context) {
 	overrideStringIfSet(&spec.Symlinks, c, "symlinks")
 	overrideStringIfSet(&spec.Transitive, c, "transitive")
 	overrideStringIfSet(&spec.PublicGpgKey, c, "gpg-key")
+	overrideIncludeIfSet(spec, c)
+}
+
+// If `include` exist in the cli args, read it to spec.Include as an array split by `;`.
+func overrideIncludeIfSet(spec *speccore.File, c *components.Context) {
+	if c.IsFlagSet("include") {
+		spec.Include = strings.Split(c.GetStringFlagValue("include"), ";")
+	}
 }
 
 // If `fieldName` exist in the cli args, read it to `field` as a string.

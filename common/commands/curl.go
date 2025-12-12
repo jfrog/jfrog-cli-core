@@ -146,34 +146,107 @@ func (curlCmd *CurlCommand) GetServerDetails() (*config.ServerDetails, error) {
 // Use this method ONLY after removing all JFrog-CLI flags, i.e. flags in the form: '--my-flag=value' are not allowed.
 // An argument is any provided candidate which is not a flag or a flag value.
 func (curlCmd *CurlCommand) findUriValueAndIndex() (int, string) {
-	skipThisArg := false
+	// curlBooleanFlags is a set of curl flags that do NOT take a value.
+	curlBooleanFlags := map[string]struct{}{
+		"-#": {}, "-:": {}, "-0": {}, "-1": {}, "-2": {}, "-3": {}, "-4": {}, "-6": {},
+		"-a": {}, "-B": {}, "-f": {}, "-g": {}, "-G": {}, "-I": {}, "-i": {},
+		"-j": {}, "-J": {}, "-k": {}, "-l": {}, "-L": {}, "-M": {}, "-n": {},
+		"-N": {}, "-O": {}, "-p": {}, "-q": {}, "-R": {}, "-s": {}, "-S": {},
+		"-v": {}, "-V": {}, "-Z": {},
+		"--anyauth": {}, "--append": {}, "--basic": {}, "--ca-native": {},
+		"--cert-status": {}, "--compressed": {}, "--compressed-ssh": {},
+		"--create-dirs": {}, "--crlf": {}, "--digest": {}, "--disable": {},
+		"--disable-eprt": {}, "--disable-epsv": {}, "--disallow-username-in-url": {},
+		"--doh-cert-status": {}, "--doh-insecure": {}, "--fail": {},
+		"--fail-early": {}, "--fail-with-body": {}, "--false-start": {},
+		"--form-escape": {}, "--ftp-create-dirs": {}, "--ftp-pasv": {},
+		"--ftp-pret": {}, "--ftp-skip-pasv-ip": {}, "--ftp-ssl-ccc": {},
+		"--ftp-ssl-control": {}, "--get": {}, "--globoff": {},
+		"--haproxy-protocol": {}, "--head": {}, "--http0.9": {}, "--http1.0": {},
+		"--http1.1": {}, "--http2": {}, "--http2-prior-knowledge": {},
+		"--http3": {}, "--http3-only": {}, "--ignore-content-length": {},
+		"--include": {}, "--insecure": {}, "--ipv4": {}, "--ipv6": {},
+		"--junk-session-cookies": {}, "--list-only": {}, "--location": {},
+		"--location-trusted": {}, "--mail-rcpt-allowfails": {}, "--manual": {},
+		"--metalink": {}, "--negotiate": {}, "--netrc": {}, "--netrc-optional": {},
+		"--next": {}, "--no-alpn": {}, "--no-buffer": {}, "--no-clobber": {},
+		"--no-keepalive": {}, "--no-npn": {}, "--no-progress-meter": {},
+		"--no-sessionid": {}, "--ntlm": {}, "--ntlm-wb": {}, "--parallel": {},
+		"--parallel-immediate": {}, "--path-as-is": {}, "--post301": {},
+		"--post302": {}, "--post303": {}, "--progress-bar": {},
+		"--proxy-anyauth": {}, "--proxy-basic": {}, "--proxy-ca-native": {},
+		"--proxy-digest": {}, "--proxy-http2": {}, "--proxy-insecure": {},
+		"--proxy-negotiate": {}, "--proxy-ntlm": {}, "--proxy-ssl-allow-beast": {},
+		"--proxy-ssl-auto-client-cert": {}, "--proxy-tlsv1": {}, "--proxytunnel": {},
+		"--raw": {}, "--remote-header-name": {}, "--remote-name": {},
+		"--remote-name-all": {}, "--remote-time": {}, "--remove-on-error": {},
+		"--retry-all-errors": {}, "--retry-connrefused": {}, "--sasl-ir": {},
+		"--show-error": {}, "--silent": {}, "--socks5-basic": {},
+		"--socks5-gssapi": {}, "--socks5-gssapi-nec": {}, "--ssl": {},
+		"--ssl-allow-beast": {}, "--ssl-auto-client-cert": {}, "--ssl-no-revoke": {},
+		"--ssl-reqd": {}, "--ssl-revoke-best-effort": {}, "--sslv2": {},
+		"--sslv3": {}, "--styled-output": {}, "--suppress-connect-headers": {},
+		"--tcp-fastopen": {}, "--tcp-nodelay": {}, "--tftp-no-options": {},
+		"--tlsv1": {}, "--tlsv1.0": {}, "--tlsv1.1": {}, "--tlsv1.2": {},
+		"--tlsv1.3": {}, "--tr-encoding": {}, "--trace-ids": {},
+		"--trace-time": {}, "--use-ascii": {}, "--verbose": {}, "--version": {},
+		"--xattr": {},
+	}
+
+	// isBooleanFlag checks if a flag is in the boolean flags
+	isBooleanFlag := func(flag string) bool {
+		_, exists := curlBooleanFlags[flag]
+		return exists
+	}
+
+	skipNextArg := false
 	for index, arg := range curlCmd.arguments {
-		// Check if shouldn't check current arg.
-		if skipThisArg {
-			skipThisArg = false
-			continue
-		}
-		// If starts with '--', meaning a flag which its value is at next slot.
-		if strings.HasPrefix(arg, "--") {
-			skipThisArg = true
-			continue
-		}
-		// Check if '-'.
-		if strings.HasPrefix(arg, "-") {
-			if len(arg) > 2 {
-				// Meaning that this flag also contains its value.
-				continue
-			}
-			// If reached here, means that the flag value is at the next arg.
-			skipThisArg = true
+		// Check if this arg should be skipped (it's a value for the previous flag)
+		if skipNextArg {
+			skipNextArg = false
 			continue
 		}
 
-		// Found an argument
+		// Check if this is a flag
+		if strings.HasPrefix(arg, "-") {
+			// Check for flags with inline values like --header=value
+			if strings.HasPrefix(arg, "--") && strings.Contains(arg, "=") {
+				continue
+			}
+
+			// Check if it a boolean flag
+			if isBooleanFlag(arg) {
+				continue
+			}
+
+			// For short flags
+			if !strings.HasPrefix(arg, "--") && len(arg) > 2 {
+				// find a flag that takes a value, everything after it is the inline value
+				for i := 1; i < len(arg); i++ {
+					charFlag := "-" + string(arg[i])
+					if !isBooleanFlag(charFlag) {
+						// Found a flag that takes a value
+						if i < len(arg)-1 {
+							// Inline value exists (e.g., -XGET, -Lotest.txt)
+							break
+						}
+						// No inline value (e.g., -Lo, -sX), next arg is the value
+						skipNextArg = true
+						break
+					}
+				}
+				continue
+			}
+
+			// Flag takes a value in the next argument
+			skipNextArg = true
+			continue
+		}
+
+		// Found a non-flag argument - this is the URL/API path
 		return index, arg
 	}
 
-	// If reached here, didn't find an argument.
 	return -1, ""
 }
 

@@ -230,7 +230,7 @@ func (b *builder) BuildSpec() *SpecFiles {
 				IncludeDeps:             strconv.FormatBool(b.includeDeps),
 				Symlinks:                strconv.FormatBool(b.symlinks),
 				Transitive:              strconv.FormatBool(b.transitive),
-				include:                 b.include,
+				Include:                 b.include,
 			},
 		},
 	}

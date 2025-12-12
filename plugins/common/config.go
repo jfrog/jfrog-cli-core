@@ -63,4 +63,12 @@ func OverrideSpecFieldsIfSet(spec *spec.File, c *components.Context) {
 	OverrideStringIfSet(&spec.Symlinks, c, "symlinks")
 	OverrideStringIfSet(&spec.Transitive, c, "transitive")
 	OverrideStringIfSet(&spec.PublicGpgKey, c, "gpg-key")
+	overrideIncludeIfSet(spec, c)
+}
+
+// If `include` exist in the cli args, read it to spec.Include as an array split by `;`.
+func overrideIncludeIfSet(spec *spec.File, c *components.Context) {
+	if c.IsFlagSet("include") {
+		spec.Include = strings.Split(c.GetStringFlagValue("include"), ";")
+	}
 }

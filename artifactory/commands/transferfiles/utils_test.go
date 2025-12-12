@@ -473,3 +473,125 @@ func TestUpdateThreads(t *testing.T) {
 		})
 	}
 }
+
+// Test cases for convertPatternToPathPrefix
+var convertPatternToPathPrefixTestCases = []struct {
+	input    string
+	expected string
+}{
+	{"folder/subfolder/*", "folder/subfolder"},
+	{"folder/**", "folder"},
+	{"folder/*", "folder"},
+	{"folder/", "folder"},
+	{"folder", "folder"},
+	{"org/company/project/*", "org/company/project"},
+	{"org/company/project/**", "org/company/project"},
+	{"a/b/c/d/e/*", "a/b/c/d/e"},
+	{"single", "single"},
+	{"path/to/deep/nested/folder/*", "path/to/deep/nested/folder"},
+}
+
+func TestConvertPatternToPathPrefix(t *testing.T) {
+	for _, testCase := range convertPatternToPathPrefixTestCases {
+		t.Run(testCase.input, func(t *testing.T) {
+			result := convertPatternToPathPrefix(testCase.input)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+// Test cases for matchIncludeFilesPattern
+var matchIncludeFilesPatternTestCases = []struct {
+	name     string
+	path     string
+	patterns []string
+	expected bool
+}{
+	// Empty patterns should match everything
+	{"empty patterns matches all", "org/company/projectA/file.jar", []string{}, true},
+	{"empty patterns matches root", ".", []string{}, true},
+
+	// Single pattern matching
+	{"single pattern match", "org/company/projectA/file.jar", []string{"org/company/*"}, true},
+	{"single pattern no match", "org/external/lib/file.jar", []string{"org/company/*"}, false},
+	{"exact prefix match", "org/company/projectA/sub/file.jar", []string{"org/company/projectA/*"}, true},
+	{"prefix no match different path", "com/example/app/file.jar", []string{"org/company/*"}, false},
+
+	// Multiple patterns (OR logic)
+	{"multiple patterns first matches", "org/company/projectA/file.jar", []string{"org/company/*", "com/*"}, true},
+	{"multiple patterns second matches", "com/example/app/file.jar", []string{"org/company/*", "com/*"}, true},
+	{"multiple patterns none match", "other/path/file.jar", []string{"org/company/*", "com/*"}, false},
+
+	// Edge cases
+	{"root level file", "file.jar", []string{"org/*"}, false},
+	{"pattern matches from start", "org/company/test.jar", []string{"org/*"}, true},
+	{"nested deep match", "a/b/c/d/e/f/g/file.jar", []string{"a/b/c/*"}, true},
+}
+
+func TestMatchIncludeFilesPattern(t *testing.T) {
+	for _, testCase := range matchIncludeFilesPatternTestCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := matchIncludeFilesPattern(testCase.path, testCase.patterns)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+// Test cases for filterFilesByPattern
+func TestFilterFilesByPattern(t *testing.T) {
+	files := []api.FileRepresentation{
+		{Repo: "repo1", Path: "org/company/projectA", Name: "file1.jar", Size: 100},
+		{Repo: "repo1", Path: "org/company/projectA", Name: "file2.jar", Size: 200},
+		{Repo: "repo1", Path: "org/company/projectB", Name: "file3.jar", Size: 300},
+		{Repo: "repo1", Path: "org/external/lib", Name: "external.jar", Size: 400},
+		{Repo: "repo1", Path: "com/example/app", Name: "app.jar", Size: 500},
+	}
+
+	testCases := []struct {
+		name          string
+		patterns      []string
+		expectedCount int
+		expectedPaths []string
+	}{
+		{
+			name:          "empty patterns returns all",
+			patterns:      []string{},
+			expectedCount: 5,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA", "org/company/projectB", "org/external/lib", "com/example/app"},
+		},
+		{
+			name:          "filter org/company only",
+			patterns:      []string{"org/company/*"},
+			expectedCount: 3,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA", "org/company/projectB"},
+		},
+		{
+			name:          "filter specific project",
+			patterns:      []string{"org/company/projectA/*"},
+			expectedCount: 2,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA"},
+		},
+		{
+			name:          "filter multiple patterns",
+			patterns:      []string{"org/company/projectA/*", "com/*"},
+			expectedCount: 3,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA", "com/example/app"},
+		},
+		{
+			name:          "filter with no matches",
+			patterns:      []string{"nonexistent/*"},
+			expectedCount: 0,
+			expectedPaths: []string{},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := filterFilesByPattern(files, testCase.patterns)
+			assert.Equal(t, testCase.expectedCount, len(result))
+			for i, file := range result {
+				assert.Equal(t, testCase.expectedPaths[i], file.Path)
+			}
+		})
+	}
+}

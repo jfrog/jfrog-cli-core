@@ -765,3 +765,51 @@ func deleteAllFiles(filesToDelete []string) (err error) {
 	}
 	return
 }
+
+// convertPatternToPathPrefix converts a user-provided pattern to a path prefix for matching.
+// Examples:
+//   - "folder/subfolder/*" -> "folder/subfolder"
+//   - "folder" -> "folder"
+//   - "folder/**" -> "folder"
+func convertPatternToPathPrefix(pattern string) string {
+	pattern = strings.TrimSuffix(pattern, "/**")
+	pattern = strings.TrimSuffix(pattern, "/*")
+	pattern = strings.TrimSuffix(pattern, "/")
+	return pattern
+}
+
+// matchIncludeFilesPattern checks if a file path matches any of the include patterns.
+// If no patterns are provided, returns true (all files match).
+// The pattern matching checks if the file's path starts with any of the pattern prefixes.
+func matchIncludeFilesPattern(filePath string, patterns []string) bool {
+	// No patterns means include all files
+	if len(patterns) == 0 {
+		return true
+	}
+
+	for _, pattern := range patterns {
+		prefix := convertPatternToPathPrefix(pattern)
+		// Check if file path starts with the pattern prefix
+		if strings.HasPrefix(filePath, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
+// filterFilesByPattern filters a slice of files based on include patterns.
+// If no patterns are provided, returns all files.
+func filterFilesByPattern(files []api.FileRepresentation, patterns []string) []api.FileRepresentation {
+	// No patterns means include all files
+	if len(patterns) == 0 {
+		return files
+	}
+
+	var filtered []api.FileRepresentation
+	for _, file := range files {
+		if matchIncludeFilesPattern(file.Path, patterns) {
+			filtered = append(filtered, file)
+		}
+	}
+	return filtered
+}

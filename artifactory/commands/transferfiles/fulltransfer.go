@@ -2,9 +2,10 @@ package transferfiles
 
 import (
 	"fmt"
-	"github.com/jfrog/gofrog/safeconvert"
 	"path"
 	"time"
+
+	"github.com/jfrog/gofrog/safeconvert"
 
 	"github.com/jfrog/gofrog/parallel"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
@@ -244,6 +245,11 @@ func (m *fullTransferPhase) handleFoundChildFolder(params folderParams, pcWrappe
 func (m *fullTransferPhase) handleFoundFile(pcWrapper *producerConsumerWrapper,
 	uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng,
 	node *reposnapshot.Node, item servicesUtils.ResultItem, curUploadChunk *api.UploadChunk) (err error) {
+	// Check if file matches include patterns (if any patterns are specified)
+	if !matchIncludeFilesPattern(item.Path, m.includeFilesPatterns) {
+		return // Skip this file - doesn't match pattern
+	}
+
 	file := api.FileRepresentation{Repo: item.Repo, Path: item.Path, Name: item.Name, Size: item.Size}
 	delayed, stopped := delayHelper.delayUploadIfNecessary(m.phaseBase, file)
 	if delayed || stopped {

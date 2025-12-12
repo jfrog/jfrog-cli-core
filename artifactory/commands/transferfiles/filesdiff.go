@@ -125,6 +125,8 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			break
 		}
 		files := convertResultsToFileRepresentation(result)
+		// Filter files based on include patterns
+		files = filterFilesByPattern(files, f.includeFilesPatterns)
 		totalSize := 0
 		for _, r := range files {
 			totalSize += int(r.Size)

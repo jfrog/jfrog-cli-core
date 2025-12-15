@@ -73,7 +73,7 @@ func convertCommands(commands []Command, nameSpaces ...string) ([]cli.Command, e
 }
 
 func convertCommand(cmd Command, namespaces ...string) (cli.Command, error) {
-	convertedFlags, convertedStringFlags, err := convertFlags(cmd)
+	convertedFlags, convertedStringFlags, err := ConvertFlags(cmd.Name, cmd.Flags)
 	if err != nil {
 		return cli.Command{}, err
 	}
@@ -309,13 +309,13 @@ func createEnvVarsSummary(cmd Command) string {
 	return strings.Join(envVarsSummary, "\n")
 }
 
-func convertFlags(cmd Command) ([]cli.Flag, map[string]StringFlag, error) {
+func ConvertFlags(cmdName string, flags []Flag) ([]cli.Flag, map[string]StringFlag, error) {
 	var convertedFlags []cli.Flag
 	convertedStringFlags := map[string]StringFlag{}
-	for _, flag := range cmd.Flags {
+	for _, flag := range flags {
 		converted, convertedString, err := convertByType(flag)
 		if err != nil {
-			return convertedFlags, convertedStringFlags, fmt.Errorf("command '%s': %w", cmd.Name, err)
+			return convertedFlags, convertedStringFlags, fmt.Errorf("command '%s': %w", cmdName, err)
 		}
 		if converted != nil {
 			convertedFlags = append(convertedFlags, converted)

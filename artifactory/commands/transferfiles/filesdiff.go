@@ -125,6 +125,7 @@ func (f *filesDiffPhase) handleTimeFrameFilesDiff(pcWrapper *producerConsumerWra
 			break
 		}
 		files := convertResultsToFileRepresentation(result)
+		// Note: Pattern filtering is handled at AQL level for efficiency
 		totalSize := 0
 		for _, r := range files {
 			totalSize += int(r.Size)
@@ -214,7 +215,14 @@ func (f *filesDiffPhase) getTimeFrameFilesDiff(fromTimestamp, toTimestamp string
 }
 
 func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
-	query := generateDiffAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
+	var query string
+	if len(f.includeFilesPatterns) > 0 {
+		// Use AQL with pattern filtering
+		query = generateDiffAqlQueryWithPatterns(f.repoKey, fromTimestamp, toTimestamp, f.includeFilesPatterns, paginationOffset, f.disabledDistinctiveAql)
+	} else {
+		// Use default query without pattern filtering
+		query = generateDiffAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
+	}
 	return runAql(f.context, f.srcRtDetails, query)
 }
 
@@ -225,7 +233,12 @@ func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimesta
 // to get all artifacts in its path (that includes the "manifest.json" file itself and all its layouts).
 func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp string, paginationOffset int) (aqlResult *servicesUtils.AqlSearchResult, err error) {
 	// Get all newly created or modified manifest files ("manifest.json" and "list.manifest.json" files)
-	query := generateDockerManifestAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
+	var query string
+	if len(f.includeFilesPatterns) > 0 {
+		query = generateDockerManifestAqlQueryWithPatterns(f.repoKey, fromTimestamp, toTimestamp, f.includeFilesPatterns, paginationOffset, f.disabledDistinctiveAql)
+	} else {
+		query = generateDockerManifestAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
+	}
 	manifestFilesResult, err := runAql(f.context, f.srcRtDetails, query)
 	if err != nil {
 		return

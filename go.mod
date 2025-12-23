@@ -13,9 +13,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.6.0
 	github.com/jedib0t/go-pretty/v6 v6.6.8
-	github.com/jfrog/build-info-go v1.8.9-0.20251223092904-9e9460642431
+	github.com/jfrog/build-info-go v1.8.9-0.20251223122035-492fa58631f4
 	github.com/jfrog/gofrog v1.7.6
-	github.com/jfrog/jfrog-client-go v1.55.1-0.20251223101502-1a13a993b0c7
+	github.com/jfrog/jfrog-client-go v1.55.1-0.20251223130919-74f030039d45
 	github.com/magiconair/properties v1.8.10
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c

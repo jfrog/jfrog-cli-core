@@ -94,12 +94,12 @@ github.com/jedib0t/go-pretty/v6 v6.6.8 h1:JnnzQeRz2bACBobIaa/r+nqjvws4yEhcmaZ4n1
 github.com/jedib0t/go-pretty/v6 v6.6.8/go.mod h1:YwC5CE4fJ1HFUDeivSV1r//AmANFHyqczZk+U6BDALU=
 github.com/jfrog/archiver/v3 v3.6.1 h1:LOxnkw9pOn45DzCbZNFV6K0+6dCsQ0L8mR3ZcujO5eI=
 github.com/jfrog/archiver/v3 v3.6.1/go.mod h1:VgR+3WZS4N+i9FaDwLZbq+jeU4B4zctXL+gL4EMzfLw=
-github.com/jfrog/build-info-go v1.8.9-0.20251223092904-9e9460642431 h1:HyGqdD957CrW6T1Xst0CxTR0XqJ0baIo/uL4I5lhyuo=
-github.com/jfrog/build-info-go v1.8.9-0.20251223092904-9e9460642431/go.mod h1:9W4U440fdTHwW1HiB/R0VQvz/5q8ZHsms9MWcq+JrdY=
+github.com/jfrog/build-info-go v1.8.9-0.20251223122035-492fa58631f4 h1:AkgRkB5+rCvBT0ZkzobJeQKJEaXh94L6FElNlj39jYQ=
+github.com/jfrog/build-info-go v1.8.9-0.20251223122035-492fa58631f4/go.mod h1:9W4U440fdTHwW1HiB/R0VQvz/5q8ZHsms9MWcq+JrdY=
 github.com/jfrog/gofrog v1.7.6 h1:QmfAiRzVyaI7JYGsB7cxfAJePAZTzFz0gRWZSE27c6s=
 github.com/jfrog/gofrog v1.7.6/go.mod h1:ntr1txqNOZtHplmaNd7rS4f8jpA5Apx8em70oYEe7+4=
-github.com/jfrog/jfrog-client-go v1.55.1-0.20251223101502-1a13a993b0c7 h1:5JUiqmBV9ikFOZEH+ZgvJLHshT1aAuw08bfdJOLHbzQ=
-github.com/jfrog/jfrog-client-go v1.55.1-0.20251223101502-1a13a993b0c7/go.mod h1:USb7bfWSE7bGKsJ4nR0lxGILvmtnCcR5OO4biSUItMs=
+github.com/jfrog/jfrog-client-go v1.55.1-0.20251223130919-74f030039d45 h1:+XaOwUs5u8fZihlaVL4Pc1yIEiB8lVEczBW0QQBqNqg=
+github.com/jfrog/jfrog-client-go v1.55.1-0.20251223130919-74f030039d45/go.mod h1:/rOoTsgWLr0aw90pBV70+GnULp1jc/LT/2J+iphWY9E=
 github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4gf13a4=
 github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/klauspost/compress v1.4.1/go.mod h1:RyIbtBH6LamlWaDj8nUwkbUhJ87Yi3uG0guNDohfE1A=

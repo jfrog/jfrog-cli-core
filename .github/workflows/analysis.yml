@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
           fetch-depth: 0
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
@@ -74,12 +74,12 @@ jobs:
 
     steps:
       - name: Checkout CLI Core Source
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 
       - name: Checkout ${{ matrix.repo }} Source - ${{ matrix.branch }} branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           repository: jfrog/${{ matrix.repo }}
           ref: ${{ matrix.branch }}

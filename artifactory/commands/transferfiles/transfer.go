@@ -51,6 +51,7 @@ type TransferFilesCommand struct {
 	progressbar               *TransferProgressMng
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
+	includeFilesPatterns      []string
 	ignoreState               bool
 	proxyKey                  string
 	status                    bool
@@ -93,6 +94,10 @@ func (tdc *TransferFilesCommand) SetIncludeReposPatterns(includeReposPatterns []
 
 func (tdc *TransferFilesCommand) SetExcludeReposPatterns(excludeReposPatterns []string) {
 	tdc.excludeReposPatterns = excludeReposPatterns
+}
+
+func (tdc *TransferFilesCommand) SetIncludeFilesPatterns(includeFilesPatterns []string) {
+	tdc.includeFilesPatterns = includeFilesPatterns
 }
 
 func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
@@ -575,6 +580,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setLocallyGeneratedFilter(tdc.locallyGeneratedFilter)
 	newPhase.setStopSignal(tdc.stopSignal)
 	newPhase.setMinCheckSumDeploySize(minChecksumDeploySize)
+	newPhase.setIncludeFilesPatterns(tdc.includeFilesPatterns)
 }
 
 // Get all local and build-info repositories of the input server

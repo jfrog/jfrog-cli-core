@@ -12,7 +12,7 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 )
 
-const phase1HeadLine = "Phase 1: Transferring all files in the repository"
+const phase1HeadLine = "Phase 1: Transferring files in the repository"
 
 // TransferProgressMng provides progress indication for the jf rt transfer-files command.
 // Transferring one repository's data at a time.

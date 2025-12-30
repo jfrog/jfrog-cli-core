@@ -473,3 +473,330 @@ func TestUpdateThreads(t *testing.T) {
 		})
 	}
 }
+
+// Test cases for convertPatternToPathPrefix
+var convertPatternToPathPrefixTestCases = []struct {
+	input    string
+	expected string
+}{
+	{"folder/subfolder/*", "folder/subfolder"},  // strips trailing /*
+	{"folder/**", "folder"},                     // strips trailing /**
+	{"folder/", "folder"},                       // strips trailing /
+	{"folder", "folder"},                        // no change when no trailing pattern
+	{"a/b/c/d/e/*", "a/b/c/d/e"},                // deep path with wildcard
+	{"single", "single"},                        // single segment without slash
+}
+
+func TestConvertPatternToPathPrefix(t *testing.T) {
+	for _, testCase := range convertPatternToPathPrefixTestCases {
+		t.Run(testCase.input, func(t *testing.T) {
+			result := convertPatternToPathPrefix(testCase.input)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+// Test cases for matchIncludeFilesPattern
+var matchIncludeFilesPatternTestCases = []struct {
+	name     string
+	path     string
+	patterns []string
+	expected bool
+}{
+	// Empty patterns should match everything
+	{"empty patterns matches all", "org/company/projectA/file.jar", []string{}, true},
+
+	// Single pattern matching
+	{"single pattern match", "org/company/projectA/file.jar", []string{"org/company/*"}, true},
+	{"single pattern no match", "org/external/lib/file.jar", []string{"org/company/*"}, false},
+
+	// Multiple patterns (OR logic)
+	{"multiple patterns first matches", "org/company/projectA/file.jar", []string{"org/company/*", "com/*"}, true},
+	{"multiple patterns second matches", "com/example/app/file.jar", []string{"org/company/*", "com/*"}, true},
+	{"multiple patterns none match", "other/path/file.jar", []string{"org/company/*", "com/*"}, false},
+
+	// Edge cases
+	{"root level file no match", "file.jar", []string{"org/*"}, false},
+}
+
+func TestMatchIncludeFilesPattern(t *testing.T) {
+	for _, testCase := range matchIncludeFilesPatternTestCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := matchIncludeFilesPattern(testCase.path, testCase.patterns)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+// Test cases for filterFilesByPattern
+func TestFilterFilesByPattern(t *testing.T) {
+	files := []api.FileRepresentation{
+		{Repo: "repo1", Path: "org/company/projectA", Name: "file1.jar", Size: 100},
+		{Repo: "repo1", Path: "org/company/projectA", Name: "file2.jar", Size: 200},
+		{Repo: "repo1", Path: "org/company/projectB", Name: "file3.jar", Size: 300},
+		{Repo: "repo1", Path: "org/external/lib", Name: "external.jar", Size: 400},
+		{Repo: "repo1", Path: "com/example/app", Name: "app.jar", Size: 500},
+	}
+
+	testCases := []struct {
+		name          string
+		patterns      []string
+		expectedCount int
+		expectedPaths []string
+	}{
+		{
+			name:          "empty patterns returns all",
+			patterns:      []string{},
+			expectedCount: 5,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA", "org/company/projectB", "org/external/lib", "com/example/app"},
+		},
+		{
+			name:          "filter org/company only",
+			patterns:      []string{"org/company/*"},
+			expectedCount: 3,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA", "org/company/projectB"},
+		},
+		{
+			name:          "filter specific project",
+			patterns:      []string{"org/company/projectA/*"},
+			expectedCount: 2,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA"},
+		},
+		{
+			name:          "filter multiple patterns",
+			patterns:      []string{"org/company/projectA/*", "com/*"},
+			expectedCount: 3,
+			expectedPaths: []string{"org/company/projectA", "org/company/projectA", "com/example/app"},
+		},
+		{
+			name:          "filter with no matches",
+			patterns:      []string{"nonexistent/*"},
+			expectedCount: 0,
+			expectedPaths: []string{},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := filterFilesByPattern(files, testCase.patterns)
+			assert.Equal(t, testCase.expectedCount, len(result))
+			for i, file := range result {
+				assert.Equal(t, testCase.expectedPaths[i], file.Path)
+			}
+		})
+	}
+}
+
+// Test cases for convertPatternToAqlMatch
+var convertPatternToAqlMatchTestCases = []struct {
+	input    string
+	expected string
+}{
+	{"folder/subfolder/*", "*folder/subfolder*"},  // path with wildcard
+	{"folder", "*folder*"},                        // simple folder name
+	{"org/company/project/*", "*org/company/project*"}, // deep nested path
+	{"*already/prefixed", "*already/prefixed*"},   // already has leading wildcard
+	{"already/suffixed*", "*already/suffixed*"},   // already has trailing wildcard
+}
+
+func TestConvertPatternToAqlMatch(t *testing.T) {
+	for _, testCase := range convertPatternToAqlMatchTestCases {
+		t.Run(testCase.input, func(t *testing.T) {
+			result := convertPatternToAqlMatch(testCase.input)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+// Test cases for generatePatternConditionsAql
+func TestGeneratePatternConditionsAql(t *testing.T) {
+	testCases := []struct {
+		name     string
+		patterns []string
+		expected string
+	}{
+		{
+			name:     "empty patterns",
+			patterns: []string{},
+			expected: "",
+		},
+		{
+			name:     "single pattern",
+			patterns: []string{"org/company/*"},
+			expected: `,"$or":[{"path":{"$match":"*org/company*"}}]`,
+		},
+		{
+			name:     "two patterns",
+			patterns: []string{"org/company/*", "com/jfrog/*"},
+			expected: `,"$or":[{"path":{"$match":"*org/company*"}},{"path":{"$match":"*com/jfrog*"}}]`,
+		},
+		{
+			name:     "three patterns",
+			patterns: []string{"org/company/*", "com/jfrog/*", "io/netty/*"},
+			expected: `,"$or":[{"path":{"$match":"*org/company*"}},{"path":{"$match":"*com/jfrog*"}},{"path":{"$match":"*io/netty*"}}]`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := generatePatternConditionsAql(testCase.patterns)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+// Test cases for generatePatternOrConditionForAnd
+func TestGeneratePatternOrConditionForAnd(t *testing.T) {
+	testCases := []struct {
+		name     string
+		patterns []string
+		expected string
+	}{
+		{
+			name:     "empty patterns",
+			patterns: []string{},
+			expected: "",
+		},
+		{
+			name:     "single pattern",
+			patterns: []string{"org/company/*"},
+			expected: `,{"$or":[{"path":{"$match":"*org/company*"}}]}`,
+		},
+		{
+			name:     "two patterns",
+			patterns: []string{"org/company/*", "com/jfrog/*"},
+			expected: `,{"$or":[{"path":{"$match":"*org/company*"}},{"path":{"$match":"*com/jfrog*"}}]}`,
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := generatePatternOrConditionForAnd(testCase.patterns)
+			assert.Equal(t, testCase.expected, result)
+		})
+	}
+}
+
+// Test cases for generatePatternBasedAqlQuery
+func TestGeneratePatternBasedAqlQuery(t *testing.T) {
+	testCases := []struct {
+		name             string
+		repoKey          string
+		patterns         []string
+		paginationOffset int
+		expectedContains []string
+	}{
+		{
+			name:             "single pattern",
+			repoKey:          "test-repo",
+			patterns:         []string{"org/company/*"},
+			paginationOffset: 0,
+			expectedContains: []string{
+				`"type":"file"`,
+				`"repo":"test-repo"`,
+				`"$or":[{"path":{"$match":"*org/company*"}}]`,
+				`.include("repo","path","name","type","size")`,
+				`.sort({"$asc":["path","name"]})`,
+				`.offset(0)`,
+			},
+		},
+		{
+			name:             "multiple patterns with pagination",
+			repoKey:          "my-repo",
+			patterns:         []string{"com/jfrog/*", "org/apache/*"},
+			paginationOffset: 2,
+			expectedContains: []string{
+				`"repo":"my-repo"`,
+				`"$or":[{"path":{"$match":"*com/jfrog*"}},{"path":{"$match":"*org/apache*"}}]`,
+				fmt.Sprintf(`.offset(%d)`, 2*AqlPaginationLimit),
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := generatePatternBasedAqlQuery(testCase.repoKey, testCase.patterns, testCase.paginationOffset, false)
+			for _, expected := range testCase.expectedContains {
+				assert.Contains(t, result, expected)
+			}
+		})
+	}
+}
+
+// Test cases for generateDiffAqlQueryWithPatterns
+func TestGenerateDiffAqlQueryWithPatterns(t *testing.T) {
+	fromTimestamp := "2024-01-01T00:00:00Z"
+	toTimestamp := "2024-01-02T00:00:00Z"
+
+	testCases := []struct {
+		name             string
+		repoKey          string
+		patterns         []string
+		expectedContains []string
+	}{
+		{
+			name:     "with patterns",
+			repoKey:  "test-repo",
+			patterns: []string{"org/company/*"},
+			expectedContains: []string{
+				`"modified":{"$gte":"2024-01-01T00:00:00Z"}`,
+				`"modified":{"$lt":"2024-01-02T00:00:00Z"}`,
+				`"repo":"test-repo"`,
+				`{"$or":[{"path":{"$match":"*org/company*"}}]}`,
+			},
+		},
+		{
+			name:     "multiple patterns",
+			repoKey:  "my-repo",
+			patterns: []string{"com/jfrog/*", "org/apache/*"},
+			expectedContains: []string{
+				`"repo":"my-repo"`,
+				`{"path":{"$match":"*com/jfrog*"}}`,
+				`{"path":{"$match":"*org/apache*"}}`,
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := generateDiffAqlQueryWithPatterns(testCase.repoKey, fromTimestamp, toTimestamp, testCase.patterns, 0, false)
+			for _, expected := range testCase.expectedContains {
+				assert.Contains(t, result, expected)
+			}
+		})
+	}
+}
+
+// Test cases for generateDockerManifestAqlQueryWithPatterns
+func TestGenerateDockerManifestAqlQueryWithPatterns(t *testing.T) {
+	fromTimestamp := "2024-01-01T00:00:00Z"
+	toTimestamp := "2024-01-02T00:00:00Z"
+
+	testCases := []struct {
+		name             string
+		repoKey          string
+		patterns         []string
+		expectedContains []string
+	}{
+		{
+			name:     "docker manifest with patterns",
+			repoKey:  "docker-repo",
+			patterns: []string{"myapp/*"},
+			expectedContains: []string{
+				`"repo":"docker-repo"`,
+				`"name":"manifest.json"`,
+				`"name":"list.manifest.json"`,
+				`{"$or":[{"path":{"$match":"*myapp*"}}]}`,
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result := generateDockerManifestAqlQueryWithPatterns(testCase.repoKey, fromTimestamp, toTimestamp, testCase.patterns, 0, false)
+			for _, expected := range testCase.expectedContains {
+				assert.Contains(t, result, expected)
+			}
+		})
+	}
+}

@@ -108,7 +108,7 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 	switch stateManager.CurrentRepoPhase {
 	case api.Phase1, api.Phase3:
 		if stateManager.CurrentRepoPhase == api.Phase1 {
-			addString(output, "🔢", "Phase", "Transferring all files in the repository (1/3)", 3)
+			addString(output, "🔢", "Phase", "Transferring files in the repository (1/3)", 3)
 		} else {
 			addString(output, "🔢", "Phase", "Retrying transfer failures and transfer delayed files (3/3)", 3)
 		}

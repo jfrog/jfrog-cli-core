@@ -74,7 +74,7 @@ func TestShowStatus(t *testing.T) {
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
 	assert.Contains(t, results, "Name:			repo1")
-	assert.Contains(t, results, "Phase:			Transferring all files in the repository (1/3)")
+	assert.Contains(t, results, "Phase:			Transferring files in the repository (1/3)")
 	assert.Contains(t, results, "Visited folders:		15")
 	assert.Contains(t, results, "Delayed files:		20 (Files to be transferred last, after all other files)")
 	assert.Contains(t, results, "Storage:			4.9 KiB / 9.8 KiB (50.0%)")

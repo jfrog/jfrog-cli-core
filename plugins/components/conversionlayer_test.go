@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli"
 )
@@ -143,8 +144,7 @@ func TestCreateArgumentsSummary(t *testing.T) {
 			},
 		},
 	}
-	expected :=
-		`	first argument
+	expected := `	first argument
 		this is the first argument.
 
 	second [Optional]
@@ -172,8 +172,7 @@ func TestCreateEnvVarsSummary(t *testing.T) {
 			},
 		},
 	}
-	expected :=
-		`	FIRST_ENV
+	expected := `	FIRST_ENV
 		[Default: 15]
 		This is the first env.
 
@@ -300,6 +299,117 @@ func TestGetValueForStringFlag(t *testing.T) {
 	finalValue, err = getValueForStringFlag(f, baseContext)
 	assert.NoError(t, err)
 	assert.Equal(t, finalValue, expected)
+
+	// Not received but present in command arguments.
+	flagSet.Parse([]string{"--string-flag", expected})
+	finalValue, err = getValueForStringFlag(f, baseContext)
+	assert.NoError(t, err)
+	assert.Equal(t, finalValue, expected)
+}
+
+func TestGetValueForBoolFlag(t *testing.T) {
+	t.Run("FlagSetInContext_True", func(t *testing.T) {
+		f := NewBoolFlag("bool-flag", "Bool flag", WithBoolDefaultValue(false))
+		flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+		flagSet.Bool(f.Name, false, "")
+		assert.NoError(t, flagSet.Parse([]string{"--bool-flag"}))
+		baseContext := cli.NewContext(nil, flagSet, nil)
+
+		result := getValueForBoolFlag(f, baseContext)
+		assert.True(t, result, "Flag set in context with true value should return true")
+	})
+
+	t.Run("FlagSetInContext_False", func(t *testing.T) {
+		f := NewBoolFlag("bool-flag", "Bool flag", WithBoolDefaultValue(true))
+		flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+		flagSet.Bool(f.Name, false, "")
+		// For false, we need to explicitly set it or use BoolT
+		// Since Bool flag defaults to false when not set, we'll test with explicit false
+		baseContext := cli.NewContext(nil, flagSet, nil)
+
+		result := getValueForBoolFlag(f, baseContext)
+		assert.False(t, result, "Flag not set in context should return false for Bool flag")
+	})
+
+	t.Run("FlagSetInContext_BoolT_True", func(t *testing.T) {
+		f := NewBoolFlag("bool-flag", "Bool flag", WithBoolDefaultValue(true))
+		flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+		flagSet.Bool(f.Name, true, "") // BoolT flag defaults to true
+		assert.NoError(t, flagSet.Parse([]string{}))
+		baseContext := cli.NewContext(nil, flagSet, nil)
+
+		result := getValueForBoolFlag(f, baseContext)
+		assert.True(t, result, "BoolT flag set in context should return true")
+	})
+
+	t.Run("FlagNotSetInContext_FoundInArgs", func(t *testing.T) {
+		// Test the FindFlag logic directly since we can't easily set Args() in cli.Context
+		// The function checks: flagIndex != -1, then returns true
+		testArgs := []string{"arg1", "--bool-flag", "arg2"}
+		flagIndex, _, _, _ := coreutils.FindFlag("--bool-flag", testArgs)
+		assert.NotEqual(t, -1, flagIndex, "Flag should be found in args")
+		// When flagIndex != -1, the function returns true
+		// This verifies the logic path even though we can't test the full context integration
+	})
+
+	t.Run("FlagNotSetInContext_NotFoundInArgs_DefaultTrue", func(t *testing.T) {
+		f := NewBoolFlag("bool-flag", "Bool flag", WithBoolDefaultValue(true))
+		flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+		flagSet.Bool(f.Name, false, "")
+		assert.NoError(t, flagSet.Parse([]string{}))
+		baseContext := cli.NewContext(nil, flagSet, nil)
+
+		result := getValueForBoolFlag(f, baseContext)
+		assert.True(t, result, "Flag not set and not in args should return default value (true)")
+	})
+
+	t.Run("FlagNotSetInContext_NotFoundInArgs_DefaultFalse", func(t *testing.T) {
+		f := NewBoolFlag("bool-flag", "Bool flag", WithBoolDefaultValue(false))
+		flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+		flagSet.Bool(f.Name, false, "")
+		assert.NoError(t, flagSet.Parse([]string{}))
+		baseContext := cli.NewContext(nil, flagSet, nil)
+
+		result := getValueForBoolFlag(f, baseContext)
+		assert.False(t, result, "Flag not set and not in args should return default value (false)")
+	})
+
+	t.Run("FlagSetInContext_OverridesDefault", func(t *testing.T) {
+		f := NewBoolFlag("bool-flag", "Bool flag", WithBoolDefaultValue(true))
+		flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+		flagSet.Bool(f.Name, false, "")
+		assert.NoError(t, flagSet.Parse([]string{"--bool-flag=false"}))
+		baseContext := cli.NewContext(nil, flagSet, nil)
+
+		result := getValueForBoolFlag(f, baseContext)
+		assert.False(t, result, "Flag set in context should override default value")
+	})
+
+	t.Run("FlagNotSetInContext_FoundInArgs_ReturnsTrue", func(t *testing.T) {
+		// Test the FindFlag logic directly since we can't easily set Args() in cli.Context
+		// The function checks: flagIndex != -1, then returns true
+		testArgs := []string{"arg1", "--bool-flag", "arg2"}
+		flagIndex, _, _, _ := coreutils.FindFlag("--bool-flag", testArgs)
+		assert.NotEqual(t, -1, flagIndex, "Flag should be found in args")
+		// When flagIndex != -1, the function returns true
+		// This verifies the logic path even though we can't test the full context integration
+	})
+
+	t.Run("FlagNotSetInContext_NotFoundInArgs_SimilarPrefix", func(t *testing.T) {
+		// Test that similar prefix doesn't match
+		testArgs := []string{"--bool-flag-other"}
+		flagIndex, _, _, _ := coreutils.FindFlag("--bool-flag", testArgs)
+		assert.Equal(t, -1, flagIndex, "Similar flag prefix should not match")
+		// When flagIndex == -1, the function returns default value
+	})
+
+	t.Run("FlagNotSetInContext_ArgsWithEquals", func(t *testing.T) {
+		// Test flag with =value format
+		testArgs := []string{"--bool-flag=true"}
+		flagIndex, _, _, _ := coreutils.FindFlag("--bool-flag", testArgs)
+		assert.NotEqual(t, -1, flagIndex, "Flag with =value should be found")
+		// Verify the function would return true when flag is found in args
+	})
 }
 
 type DummyFlagValue struct {

@@ -8,6 +8,7 @@ import (
 	"github.com/jfrog/gofrog/datastructures"
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/docs/common"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/urfave/cli"
 )
@@ -454,6 +455,11 @@ func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (string, erro
 	if value != "" {
 		return value, nil
 	}
+	// We try to find the flag value in the command arguments.
+	flagIndex, flagValue := findFlag(f.Name, baseContext.Args())
+	if flagIndex != -1 {
+		return flagValue, nil
+	}
 	if f.DefaultValue != "" {
 		// Empty but has a default value defined.
 		return f.DefaultValue, nil
@@ -466,8 +472,37 @@ func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (string, erro
 }
 
 func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) bool {
-	if f.DefaultValue {
-		return baseContext.BoolT(f.Name)
+	if baseContext.IsSet(f.Name) {
+		return baseContext.Bool(f.Name)
 	}
-	return baseContext.Bool(f.Name)
+
+	// We try to find the flag value in the command arguments.
+	flagIndex, flagValue := findFlag(f.Name, baseContext.Args())
+
+	if flagIndex != -1 {
+		switch strings.ToLower(flagValue) {
+		case "true":
+			return true
+		case "false":
+			return false
+		case "":
+			return true
+		default:
+			return false
+		}
+	}
+
+	return f.DefaultValue
+}
+
+func findFlag(flagName string, args []string) (flagIndex int, flagValue string) {
+	var err error
+	flagIndex, _, flagValue, err = coreutils.FindFlag(flagName, args)
+	if err != nil {
+		return
+	}
+	if flagIndex == -1 {
+		flagIndex, _, flagValue, _ = coreutils.FindFlag("--"+flagName, args)
+	}
+	return flagIndex, flagValue
 }

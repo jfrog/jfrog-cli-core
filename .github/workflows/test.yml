@@ -23,7 +23,7 @@ jobs:
       JFROG_CLI_LOG_LEVEL: "DEBUG"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 

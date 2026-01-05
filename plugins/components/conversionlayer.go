@@ -456,14 +456,20 @@ func getValueForStringFlag(f StringFlag, baseContext *cli.Context) (string, erro
 		return value, nil
 	}
 	// We try to find the flag value in the command arguments.
-	flagIndex, flagValue := findFlag(f.Name, baseContext.Args())
+	flagIndex, _, flagValue, _ := coreutils.FindFlag(f.Name, baseContext.Args())
+	if flagIndex == -1 {
+		flagIndex, _, flagValue, _ = coreutils.FindFlag("--"+f.Name, baseContext.Args())
+	}
+
 	if flagIndex != -1 {
 		return flagValue, nil
 	}
+
 	if f.DefaultValue != "" {
 		// Empty but has a default value defined.
 		return f.DefaultValue, nil
 	}
+
 	if f.Mandatory {
 		// Empty but mandatory.
 		return "", errors.New("Mandatory flag '" + f.Name + "' is missing")
@@ -477,32 +483,14 @@ func getValueForBoolFlag(f BoolFlag, baseContext *cli.Context) bool {
 	}
 
 	// We try to find the flag value in the command arguments.
-	flagIndex, flagValue := findFlag(f.Name, baseContext.Args())
+	flagIndex, flagValue, _ := coreutils.FindBooleanFlag(f.Name, baseContext.Args())
+	if flagIndex == -1 {
+		flagIndex, flagValue, _ = coreutils.FindBooleanFlag("--"+f.Name, baseContext.Args())
+	}
 
 	if flagIndex != -1 {
-		switch strings.ToLower(flagValue) {
-		case "true":
-			return true
-		case "false":
-			return false
-		case "":
-			return true
-		default:
-			return false
-		}
+		return flagValue
 	}
 
 	return f.DefaultValue
-}
-
-func findFlag(flagName string, args []string) (flagIndex int, flagValue string) {
-	var err error
-	flagIndex, _, flagValue, err = coreutils.FindFlag(flagName, args)
-	if err != nil {
-		return
-	}
-	if flagIndex == -1 {
-		flagIndex, _, flagValue, _ = coreutils.FindFlag("--"+flagName, args)
-	}
-	return flagIndex, flagValue
 }

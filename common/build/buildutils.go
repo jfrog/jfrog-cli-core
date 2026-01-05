@@ -25,13 +25,12 @@ import (
 
 const (
 	BuildInfoDetails          = "details"
-	BuildTempPath             = "jfrog/builds/"
 	ProjectConfigBuildNameKey = "name"
 )
 
 func CreateBuildInfoService() *build.BuildInfoService {
 	buildInfoService := build.NewBuildInfoService()
-	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath))
+	buildInfoService.SetTempDirPath(filepath.Join(coreutils.GetCliPersistentTempDirPath(), buildInfoService.GetUserSpecificBuildDirName()))
 	buildInfoService.SetLogger(log.Logger)
 	return buildInfoService
 }
@@ -66,7 +65,8 @@ func PrepareBuildPrerequisites(buildConfiguration *BuildConfiguration) (build *b
 
 func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
 	hash := sha256.Sum256([]byte(buildName + "_" + buildNumber + "_" + projectKey))
-	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(), BuildTempPath, hex.EncodeToString(hash[:]))
+	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(),
+		build.NewBuildInfoService().GetUserSpecificBuildDirName(), hex.EncodeToString(hash[:]))
 	err := os.MkdirAll(buildsDir, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err

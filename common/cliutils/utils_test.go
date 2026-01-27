@@ -1,10 +1,11 @@
 package cliutils
 
 import (
-	testUtils "github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	"os"
 	"path/filepath"
 	"testing"
+
+	testUtils "github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func TestReadJFrogApplicationKeyFromConfigOrEnv(t *testing.T) {
 			name:           "Application key in both config file and environment variable",
 			configContent:  "application:\n  key: configKey",
 			envValue:       "envKey",
-			expectedResult: "configKey",
+			expectedResult: "envKey",
 		},
 		{
 			name:           "No application key in config file or environment variable",

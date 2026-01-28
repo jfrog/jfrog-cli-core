@@ -3,12 +3,13 @@ package cliutils
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 	"io"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/project"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/commands"
 	"github.com/jfrog/jfrog-cli-core/v2/common/spec"
@@ -261,17 +262,17 @@ func FixWinPathsForFileSystemSourcedCmds(uploadSpec *spec.SpecFiles, specFlag, e
 	}
 }
 
-// Retrieves the application key from the .jfrog/config file or the environment variable.
+// Retrieves the application key from the environment variable or the .jfrog/config file (in that order).
 // If the application key is not found in either, returns an empty string.
 func ReadJFrogApplicationKeyFromConfigOrEnv() (applicationKeyValue string) {
-	applicationKeyValue = getApplicationKeyFromConfig()
-	if applicationKeyValue != "" {
-		log.Debug("Found application key in config file:", applicationKeyValue)
-		return
-	}
 	applicationKeyValue = os.Getenv(coreutils.ApplicationKey)
 	if applicationKeyValue != "" {
 		log.Debug("Found application key in environment variable:", applicationKeyValue)
+		return
+	}
+	applicationKeyValue = getApplicationKeyFromConfig()
+	if applicationKeyValue != "" {
+		log.Debug("Found application key in config file:", applicationKeyValue)
 		return
 	}
 	log.Debug("Application key is not found in the config file or environment variable.")

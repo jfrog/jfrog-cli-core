@@ -35,6 +35,24 @@ func TestFilesDiffRange(t *testing.T) {
 	_ = addAndAssertNewDiffPhase(t, stateManager, 3, diffStart)
 }
 
+func TestPhase2CompletedPersistedAfterSaveStateAndSnapshots(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
+	assert.NoError(t, stateManager.SetRepoFullTransferStarted(time.Now()))
+	diffStart := time.Now()
+	assert.NoError(t, stateManager.AddNewDiffToState(diffStart))
+	setAndAssertFilesDiffCompleted(t, stateManager, 1)
+	assert.NoError(t, stateManager.SaveStateAndSnapshots())
+
+	loaded, exists, err := LoadTransferState(repo1Key, false)
+	assert.NoError(t, err)
+	assert.True(t, exists)
+	assert.Len(t, loaded.CurrentRepo.Diffs, 1)
+	assert.True(t, loaded.CurrentRepo.Diffs[0].Completed, "Phase 2 completed=true must be persisted to disk after SaveStateAndSnapshots")
+}
+
 func assertRepoTransferred(t *testing.T, stateManager *TransferStateManager, expected bool) {
 	transferred, err := stateManager.IsRepoTransferred()
 	assert.NoError(t, err)

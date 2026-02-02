@@ -520,7 +520,19 @@ func (tdc *TransferFilesCommand) startPhase(newPhase *transferPhase, repo string
 		return err
 	}
 	printPhaseChange("Done running '" + (*newPhase).getPhaseName() + "' for repo '" + repo + "'.")
-	return (*newPhase).phaseDone()
+	err = (*newPhase).phaseDone()
+	if err != nil {
+		return err
+	}
+	// Persist state after each phase so Phase 2 completed=true and HandledRange are not lost
+	// when the next repo's SetRepoState replaces in-memory state before the throttle persists.
+	if tdc.stateManager.CurrentRepo.Name != "" {
+		if saveErr := tdc.stateManager.SaveStateAndSnapshots(); saveErr != nil {
+			log.Error("Couldn't save transfer state", saveErr)
+			return saveErr
+		}
+	}
+	return nil
 }
 
 // Handle interrupted signal.

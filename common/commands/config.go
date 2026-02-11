@@ -430,7 +430,6 @@ func (cc *ConfigCommand) promptAuthMethods() (selectedMethod AuthenticationMetho
 		WebLogin,
 		BasicAuth,
 		MTLS,
-		OIDC,
 	}
 	var selectableItems []ioutils.PromptItem
 	for _, curMethod := range authMethods {

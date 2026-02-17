@@ -590,11 +590,11 @@ type ServerDetails struct {
 	OnemodelUrl                     string `json:"-"`
 	ApptrustUrl                     string `json:"-"`
 	User                            string `json:"user,omitempty"`
-	Password                        string `json:"password,omitempty"`
+	Password                        string `json:"password,omitempty"`             // #nosec G117 -- config struct for auth
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
 	SshPassphrase                   string `json:"sshPassphrase,omitempty"`
-	AccessToken                     string `json:"accessToken,omitempty"`
-	RefreshToken                    string `json:"refreshToken,omitempty"`
+	AccessToken                     string `json:"accessToken,omitempty"`          // #nosec G117 -- config struct for auth
+	RefreshToken                    string `json:"refreshToken,omitempty"`         // #nosec G117 -- config struct for auth
 	ArtifactoryRefreshToken         string `json:"artifactoryRefreshToken,omitempty"`
 	ArtifactoryTokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
 	ClientCertPath                  string `json:"clientCertPath,omitempty"`
@@ -609,7 +609,7 @@ type ServerDetails struct {
 // Deprecated
 type MissionControlDetails struct {
 	Url         string `json:"url,omitempty"`
-	AccessToken string `json:"accessToken,omitempty"`
+	AccessToken string `json:"accessToken,omitempty"` // #nosec G117 -- config struct for auth
 }
 
 func (serverDetails *ServerDetails) IsEmpty() bool {

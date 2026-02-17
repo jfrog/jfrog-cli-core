@@ -186,7 +186,7 @@ func TestGetMaxUniqueSnapshots(t *testing.T) {
 		default:
 			assert.Fail(t, "tried to get the Max Unique Snapshots setting of a repository of an unsupported package type")
 		}
-		_, err := w.Write([]byte(response))
+		_, err := w.Write([]byte(response)) // #nosec G705 -- test server response, not user input
 		assert.NoError(t, err)
 	})
 	defer testServer.Close()

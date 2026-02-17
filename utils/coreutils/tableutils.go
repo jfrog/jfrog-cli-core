@@ -314,7 +314,7 @@ func setColMaxWidth(columnConfigs []table.ColumnConfig, fieldsProperties []field
 }
 
 func getTerminalAllowedWidth(colNum int) (int, error) {
-	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	width, _, err := term.GetSize(int(os.Stdout.Fd())) // #nosec G115 -- fd from process stdout, safe on all supported platforms
 	if err != nil {
 		return 0, err
 	}

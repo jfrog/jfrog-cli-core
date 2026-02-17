@@ -156,7 +156,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactTree(rootModuleID string, nes
 
 	markdownBuilder.WriteString(generateModuleHeader(rootModuleID))
 	if !StaticMarkdownConfig.IsExtendedSummary() {
-		markdownBuilder.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
+		fmt.Fprintf(&markdownBuilder, basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage())
 	}
 	for _, module := range nestedModules {
 		if isMultiModule && rootModuleID == module.Id {
@@ -166,7 +166,7 @@ func (bis *BuildInfoSummary) generateModuleArtifactTree(rootModuleID string, nes
 		if err != nil {
 			return "", err
 		}
-		markdownBuilder.WriteString(fmt.Sprintf("\n\n<pre>%s</pre>\n\n", tree))
+		fmt.Fprintf(&markdownBuilder, "\n\n<pre>%s</pre>\n\n", tree)
 	}
 	return markdownBuilder.String(), nil
 }
@@ -193,7 +193,7 @@ func (bis *BuildInfoSummary) generateTableModuleMarkdown(nestedModules []buildIn
 
 	if !StaticMarkdownConfig.IsExtendedSummary() {
 		nestedModuleMarkdownTree.WriteString("|")
-		nestedModuleMarkdownTree.WriteString(fmt.Sprintf(basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage()))
+		fmt.Fprintf(&nestedModuleMarkdownTree, basicSummaryUpgradeNotice, StaticMarkdownConfig.GetExtendedSummaryLangPage())
 		nestedModuleMarkdownTree.WriteString("<pre>")
 	} else {
 		nestedModuleMarkdownTree.WriteString("|<pre>")

@@ -79,7 +79,7 @@ type OidcParams struct {
 }
 
 type ExchangeCommandOutputStruct struct {
-	AccessToken string `json:"AccessToken"`
+	AccessToken string `json:"AccessToken"` // #nosec G117 -- CLI output struct for OIDC exchange
 	Username    string `json:"Username"`
 }
 

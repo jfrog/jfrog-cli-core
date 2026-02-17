@@ -18,11 +18,11 @@ type configToken struct {
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
 	User                 string `json:"user,omitempty"`
-	Password             string `json:"password,omitempty"`
+	Password             string `json:"password,omitempty"`             // #nosec G117 -- config struct for auth
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
 	SshPassphrase        string `json:"sshPassphrase,omitempty"`
-	AccessToken          string `json:"accessToken,omitempty"`
-	RefreshToken         string `json:"refreshToken,omitempty"`
+	AccessToken          string `json:"accessToken,omitempty"`          // #nosec G117 -- config struct for auth
+	RefreshToken         string `json:"refreshToken,omitempty"`         // #nosec G117 -- config struct for auth
 	TokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
 	ClientCertPath       string `json:"clientCertPath,omitempty"`
 	ClientCertKeyPath    string `json:"clientCertKeyPath,omitempty"`

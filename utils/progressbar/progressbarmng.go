@@ -343,7 +343,7 @@ var ShouldInitProgressBar = func() (bool, error) {
 }
 
 func setTerminalWidth() error {
-	width, _, err := term.GetSize(int(os.Stderr.Fd()))
+	width, _, err := term.GetSize(int(os.Stderr.Fd())) // #nosec G115 -- fd from process stderr, safe on all supported platforms
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

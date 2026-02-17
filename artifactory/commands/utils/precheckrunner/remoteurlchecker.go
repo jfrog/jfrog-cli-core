@@ -32,7 +32,7 @@ type remoteRepoSettings struct {
 	Url         string `json:"url,omitempty"`
 	RepoType    string `json:"repo_type,omitempty"`
 	Username    string `json:"username,omitempty"`
-	Password    string `json:"password,omitempty"`
+	Password    string `json:"password,omitempty"` // #nosec G117 -- API struct for remote repo settings
 	QueryParams string `json:"query_params,omitempty"`
 }
 

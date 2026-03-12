@@ -118,12 +118,14 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 	var visibilityMetricsData *visibility.MetricsData
 	if metricsData != nil {
 		visibilityMetricsData = &visibility.MetricsData{
-			Flags:        metricsData.Flags,
-			Platform:     metricsData.Platform,
-			Architecture: metricsData.Architecture,
-			IsCI:         metricsData.IsCI,
-			CISystem:     metricsData.CISystem,
-			IsContainer:  metricsData.IsContainer,
+			Flags:          metricsData.Flags,
+			Platform:       metricsData.Platform,
+			Architecture:   metricsData.Architecture,
+			IsCI:           metricsData.IsCI,
+			CISystem:       metricsData.CISystem,
+			IsContainer:    metricsData.IsContainer,
+			PackageAlias:   metricsData.PackageAlias,
+			PackageManager: metricsData.PackageManager,
 		}
 	}
 	commandsCountMetric = visibility.NewCommandsCountMetricWithEnhancedData(commandName, visibilityMetricsData)

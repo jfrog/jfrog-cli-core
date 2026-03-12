@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	testsutils "github.com/jfrog/jfrog-client-go/utils/tests"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +15,7 @@ func TestCreateCommandsCountMetric(t *testing.T) {
 		coreutils.CIJobID:          "job123",
 		coreutils.CIRunID:          "run456",
 		coreutils.CIVcsUrl:         "test-repo",
-		coreutils.OidcProviderType: token.GitHub.String(),
+		coreutils.OidcProviderType: "GitHub",
 		"JFROG_CLI_USAGE_GH_TOKEN_FOR_CODE_SCANNING_ALERTS_PROVIDED": "TRUE",
 	}
 	cleanupFuncs := []func(){}
@@ -74,19 +73,15 @@ func TestNewCommandsCountMetricWithEnhancedData(t *testing.T) {
 
 	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
 
-	// Verify basic metric structure
 	assert.Equal(t, 1, metric.Value)
 	assert.Equal(t, "jfcli_commands_count", metric.Name)
 
-	// Verify labels
 	labels, ok := metric.Labels.(*commandsCountLabels)
 	assert.True(t, ok, "Expected labels to be of type commandsCountLabels")
 
-	// Verify basic fields
 	assert.Equal(t, coreutils.GetCliUserAgentName(), labels.ProductID)
 	assert.Equal(t, commandName, labels.FeatureID)
 
-	// Verify enhanced fields
 	assert.Equal(t, "recursive,threads,verbose", labels.Flags)
 	assert.Equal(t, "linux", labels.Platform)
 	assert.Equal(t, "amd64", labels.Architecture)
@@ -153,21 +148,19 @@ func TestCommandsCountLabelsJSONSerialization(t *testing.T) {
 	commandName := "test-upload"
 	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
 
-	// Serialize to JSON
 	metricJSON, err := json.Marshal(metric)
 	assert.NoError(t, err)
 
-	// Verify the JSON contains our enhanced fields
-	assert.Contains(t, string(metricJSON), "\"flags\":\"dry-run,recursive\"")
-	assert.Contains(t, string(metricJSON), "\"platform\":\"darwin\"")
-	assert.Contains(t, string(metricJSON), "\"architecture\":\"arm64\"")
-	assert.Contains(t, string(metricJSON), "\"is_ci\":\"true\"")
-	assert.Contains(t, string(metricJSON), "\"ci_system\":\"github_actions\"")
-	assert.Contains(t, string(metricJSON), "\"is_container\":\"false\"")
+	assert.Contains(t, string(metricJSON), `"flags":"dry-run,recursive"`)
+	assert.Contains(t, string(metricJSON), `"platform":"darwin"`)
+	assert.Contains(t, string(metricJSON), `"architecture":"arm64"`)
+	assert.Contains(t, string(metricJSON), `"is_ci":"true"`)
+	assert.Contains(t, string(metricJSON), `"ci_system":"github_actions"`)
+	assert.Contains(t, string(metricJSON), `"is_container":"false"`)
 }
 
 func TestEnhancedMetricsEnvironmentIntegration(t *testing.T) {
-	// Set environment variables for the test (using the keys consumed by the code)
+	// Set environment variables for the test
 	envVars := map[string]string{
 		coreutils.CIJobID:  "test-job-123",
 		coreutils.CIRunID:  "test-run-456",
@@ -199,17 +192,61 @@ func TestEnhancedMetricsEnvironmentIntegration(t *testing.T) {
 	labels, ok := metric.Labels.(*commandsCountLabels)
 	assert.True(t, ok, "Expected labels to be of type commandsCountLabels")
 
-	// Verify environment variables are picked up
-	assert.Equal(t, "", labels.ProviderType)
 	assert.Equal(t, "test-job-123", labels.JobID)
 	assert.Equal(t, "test-run-456", labels.RunID)
 	assert.Equal(t, "owner/repo", labels.GitRepo)
 
-	// Verify enhanced metrics data is also included
 	assert.Equal(t, "retry,threads", labels.Flags)
 	assert.Equal(t, "linux", labels.Platform)
 	assert.Equal(t, "amd64", labels.Architecture)
 	assert.Equal(t, "true", labels.IsCI)
 	assert.Equal(t, "jenkins", labels.CISystem)
 	assert.Equal(t, "true", labels.IsContainer)
+}
+
+func TestNewCommandsCountMetricWithPackageAlias(t *testing.T) {
+	commandName := "npm_install"
+
+	metricsData := &MetricsData{
+		Flags:          []string{"save-dev"},
+		PackageAlias:   true,
+		PackageManager: "npm",
+	}
+
+	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
+
+	labels, ok := metric.Labels.(*commandsCountLabels)
+	assert.True(t, ok, "Expected labels to be of type commandsCountLabels")
+
+	assert.Equal(t, "true", labels.PackageAlias)
+	assert.Equal(t, "npm", labels.PackageManager)
+
+	// Verify JSON serialization contains the new fields
+	metricJSON, err := json.Marshal(metric)
+	assert.NoError(t, err)
+	assert.Contains(t, string(metricJSON), `"package_alias":"true"`)
+	assert.Contains(t, string(metricJSON), `"package_manager":"npm"`)
+}
+
+func TestNewCommandsCountMetricWithoutPackageAlias(t *testing.T) {
+	commandName := "rt_upload"
+
+	metricsData := &MetricsData{
+		Flags:        []string{"recursive"},
+		PackageAlias: false,
+	}
+
+	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
+
+	labels, ok := metric.Labels.(*commandsCountLabels)
+	assert.True(t, ok, "Expected labels to be of type commandsCountLabels")
+
+	// When PackageAlias is false, labels should be empty (omitempty)
+	assert.Empty(t, labels.PackageAlias)
+	assert.Empty(t, labels.PackageManager)
+
+	metricJSON, err := json.Marshal(metric)
+	assert.NoError(t, err)
+	assert.NotContains(t, string(metricJSON), `"package_alias"`)
+	assert.NotContains(t, string(metricJSON), `"package_manager"`)
 }

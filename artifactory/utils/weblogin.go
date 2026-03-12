@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"bufio"
 	"errors"
+	"io"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,6 +43,7 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 	log.Info("Please open the following URL in your browser to authenticate:")
 	log.Info(loginUrl)
 
+	waitForEnterBeforeBrowserOpen()
 	// Attempt to open in browser if available
 	if err = browser.OpenURL(loginUrl); err != nil {
 		log.Warn("Failed to automatically open the browser. Please open the URL manually.")
@@ -57,6 +61,22 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 	}
 	log.Info("You're now logged in!")
 	return
+}
+
+func waitForEnterBeforeBrowserOpen() {
+	stdinStat, err := os.Stdin.Stat()
+	if err != nil {
+		log.Debug("Skipping enter wait before opening browser:", err.Error())
+		return
+	}
+	if (stdinStat.Mode() & os.ModeCharDevice) == 0 {
+		return
+	}
+	log.Info("Press Enter to open the browser.")
+	_, err = bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		log.Warn("Failed to read Enter input. Continuing with login flow.")
+	}
 }
 
 func sendUnauthenticatedPing(serverDetails *config.ServerDetails) error {

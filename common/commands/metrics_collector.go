@@ -14,8 +14,9 @@ type MetricsData = metrics.MetricsData
 
 // metricsCollector provides thread-safe collection and storage of command metrics
 type metricsCollector struct {
-	mu          sync.RWMutex
-	metricsData map[string]*MetricsData
+	mu                  sync.RWMutex
+	metricsData         map[string]*MetricsData
+	packageAliasContext string
 }
 
 var contextFlags []string
@@ -32,6 +33,9 @@ func CollectMetrics(commandName string, flags []string) {
 	ciSystem := detectCISystem()
 	isCI := ciSystem != ""
 
+	pkgAliasTool := globalMetricsCollector.packageAliasContext
+	globalMetricsCollector.packageAliasContext = ""
+
 	metricsData := &MetricsData{
 		Flags:        flags,
 		Platform:     runtime.GOOS,
@@ -43,7 +47,9 @@ func CollectMetrics(commandName string, flags []string) {
 			}
 			return ""
 		}(),
-		IsContainer: isRunningInContainer(),
+		IsContainer:    isRunningInContainer(),
+		PackageAlias:   pkgAliasTool != "",
+		PackageManager: pkgAliasTool,
 	}
 
 	globalMetricsCollector.metricsData[commandName] = metricsData
@@ -61,12 +67,14 @@ func GetCollectedMetrics(commandName string) *MetricsData {
 	}
 
 	return &MetricsData{
-		Flags:        append([]string(nil), metrics.Flags...),
-		Platform:     metrics.Platform,
-		Architecture: metrics.Architecture,
-		IsCI:         metrics.IsCI,
-		CISystem:     metrics.CISystem,
-		IsContainer:  metrics.IsContainer,
+		Flags:          append([]string(nil), metrics.Flags...),
+		Platform:       metrics.Platform,
+		Architecture:   metrics.Architecture,
+		IsCI:           metrics.IsCI,
+		CISystem:       metrics.CISystem,
+		IsContainer:    metrics.IsContainer,
+		PackageAlias:   metrics.PackageAlias,
+		PackageManager: metrics.PackageManager,
 	}
 }
 
@@ -163,4 +171,13 @@ func GetContextFlags() []string {
 	flags := contextFlags
 	contextFlags = nil
 	return flags
+}
+
+// SetPackageAliasContext records that the current command was invoked via a
+// package alias for the given package manager tool (e.g. "npm", "pip").
+// CollectMetrics reads and clears this value automatically.
+func SetPackageAliasContext(tool string) {
+	globalMetricsCollector.mu.Lock()
+	defer globalMetricsCollector.mu.Unlock()
+	globalMetricsCollector.packageAliasContext = tool
 }

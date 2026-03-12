@@ -28,6 +28,8 @@ type commandsCountLabels struct {
 	IsCI                                 string `json:"is_ci"`
 	CISystem                             string `json:"ci_system,omitempty"`
 	IsContainer                          string `json:"is_container"`
+	PackageAlias                         string `json:"package_alias,omitempty"`
+	PackageManager                       string `json:"package_manager,omitempty"`
 }
 
 func NewCommandsCountMetric(commandName string) services.VisibilityMetric {
@@ -76,6 +78,10 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 			labels.IsContainer = "true"
 		} else {
 			labels.IsContainer = "false"
+		}
+		if metricsData.PackageAlias {
+			labels.PackageAlias = "true"
+			labels.PackageManager = metricsData.PackageManager
 		}
 	}
 

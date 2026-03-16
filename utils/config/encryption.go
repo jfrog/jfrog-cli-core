@@ -109,7 +109,8 @@ func getEncryptionKey() (string, error) {
 			if fileInfo.IsDir() {
 				return "", fmt.Errorf("encryption key path '%s' is a directory, not a file", keyOrPath)
 			}
-			keyBytes, readErr := os.ReadFile(keyOrPath)
+			// #nosec G304 -- keyOrPath is provided by the user for encryption key file path
+		keyBytes, readErr := os.ReadFile(keyOrPath)
 			if readErr != nil {
 				return "", fmt.Errorf("failed to read encryption key from file '%s': %w", keyOrPath, readErr)
 			}
@@ -132,6 +133,7 @@ func getEncryptionKeyFromSecurityConfFile() (key string, err error) {
 
 	config := viper.New()
 	config.SetConfigType("yaml")
+	// #nosec G304 -- secFile path is derived from the JFrog security config directory
 	f, err := os.Open(secFile)
 	defer ioutils.Close(f, &err)
 	if err != nil {

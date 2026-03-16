@@ -109,6 +109,7 @@ func (rrc *RemoteRepositoryCheck) createRemoteUrlRequest() ([]remoteRepoSettings
 func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments, remoteUrlRequest []remoteRepoSettings) (inaccessibleRepositories *[]inaccessibleRepository, err error) {
 	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(args.ServerDetails.ArtifactoryUrl)
 
+	// #nosec G117 -- intentional marshaling of remote repo settings (including credentials) for Artifactory API request
 	body, err := json.Marshal(remoteUrlRequest)
 	if err != nil {
 		return nil, errorutils.CheckError(err)

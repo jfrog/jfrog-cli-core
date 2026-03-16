@@ -408,6 +408,7 @@ func (sxm *SettingsXmlManager) removeDeploymentProfile(root *etree.Element) {
 // writeSettingsToFile writes the document to the settings.xml file.
 func (sxm *SettingsXmlManager) writeSettingsToFile() error {
 	// Ensure directory exists
+	// #nosec G301 -- directory for settings.xml is within the user's Maven config directory; 0755 is appropriate
 	if err := os.MkdirAll(filepath.Dir(sxm.path), 0o755); err != nil {
 		return fmt.Errorf("failed to create directory for settings file: %w", err)
 	}

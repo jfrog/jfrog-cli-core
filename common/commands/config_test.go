@@ -443,6 +443,7 @@ func doConfig(t *testing.T, serverId string, inputDetails *config.ServerDetails,
 
 func configStructToString(t *testing.T, artConfig *config.ServerDetails) string {
 	artConfig.IsDefault = false
+	//nolint:gosec // G117: intentional marshaling of config struct for test comparison
 	marshaledStruct, err := json.Marshal(*artConfig)
 	assert.NoError(t, err)
 	return string(marshaledStruct)

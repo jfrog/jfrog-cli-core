@@ -118,6 +118,7 @@ func TestValidateTargetServer(t *testing.T) {
 			_, err = w.Write(content)
 			assert.NoError(t, err)
 		default:
+			//nolint:gosec // G117: marshaling test users list for mock server response
 			content, err := json.Marshal(users)
 			assert.NoError(t, err)
 			_, err = w.Write(content)

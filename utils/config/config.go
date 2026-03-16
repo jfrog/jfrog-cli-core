@@ -486,6 +486,7 @@ func getConfFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// #nosec G301 -- confPath is the JFrog home directory; 0777 is intentional for cross-user access
 	err = os.MkdirAll(confPath, 0777)
 	if err != nil {
 		return "", err
@@ -590,11 +591,11 @@ type ServerDetails struct {
 	OnemodelUrl                     string `json:"-"`
 	ApptrustUrl                     string `json:"-"`
 	User                            string `json:"user,omitempty"`
-	Password                        string `json:"password,omitempty"`             // #nosec G117 -- config struct for auth
+	Password                        string `json:"password,omitempty"` // #nosec G117 -- config struct for auth
 	SshKeyPath                      string `json:"sshKeyPath,omitempty"`
 	SshPassphrase                   string `json:"sshPassphrase,omitempty"`
-	AccessToken                     string `json:"accessToken,omitempty"`          // #nosec G117 -- config struct for auth
-	RefreshToken                    string `json:"refreshToken,omitempty"`         // #nosec G117 -- config struct for auth
+	AccessToken                     string `json:"accessToken,omitempty"`  // #nosec G117 -- config struct for auth
+	RefreshToken                    string `json:"refreshToken,omitempty"` // #nosec G117 -- config struct for auth
 	ArtifactoryRefreshToken         string `json:"artifactoryRefreshToken,omitempty"`
 	ArtifactoryTokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
 	ClientCertPath                  string `json:"clientCertPath,omitempty"`

@@ -18,11 +18,11 @@ type configToken struct {
 	MissionControlUrl    string `json:"missionControlUrl,omitempty"`
 	PipelinesUrl         string `json:"pipelinesUrl,omitempty"`
 	User                 string `json:"user,omitempty"`
-	Password             string `json:"password,omitempty"`             // #nosec G117 -- config struct for auth
+	Password             string `json:"password,omitempty"` // #nosec G117 -- config struct for auth
 	SshKeyPath           string `json:"sshKeyPath,omitempty"`
 	SshPassphrase        string `json:"sshPassphrase,omitempty"`
-	AccessToken          string `json:"accessToken,omitempty"`          // #nosec G117 -- config struct for auth
-	RefreshToken         string `json:"refreshToken,omitempty"`         // #nosec G117 -- config struct for auth
+	AccessToken          string `json:"accessToken,omitempty"`  // #nosec G117 -- config struct for auth
+	RefreshToken         string `json:"refreshToken,omitempty"` // #nosec G117 -- config struct for auth
 	TokenRefreshInterval int    `json:"tokenRefreshInterval,omitempty"`
 	ClientCertPath       string `json:"clientCertPath,omitempty"`
 	ClientCertKeyPath    string `json:"clientCertKeyPath,omitempty"`
@@ -98,6 +98,7 @@ func Export(details *ServerDetails) (string, error) {
 			return "", errorutils.CheckErrorf("could not generate config token: config is encrypted, and wrong master key was provided")
 		}
 	}
+	// #nosec G117 -- marshaling server details (including password) is intentional for config token export
 	buffer, err := json.Marshal(fromServerDetails(details))
 	if err != nil {
 		return "", err

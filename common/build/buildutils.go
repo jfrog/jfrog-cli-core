@@ -67,6 +67,7 @@ func GetBuildDir(buildName, buildNumber, projectKey string) (string, error) {
 	hash := sha256.Sum256([]byte(buildName + "_" + buildNumber + "_" + projectKey))
 	buildsDir := filepath.Join(coreutils.GetCliPersistentTempDirPath(),
 		build.NewBuildInfoService().GetUserSpecificBuildDirName(), hex.EncodeToString(hash[:]))
+	// #nosec G301 -- buildsDir is the CLI persistent temp directory for build info; 0777 is intentional
 	err := os.MkdirAll(buildsDir, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err
@@ -93,6 +94,7 @@ func getPartialsBuildDir(buildName, buildNumber, projectKey string) (string, err
 		return "", err
 	}
 	buildDir = filepath.Join(buildDir, "partials")
+	// #nosec G301 -- buildDir is within the CLI persistent temp directory for build info; 0777 is intentional
 	err = os.MkdirAll(buildDir, 0777)
 	if errorutils.CheckError(err) != nil {
 		return "", err

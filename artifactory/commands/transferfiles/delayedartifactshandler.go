@@ -196,6 +196,7 @@ func readDelayFile(path string) (DelayedArtifactsFile, error) {
 	// Stores the errors read from the errors file.
 	var delayedArtifactsFile DelayedArtifactsFile
 
+	// #nosec G304 -- path is the delayed artifacts file in the JFrog transfer directory
 	fContent, err := os.ReadFile(path)
 	if err != nil {
 		return delayedArtifactsFile, errorutils.CheckError(err)

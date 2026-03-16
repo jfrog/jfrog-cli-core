@@ -246,9 +246,9 @@ func createEncryptionTestConfig() *Config {
 			ServerId:      "test-server",
 			Url:           "http://acme.jfrog.io",
 			User:          "elmar",
-			Password:      "Wabbit",           // #nosec G101 -- test data only
+			Password:      "Wabbit",             // #nosec G101 -- test data only
 			AccessToken:   "DewiciousWegOfWamb", // #nosec G101 -- test data only
-			SshPassphrase: "KiwwTheWabbit",    // #nosec G101 -- test data only
+			SshPassphrase: "KiwwTheWabbit",      // #nosec G101 -- test data only
 		}}},
 	}}
 }
@@ -479,7 +479,7 @@ func TestCreateAuthConfigAppendPreRequestFunctionBehavior(t *testing.T) {
 			name: "DisableTokenRefreshTrue_WithArtifactoryRefreshToken",
 			serverDetails: &ServerDetails{
 				ServerId:                "test-server",
-				AccessToken:             "access-token-123",             // #nosec G101 -- test data only
+				AccessToken:             "access-token-123",              // #nosec G101 -- test data only
 				ArtifactoryRefreshToken: "artifactory-refresh-token-789", // #nosec G101 -- test data only
 				User:                    "testuser",
 				Password:                "testpass", // #nosec G101 -- test data only
@@ -491,7 +491,7 @@ func TestCreateAuthConfigAppendPreRequestFunctionBehavior(t *testing.T) {
 			name: "DisableTokenRefreshFalse_WithArtifactoryRefreshToken",
 			serverDetails: &ServerDetails{
 				ServerId:                "test-server",
-				AccessToken:             "access-token-123",             // #nosec G101 -- test data only
+				AccessToken:             "access-token-123",              // #nosec G101 -- test data only
 				ArtifactoryRefreshToken: "artifactory-refresh-token-789", // #nosec G101 -- test data only
 				User:                    "testuser",
 				Password:                "testpass", // #nosec G101 -- test data only

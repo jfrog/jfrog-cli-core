@@ -278,6 +278,7 @@ func (curlCmd *CurlCommand) GetCmd() *exec.Cmd {
 	var cmd []string
 	cmd = append(cmd, curlCmd.executablePath)
 	cmd = append(cmd, curlCmd.arguments...)
+	// #nosec G204 -- command is constructed from validated curl executable path and arguments
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 

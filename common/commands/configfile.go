@@ -190,6 +190,7 @@ func writeConfigFile(configFile *ConfigFile, destination string) (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
+	// #nosec G306 -- destination is the user-managed build config file path; 0644 is appropriate for config files
 	if err = os.WriteFile(destination, resBytes, 0644); err != nil {
 		return errorutils.CheckError(err)
 	}
@@ -394,6 +395,7 @@ func (configFile *ConfigFile) VerifyConfigFile(configFilePath string) error {
 	}
 
 	// Create config file to make sure the path is valid
+	// #nosec G304 G302 -- configFilePath is a user-managed build config file path; 0644 is appropriate for config files
 	f, err := os.OpenFile(configFilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if errorutils.CheckError(err) != nil {
 		return err

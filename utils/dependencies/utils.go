@@ -38,6 +38,7 @@ func DownloadExtractor(targetPath, downloadPath string) error {
 }
 
 func CreateChecksumFile(targetPath, checksum string) (err error) {
+	// #nosec G304 -- targetPath is the artifact download path, validated by the caller
 	out, err := os.Create(targetPath)
 	defer func() {
 		err = errors.Join(err, errorutils.CheckError(out.Close()))

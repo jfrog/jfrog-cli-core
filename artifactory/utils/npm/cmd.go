@@ -10,6 +10,7 @@ func (config *NpmConfig) GetCmd() *exec.Cmd {
 	cmd = append(cmd, config.Npm)
 	cmd = append(cmd, config.Command...)
 	cmd = append(cmd, config.CommandFlags...)
+	// #nosec G204 -- command is constructed from validated npm executable path and arguments
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 

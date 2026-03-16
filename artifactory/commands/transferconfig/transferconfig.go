@@ -186,6 +186,7 @@ func (tcc *TransferConfigCommand) createExportPath() (exportPath string, unsetTe
 		return "", unsetTempDir, err
 	}
 
+	// #nosec G302 -- exportPath requires 0777 for cross-user access during config transfer
 	return exportPath, unsetTempDir, errorutils.CheckError(os.Chmod(exportPath, 0777))
 }
 

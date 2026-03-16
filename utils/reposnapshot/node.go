@@ -233,6 +233,7 @@ func (node *Node) convertAndSaveToFile(stateFilePath string) error {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
+	// #nosec G306 -- stateFilePath is within the JFrog transfer directory; 0644 is appropriate for state files
 	return errorutils.CheckError(os.WriteFile(stateFilePath, content, 0644))
 }
 

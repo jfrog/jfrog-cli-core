@@ -56,6 +56,7 @@ func (lock *Lock) getLockFilename(folderName string) string {
 func (lock *Lock) createFile(folderName string) error {
 	// We are creating an empty file with the pid and current time part of the name
 	lock.fileName = lock.getLockFilename(folderName)
+	// #nosec G302 -- lock file uses 0666 to allow cross-user access to the lock mechanism
 	file, err := os.OpenFile(lock.fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return errorutils.CheckError(err)

@@ -87,6 +87,7 @@ func (p *Profiler) threadDumpToFile() (outputFilePath string, err error) {
 }
 
 func (p *Profiler) convertFileToString(outputFilePath string) (string, error) {
+	// #nosec G304 -- outputFilePath is a temp file created by the profiler in a controlled location
 	if outputBytes, err := os.ReadFile(outputFilePath); err != nil {
 		return "", errorutils.CheckError(err)
 	} else {

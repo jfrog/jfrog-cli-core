@@ -69,6 +69,7 @@ func NewTransferFilesCommand(sourceServer, targetServer *config.ServerDetails) (
 	if err != nil {
 		return nil, err
 	}
+	// #nosec G118 -- cancelFunc is stored in the struct and called at tdc.cancelFunc() during stop/cancel
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	return &TransferFilesCommand{
 		context:             ctx,
@@ -467,6 +468,7 @@ func (tdc *TransferFilesCommand) initTransferDir() error {
 			return errorutils.CheckError(err)
 		}
 	}
+	// #nosec G301 -- transferDir is the JFrog transfer directory; 0777 is intentional for cross-user access
 	return errorutils.CheckError(os.MkdirAll(transferDir, 0777))
 }
 
@@ -762,6 +764,7 @@ func (tdc *TransferFilesCommand) signalStop() error {
 		return errorutils.CheckErrorf("Graceful stop is already in progress. Please wait...")
 	}
 
+	// #nosec G304 -- stopFile path is within the JFrog transfer directory
 	if stopFile, err := os.Create(filepath.Join(transferDir, StopFileName)); err != nil {
 		return errorutils.CheckError(err)
 	} else if err = stopFile.Close(); err != nil {

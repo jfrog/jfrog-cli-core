@@ -91,6 +91,7 @@ func MockProgressInitialization() func() {
 // path - Path to the input file.
 // destPath - Path to the output file. If empty, the output file will be under ${CWD}/tmp/.
 func ReplaceTemplateVariables(path, destPath string, subMap map[string]string) (string, error) {
+	// #nosec G304 -- path is provided by test utilities, not user input
 	content, err := os.ReadFile(path)
 	if err != nil {
 		return "", errorutils.CheckError(err)
@@ -112,6 +113,7 @@ func ReplaceTemplateVariables(path, destPath string, subMap map[string]string) (
 	}
 	specPath := filepath.Join(destPath, filepath.Base(path))
 	log.Info("Creating spec file at:", specPath)
+	// #nosec G703 G306 -- specPath is constructed from destPath within the test temp dir
 	err = os.WriteFile(specPath, content, 0700)
 	if err != nil {
 		return "", errorutils.CheckError(err)

@@ -479,12 +479,12 @@ var convertPatternToPathPrefixTestCases = []struct {
 	input    string
 	expected string
 }{
-	{"folder/subfolder/*", "folder/subfolder"},  // strips trailing /*
-	{"folder/**", "folder"},                     // strips trailing /**
-	{"folder/", "folder"},                       // strips trailing /
-	{"folder", "folder"},                        // no change when no trailing pattern
-	{"a/b/c/d/e/*", "a/b/c/d/e"},                // deep path with wildcard
-	{"single", "single"},                        // single segment without slash
+	{"folder/subfolder/*", "folder/subfolder"}, // strips trailing /*
+	{"folder/**", "folder"},                    // strips trailing /**
+	{"folder/", "folder"},                      // strips trailing /
+	{"folder", "folder"},                       // no change when no trailing pattern
+	{"a/b/c/d/e/*", "a/b/c/d/e"},               // deep path with wildcard
+	{"single", "single"},                       // single segment without slash
 }
 
 func TestConvertPatternToPathPrefix(t *testing.T) {
@@ -592,11 +592,11 @@ var convertPatternToAqlMatchTestCases = []struct {
 	input    string
 	expected string
 }{
-	{"folder/subfolder/*", "*folder/subfolder*"},  // path with wildcard
-	{"folder", "*folder*"},                        // simple folder name
+	{"folder/subfolder/*", "*folder/subfolder*"},       // path with wildcard
+	{"folder", "*folder*"},                             // simple folder name
 	{"org/company/project/*", "*org/company/project*"}, // deep nested path
-	{"*already/prefixed", "*already/prefixed*"},   // already has leading wildcard
-	{"already/suffixed*", "*already/suffixed*"},   // already has trailing wildcard
+	{"*already/prefixed", "*already/prefixed*"},        // already has leading wildcard
+	{"already/suffixed*", "*already/suffixed*"},        // already has trailing wildcard
 }
 
 func TestConvertPatternToAqlMatch(t *testing.T) {

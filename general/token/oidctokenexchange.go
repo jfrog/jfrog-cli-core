@@ -173,6 +173,7 @@ func (otc *OidcTokenExchangeCommand) PrintResponseToConsole() {
 		AccessToken: otc.response.AccessToken,
 		Username:    otc.response.Username,
 	}
+	// #nosec G117 -- intentional marshaling of OIDC token exchange response for console output
 	jsonOutput, err := json.Marshal(response)
 	if err != nil {
 		log.Error("Failed to marshal response to JSON:", err)

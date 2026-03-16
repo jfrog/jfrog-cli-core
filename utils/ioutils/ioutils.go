@@ -104,6 +104,7 @@ func BackupFile(filePath, backupFileName string) (restore func() error, err erro
 }
 
 func cloneFile(origFile, newName string, fileMode os.FileMode) (err error) {
+	// #nosec G304 -- origFile path is validated before being passed to this function
 	from, err := os.Open(origFile)
 	if errorutils.CheckError(err) != nil {
 		return
@@ -112,6 +113,7 @@ func cloneFile(origFile, newName string, fileMode os.FileMode) (err error) {
 		err = errors.Join(err, from.Close())
 	}()
 
+	// #nosec G304 -- destination path is scoped to the directory of the original file
 	to, err := os.OpenFile(filepath.Join(filepath.Dir(origFile), newName), os.O_RDWR|os.O_CREATE, fileMode)
 	if errorutils.CheckError(err) != nil {
 		return

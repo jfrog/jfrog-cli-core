@@ -245,6 +245,7 @@ func createAndWriteToFile(filePath, fileName string, data []byte) (err error) {
 	if strings.Contains(fileName, "*") {
 		fd, err = os.CreateTemp(filePath, fileName)
 	} else {
+		// #nosec G304 -- filePath is the command summary output directory managed by JFrog CLI
 		fd, err = os.Create(filepath.Join(filePath, fileName))
 	}
 	defer func() {
@@ -285,6 +286,7 @@ func convertDataToBytes(data interface{}) ([]byte, error) {
 }
 
 func createDirIfNotExists(homeDir string) error {
+	// #nosec G301 -- homeDir is the command summary output directory; 0755 is appropriate for output directories
 	return errorutils.CheckError(os.MkdirAll(homeDir, 0755))
 }
 

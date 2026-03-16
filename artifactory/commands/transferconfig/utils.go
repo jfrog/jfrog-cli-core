@@ -43,6 +43,7 @@ func archiveConfig(exportPath string, configXml string) (buffer *bytes.Buffer, r
 	for _, neededFile := range neededFiles {
 		neededFilePath := filepath.Join(exportPath, neededFile)
 		log.Debug("Archiving " + neededFile)
+		// #nosec G304 -- neededFilePath is within the validated Artifactory export directory
 		fileContent, err := os.ReadFile(neededFilePath)
 		if err != nil {
 			if os.IsNotExist(err) && strings.Contains(neededFile, "security") {

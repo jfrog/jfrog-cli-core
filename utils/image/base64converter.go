@@ -53,6 +53,7 @@ func ToBase64(imagePath, baseDir string, width, height int) (string, string, err
 		}
 	} else {
 		resolvedPath := resolveImagePath(imagePath, baseDir)
+		// #nosec G304 -- resolvedPath is computed from a user-defined base directory and image path
 		content, err = os.ReadFile(resolvedPath)
 		if err != nil {
 			return "", "", fmt.Errorf("failed to read image file: %v", err)

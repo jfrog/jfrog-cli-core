@@ -15,6 +15,7 @@ func (pluginCmd *GeneralExecCmd) GetCmd() *exec.Cmd {
 	var cmd []string
 	cmd = append(cmd, pluginCmd.ExecPath)
 	cmd = append(cmd, pluginCmd.Command...)
+	// #nosec G204 -- command is constructed from validated plugin executable paths
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 

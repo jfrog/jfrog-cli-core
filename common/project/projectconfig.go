@@ -228,6 +228,7 @@ func ReadConfigFile(configPath string, configType ConfigType) (config *viper.Vip
 	config = viper.New()
 	config.SetConfigType(string(configType))
 
+	// #nosec G304 -- configPath is the project configuration file path managed by JFrog CLI
 	f, err := os.Open(configPath)
 	if err != nil {
 		return config, errorutils.CheckError(err)

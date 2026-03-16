@@ -141,6 +141,7 @@ func convertFileSystemLayoutV0ToV1() error {
 		// Move plugins exec files inside a directory, which has the plugin's name.
 		// Create a directory with the plugin's name + "_dir" extension, move the file inside and change directory's name back to plugin's name only.
 		pluginDirPathWithExtension := filepath.Join(pluginsDir, pluginsName+"_dir")
+		// #nosec G301 -- plugin directory requires 0777 to be accessible and executable by all users
 		err = os.MkdirAll(filepath.Join(pluginDirPathWithExtension, coreutils.PluginsExecDirName), 0777)
 		if err != nil {
 			return errorutils.CheckError(err)
@@ -192,6 +193,7 @@ func getPluginsFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// #nosec G301 -- plugins directory requires 0777 to be accessible and executable by all users
 	err = os.MkdirAll(pluginsFilePath, 0777)
 	if err != nil {
 		return "", err

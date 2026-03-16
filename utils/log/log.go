@@ -57,6 +57,7 @@ func CreateCustomLogFile(fileNameWithExt string) (*os.File, error) {
 	}
 
 	fileName := filepath.Join(logDir, fileNameWithExt)
+	// #nosec G304 G302 -- log file path is constructed from the JFrog home directory and a safe filename
 	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
 		return nil, errorutils.CheckError(err)

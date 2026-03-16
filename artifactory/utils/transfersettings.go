@@ -112,6 +112,7 @@ func getSettingsFilePath() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// #nosec G301 -- filePath is the JFrog transfer directory; 0777 is intentional for cross-user access
 	err = os.MkdirAll(filePath, 0777)
 	if err != nil {
 		return "", errorutils.CheckError(err)

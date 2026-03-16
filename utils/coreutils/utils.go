@@ -403,6 +403,7 @@ func ChmodPluginsDirectoryContent() error {
 		return err
 	}
 	for _, p := range plugins {
+		// #nosec G302 -- plugin executables need 0777 to be runnable by all users
 		err = os.Chmod(filepath.Join(pluginsDir, p.Name()), 0777)
 		if err != nil {
 			return err
@@ -628,6 +629,7 @@ func SetPermissionsRecursively(dirPath string, mode os.FileMode) error {
 		if e != nil {
 			return e
 		}
+		// #nosec G122 -- WalkDir path is within the provided dirPath root; symlink TOCTOU risk accepted for this internal utility
 		e = os.Chmod(path, mode)
 		if e != nil {
 			return e

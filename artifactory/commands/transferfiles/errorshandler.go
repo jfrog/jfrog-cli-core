@@ -101,6 +101,7 @@ func makeDirIfDoesNotExists(path string) error {
 		return err
 	}
 	if !exists {
+		// #nosec G301 -- path is the transfer errors directory; 0777 is intentional for cross-user access
 		err = os.Mkdir(path, 0777)
 	}
 	return err
@@ -320,6 +321,7 @@ func readErrorFile(path string) (FilesErrors, error) {
 	// Stores the errors read from the errors file.
 	var failedFiles FilesErrors
 
+	// #nosec G304 -- path is the errors file in the JFrog transfer directory
 	fContent, err := os.ReadFile(path)
 	if err != nil {
 		return failedFiles, errorutils.CheckError(err)

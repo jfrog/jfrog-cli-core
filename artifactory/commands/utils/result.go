@@ -127,6 +127,7 @@ func getTargetRepoFromMap(modulesMap *map[string][]clientutils.DeployableArtifac
 
 func unmarshalDeployableArtifactsJson(filesPath string) (*map[string][]clientutils.DeployableArtifactDetails, error) {
 	// Open the file
+	// #nosec G304 -- filesPath is a temporary file path created by the CLI for deployable artifacts data
 	jsonFile, err := os.Open(filesPath)
 	defer func() {
 		e := jsonFile.Close()

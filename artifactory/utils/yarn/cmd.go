@@ -18,6 +18,7 @@ func (yc *YarnConfig) GetCmd() *exec.Cmd {
 	cmd = append(cmd, yc.Executable)
 	cmd = append(cmd, yc.Command...)
 	cmd = append(cmd, yc.CommandFlags...)
+	// #nosec G204 -- command is constructed from validated yarn executable path and arguments
 	return exec.Command(cmd[0], cmd[1:]...)
 }
 

@@ -2,9 +2,10 @@ package commands
 
 import (
 	"encoding/json"
-	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"os"
 	"testing"
+
+	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	utilsTests "github.com/jfrog/jfrog-cli-core/v2/utils/tests"

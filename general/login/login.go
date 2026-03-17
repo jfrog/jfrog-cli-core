@@ -15,13 +15,22 @@ const (
 )
 
 type LoginCommand struct {
+	serverId string
 }
 
 func NewLoginCommand() *LoginCommand {
 	return &LoginCommand{}
 }
 
+func (lc *LoginCommand) SetServerId(serverId string) *LoginCommand {
+	lc.serverId = serverId
+	return lc
+}
+
 func (lc *LoginCommand) Run() error {
+	if lc.serverId != "" {
+		return existingServerLogin(lc.serverId)
+	}
 	configurations, err := config.GetAllServersConfigs()
 	if err != nil {
 		return err

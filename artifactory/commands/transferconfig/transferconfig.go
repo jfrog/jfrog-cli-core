@@ -465,6 +465,10 @@ func (tcc *TransferConfigCommand) createImportPollingAction(rtDetails *httputils
 		newServerDetails.SetUser(tcc.SourceServerDetails.GetUser())
 		newServerDetails.SetPassword(tcc.SourceServerDetails.GetPassword())
 		newServerDetails.SetAccessToken(tcc.SourceServerDetails.GetAccessToken())
+		//Haiz
+		// Clear refresh tokens so we send the source token, not the target's old token from config.
+		//newServerDetails.SetRefreshToken("")
+		//newServerDetails.SetArtifactoryRefreshToken("")
 
 		tcc.TargetArtifactoryManager, err = utils.CreateServiceManager(newServerDetails, -1, 0, false)
 		if err != nil {
@@ -504,9 +508,10 @@ func (tcc *TransferConfigCommand) updateServerDetails() error {
 	pingCmd := generic.NewPingCommand().SetServerDetails(newTargetServerDetails)
 	err := pingCmd.Run()
 	if err != nil {
-		return err
+		log.Warn("Ping to the target Artifactory failed. Please Ignore this warning if you are transferring the config to a new Artifactory server. Error: ", err)
+	} else {
+		log.Info("Ping to the target Artifactory was successful. Updating the server configuration in JFrog CLI.")
 	}
-	log.Info("Ping to the target Artifactory was successful. Updating the server configuration in JFrog CLI.")
 
 	// Update the server details in JFrog CLI configuration
 	configCmd := commands.NewConfigCommand(commands.AddOrEdit, newTargetServerDetails.ServerId).SetInteractive(false).SetDetails(newTargetServerDetails)

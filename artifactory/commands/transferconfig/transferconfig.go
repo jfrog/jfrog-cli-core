@@ -465,10 +465,7 @@ func (tcc *TransferConfigCommand) createImportPollingAction(rtDetails *httputils
 		newServerDetails.SetUser(tcc.SourceServerDetails.GetUser())
 		newServerDetails.SetPassword(tcc.SourceServerDetails.GetPassword())
 		newServerDetails.SetAccessToken(tcc.SourceServerDetails.GetAccessToken())
-		//Haiz
-		// Clear refresh tokens so we send the source token, not the target's old token from config.
-		//newServerDetails.SetRefreshToken("")
-		//newServerDetails.SetArtifactoryRefreshToken("")
+
 
 		tcc.TargetArtifactoryManager, err = utils.CreateServiceManager(newServerDetails, -1, 0, false)
 		if err != nil {

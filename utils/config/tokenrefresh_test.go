@@ -20,8 +20,8 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 			name: "EarlyReturn_ArtifactoryTokenRefreshIntervalZero",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  0,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 0,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 			},
 			expectedError:                 nil,
@@ -34,7 +34,7 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
 				ArtifactoryTokenRefreshInterval: -1,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 			},
 			expectedError:                 nil,
@@ -46,8 +46,8 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 			name: "EarlyReturn_ArtifactoryRefreshTokenNotEmpty",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "existing-refresh-token",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "existing-refresh-token",
 				AccessToken:                     "",
 			},
 			expectedError:                 nil,
@@ -59,8 +59,8 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 			name: "EarlyReturn_AccessTokenNotEmpty",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "existing-access-token",
 			},
 			expectedError:                 nil,
@@ -72,8 +72,8 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 			name: "EarlyReturn_BothTokensNotEmpty",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "existing-refresh-token",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "existing-refresh-token",
 				AccessToken:                     "existing-access-token",
 			},
 			expectedError:                 nil,
@@ -85,8 +85,8 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 			name: "EarlyReturn_IntervalZeroWithTokens",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  0,
-				ArtifactoryRefreshToken:          "existing-refresh-token",
+				ArtifactoryTokenRefreshInterval: 0,
+				ArtifactoryRefreshToken:         "existing-refresh-token",
 				AccessToken:                     "existing-access-token",
 			},
 			expectedError:                 nil,
@@ -102,7 +102,7 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 			serverDetailsCopy := &ServerDetails{
 				ServerId:                        tt.serverDetails.ServerId,
 				ArtifactoryTokenRefreshInterval: tt.serverDetails.ArtifactoryTokenRefreshInterval,
-				ArtifactoryRefreshToken:          tt.serverDetails.ArtifactoryRefreshToken,
+				ArtifactoryRefreshToken:         tt.serverDetails.ArtifactoryRefreshToken,
 				AccessToken:                     tt.serverDetails.AccessToken,
 			}
 
@@ -121,18 +121,18 @@ func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 
 func TestCreateInitialRefreshableTokensIfNeededValidInputs(t *testing.T) {
 	tests := []struct {
-		name                          string
-		serverDetails                 *ServerDetails
-		expectedIntervalAfterCall     int
-		shouldCreateTokens            bool
-		expectError                   bool
+		name                      string
+		serverDetails             *ServerDetails
+		expectedIntervalAfterCall int
+		shouldCreateTokens        bool
+		expectError               bool
 	}{
 		{
 			name: "ValidInput_PositiveInterval",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 				ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 				User:                            "testuser",
@@ -146,8 +146,8 @@ func TestCreateInitialRefreshableTokensIfNeededValidInputs(t *testing.T) {
 			name: "ValidInput_LargeInterval",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  1440, // 24 hours
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 1440, // 24 hours
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 				ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 				User:                            "testuser",
@@ -161,8 +161,8 @@ func TestCreateInitialRefreshableTokensIfNeededValidInputs(t *testing.T) {
 			name: "ValidInput_MinimalInterval",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  1,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 1,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 				ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 				User:                            "testuser",
@@ -187,7 +187,7 @@ func TestCreateInitialRefreshableTokensIfNeededValidInputs(t *testing.T) {
 			serverDetailsCopy := &ServerDetails{
 				ServerId:                        tt.serverDetails.ServerId,
 				ArtifactoryTokenRefreshInterval: tt.serverDetails.ArtifactoryTokenRefreshInterval,
-				ArtifactoryRefreshToken:          tt.serverDetails.ArtifactoryRefreshToken,
+				ArtifactoryRefreshToken:         tt.serverDetails.ArtifactoryRefreshToken,
 				AccessToken:                     tt.serverDetails.AccessToken,
 				ArtifactoryUrl:                  tt.serverDetails.ArtifactoryUrl,
 				User:                            tt.serverDetails.User,
@@ -225,8 +225,8 @@ func TestCreateInitialRefreshableTokensIfNeededInputValidation(t *testing.T) {
 			name: "InputValidation_EmptyServerId",
 			serverDetails: &ServerDetails{
 				ServerId:                        "",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 			},
 			description: "Should handle empty ServerId",
@@ -235,8 +235,8 @@ func TestCreateInitialRefreshableTokensIfNeededInputValidation(t *testing.T) {
 			name: "InputValidation_NoArtifactoryUrl",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 				ArtifactoryUrl:                  "",
 			},
@@ -246,8 +246,8 @@ func TestCreateInitialRefreshableTokensIfNeededInputValidation(t *testing.T) {
 			name: "InputValidation_NoCredentials",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 				ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 				User:                            "",
@@ -259,8 +259,8 @@ func TestCreateInitialRefreshableTokensIfNeededInputValidation(t *testing.T) {
 			name: "InputValidation_OnlyUser",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 				ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 				User:                            "testuser",
@@ -272,8 +272,8 @@ func TestCreateInitialRefreshableTokensIfNeededInputValidation(t *testing.T) {
 			name: "InputValidation_OnlyPassword",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 				ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 				User:                            "",
@@ -292,7 +292,7 @@ func TestCreateInitialRefreshableTokensIfNeededInputValidation(t *testing.T) {
 			serverDetailsCopy := &ServerDetails{
 				ServerId:                        tt.serverDetails.ServerId,
 				ArtifactoryTokenRefreshInterval: tt.serverDetails.ArtifactoryTokenRefreshInterval,
-				ArtifactoryRefreshToken:          tt.serverDetails.ArtifactoryRefreshToken,
+				ArtifactoryRefreshToken:         tt.serverDetails.ArtifactoryRefreshToken,
 				AccessToken:                     tt.serverDetails.AccessToken,
 				ArtifactoryUrl:                  tt.serverDetails.ArtifactoryUrl,
 				User:                            tt.serverDetails.User,
@@ -332,8 +332,8 @@ func TestCreateInitialRefreshableTokensIfNeededStateChanges(t *testing.T) {
 
 		serverDetails := &ServerDetails{
 			ServerId:                        "test-server",
-			ArtifactoryTokenRefreshInterval:  60,
-			ArtifactoryRefreshToken:          "",
+			ArtifactoryTokenRefreshInterval: 60,
+			ArtifactoryRefreshToken:         "",
 			AccessToken:                     "",
 			ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 			User:                            "testuser",
@@ -357,15 +357,14 @@ func TestCreateInitialRefreshableTokensIfNeededStateChanges(t *testing.T) {
 		}
 	})
 
-
 	t.Run("StateChange_TokensSetAfterSuccess", func(t *testing.T) {
 		cleanUpTempEnv := configtests.CreateTempEnv(t, false)
 		defer cleanUpTempEnv()
 
 		serverDetails := &ServerDetails{
 			ServerId:                        "test-server",
-			ArtifactoryTokenRefreshInterval:  60,
-			ArtifactoryRefreshToken:          "",
+			ArtifactoryTokenRefreshInterval: 60,
+			ArtifactoryRefreshToken:         "",
 			AccessToken:                     "",
 			ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 			User:                            "testuser",
@@ -398,8 +397,8 @@ func TestCreateInitialRefreshableTokensIfNeededEdgeCases(t *testing.T) {
 			name: "EdgeCase_AllFieldsEmpty",
 			serverDetails: &ServerDetails{
 				ServerId:                        "",
-				ArtifactoryTokenRefreshInterval:  0,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 0,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 			},
 			description: "Should handle all fields empty",
@@ -408,8 +407,8 @@ func TestCreateInitialRefreshableTokensIfNeededEdgeCases(t *testing.T) {
 			name: "EdgeCase_IntervalOne",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  1,
-				ArtifactoryRefreshToken:          "",
+				ArtifactoryTokenRefreshInterval: 1,
+				ArtifactoryRefreshToken:         "",
 				AccessToken:                     "",
 			},
 			description: "Should handle minimum positive interval",
@@ -418,9 +417,9 @@ func TestCreateInitialRefreshableTokensIfNeededEdgeCases(t *testing.T) {
 			name: "EdgeCase_IntervalMaxInt",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  2147483647, // max int32
-				ArtifactoryRefreshToken:          "", // jfrog-ignore 
-				AccessToken:                     "", // jfrog-ignore 
+				ArtifactoryTokenRefreshInterval: 2147483647, // max int32
+				ArtifactoryRefreshToken:         "",         // jfrog-ignore
+				AccessToken:                     "",         // jfrog-ignore
 			},
 			description: "Should handle maximum interval value",
 		},
@@ -428,9 +427,9 @@ func TestCreateInitialRefreshableTokensIfNeededEdgeCases(t *testing.T) {
 			name: "EdgeCase_WhitespaceTokens",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "   ", // jfrog-ignore 
-				AccessToken:                     "", // jfrog-ignore 
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "   ", // jfrog-ignore
+				AccessToken:                     "",    // jfrog-ignore
 			},
 			description: "Should handle whitespace-only refresh token (treated as non-empty)",
 		},
@@ -438,9 +437,9 @@ func TestCreateInitialRefreshableTokensIfNeededEdgeCases(t *testing.T) {
 			name: "EdgeCase_WhitespaceAccessToken",
 			serverDetails: &ServerDetails{
 				ServerId:                        "test-server",
-				ArtifactoryTokenRefreshInterval:  60,
-				ArtifactoryRefreshToken:          "", // jfrog-ignore 
-				AccessToken:                     "   ", // jfrog-ignore 
+				ArtifactoryTokenRefreshInterval: 60,
+				ArtifactoryRefreshToken:         "",    // jfrog-ignore
+				AccessToken:                     "   ", // jfrog-ignore
 			},
 			description: "Should handle whitespace-only access token (treated as non-empty)",
 		},
@@ -454,7 +453,7 @@ func TestCreateInitialRefreshableTokensIfNeededEdgeCases(t *testing.T) {
 			serverDetailsCopy := &ServerDetails{
 				ServerId:                        tt.serverDetails.ServerId,
 				ArtifactoryTokenRefreshInterval: tt.serverDetails.ArtifactoryTokenRefreshInterval,
-				ArtifactoryRefreshToken:          tt.serverDetails.ArtifactoryRefreshToken,
+				ArtifactoryRefreshToken:         tt.serverDetails.ArtifactoryRefreshToken,
 				AccessToken:                     tt.serverDetails.AccessToken,
 			}
 
@@ -488,8 +487,8 @@ func TestCreateInitialRefreshableTokensIfNeededOutputValidation(t *testing.T) {
 	t.Run("OutputValidation_EarlyReturnNilError", func(t *testing.T) {
 		serverDetails := &ServerDetails{
 			ServerId:                        "test-server",
-			ArtifactoryTokenRefreshInterval:  0,
-			ArtifactoryRefreshToken:          "",
+			ArtifactoryTokenRefreshInterval: 0,
+			ArtifactoryRefreshToken:         "",
 			AccessToken:                     "",
 		}
 
@@ -500,8 +499,8 @@ func TestCreateInitialRefreshableTokensIfNeededOutputValidation(t *testing.T) {
 	t.Run("OutputValidation_ServerDetailsNotNil", func(t *testing.T) {
 		serverDetails := &ServerDetails{
 			ServerId:                        "test-server",
-			ArtifactoryTokenRefreshInterval:  60,
-			ArtifactoryRefreshToken:          "",
+			ArtifactoryTokenRefreshInterval: 60,
+			ArtifactoryRefreshToken:         "",
 			AccessToken:                     "",
 		}
 
@@ -521,7 +520,7 @@ func TestCreateInitialRefreshableTokensIfNeededBranchCoverage(t *testing.T) {
 		// Test branch: ArtifactoryTokenRefreshInterval <= 0
 		serverDetails1 := &ServerDetails{
 			ArtifactoryTokenRefreshInterval: 0,
-			ArtifactoryRefreshToken:          "",
+			ArtifactoryRefreshToken:         "",
 			AccessToken:                     "",
 		}
 		err1 := CreateInitialRefreshableTokensIfNeeded(serverDetails1)
@@ -530,7 +529,7 @@ func TestCreateInitialRefreshableTokensIfNeededBranchCoverage(t *testing.T) {
 		// Test branch: ArtifactoryRefreshToken != ""
 		serverDetails2 := &ServerDetails{
 			ArtifactoryTokenRefreshInterval: 60,
-			ArtifactoryRefreshToken:          "token",
+			ArtifactoryRefreshToken:         "token",
 			AccessToken:                     "",
 		}
 		err2 := CreateInitialRefreshableTokensIfNeeded(serverDetails2)
@@ -539,7 +538,7 @@ func TestCreateInitialRefreshableTokensIfNeededBranchCoverage(t *testing.T) {
 		// Test branch: AccessToken != ""
 		serverDetails3 := &ServerDetails{
 			ArtifactoryTokenRefreshInterval: 60,
-			ArtifactoryRefreshToken:          "",
+			ArtifactoryRefreshToken:         "",
 			AccessToken:                     "token",
 		}
 		err3 := CreateInitialRefreshableTokensIfNeeded(serverDetails3)
@@ -551,8 +550,8 @@ func TestCreateInitialRefreshableTokensIfNeededBranchCoverage(t *testing.T) {
 		// Note: This will require proper setup or mocking of dependencies
 		serverDetails := &ServerDetails{
 			ServerId:                        "test-server",
-			ArtifactoryTokenRefreshInterval:  60,
-			ArtifactoryRefreshToken:          "",
+			ArtifactoryTokenRefreshInterval: 60,
+			ArtifactoryRefreshToken:         "",
 			AccessToken:                     "",
 			ArtifactoryUrl:                  "http://localhost:8081/artifactory/",
 			User:                            "testuser",
@@ -571,4 +570,3 @@ func TestCreateInitialRefreshableTokensIfNeededBranchCoverage(t *testing.T) {
 		assert.NotNil(t, serverDetails)
 	})
 }
-

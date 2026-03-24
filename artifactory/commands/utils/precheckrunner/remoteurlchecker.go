@@ -3,9 +3,10 @@ package precheckrunner
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/jfrog/gofrog/safeconvert"
 	"net/http"
 	"time"
+
+	"github.com/jfrog/gofrog/safeconvert"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/progressbar"

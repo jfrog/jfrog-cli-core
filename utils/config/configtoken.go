@@ -98,7 +98,7 @@ func Export(details *ServerDetails) (string, error) {
 			return "", errorutils.CheckErrorf("could not generate config token: config is encrypted, and wrong master key was provided")
 		}
 	}
-	buffer, err := json.Marshal(fromServerDetails(details))
+	buffer, err := json.Marshal(fromServerDetails(details)) // #nosec G117 -- intentional serialization of auth config for export token
 	if err != nil {
 		return "", err
 	}

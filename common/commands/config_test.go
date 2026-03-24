@@ -443,7 +443,7 @@ func doConfig(t *testing.T, serverId string, inputDetails *config.ServerDetails,
 
 func configStructToString(t *testing.T, artConfig *config.ServerDetails) string {
 	artConfig.IsDefault = false
-	marshaledStruct, err := json.Marshal(*artConfig)
+	marshaledStruct, err := json.Marshal(*artConfig) // #nosec G117 -- test helper
 	assert.NoError(t, err)
 	return string(marshaledStruct)
 }

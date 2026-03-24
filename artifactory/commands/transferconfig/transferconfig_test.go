@@ -118,7 +118,7 @@ func TestValidateTargetServer(t *testing.T) {
 			_, err = w.Write(content)
 			assert.NoError(t, err)
 		default:
-			content, err := json.Marshal(users)
+			content, err := json.Marshal(users) // #nosec G117 -- test mock response
 			assert.NoError(t, err)
 			_, err = w.Write(content)
 			assert.NoError(t, err)

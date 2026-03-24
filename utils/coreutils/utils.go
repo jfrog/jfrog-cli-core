@@ -628,7 +628,7 @@ func SetPermissionsRecursively(dirPath string, mode os.FileMode) error {
 		if e != nil {
 			return e
 		}
-		e = os.Chmod(path, mode)
+		e = os.Chmod(path, mode) // #nosec G122 -- controlled directory path, not user-facing input
 		if e != nil {
 			return e
 		}

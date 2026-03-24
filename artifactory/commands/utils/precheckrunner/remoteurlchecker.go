@@ -109,7 +109,7 @@ func (rrc *RemoteRepositoryCheck) createRemoteUrlRequest() ([]remoteRepoSettings
 func (rrc *RemoteRepositoryCheck) doCheckRemoteRepositories(args RunArguments, remoteUrlRequest []remoteRepoSettings) (inaccessibleRepositories *[]inaccessibleRepository, err error) {
 	artifactoryUrl := clientutils.AddTrailingSlashIfNeeded(args.ServerDetails.ArtifactoryUrl)
 
-	body, err := json.Marshal(remoteUrlRequest)
+	body, err := json.Marshal(remoteUrlRequest) // #nosec G117 -- credentials sent to Artifactory API
 	if err != nil {
 		return nil, errorutils.CheckError(err)
 	}

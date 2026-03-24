@@ -94,9 +94,9 @@ type File struct {
 	TargetPathInArchive     string
 	Include                 []string `json:"include,omitempty"`
 	Package                 string   `json:"package,omitempty"`
-	Version                 string `json:"version,omitempty"`
-	Type                    string `json:"type,omitempty"`
-	RepoKey                 string `json:"repoKey,omitempty"`
+	Version                 string   `json:"version,omitempty"`
+	Type                    string   `json:"type,omitempty"`
+	RepoKey                 string   `json:"repoKey,omitempty"`
 }
 
 func (f File) GetInclude() []string {

@@ -191,7 +191,7 @@ func TestDetectCISystem(t *testing.T) {
 	}
 
 	// Restore environment after test
-		defer func() {
+	defer func() {
 		for envVar, value := range originalEnv {
 			if value != "" {
 				if err := os.Setenv(envVar, value); err != nil {
@@ -219,7 +219,7 @@ func TestDetectCISystem(t *testing.T) {
 		{"No CI", "", "", ""},
 	}
 
-		for _, tt := range tests {
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear all CI environment variables
 			for _, envVar := range ciEnvVars {

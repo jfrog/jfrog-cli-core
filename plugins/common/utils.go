@@ -317,19 +317,29 @@ func PrintDetailedSummaryReport(basicSummary string, reader *content.ContentRead
 
 // Print a file tree based on the items' path in the reader's list.
 func PrintDeploymentView(reader *content.ContentReader) error {
+	output, err := GetDeploymentViewString(reader)
+	if err != nil {
+		return err
+	}
+	if len(output) > 0 {
+		log.Info("These files were uploaded:\n\n" + output)
+	} else {
+		log.Info("No files were uploaded.")
+	}
+	return nil
+}
+
+func GetDeploymentViewString(reader *content.ContentReader) (string, error) {
 	tree := artifactoryUtils.NewFileTree()
 	for transferDetails := new(clientutils.FileTransferDetails); reader.NextRecord(transferDetails) == nil; transferDetails = new(clientutils.FileTransferDetails) {
 		tree.AddFile(transferDetails.TargetPath, "")
 	}
 	if err := reader.GetError(); err != nil {
-		return err
+		return "", err
 	}
 	reader.Reset()
 	output := tree.String()
-	if len(output) > 0 {
-		log.Info("These files were uploaded:\n\n" + output)
-	}
-	return nil
+	return output, nil
 }
 
 // Get the detailed summary record.

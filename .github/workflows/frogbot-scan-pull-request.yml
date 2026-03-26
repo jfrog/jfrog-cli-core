@@ -10,6 +10,7 @@ permissions:
 jobs:
   scan-pull-request:
     runs-on: ubuntu-latest
+    environment: frogbot
     steps:
       - name: Setup Go with cache
         uses: jfrog/.github/actions/install-go-with-cache@main

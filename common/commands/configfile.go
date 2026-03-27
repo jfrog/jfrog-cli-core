@@ -169,6 +169,8 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 		return configFile.setResolver(false)
 	case project.Npm:
 		return configFile.setDeployerResolver()
+	case project.Pnpm:
+		return configFile.setDeployerResolver()
 	case project.Nuget, project.Dotnet:
 		return configFile.configDotnet()
 	case project.Maven:

@@ -17,6 +17,7 @@ func TestFromString(t *testing.T) {
 		{"npm", Npm},
 		{"pnpm", Pnpm},
 		{"ruby", Ruby},
+		{"conan", Conan},
 	}
 
 	for _, testCase := range testCases {

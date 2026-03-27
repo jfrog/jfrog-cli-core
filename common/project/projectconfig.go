@@ -47,6 +47,7 @@ const (
 	Twine
 	Helm
 	Ruby
+	Conan
 )
 
 type ConfigType string
@@ -77,6 +78,7 @@ var ProjectTypes = []string{
 	"twine",
 	"helm",
 	"ruby",
+	"conan",
 }
 
 func (projectType ProjectType) String() string {

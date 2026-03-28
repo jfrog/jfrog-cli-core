@@ -832,6 +832,56 @@ func TestReportUsageToVisibilitySystemWithoutMetrics(t *testing.T) {
 	}
 }
 
+func TestSetPackageAliasContext(t *testing.T) {
+	ClearAllMetrics()
+	// Ensure context is clear before test
+	globalMetricsCollector.packageAliasContext = ""
+
+	commandName := "npm_install"
+	flags := []string{"save-dev"}
+
+	// Set the package alias context (simulates DispatchIfAlias -> runJFMode)
+	SetPackageAliasContext("npm")
+
+	// Collect metrics (simulates commands.Exec)
+	CollectMetrics(commandName, flags)
+
+	metrics := GetCollectedMetrics(commandName)
+	if metrics == nil {
+		t.Fatal("Expected metrics to be collected")
+	}
+	if !metrics.PackageAlias {
+		t.Error("Expected PackageAlias to be true")
+	}
+	if metrics.PackageManager != "npm" {
+		t.Errorf("Expected PackageManager 'npm', got '%s'", metrics.PackageManager)
+	}
+
+	// packageAliasContext must be cleared after CollectMetrics
+	if globalMetricsCollector.packageAliasContext != "" {
+		t.Errorf("Expected packageAliasContext to be cleared, got '%s'", globalMetricsCollector.packageAliasContext)
+	}
+}
+
+func TestCollectMetrics_WithoutPackageAlias(t *testing.T) {
+	ClearAllMetrics()
+	globalMetricsCollector.packageAliasContext = ""
+
+	commandName := "rt_upload"
+	CollectMetrics(commandName, nil)
+
+	metrics := GetCollectedMetrics(commandName)
+	if metrics == nil {
+		t.Fatal("Expected metrics to be collected")
+	}
+	if metrics.PackageAlias {
+		t.Error("Expected PackageAlias to be false when not set")
+	}
+	if metrics.PackageManager != "" {
+		t.Errorf("Expected PackageManager to be empty, got '%s'", metrics.PackageManager)
+	}
+}
+
 func TestMetricsIntegrationFlow(t *testing.T) {
 	// Clear any existing metrics
 	globalMetricsCollector.mu.Lock()

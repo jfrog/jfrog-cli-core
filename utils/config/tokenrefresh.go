@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +19,8 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/io/httputils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
+
+const referenceTokenPrefix = "cmVmdGtuOj"
 
 // Internal golang locking for the same process.
 var mutex sync.Mutex
@@ -204,6 +207,12 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 
 func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {
 	if serverDetails.ArtifactoryTokenRefreshInterval <= 0 || serverDetails.ArtifactoryRefreshToken != "" || serverDetails.AccessToken != "" {
+		return nil
+	}
+	if strings.HasPrefix(serverDetails.Password, referenceTokenPrefix) {
+		log.Info("Reference token detected as password. Skipping automatic token creation " +
+			"to preserve the token's restricted scope.")
+		serverDetails.ArtifactoryTokenRefreshInterval = 0
 		return nil
 	}
 	mutex.Lock()

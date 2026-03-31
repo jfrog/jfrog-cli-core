@@ -1,11 +1,22 @@
 package config
 
 import (
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"sync"
 	"testing"
 
 	configtests "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func fakeReferenceToken(suffix string) string {
+	return base64.StdEncoding.EncodeToString([]byte("reftkn:01:1776144219:" + suffix))
+}
 
 func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 	tests := []struct {
@@ -569,4 +580,90 @@ func TestCreateInitialRefreshableTokensIfNeededBranchCoverage(t *testing.T) {
 		// But we verify the function executes without panic
 		assert.NotNil(t, serverDetails)
 	})
+}
+
+func TestReferenceTokenBlocksTokenCreation_MockServer(t *testing.T) {
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	defer cleanUpTempEnv()
+
+	var mu sync.Mutex
+	var tokenRequestReceived bool
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/system/version" {
+			w.WriteHeader(http.StatusOK)
+			resp := map[string]string{"version": "7.77.0", "revision": "12345"}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		if r.URL.Path == "/api/security/token" && r.Method == http.MethodPost {
+			mu.Lock()
+			tokenRequestReceived = true
+			mu.Unlock()
+			w.Header().Set("Content-Type", "application/json")
+			resp := map[string]interface{}{
+				"access_token":  "mock-jwt-token",
+				"refresh_token": "mock-refresh-token",
+				"expires_in":    3600,
+				"scope":         "member-of-groups:*",
+				"token_type":    "Bearer",
+			}
+			json.NewEncoder(w).Encode(resp)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer mockServer.Close()
+
+	parsedURL, err := url.Parse(mockServer.URL)
+	require.NoError(t, err)
+	artURL := parsedURL.Scheme + "://" + parsedURL.Host + "/api/"
+
+	// Test 1: Reference token as password — should NOT trigger token creation
+	serverDetails := &ServerDetails{
+		ServerId:                        "test-ref-token-blocked",
+		ArtifactoryTokenRefreshInterval: 60,
+		ArtifactoryRefreshToken:         "",
+		AccessToken:                     "",
+		ArtifactoryUrl:                  mockServer.URL + "/",
+		Url:                             artURL,
+		User:                            "testuser",
+		Password:                        fakeReferenceToken("testBlockedToken"),
+	}
+
+	err = SaveServersConf([]*ServerDetails{serverDetails})
+	require.NoError(t, err)
+
+	err = CreateInitialRefreshableTokensIfNeeded(serverDetails)
+	assert.NoError(t, err)
+
+	mu.Lock()
+	assert.False(t, tokenRequestReceived,
+		"FIX VERIFIED: Reference token password should prevent token creation request")
+	assert.Equal(t, 0, serverDetails.ArtifactoryTokenRefreshInterval,
+		"Token refresh interval should be reset to 0 for reference tokens")
+	tokenRequestReceived = false
+	mu.Unlock()
+
+	// Test 2: Regular password — SHOULD trigger token creation
+	serverDetails2 := &ServerDetails{
+		ServerId:                        "test-regular-pass",
+		ArtifactoryTokenRefreshInterval: 60,
+		ArtifactoryRefreshToken:         "",
+		AccessToken:                     "",
+		ArtifactoryUrl:                  mockServer.URL + "/",
+		Url:                             artURL,
+		User:                            "testuser",
+		Password:                        "my-regular-password",
+	}
+
+	err = SaveServersConf([]*ServerDetails{serverDetails2})
+	require.NoError(t, err)
+
+	_ = CreateInitialRefreshableTokensIfNeeded(serverDetails2)
+
+	mu.Lock()
+	assert.True(t, tokenRequestReceived,
+		"Regular password should trigger token creation as before")
+	mu.Unlock()
 }

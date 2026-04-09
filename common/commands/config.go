@@ -47,8 +47,7 @@ const (
 
 const (
 	// Default config command name.
-	configCommandName    = "config"
-	referenceTokenPrefix = "cmVmdGtuOj"
+	configCommandName = "config"
 )
 
 // Internal golang locking for the same process.
@@ -296,19 +295,8 @@ func (cc *ConfigCommand) configRefreshableTokenIfPossible() {
 	if cc.details.User == "" || cc.details.Password == "" {
 		return
 	}
-	if isReferenceToken(cc.details.Password) {
-		log.Info("Detected a reference token as the password. Using basic authentication to preserve " +
-			"the token's restricted scope. The automatic token refresh mechanism is disabled.")
-		cc.useBasicAuthOnly = true
-		return
-	}
 	// Set the default interval for the refreshable tokens to be initialized in the next CLI run.
 	cc.details.ArtifactoryTokenRefreshInterval = coreutils.TokenRefreshDefaultInterval
-}
-
-// isReferenceToken checks whether the given value is a JFrog reference token.
-func isReferenceToken(token string) bool {
-	return strings.HasPrefix(token, referenceTokenPrefix)
 }
 
 func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, error) {

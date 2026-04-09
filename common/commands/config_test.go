@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"os"
@@ -16,10 +15,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/stretchr/testify/assert"
 )
-
-func getReferenceToken(suffix string) string {
-	return base64.StdEncoding.EncodeToString([]byte("reftkn:01:1776144219:" + suffix))
-}
 
 const (
 	testServerId = "test"
@@ -194,52 +189,6 @@ func TestBasicAuthOnlyOption(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.ArtifactoryTokenRefreshInterval, "expected refreshable token to be enabled")
 	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
-}
-
-func TestReferenceTokenAutoDetection(t *testing.T) {
-	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
-	assert.NoError(t, err)
-	defer cleanUpJfrogHome()
-
-	inputDetails := tests.CreateTestServerDetails()
-	inputDetails.User = "testuser"
-
-	inputDetails.Password = getReferenceToken("RefToken")
-	outputConfig, err := configAndGetTestServer(t, inputDetails, false, false)
-	assert.NoError(t, err)
-	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.ArtifactoryTokenRefreshInterval,
-		"Reference token detected: token refresh should be auto-disabled")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
-
-	// Regular password (not a reference token) should still enable token refresh.
-	inputDetails.Password = "my-regular-password"
-	inputDetails.ArtifactoryTokenRefreshInterval = 0
-	outputConfig, err = configAndGetTestServer(t, inputDetails, false, false)
-	assert.NoError(t, err)
-	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, outputConfig.ArtifactoryTokenRefreshInterval,
-		"Regular password: token refresh should remain enabled")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
-}
-
-func TestIsReferenceToken(t *testing.T) {
-	tests := []struct {
-		name     string
-		token    string
-		expected bool
-	}{
-		{"valid reference token", getReferenceToken("refToken"), true},
-		{"regular password", "my-password-123", false},
-		{"API key", "AKCp8kqqMa7buMW3FeN28joXt", false},
-		{"JWT access token", "eyJ2ZXIiOiIyIiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYifQ.eyJzdWIiOiJ0ZXN0In0.signature", false},
-		{"empty string", "", false},
-		{"partial prefix only reftkn", base64.StdEncoding.EncodeToString([]byte("reftkn")) + "XYZ", false},
-		{"prefix without colon separator", base64.StdEncoding.EncodeToString([]byte("reftkn")) + "SomePassword", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, isReferenceToken(tt.token))
-		})
-	}
 }
 
 func TestMakeDefaultOption(t *testing.T) {

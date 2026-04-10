@@ -589,14 +589,15 @@ func TestAccessAPITokenCreation_MockServer(t *testing.T) {
 			tokenRequestReceived = true
 			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
+			// #nosec G101 -- mock test credentials, not real tokens
 			resp := map[string]interface{}{
-				"access_token":  "mock-jwt-token",
-				"refresh_token": "mock-refresh-token",
+				"access_token":  "mock-jwt-token",   // #nosec G101
+				"refresh_token": "mock-refresh-token", // #nosec G101
 				"expires_in":    3600,
 				"scope":         "applied-permissions/user",
 				"token_type":    "Bearer",
 			}
-			json.NewEncoder(w).Encode(resp)
+			_ = json.NewEncoder(w).Encode(resp)
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)

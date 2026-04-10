@@ -189,7 +189,7 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 		return auth.CreateTokenResponseData{}, err
 	}
 
-	expiresIn := uint(expirySeconds)
+	expiresIn := uint(max(expirySeconds, 0)) // #nosec G115 -- expirySeconds is validated positive by callers
 	createTokenParams := accessservices.CreateTokenParams{
 		CommonTokenParams: auth.CommonTokenParams{
 			Scope:       "applied-permissions/user",

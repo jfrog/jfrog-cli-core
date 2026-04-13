@@ -178,10 +178,13 @@ func (cc *ConfigCommand) config() error {
 	if err = cc.assertUrlsSafe(); err != nil {
 		return err
 	}
+	cc.configRefreshableTokenIfPossible()
+	if err = cc.createInitialTokenIfNeeded(); err != nil {
+		return err
+	}
 	if err = cc.encPasswordIfNeeded(); err != nil {
 		return err
 	}
-	cc.configRefreshableTokenIfPossible()
 	return config.SaveServersConf(configurations)
 }
 
@@ -275,6 +278,10 @@ func (cc *ConfigCommand) setDefaultIfNeeded(configurations []*config.ServerDetai
 		}
 		cc.details.IsDefault = true
 	}
+}
+
+func (cc *ConfigCommand) createInitialTokenIfNeeded() error {
+	return config.CreateInitialRefreshableTokensIfNeeded(cc.details)
 }
 
 func (cc *ConfigCommand) encPasswordIfNeeded() error {

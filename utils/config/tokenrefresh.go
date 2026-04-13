@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -201,7 +202,11 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 
 	newToken, err := servicesManager.CreateAccessToken(createTokenParams)
 	if err != nil {
-		return auth.CreateTokenResponseData{}, err
+		return auth.CreateTokenResponseData{}, fmt.Errorf(
+			"automatic token creation via the Access API failed: %s. "+
+				"If your JFrog Platform version does not support the Access API, please upgrade. "+
+				"Alternatively, use the --basic-auth-only flag to skip automatic token creation",
+			err.Error())
 	}
 	return newToken, nil
 }

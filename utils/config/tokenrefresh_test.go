@@ -581,12 +581,12 @@ func TestAccessAPITokenCreation_MockServer(t *testing.T) {
 	defer cleanUpTempEnv()
 
 	var mu sync.Mutex
-	var tokenRequestReceived bool
+	var accessAPIHit bool
 
 	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/access/api/v1/tokens" && r.Method == http.MethodPost {
 			mu.Lock()
-			tokenRequestReceived = true
+			accessAPIHit = true
 			mu.Unlock()
 			w.Header().Set("Content-Type", "application/json")
 			// #nosec G101 -- mock test credentials, not real tokens
@@ -623,7 +623,36 @@ func TestAccessAPITokenCreation_MockServer(t *testing.T) {
 	_ = CreateInitialRefreshableTokensIfNeeded(serverDetails)
 
 	mu.Lock()
-	assert.True(t, tokenRequestReceived,
+	assert.True(t, accessAPIHit,
 		"Token creation should use the Access API endpoint")
 	mu.Unlock()
+}
+
+func TestAccessAPITokenCreationFails_MockServer(t *testing.T) {
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	defer cleanUpTempEnv()
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer mockServer.Close()
+
+	serverDetails := &ServerDetails{
+		ServerId:                        "test-api-fail",
+		ArtifactoryTokenRefreshInterval: 60,
+		ArtifactoryRefreshToken:         "",
+		AccessToken:                     "",
+		ArtifactoryUrl:                  mockServer.URL + "/",
+		Url:                             mockServer.URL + "/",
+		User:                            "testuser",
+		Password:                        "my-regular-password",
+	}
+
+	err := SaveServersConf([]*ServerDetails{serverDetails})
+	require.NoError(t, err)
+
+	err = CreateInitialRefreshableTokensIfNeeded(serverDetails)
+	assert.Error(t, err, "Should return error when Access API fails")
+	assert.Contains(t, err.Error(), "automatic token creation via the Access API failed",
+		"Error should suggest upgrading or using --basic-auth-only")
 }

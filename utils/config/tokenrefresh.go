@@ -208,7 +208,7 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 	// If basic auth failed and a password is available, retry using it as a Bearer token.
 	// This handles reference tokens, which the Access service can resolve server-side.
 	if serverDetails.Password != "" {
-		bearerDetails := copyServerDetailsWithAccessToken(serverDetails, serverDetails.Password)
+		bearerDetails := serverDetailsForBearerAuth(serverDetails, serverDetails.Password)
 		servicesManager, err = createAccessTokensServiceManager(bearerDetails)
 		if err != nil {
 			return auth.CreateTokenResponseData{}, err
@@ -227,15 +227,14 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 		err.Error())
 }
 
-// copyServerDetailsWithAccessToken creates a shallow copy of ServerDetails with the given
-// token set as AccessToken and credentials cleared, so that the Access API uses Bearer
-// authentication instead of basic auth.
-func copyServerDetailsWithAccessToken(original *ServerDetails, token string) *ServerDetails {
-	copy := *original
-	copy.AccessToken = token
-	copy.User = ""
-	copy.Password = ""
-	return &copy
+// serverDetailsForBearerAuth returns a ServerDetails configured to authenticate using the
+// given token as a Bearer token, with user/password credentials cleared.
+func serverDetailsForBearerAuth(original *ServerDetails, token string) *ServerDetails {
+	details := *original
+	details.AccessToken = token
+	details.User = ""
+	details.Password = ""
+	return &details
 }
 
 func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {

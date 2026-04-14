@@ -185,11 +185,6 @@ func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, r
 }
 
 func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {
-	servicesManager, err := createAccessTokensServiceManager(serverDetails)
-	if err != nil {
-		return auth.CreateTokenResponseData{}, err
-	}
-
 	expiresIn := uint(max(expirySeconds, 0)) // #nosec G115 -- expirySeconds is validated positive by callers
 	createTokenParams := accessservices.CreateTokenParams{
 		CommonTokenParams: auth.CommonTokenParams{
@@ -200,15 +195,47 @@ func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (aut
 		Username: serverDetails.User,
 	}
 
-	newToken, err := servicesManager.CreateAccessToken(createTokenParams)
+	// First, try with the original credentials (basic auth: user + password).
+	servicesManager, err := createAccessTokensServiceManager(serverDetails)
 	if err != nil {
-		return auth.CreateTokenResponseData{}, fmt.Errorf(
-			"automatic token creation via the Access API failed: %s. "+
-				"If your JFrog Platform version does not support the Access API, please upgrade. "+
-				"Alternatively, use the --basic-auth-only flag to skip automatic token creation",
-			err.Error())
+		return auth.CreateTokenResponseData{}, err
 	}
-	return newToken, nil
+	newToken, err := servicesManager.CreateAccessToken(createTokenParams)
+	if err == nil {
+		return newToken, nil
+	}
+
+	// If basic auth failed and a password is available, retry using it as a Bearer token.
+	// This handles reference tokens, which the Access service can resolve server-side.
+	if serverDetails.Password != "" {
+		bearerDetails := copyServerDetailsWithAccessToken(serverDetails, serverDetails.Password)
+		servicesManager, err = createAccessTokensServiceManager(bearerDetails)
+		if err != nil {
+			return auth.CreateTokenResponseData{}, err
+		}
+		newToken, err = servicesManager.CreateAccessToken(createTokenParams)
+		if err == nil {
+			return newToken, nil
+		}
+		log.Debug("Access token creation with Bearer auth failed: " + err.Error())
+	}
+
+	return auth.CreateTokenResponseData{}, fmt.Errorf(
+		"automatic token creation via the Access API failed: %s. "+
+			"If your JFrog Platform version does not support the Access API, please upgrade. "+
+			"Alternatively, use the --basic-auth-only flag to skip automatic token creation",
+		err.Error())
+}
+
+// copyServerDetailsWithAccessToken creates a shallow copy of ServerDetails with the given
+// token set as AccessToken and credentials cleared, so that the Access API uses Bearer
+// authentication instead of basic auth.
+func copyServerDetailsWithAccessToken(original *ServerDetails, token string) *ServerDetails {
+	copy := *original
+	copy.AccessToken = token
+	copy.User = ""
+	copy.Password = ""
+	return &copy
 }
 
 func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {
@@ -230,9 +257,10 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 		return
 	}
 
-	newToken, err := createTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
-	if err != nil {
-		return
+	newToken, tokenErr := createTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
+	if tokenErr != nil {
+		serverDetails.ArtifactoryTokenRefreshInterval = 0
+		return nil
 	}
 	// Remove initializing value.
 	serverDetails.ArtifactoryTokenRefreshInterval = 0

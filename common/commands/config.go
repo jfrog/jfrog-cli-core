@@ -178,11 +178,10 @@ func (cc *ConfigCommand) config() error {
 	if err = cc.assertUrlsSafe(); err != nil {
 		return err
 	}
-	cc.configRefreshableTokenIfPossible()
-	cc.createInitialTokenIfNeeded()
 	if err = cc.encPasswordIfNeeded(); err != nil {
 		return err
 	}
+	cc.configRefreshableTokenIfPossible()
 	return config.SaveServersConf(configurations)
 }
 
@@ -275,18 +274,6 @@ func (cc *ConfigCommand) setDefaultIfNeeded(configurations []*config.ServerDetai
 			configurations[i].IsDefault = false
 		}
 		cc.details.IsDefault = true
-	}
-}
-
-// createInitialTokenIfNeeded creates the initial access token using the plain-text password
-// before it gets encrypted. This is necessary because the Access API cannot decrypt
-// Artifactory-encrypted passwords. If token creation fails, the token refresh mechanism
-// is disabled so the CLI falls back to using the original credentials directly.
-func (cc *ConfigCommand) createInitialTokenIfNeeded() {
-	if err := config.CreateInitialRefreshableTokensIfNeeded(cc.details); err != nil {
-		log.Warn("Automatic access token creation failed: " + err.Error())
-		log.Warn("Falling back to basic authentication. To avoid this warning, use --basic-auth-only.")
-		cc.details.ArtifactoryTokenRefreshInterval = 0
 	}
 }
 

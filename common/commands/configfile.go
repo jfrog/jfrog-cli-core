@@ -159,6 +159,8 @@ func handleInteractiveConfigCreation(configFile *ConfigFile, confType project.Pr
 	switch confType {
 	case project.Ruby:
 		return configFile.setDeployerResolver()
+	case project.Conan:
+		return configFile.setDeployerResolver()
 	case project.Go:
 		return configFile.setDeployerResolver()
 	case project.Pip, project.Pipenv:

@@ -36,7 +36,7 @@ jobs:
         run: python -m pip install pipenv poetry
 
       - name: Install NuGet
-        uses: nuget/setup-nuget@v3
+        uses: nuget/setup-nuget@v4
         with:
           nuget-version: 6.x
 

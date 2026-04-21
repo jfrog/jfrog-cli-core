@@ -12,42 +12,39 @@ import (
 	"github.com/jfrog/jfrog-client-go/utils/log"
 )
 
-func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDetails) error {
+func LicenseAcquire(bucketId string, name string, serverDetails *config.ServerDetails) (string, error) {
 	postContent := LicenseAcquireRequestContent{
 		Name:         name,
 		LicenseCount: 1,
 	}
 	requestContent, err := json.Marshal(postContent)
 	if err != nil {
-		return errorutils.CheckErrorf("Failed to marshal json: %s", err.Error())
+		return "", errorutils.CheckErrorf("Failed to marshal json: %s", err.Error())
 	}
 	missionControlUrl := serverDetails.MissionControlUrl + "api/v1/buckets/" + bucketId + "/acquire"
 	httpClientDetails := utils.GetMissionControlHttpClientDetails(serverDetails)
 	client, err := httpclient.ClientBuilder().SetRetries(3).Build()
 	if err != nil {
-		return err
+		return "", err
 	}
 	resp, body, err := client.SendPost(missionControlUrl, requestContent, httpClientDetails, "")
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
-		return errors.New(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
+		return "", errors.New(resp.Status + ". " + utils.ReadMissionControlHttpMessage(body))
 	}
 	log.Debug("Mission Control response: " + resp.Status)
 
-	// Extract license from response
 	var licenseKeys licenseKeys
 	err = json.Unmarshal(body, &licenseKeys)
 	if err != nil {
-		return errorutils.CheckError(err)
+		return "", errorutils.CheckError(err)
 	}
 	if len(licenseKeys.LicenseKeys) < 1 {
-		return errorutils.CheckErrorf("failed to acquire license key from Mission Control: received 0 license keys")
+		return "", errorutils.CheckErrorf("failed to acquire license key from Mission Control: received 0 license keys")
 	}
-	// Print license to log
-	log.Output(licenseKeys.LicenseKeys[0])
-	return nil
+	return licenseKeys.LicenseKeys[0], nil
 }
 
 type LicenseAcquireRequestContent struct {

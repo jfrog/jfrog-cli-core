@@ -41,6 +41,7 @@ const (
 	ErrorHandling           = "JFROG_CLI_ERROR_HANDLING"
 	TempDir                 = "JFROG_CLI_TEMP_DIR"
 	LogLevel                = "JFROG_CLI_LOG_LEVEL"
+	OutputFormat            = "JFROG_CLI_OUTPUT_FORMAT"
 	LogTimestamp            = "JFROG_CLI_LOG_TIMESTAMP"
 	ReportUsage             = "JFROG_CLI_REPORT_USAGE"
 	DependenciesDir         = "JFROG_CLI_DEPENDENCIES_DIR"

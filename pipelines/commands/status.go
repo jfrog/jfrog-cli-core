@@ -25,6 +25,9 @@ type StatusCommand struct {
 	// Notify used for determining for continuous monitoring of status and notifying
 	notify        bool
 	isMultiBranch bool
+	// suppressOutput prevents Run from printing formatted text; the caller retrieves data via Response().
+	suppressOutput bool
+	response       *services.PipelineRunStatusResponse
 }
 
 const (
@@ -74,6 +77,15 @@ func (sc *StatusCommand) SetMultiBranch(multiBranch bool) *StatusCommand {
 	return sc
 }
 
+func (sc *StatusCommand) SetSuppressOutput(suppress bool) *StatusCommand {
+	sc.suppressOutput = suppress
+	return sc
+}
+
+func (sc *StatusCommand) Response() *services.PipelineRunStatusResponse {
+	return sc.response
+}
+
 func (sc *StatusCommand) Run() error {
 	// Create service manager to fetch run status
 	serviceManager, err := manager.CreateServiceManager(sc.serverDetails)
@@ -86,6 +98,12 @@ func (sc *StatusCommand) Run() error {
 	if err != nil {
 		return err
 	}
+	sc.response = matchingPipes
+
+	if sc.suppressOutput {
+		return nil
+	}
+
 	var res string
 	for i := range matchingPipes.Pipelines {
 		pipe := matchingPipes.Pipelines[i]

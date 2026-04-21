@@ -10,9 +10,11 @@ import (
 )
 
 type SyncStatusCommand struct {
-	serverDetails *config.ServerDetails
-	branch        string
-	repoPath      string
+	serverDetails  *config.ServerDetails
+	branch         string
+	repoPath       string
+	suppressOutput bool
+	response       []services.PipelineSyncStatus
 }
 
 const (
@@ -47,6 +49,15 @@ func (sc *SyncStatusCommand) SetRepoPath(repo string) *SyncStatusCommand {
 	return sc
 }
 
+func (sc *SyncStatusCommand) SetSuppressOutput(suppress bool) *SyncStatusCommand {
+	sc.suppressOutput = suppress
+	return sc
+}
+
+func (sc *SyncStatusCommand) Response() []services.PipelineSyncStatus {
+	return sc.response
+}
+
 func (sc *SyncStatusCommand) Run() error {
 	serviceManager, err := manager.CreateServiceManager(sc.serverDetails)
 	if err != nil {
@@ -57,7 +68,10 @@ func (sc *SyncStatusCommand) Run() error {
 	if err != nil {
 		return err
 	}
-	sc.displaySyncStatus(pipelineSyncStatuses)
+	sc.response = pipelineSyncStatuses
+	if !sc.suppressOutput {
+		sc.displaySyncStatus(pipelineSyncStatuses)
+	}
 	return nil
 }
 

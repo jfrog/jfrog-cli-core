@@ -2,20 +2,22 @@ package common
 
 import (
 	"errors"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+
 	commandUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/utils"
 	artifactoryUtils "github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils/commandsummary"
 	buildUtils "github.com/jfrog/jfrog-cli-core/v2/common/build"
 	"github.com/jfrog/jfrog-cli-core/v2/common/cliutils/summary"
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/io/content"
-	"os"
-	"sort"
-	"strconv"
-	"strings"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/cliutils"
 	"github.com/jfrog/jfrog-cli-core/v2/plugins/components"
@@ -71,7 +73,8 @@ func HandleSecretInput(c *components.Context, stringFlag, stdinFlag string) (sec
 }
 
 func RunCmdWithDeprecationWarning(cmdName, oldSubcommand string, c *components.Context,
-	cmd func(c *components.Context) error) error {
+	cmd func(c *components.Context) error,
+) error {
 	cliutils.LogNonNativeCommandDeprecation(cmdName, oldSubcommand)
 	return cmd(c)
 }
@@ -191,6 +194,17 @@ func isEnvFailNoOp() bool {
 func GetProject(c *components.Context) string {
 	projectKey := c.GetStringFlagValue("project")
 	return getOrDefaultEnv(projectKey, coreutils.Project)
+}
+
+// GetOutputFormat reads the --format flag, falling back to JFROG_CLI_OUTPUT_FORMAT env var, then defaults to "table".
+func GetOutputFormat(c *components.Context) (format.OutputFormat, error) {
+	flagVal := c.GetStringFlagValue("format")
+	return format.GetOutputFormat(getOrDefaultEnv(flagVal, coreutils.OutputFormat))
+}
+
+func ExtractOutputFormat(c *components.Context, supportedFormats []format.OutputFormat) (format.OutputFormat, error) {
+	flagVal := c.GetStringFlagValue("format")
+	return format.ParseOutputFormat(getOrDefaultEnv(flagVal, coreutils.OutputFormat), supportedFormats)
 }
 
 // Return argument if not empty or retrieve from environment variable

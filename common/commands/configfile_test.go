@@ -177,6 +177,21 @@ func TestRubyConfigFile(t *testing.T) {
 	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
 }
 
+func TestConanConfigFile(t *testing.T) {
+	tempDirPath := createTempEnv(t)
+	defer testsutils.RemoveAllAndAssert(t, tempDirPath)
+
+	context := createContext(t, resolutionServerId+"=relServer", resolutionRepo+"=repo", deploymentServerId+"=depServer", deploymentRepo+"=repo-local")
+	err := CreateBuildConfig(context, project.Conan)
+	assert.NoError(t, err)
+
+	config := checkCommonAndGetConfiguration(t, project.Conan.String(), tempDirPath)
+	assert.Equal(t, "relServer", config.GetString("resolver.serverId"))
+	assert.Equal(t, "repo", config.GetString("resolver.repo"))
+	assert.Equal(t, "depServer", config.GetString("deployer.serverId"))
+	assert.Equal(t, "repo-local", config.GetString("deployer.repo"))
+}
+
 // In case resolver/deployer server-id flags are not provided - the default configured global server will be chosen.
 func TestNpmConfigFileWithDefaultServerId(t *testing.T) {
 	// Set JFROG_CLI_HOME_DIR environment variable

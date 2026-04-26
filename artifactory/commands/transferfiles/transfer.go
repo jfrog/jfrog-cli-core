@@ -120,6 +120,41 @@ func (tdc *TransferFilesCommand) SetPreChecks(check bool) {
 	tdc.preChecks = check
 }
 
+// TransferFilesResult holds a summary of the transfer-files operation, available after Run() returns.
+type TransferFilesResult struct {
+	// Total number of repositories to transfer
+	TotalRepositories int64
+	// Number of repositories successfully transferred
+	TransferredRepositories int64
+	// Total number of files to transfer
+	TotalFiles int64
+	// Number of files successfully transferred
+	TransferredFiles int64
+	// Total data size in bytes
+	TotalSizeBytes int64
+	// Transferred data size in bytes
+	TransferredSizeBytes int64
+	// Number of transfer failures
+	TransferFailures uint64
+}
+
+// Result returns the transfer summary after Run() completes.
+// The fields reflect the state at the end of the last Run() call.
+func (tdc *TransferFilesCommand) Result() TransferFilesResult {
+	if tdc.stateManager == nil {
+		return TransferFilesResult{}
+	}
+	return TransferFilesResult{
+		TotalRepositories:       tdc.stateManager.TotalRepositories.TotalUnits,
+		TransferredRepositories: tdc.stateManager.TotalRepositories.TransferredUnits,
+		TotalFiles:              tdc.stateManager.OverallTransfer.TotalUnits,
+		TransferredFiles:        tdc.stateManager.OverallTransfer.TransferredUnits,
+		TotalSizeBytes:          tdc.stateManager.OverallTransfer.TotalSizeBytes,
+		TransferredSizeBytes:    tdc.stateManager.OverallTransfer.TransferredSizeBytes,
+		TransferFailures:        tdc.stateManager.TransferFailures,
+	}
+}
+
 func (tdc *TransferFilesCommand) Run() (err error) {
 	if tdc.status {
 		return ShowStatus()

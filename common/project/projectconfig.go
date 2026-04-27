@@ -48,7 +48,6 @@ const (
 	Helm
 	Ruby
 	Conan
-	UV
 )
 
 type ConfigType string
@@ -80,7 +79,6 @@ var ProjectTypes = []string{
 	"helm",
 	"ruby",
 	"conan",
-	"uv",
 }
 
 func (projectType ProjectType) String() string {

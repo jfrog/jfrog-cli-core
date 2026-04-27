@@ -48,7 +48,7 @@ const (
 	Helm
 	Ruby
 	Conan
-	Uv
+	UV
 )
 
 type ConfigType string

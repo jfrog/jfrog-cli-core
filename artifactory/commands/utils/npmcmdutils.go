@@ -3,6 +3,9 @@ package utils
 import (
 	"encoding/base64"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/common/build"
 	outFormat "github.com/jfrog/jfrog-cli-core/v2/common/format"
@@ -13,8 +16,6 @@ import (
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
-	"net/http"
-	"strings"
 )
 
 const (
@@ -142,7 +143,7 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 	if err != nil {
 		return
 	}
-	scanOutputFormat, err = outFormat.GetOutputFormat(format)
+	scanOutputFormat, err = outFormat.ParseOutputFormat(format, outFormat.All)
 	if err != nil {
 		return
 	}

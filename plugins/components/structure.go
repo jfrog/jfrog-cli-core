@@ -1,5 +1,7 @@
 package components
 
+import "github.com/jfrog/jfrog-cli-core/v2/common/format"
+
 type App struct {
 	Version string
 	Namespace
@@ -49,6 +51,10 @@ type Command struct {
 	Action          ActionFunc
 	SkipFlagParsing bool
 	Hidden          bool
+	// If set, a format flag will be added to the command. The format flag will be used to specify the output format of the command.
+	SupportedFormats []format.OutputFormat
+	// Default output format for the format flag. Ignored if SupportedFormats is empty. Defaults to None if not set.
+	DefaultFormat format.OutputFormat
 }
 
 type UsageOptions struct {

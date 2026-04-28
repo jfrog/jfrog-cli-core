@@ -129,6 +129,38 @@ func GreetCmd(c *components.Context) (err error) {
 }
 ```
 
+### Define output formats
+
+Commands that produce structured output can declare which formats they support via `SupportedFormats`. When set, a `--format` flag is automatically added to the command. The user may then pass `--format=<value>` to select an output format; the flag accepts any of the values listed in `format.OutputFormat` (`table`, `json`, `simple-json`, `sarif`, `cyclonedx`).
+
+```go
+cmd := components.Command{
+	Name:        "greet",
+	Description: "Greet the user",
+	// Automatically adds a --format flag that accepts "table" or "json", defaulting to "table".
+	// Omit DefaultFormat (or set it to format.None) to have no default.
+	SupportedFormats: []format.OutputFormat{format.Table, format.Json},
+	DefaultFormat:    format.Table,
+	Action:      GreetCmd,
+}
+
+func GreetCmd(c *components.Context) error {
+	outputFormat, err := c.GetOutputFormat()
+	if err != nil {
+		return err
+	}
+	switch outputFormat {
+	case format.Json:
+		// Print JSON output.
+	default:
+		// Print table output.
+	}
+	return nil
+}
+```
+
+`c.GetOutputFormat()` returns `format.None` when the flag was not set by the user, and an error when the provided value is not in `SupportedFormats`. Available formats are defined in `common/format/output.go`.
+
 ## Utilities
 
 Before implementing generic logic, ensure it hasn't been implemented yet.

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/jfrog/jfrog-cli-core/v2/common/format"
 )
 
 type Argument struct {
@@ -54,9 +56,20 @@ type Context struct {
 	CommandName      string
 	stringFlags      map[string]string
 	boolFlags        map[string]bool
+	supportedFormats []format.OutputFormat
 	PrintCommandHelp func(commandName string) error
 	ParentContext    *Context
 	FlagsUsed        []string
+}
+
+// Get the output format from the --format flag, falling back to None if not set.
+// None means no output format was specified.
+// An error is returned if the output format is not supported.
+func (c *Context) GetOutputFormat() (format.OutputFormat, error) {
+	if c.IsFlagSet(format.FlagName) {
+		return format.ParseOutputFormat(c.GetStringFlagValue(format.FlagName), c.supportedFormats)
+	}
+	return format.None, nil
 }
 
 func (c *Context) GetStringFlagValue(flagName string) string {

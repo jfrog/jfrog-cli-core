@@ -74,6 +74,9 @@ func convertCommands(commands []Command, nameSpaces ...string) ([]cli.Command, e
 }
 
 func convertCommand(cmd Command, namespaces ...string) (cli.Command, error) {
+	if len(cmd.SupportedFormats) > 0 {
+		cmd.Flags = append([]Flag{GetFormatFlag(cmd.SupportedFormats, cmd.DefaultFormat)}, cmd.Flags...)
+	}
 	convertedFlags, convertedStringFlags, err := convertFlags(cmd)
 	if err != nil {
 		return cli.Command{}, err
@@ -380,6 +383,7 @@ func getActionFunc(cmd Command) cli.ActionFunc {
 		if err != nil {
 			return err
 		}
+		pluginContext.supportedFormats = cmd.SupportedFormats
 		commands.SetContextFlags(pluginContext.FlagsUsed)
 		return cmd.Action(pluginContext)
 	}

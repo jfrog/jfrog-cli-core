@@ -25,7 +25,9 @@ func GetFormatFlagDescription(supportedFormats []format.OutputFormat) string {
 // If supportedFormats is empty, all known formats are listed in the description.
 func GetFormatFlag(supportedFormats []format.OutputFormat, defaultFormat format.OutputFormat) StringFlag {
 	var options []StringFlagOption
-	if defaultFormat != format.None {
+	if defaultFormat == format.None {
+		options = append(options, SetMandatoryFalse())
+	} else {
 		options = append(options, WithStrDefaultValue(string(defaultFormat)))
 	}
 	return NewStringFlag(

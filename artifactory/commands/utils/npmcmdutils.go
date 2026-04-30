@@ -143,9 +143,12 @@ func ExtractNpmOptionsFromArgs(args []string) (detailedSummary, xrayScan bool, s
 	if err != nil {
 		return
 	}
-	scanOutputFormat, err = outFormat.ParseOutputFormat(format, outFormat.All)
-	if err != nil {
-		return
+	scanOutputFormat = outFormat.Table
+	if format != "" {
+		scanOutputFormat, err = outFormat.ParseOutputFormat(format, outFormat.All)
+		if err != nil {
+			return
+		}
 	}
 	cleanArgs, buildConfig, err = build.ExtractBuildDetailsFromArgs(cleanArgs)
 	return

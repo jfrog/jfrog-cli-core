@@ -245,3 +245,51 @@ func TestGetDockerTimeFrameFilesDiffWithPatterns(t *testing.T) {
 	assert.Contains(t, firstQuery, "myapp", "First query should contain the pattern")
 	assert.Contains(t, firstQuery, "manifest.json", "First query should contain manifest.json")
 }
+
+// TestGetDockerTimeFrameFilesDiffListManifest verifies that list.manifest.json files are included
+// in the result and transferred directly, without triggering a second AQL for directory contents.
+// This is a regression test for the bug where the list.manifest.json case body was empty,
+// causing these files to be silently dropped during delta sync (Phase 2).
+func TestGetDockerTimeFrameFilesDiffListManifest(t *testing.T) {
+	stateManager, cleanUp := state.InitStateTest(t)
+	defer cleanUp()
+
+	aqlCallCount := 0
+
+	listManifestItem := servicesUtils.ResultItem{
+		Repo: "docker-repo", Path: "myapp/sha256:abc123", Name: "list.manifest.json", Size: 500, Type: "file",
+	}
+
+	testServer, serverDetails, _ := commonTests.CreateRtRestsMockServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/api/search/aql" {
+			aqlCallCount++
+			mockAqlResults := servicesUtils.AqlSearchResult{
+				Results: []servicesUtils.ResultItem{listManifestItem},
+			}
+			w.WriteHeader(http.StatusOK)
+			response, _ := json.Marshal(mockAqlResults)
+			_, _ = w.Write(response)
+		}
+	})
+	defer testServer.Close()
+
+	assert.NoError(t, stateManager.SetRepoState("docker-repo", 0, 0, false, true))
+
+	phase := &filesDiffPhase{
+		phaseBase: phaseBase{
+			context:      context.Background(),
+			stateManager: stateManager,
+			repoKey:      "docker-repo",
+			srcRtDetails: serverDetails,
+		},
+	}
+
+	result, err := phase.getDockerTimeFrameFilesDiff("2024-01-01T00:00:00Z", "2024-01-02T00:00:00Z", 0)
+	assert.NoError(t, err)
+	// Only one AQL call should be made — no second call for directory contents
+	assert.Equal(t, 1, aqlCallCount, "Only one AQL call should be made for list.manifest.json files")
+	// The list.manifest.json file must appear in the result
+	assert.Len(t, result.Results, 1)
+	assert.Equal(t, "list.manifest.json", result.Results[0].Name)
+	assert.Equal(t, "myapp/sha256:abc123", result.Results[0].Path)
+}

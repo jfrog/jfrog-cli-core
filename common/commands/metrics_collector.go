@@ -27,29 +27,31 @@ var globalMetricsCollector = &metricsCollector{
 // CollectMetrics stores enhanced metrics information for a command execution.
 // Collects system information, CI environment details, and container detection.
 func CollectMetrics(commandName string, flags []string) {
+	// Compute detection outside the lock; these are pure env reads and don't
+	// touch shared state. Keeps the critical section minimal.
+	ec := DetectExecutionContext()
+	ciSystem := detectCISystem()
+	isContainer := isRunningInContainer()
+
 	globalMetricsCollector.mu.Lock()
 	defer globalMetricsCollector.mu.Unlock()
-
-	ec := DetectExecutionContext()
 
 	pkgAliasTool := globalMetricsCollector.packageAliasContext
 	globalMetricsCollector.packageAliasContext = ""
 
-	metricsData := &MetricsData{
+	globalMetricsCollector.metricsData[commandName] = &MetricsData{
 		Flags:          flags,
 		Platform:       runtime.GOOS,
 		Architecture:   runtime.GOARCH,
-		IsCI:           ec.IsCI,
-		CISystem:       ec.CISystem,
-		IsContainer:    isRunningInContainer(),
+		IsCI:           ciSystem != "",
+		CISystem:       ciSystem,
+		IsContainer:    isContainer,
 		IsAgent:        ec.IsAgent,
 		Agent:          ec.Agent,
 		IsInteractive:  ec.IsInteractive,
 		PackageAlias:   pkgAliasTool != "",
 		PackageManager: pkgAliasTool,
 	}
-
-	globalMetricsCollector.metricsData[commandName] = metricsData
 }
 
 // GetCollectedMetrics retrieves collected metrics for a command.
@@ -93,6 +95,7 @@ func detectCISystem() string {
 		"DRONE":                  "drone",
 		"BITBUCKET_BUILD_NUMBER": "bitbucket",
 		"CODEBUILD_BUILD_ID":     "aws_codebuild",
+		"HARNESS_BUILD_ID":       "harness",
 	}
 
 	for envVar, system := range ciEnvVars {

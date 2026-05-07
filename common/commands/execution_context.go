@@ -1,53 +1,52 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 
-	"golang.org/x/term"
+	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
 )
 
+// AgentUnknown is returned when a generic AGENT env var is set but its value
+// does not match any known agent. We don't propagate the raw value to keep
+// metric cardinality bounded.
+const AgentUnknown = "unknown"
+
 // ExecutionContext describes how a CLI invocation was launched.
-// Dimensions are independent: an agent may run inside CI; both will be reported.
 type ExecutionContext struct {
-	Agent         string // e.g. "claude", "cursor", "gemini", "" if none
-	CISystem      string // e.g. "github_actions", "" if not CI
-	IsCI          bool
+	Agent         string // e.g. "claude", "cursor", "gemini", "unknown" or "" if none
 	IsAgent       bool
-	IsInteractive bool   // stdin is a TTY
-	TraceID       string // propagated trace ID (e.g. CURSOR_TRACEID), empty if none
+	IsInteractive bool   // stdout is a TTY
+	TraceID       string // propagated trace ID (e.g. CURSOR_TRACE_ID), empty if none
 }
 
-// agent env var detection table. First match wins.
-var agentEnvDetectors = []struct {
+// agentDetector maps an agent name to env vars whose presence proves the agent
+// invoked the CLI.
+type agentDetector struct {
 	name string
 	envs []string
-}{
+}
+
+// agentEnvDetectors is the agent detection table. First match wins.
+var agentEnvDetectors = []agentDetector{
 	{"claude", []string{"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"}},
 	{"gemini", []string{"GEMINI_CLI"}},
 	{"goose", []string{"GOOSE_TERMINAL"}},
-	{"cursor", []string{"CURSOR_AGENT", "CURSOR_TRACEID"}},
+	{"cursor", []string{"CURSOR_AGENT", "CURSOR_CLI", "CURSOR_TRACE_ID"}},
 	{"copilot", []string{"COPILOT_CLI"}},
 	{"kilocode", []string{"KILO_IPC_SOCKET_PATH", "KILO_SERVER_PASSWORD"}},
 	{"roo_code", []string{"ROO_CODE_IPC_SOCKET_PATH"}},
-	{"replit", []string{"REPLIT_AGENT"}},
-	{"windsurf", []string{"WINDSURF_SESSION_ID"}},
-	{"aider", []string{"AIDER_MODEL"}},
-	{"codex", []string{"CODEX_HOME"}},
+	{"codex", []string{"CODEX_CI"}},
 }
 
-// DetectExecutionContext captures all signals about who executed the CLI.
+// DetectExecutionContext captures signals about who executed the CLI.
 func DetectExecutionContext() ExecutionContext {
 	ec := ExecutionContext{
-		IsInteractive: term.IsTerminal(int(os.Stdin.Fd())),
+		IsInteractive: clientlog.IsStdOutTerminal(),
 	}
-
 	ec.Agent = detectAgent()
 	ec.IsAgent = ec.Agent != ""
 	ec.TraceID = detectAgentTraceID(ec.Agent)
-
-	ec.CISystem = detectCISystem()
-	ec.IsCI = ec.CISystem != ""
-
 	return ec
 }
 
@@ -59,22 +58,38 @@ func detectAgent() string {
 			}
 		}
 	}
-	// Fallback: generic AGENT env var (goose convention, codex pending).
-	if v := os.Getenv("AGENT"); v != "" {
-		return v
+	// Generic AGENT env var (goose convention, codex pending). Don't propagate the
+	// raw value into metrics — collapse to "unknown" to keep cardinality bounded.
+	if os.Getenv("AGENT") != "" {
+		return AgentUnknown
 	}
 	return ""
 }
 
 // detectAgentTraceID returns a trace ID propagated by the parent agent, if any.
-// Only used when the detected agent itself owns the trace ID env var, so we don't
-// reuse a stale ID leaked from an outer shell (e.g. CURSOR_TRACEID present while
-// the actual invoker is Claude Code). Empty result means the CLI should generate
-// its own trace ID.
+// Gated on agent identity to prevent stale values leaked from an outer shell
+// (e.g. CURSOR_TRACE_ID present while the actual invoker is Claude Code).
+// Empty result means the CLI should generate its own trace ID.
 func detectAgentTraceID(agent string) string {
-	switch agent {
-	case "cursor":
-		return os.Getenv("CURSOR_TRACEID")
+	if agent == "cursor" {
+		return os.Getenv("CURSOR_TRACE_ID")
 	}
 	return ""
+}
+
+// EnrichUserAgent appends invoker context (agent and/or CI provider) to a base
+// User-Agent string. Returns base unchanged when neither is detected.
+// Examples: "jfrog-cli-go/2.x (claude)", "jfrog-cli-go/2.x (cursor; ci=github_actions)".
+func EnrichUserAgent(base string) string {
+	ec := DetectExecutionContext()
+	ciSystem := detectCISystem()
+	switch {
+	case ec.Agent != "" && ciSystem != "":
+		return fmt.Sprintf("%s (%s; ci=%s)", base, ec.Agent, ciSystem)
+	case ec.Agent != "":
+		return fmt.Sprintf("%s (%s)", base, ec.Agent)
+	case ciSystem != "":
+		return fmt.Sprintf("%s (ci=%s)", base, ciSystem)
+	}
+	return base
 }

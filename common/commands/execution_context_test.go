@@ -6,38 +6,22 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDetectAgent_EnvVar(t *testing.T) {
-	cases := []struct {
-		envVar string
-		want   string
-	}{
-		{"CLAUDECODE", "claude"},
-		{"CLAUDE_CODE_ENTRYPOINT", "claude"},
-		{"GEMINI_CLI", "gemini"},
-		{"GOOSE_TERMINAL", "goose"},
-		{"CURSOR_AGENT", "cursor"},
-		{"CURSOR_TRACEID", "cursor"},
-		{"COPILOT_CLI", "copilot"},
-		{"KILO_IPC_SOCKET_PATH", "kilocode"},
-		{"ROO_CODE_IPC_SOCKET_PATH", "roo_code"},
-		{"REPLIT_AGENT", "replit"},
-		{"WINDSURF_SESSION_ID", "windsurf"},
-		{"AIDER_MODEL", "aider"},
-		{"CODEX_HOME", "codex"},
-	}
-	for _, c := range cases {
-		t.Run(c.envVar, func(t *testing.T) {
-			clearAgentEnvVars(t)
-			t.Setenv(c.envVar, "1")
-			assert.Equal(t, c.want, detectAgent())
-		})
+func TestDetectAgent_FromTable(t *testing.T) {
+	for _, d := range agentEnvDetectors {
+		for _, env := range d.envs {
+			t.Run(env, func(t *testing.T) {
+				clearAgentEnvVars(t)
+				t.Setenv(env, "1")
+				assert.Equal(t, d.name, detectAgent())
+			})
+		}
 	}
 }
 
-func TestDetectAgent_GenericFallback(t *testing.T) {
+func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 	clearAgentEnvVars(t)
-	t.Setenv("AGENT", "custom_bot")
-	assert.Equal(t, "custom_bot", detectAgent())
+	t.Setenv("AGENT", "some_random_value")
+	assert.Equal(t, AgentUnknown, detectAgent())
 }
 
 func TestDetectAgent_None(t *testing.T) {
@@ -46,57 +30,62 @@ func TestDetectAgent_None(t *testing.T) {
 }
 
 func TestDetectAgentTraceID(t *testing.T) {
-	t.Setenv("CURSOR_TRACEID", "trace-abc")
+	t.Setenv("CURSOR_TRACE_ID", "trace-abc")
 	assert.Equal(t, "trace-abc", detectAgentTraceID("cursor"))
-	// Trace ID gated on agent identity: a leaked CURSOR_TRACEID from an outer
+	// Trace ID gated on agent identity: a leaked CURSOR_TRACE_ID from an outer
 	// shell must not be reused when the real invoker is a different agent.
 	assert.Equal(t, "", detectAgentTraceID("claude"))
 	assert.Equal(t, "", detectAgentTraceID(""))
 }
 
-func TestDetectExecutionContext_AgentAndCI(t *testing.T) {
+func TestDetectExecutionContext_Agent(t *testing.T) {
 	clearAgentEnvVars(t)
-	clearCIEnvVars(t)
 	t.Setenv("CLAUDECODE", "1")
-	t.Setenv("GITHUB_ACTIONS", "true")
 
-	inv := DetectExecutionContext()
-	assert.True(t, inv.IsAgent)
-	assert.True(t, inv.IsCI)
-	assert.Equal(t, "claude", inv.Agent)
-	assert.Equal(t, "github_actions", inv.CISystem)
-}
-
-func TestDetectExecutionContext_CIOnly(t *testing.T) {
-	clearAgentEnvVars(t)
-	clearCIEnvVars(t)
-	t.Setenv("GITHUB_ACTIONS", "true")
-
-	inv := DetectExecutionContext()
-	assert.False(t, inv.IsAgent)
-	assert.True(t, inv.IsCI)
-	assert.Equal(t, "github_actions", inv.CISystem)
+	ec := DetectExecutionContext()
+	assert.True(t, ec.IsAgent)
+	assert.Equal(t, "claude", ec.Agent)
 }
 
 func TestDetectExecutionContext_NoEnv(t *testing.T) {
 	clearAgentEnvVars(t)
-	clearCIEnvVars(t)
 
-	inv := DetectExecutionContext()
-	assert.False(t, inv.IsAgent)
-	assert.False(t, inv.IsCI)
-	assert.Equal(t, "", inv.Agent)
-	assert.Equal(t, "", inv.CISystem)
+	ec := DetectExecutionContext()
+	assert.False(t, ec.IsAgent)
+	assert.Equal(t, "", ec.Agent)
+	assert.Equal(t, "", ec.TraceID)
 }
 
-func clearAgentEnvVars(t *testing.T) {
-	t.Helper()
-	for _, d := range agentEnvDetectors {
-		for _, e := range d.envs {
-			t.Setenv(e, "")
-		}
-	}
-	t.Setenv("AGENT", "")
+func TestEnrichUserAgent(t *testing.T) {
+	base := "jfrog-cli-go/2.103.0"
+
+	t.Run("none", func(t *testing.T) {
+		clearAgentEnvVars(t)
+		clearCIEnvVars(t)
+		assert.Equal(t, base, EnrichUserAgent(base))
+	})
+
+	t.Run("agent only", func(t *testing.T) {
+		clearAgentEnvVars(t)
+		clearCIEnvVars(t)
+		t.Setenv("CLAUDECODE", "1")
+		assert.Equal(t, base+" (claude)", EnrichUserAgent(base))
+	})
+
+	t.Run("ci only", func(t *testing.T) {
+		clearAgentEnvVars(t)
+		clearCIEnvVars(t)
+		t.Setenv("GITHUB_ACTIONS", "true")
+		assert.Equal(t, base+" (ci=github_actions)", EnrichUserAgent(base))
+	})
+
+	t.Run("agent and ci", func(t *testing.T) {
+		clearAgentEnvVars(t)
+		clearCIEnvVars(t)
+		t.Setenv("CURSOR_AGENT", "1")
+		t.Setenv("GITHUB_ACTIONS", "true")
+		assert.Equal(t, base+" (cursor; ci=github_actions)", EnrichUserAgent(base))
+	})
 }
 
 func clearCIEnvVars(t *testing.T) {
@@ -109,4 +98,15 @@ func clearCIEnvVars(t *testing.T) {
 	} {
 		t.Setenv(e, "")
 	}
+}
+
+func clearAgentEnvVars(t *testing.T) {
+	t.Helper()
+	for _, d := range agentEnvDetectors {
+		for _, e := range d.envs {
+			t.Setenv(e, "")
+		}
+	}
+	t.Setenv("AGENT", "")
+	t.Setenv("CURSOR_TRACE_ID", "")
 }

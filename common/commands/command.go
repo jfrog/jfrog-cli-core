@@ -35,7 +35,7 @@ func Exec(command Command) error {
 	CollectMetrics(commandName, flags)
 	channel := make(chan bool)
 	// Triggers the report usage.
-	go reportUsage(command, channel)
+	go reportCommandUsage(command, channel)
 	// Invoke the command interface
 	err := command.Run()
 	// Waits for the signal from the report usage to be done.
@@ -53,11 +53,32 @@ func ExecAndThenReportUsage(cc Command) (err error) {
 	if err = cc.Run(); err != nil {
 		return
 	}
-	reportUsage(cc, nil)
+	reportCommandUsage(cc, nil)
 	return
 }
 
-func reportUsage(command Command, channel chan<- bool) {
+func reportCommandUsage(command Command, channel chan<- bool) {
+	commandName := command.CommandName()
+	serverDetails, err := command.ServerDetails()
+	if err != nil {
+		log.Debug("Usage reporting. Failed accessing ServerDetails.", err.Error())
+		return
+	}
+	ReportUsage(commandName, serverDetails, channel)
+}
+
+// ReportUsage sends a usage report for the given command to the JFrog platform.
+// It reports to two destinations in parallel, depending on the Artifactory version:
+//   - Artifactory's Call Home API (requires Artifactory >= minCallHomeArtifactoryVersion).
+//   - The Visibility System (requires Artifactory >= minVisibilitySystemArtifactoryVersion),
+//     which receives enhanced metrics collected via CollectMetrics.
+//
+// The function is a no-op when usage reporting is disabled (see usageReporter.ShouldReportUsage)
+// or when serverDetails is nil or has no ArtifactoryUrl.
+//
+// If channel is non-nil, a value is sent on it once reporting completes (including early returns),
+// allowing callers to run reporting asynchronously and wait for completion.
+func ReportUsage(commandName string, serverDetails *config.ServerDetails, channel chan<- bool) {
 	// When the usage reporting is done, signal to the channel.
 	defer signalReportUsageFinished(channel)
 
@@ -66,11 +87,6 @@ func reportUsage(command Command, channel chan<- bool) {
 		return
 	}
 
-	serverDetails, err := command.ServerDetails()
-	if err != nil {
-		log.Debug("Usage reporting. Failed accessing ServerDetails.", err.Error())
-		return
-	}
 	if serverDetails == nil || serverDetails.ArtifactoryUrl == "" {
 		return
 	}
@@ -92,7 +108,7 @@ func reportUsage(command Command, channel chan<- bool) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			reportUsageToArtifactoryCallHome(command, serviceManager)
+			reportUsageToArtifactoryCallHome(commandName, serviceManager)
 		}()
 	}
 
@@ -101,7 +117,7 @@ func reportUsage(command Command, channel chan<- bool) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			reportUsageToVisibilitySystem(command, serverDetails)
+			reportUsageToVisibilitySystem(commandName, serverDetails)
 		}()
 	}
 
@@ -110,10 +126,9 @@ func reportUsage(command Command, channel chan<- bool) {
 }
 
 // reportUsageToVisibilitySystem sends enhanced metrics to the visibility system
-func reportUsageToVisibilitySystem(command Command, serverDetails *config.ServerDetails) {
+func reportUsageToVisibilitySystem(commandName string, serverDetails *config.ServerDetails) {
 	var commandsCountMetric services.VisibilityMetric
 
-	commandName := command.CommandName()
 	metricsData := GetCollectedMetrics(commandName)
 	var visibilityMetricsData *visibility.MetricsData
 	if metricsData != nil {
@@ -135,9 +150,9 @@ func reportUsageToVisibilitySystem(command Command, serverDetails *config.Server
 	}
 }
 
-func reportUsageToArtifactoryCallHome(command Command, serviceManager rtClient.ArtifactoryServicesManager) {
+func reportUsageToArtifactoryCallHome(commandName string, serviceManager rtClient.ArtifactoryServicesManager) {
 	log.Debug(usageReporter.ArtifactoryCallHomePrefix, "Sending info...")
-	if err := usage.NewArtifactoryCallHome().Send(coreutils.GetCliUserAgent(), command.CommandName(), serviceManager); err != nil {
+	if err := usage.NewArtifactoryCallHome().Send(coreutils.GetCliUserAgent(), commandName, serviceManager); err != nil {
 		log.Debug(err.Error())
 	}
 }

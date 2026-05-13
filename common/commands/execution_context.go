@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
 )
@@ -40,7 +41,22 @@ var agentEnvDetectors = []agentDetector{
 }
 
 // DetectExecutionContext captures signals about who executed the CLI.
+// Memoized for the process lifetime so independent call sites (metrics
+// collector, trace-ID setup, User-Agent enrichment) cannot diverge if a
+// later caller mutates the environment.
 func DetectExecutionContext() ExecutionContext {
+	executionContextOnce.Do(func() {
+		cachedExecutionContext = computeExecutionContext()
+	})
+	return cachedExecutionContext
+}
+
+var (
+	executionContextOnce   sync.Once
+	cachedExecutionContext ExecutionContext
+)
+
+func computeExecutionContext() ExecutionContext {
 	ec := ExecutionContext{
 		IsInteractive: clientlog.IsStdOutTerminal(),
 	}

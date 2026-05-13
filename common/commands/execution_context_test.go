@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,6 +40,7 @@ func TestDetectAgentTraceID(t *testing.T) {
 }
 
 func TestDetectExecutionContext_Agent(t *testing.T) {
+	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("CLAUDECODE", "1")
 
@@ -48,6 +50,7 @@ func TestDetectExecutionContext_Agent(t *testing.T) {
 }
 
 func TestDetectExecutionContext_NoEnv(t *testing.T) {
+	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 
 	ec := DetectExecutionContext()
@@ -56,16 +59,45 @@ func TestDetectExecutionContext_NoEnv(t *testing.T) {
 	assert.Equal(t, "", ec.TraceID)
 }
 
+func TestDetectExecutionContext_IsMemoized(t *testing.T) {
+	resetExecutionContextForTest(t)
+	clearAgentEnvVars(t)
+	t.Setenv("CLAUDECODE", "1")
+	first := DetectExecutionContext()
+
+	// Mutate env after first call; result must not change without reset.
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CURSOR_AGENT", "1")
+	second := DetectExecutionContext()
+
+	assert.Equal(t, first, second)
+	assert.Equal(t, "claude", second.Agent)
+}
+
+// resetExecutionContextForTest forces the next DetectExecutionContext call to
+// re-evaluate env vars. Restores the memoization state after the test.
+func resetExecutionContextForTest(t *testing.T) {
+	t.Helper()
+	prevOnce, prevCache := executionContextOnce, cachedExecutionContext
+	executionContextOnce = sync.Once{}
+	cachedExecutionContext = ExecutionContext{}
+	t.Cleanup(func() {
+		executionContextOnce, cachedExecutionContext = prevOnce, prevCache
+	})
+}
+
 func TestEnrichUserAgent(t *testing.T) {
 	base := "jfrog-cli-go/2.103.0"
 
 	t.Run("none", func(t *testing.T) {
+		resetExecutionContextForTest(t)
 		clearAgentEnvVars(t)
 		clearCIEnvVars(t)
 		assert.Equal(t, base, EnrichUserAgent(base))
 	})
 
 	t.Run("agent only", func(t *testing.T) {
+		resetExecutionContextForTest(t)
 		clearAgentEnvVars(t)
 		clearCIEnvVars(t)
 		t.Setenv("CLAUDECODE", "1")
@@ -73,6 +105,7 @@ func TestEnrichUserAgent(t *testing.T) {
 	})
 
 	t.Run("ci only", func(t *testing.T) {
+		resetExecutionContextForTest(t)
 		clearAgentEnvVars(t)
 		clearCIEnvVars(t)
 		t.Setenv("GITHUB_ACTIONS", "true")
@@ -80,6 +113,7 @@ func TestEnrichUserAgent(t *testing.T) {
 	})
 
 	t.Run("agent and ci", func(t *testing.T) {
+		resetExecutionContextForTest(t)
 		clearAgentEnvVars(t)
 		clearCIEnvVars(t)
 		t.Setenv("CURSOR_AGENT", "1")

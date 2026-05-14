@@ -2,6 +2,7 @@ package commands
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
@@ -653,10 +654,11 @@ func TestE2EEnvironmentDetection(t *testing.T) {
 
 // MockCommand implements the Command interface for testing
 type MockCommand struct {
-	name          string
-	serverDetails *config.ServerDetails
-	runFunc       func() error
-	shouldError   bool
+	name               string
+	serverDetails      *config.ServerDetails
+	serverDetailsError error
+	runFunc            func() error
+	shouldError        bool
 }
 
 func (m *MockCommand) Run() error {
@@ -670,6 +672,9 @@ func (m *MockCommand) Run() error {
 }
 
 func (m *MockCommand) ServerDetails() (*config.ServerDetails, error) {
+	if m.serverDetailsError != nil {
+		return nil, m.serverDetailsError
+	}
 	if m.serverDetails != nil {
 		return m.serverDetails, nil
 	}
@@ -715,6 +720,24 @@ func TestExecWithBasicCommand(t *testing.T) {
 
 	if !executed {
 		t.Error("Expected command to be executed")
+	}
+}
+
+func TestExecUnblocksWhenServerDetailsFails(t *testing.T) {
+	commandName := "test-server-details-error"
+	done := make(chan struct{})
+	cmd := &MockCommand{
+		name:               commandName,
+		serverDetailsError: errors.New("server details unavailable"),
+	}
+	go func() {
+		_ = Exec(cmd)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("Exec blocked: usage goroutine did not signal after ServerDetails error (regression JGC-485)")
 	}
 }
 

@@ -62,6 +62,7 @@ func reportCommandUsage(command Command, channel chan<- bool) {
 	serverDetails, err := command.ServerDetails()
 	if err != nil {
 		log.Debug("Usage reporting. Failed accessing ServerDetails.", err.Error())
+		signalReportUsageFinished(channel)
 		return
 	}
 	ReportUsage(commandName, serverDetails, channel)

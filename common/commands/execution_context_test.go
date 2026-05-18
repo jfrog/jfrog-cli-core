@@ -86,53 +86,6 @@ func resetExecutionContextForTest(t *testing.T) {
 	})
 }
 
-func TestEnrichUserAgent(t *testing.T) {
-	base := "jfrog-cli-go/2.103.0"
-
-	t.Run("none", func(t *testing.T) {
-		resetExecutionContextForTest(t)
-		clearAgentEnvVars(t)
-		clearCIEnvVars(t)
-		assert.Equal(t, base, EnrichUserAgent(base))
-	})
-
-	t.Run("agent only", func(t *testing.T) {
-		resetExecutionContextForTest(t)
-		clearAgentEnvVars(t)
-		clearCIEnvVars(t)
-		t.Setenv("CLAUDECODE", "1")
-		assert.Equal(t, base+" (claude)", EnrichUserAgent(base))
-	})
-
-	t.Run("ci only", func(t *testing.T) {
-		resetExecutionContextForTest(t)
-		clearAgentEnvVars(t)
-		clearCIEnvVars(t)
-		t.Setenv("GITHUB_ACTIONS", "true")
-		assert.Equal(t, base+" (ci=github_actions)", EnrichUserAgent(base))
-	})
-
-	t.Run("agent and ci", func(t *testing.T) {
-		resetExecutionContextForTest(t)
-		clearAgentEnvVars(t)
-		clearCIEnvVars(t)
-		t.Setenv("CURSOR_AGENT", "1")
-		t.Setenv("GITHUB_ACTIONS", "true")
-		assert.Equal(t, base+" (cursor; ci=github_actions)", EnrichUserAgent(base))
-	})
-}
-
-func clearCIEnvVars(t *testing.T) {
-	t.Helper()
-	for _, e := range []string{
-		"JENKINS_URL", "TRAVIS", "CIRCLECI", "GITHUB_ACTIONS", "GITLAB_CI",
-		"BUILDKITE", "BAMBOO_BUILD_KEY", "TF_BUILD", "TEAMCITY_VERSION",
-		"DRONE", "BITBUCKET_BUILD_NUMBER", "CODEBUILD_BUILD_ID",
-		"CI", "CONTINUOUS_INTEGRATION", "BUILD_ID", "BUILD_NUMBER",
-	} {
-		t.Setenv(e, "")
-	}
-}
 
 func clearAgentEnvVars(t *testing.T) {
 	t.Helper()

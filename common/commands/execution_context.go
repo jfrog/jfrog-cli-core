@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"fmt"
 	"os"
 	"sync"
 
@@ -91,21 +90,4 @@ func detectAgentTraceID(agent string) string {
 		return os.Getenv("CURSOR_TRACE_ID")
 	}
 	return ""
-}
-
-// EnrichUserAgent appends invoker context (agent and/or CI provider) to a base
-// User-Agent string. Returns base unchanged when neither is detected.
-// Examples: "jfrog-cli-go/2.x (claude)", "jfrog-cli-go/2.x (cursor; ci=github_actions)".
-func EnrichUserAgent(base string) string {
-	ec := DetectExecutionContext()
-	ciSystem := detectCISystem()
-	switch {
-	case ec.Agent != "" && ciSystem != "":
-		return fmt.Sprintf("%s (%s; ci=%s)", base, ec.Agent, ciSystem)
-	case ec.Agent != "":
-		return fmt.Sprintf("%s (%s)", base, ec.Agent)
-	case ciSystem != "":
-		return fmt.Sprintf("%s (ci=%s)", base, ciSystem)
-	}
-	return base
 }

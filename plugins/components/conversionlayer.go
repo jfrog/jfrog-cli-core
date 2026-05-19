@@ -99,6 +99,13 @@ func convertCommand(cmd Command, namespaces ...string) (cli.Command, error) {
 		SkipFlagParsing: cmd.SkipFlagParsing,
 		Hidden:          cmd.Hidden,
 	}
+	if len(cmd.Subcommands) > 0 {
+		subcommands, err := convertCommands(cmd.Subcommands, append(namespaces, cmd.Name)...)
+		if err != nil {
+			return cli.Command{}, err
+		}
+		cliCmd.Subcommands = subcommands
+	}
 	if cmd.Action != nil {
 		// Passing any other interface than 'cli.ActionFunc' will fail the command.
 		cliCmd.Action = getActionFunc(cmd)

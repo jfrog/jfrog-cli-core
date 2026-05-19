@@ -48,6 +48,7 @@ type Command struct {
 	Arguments       []Argument
 	Flags           []Flag
 	EnvVars         []EnvVar
+	Subcommands     []Command
 	Action          ActionFunc
 	SkipFlagParsing bool
 	Hidden          bool

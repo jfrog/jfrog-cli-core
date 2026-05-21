@@ -9,6 +9,9 @@ type MetricsData struct {
 	IsCI           bool     `json:"is_ci,omitempty"`
 	CISystem       string   `json:"ci_system,omitempty"`
 	IsContainer    bool     `json:"is_container,omitempty"`
+	IsAgent        bool     `json:"is_agent,omitempty"`
+	Agent          string   `json:"agent,omitempty"`
+	IsInteractive  bool     `json:"is_interactive,omitempty"`
 	PackageAlias   bool     `json:"package_alias,omitempty"`
 	PackageManager string   `json:"package_manager,omitempty"`
 }

@@ -27,32 +27,31 @@ var globalMetricsCollector = &metricsCollector{
 // CollectMetrics stores enhanced metrics information for a command execution.
 // Collects system information, CI environment details, and container detection.
 func CollectMetrics(commandName string, flags []string) {
+	// Compute detection outside the lock; these are pure env reads and don't
+	// touch shared state. Keeps the critical section minimal.
+	ec := DetectExecutionContext()
+	ciSystem := detectCISystem()
+	isContainer := isRunningInContainer()
+
 	globalMetricsCollector.mu.Lock()
 	defer globalMetricsCollector.mu.Unlock()
-
-	ciSystem := detectCISystem()
-	isCI := ciSystem != ""
 
 	pkgAliasTool := globalMetricsCollector.packageAliasContext
 	globalMetricsCollector.packageAliasContext = ""
 
-	metricsData := &MetricsData{
-		Flags:        flags,
-		Platform:     runtime.GOOS,
-		Architecture: runtime.GOARCH,
-		IsCI:         isCI,
-		CISystem: func() string {
-			if isCI {
-				return ciSystem
-			}
-			return ""
-		}(),
-		IsContainer:    isRunningInContainer(),
+	globalMetricsCollector.metricsData[commandName] = &MetricsData{
+		Flags:          flags,
+		Platform:       runtime.GOOS,
+		Architecture:   runtime.GOARCH,
+		IsCI:           ciSystem != "",
+		CISystem:       ciSystem,
+		IsContainer:    isContainer,
+		IsAgent:        ec.IsAgent,
+		Agent:          ec.Agent,
+		IsInteractive:  ec.IsInteractive,
 		PackageAlias:   pkgAliasTool != "",
 		PackageManager: pkgAliasTool,
 	}
-
-	globalMetricsCollector.metricsData[commandName] = metricsData
 }
 
 // GetCollectedMetrics retrieves collected metrics for a command.
@@ -73,6 +72,9 @@ func GetCollectedMetrics(commandName string) *MetricsData {
 		IsCI:           metrics.IsCI,
 		CISystem:       metrics.CISystem,
 		IsContainer:    metrics.IsContainer,
+		IsAgent:        metrics.IsAgent,
+		Agent:          metrics.Agent,
+		IsInteractive:  metrics.IsInteractive,
 		PackageAlias:   metrics.PackageAlias,
 		PackageManager: metrics.PackageManager,
 	}
@@ -93,6 +95,7 @@ func detectCISystem() string {
 		"DRONE":                  "drone",
 		"BITBUCKET_BUILD_NUMBER": "bitbucket",
 		"CODEBUILD_BUILD_ID":     "aws_codebuild",
+		"HARNESS_BUILD_ID":       "harness",
 	}
 
 	for envVar, system := range ciEnvVars {

@@ -31,25 +31,27 @@ func CreateEmbeddedApp(name string, commands []Command, namespaces ...Namespace)
 }
 
 type Namespace struct {
-	Name        string
-	Aliases     []string
-	Description string
-	Hidden      bool
-	Category    string
-	Commands    []Command
+	Name          string
+	Aliases       []string
+	Description   string
+	AIDescription string
+	Hidden        bool
+	Category      string
+	Commands      []Command
 }
 
 type Command struct {
-	Name         string
-	Description  string
-	Category     string
-	Aliases      []string
-	UsageOptions *UsageOptions
-	Arguments    []Argument
-	Flags        []Flag
-	EnvVars      []EnvVar
-	Subcommands  []Command
-	Action       ActionFunc
+	Name            string
+	Description     string
+	AIDescription   string
+	Category        string
+	Aliases         []string
+	UsageOptions    *UsageOptions
+	Arguments       []Argument
+	Flags           []Flag
+	EnvVars         []EnvVar
+	Subcommands     []Command
+	Action          ActionFunc
 	// Must not be set when Subcommands is non-empty; convertCommand rejects that combination.
 	SkipFlagParsing bool
 	Hidden          bool

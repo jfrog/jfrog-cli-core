@@ -40,16 +40,17 @@ type Namespace struct {
 }
 
 type Command struct {
-	Name            string
-	Description     string
-	Category        string
-	Aliases         []string
-	UsageOptions    *UsageOptions
-	Arguments       []Argument
-	Flags           []Flag
-	EnvVars         []EnvVar
-	Subcommands     []Command
-	Action          ActionFunc
+	Name         string
+	Description  string
+	Category     string
+	Aliases      []string
+	UsageOptions *UsageOptions
+	Arguments    []Argument
+	Flags        []Flag
+	EnvVars      []EnvVar
+	Subcommands  []Command
+	Action       ActionFunc
+	// Must not be set when Subcommands is non-empty; convertCommand rejects that combination.
 	SkipFlagParsing bool
 	Hidden          bool
 	// If set, a format flag will be added to the command. The format flag will be used to specify the output format of the command.

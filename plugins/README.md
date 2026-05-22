@@ -52,6 +52,62 @@ func GetCommands() []components.Command {
 
 The plugin needs to specify a list of all commands under their respective namespaces. Each command is defined using the `Command` structure.
 
+### Nested subcommands
+
+Some CLI paths include more than one command level after the namespace, for example `jf ai plugins publish`. Register the namespace as usual, then use `Command.Subcommands` on a parent command for intermediate groups and keep the executable work on the leaf command.
+
+Embedded apps expose namespaces via `App.Subcommands` (`components.Namespace`). Commands listed under a namespace can define their own children through `Command.Subcommands`, which the conversion layer maps to urfave/cli subcommands.
+
+For the `ai` → `plugins` → `publish` layout:
+
+- `ai` is a `Namespace` on the embedded app (for example `components.Namespace{Name: "ai", Commands: aiCLI.GetAiCommands()}`).
+- `plugins` is a parent `Command` with `Subcommands` only (a group, not a runnable verb).
+- `publish` is the leaf `Command` with `Arguments`, `Flags`, and `Action`.
+
+Parent group:
+
+```go
+func GetAiCommands() []components.Command {
+	return []components.Command{
+		{
+			Name:        "plugins",
+			Description: "AI agent plugin commands.",
+			Subcommands: GetPluginSubCommands(),
+		},
+	}
+}
+```
+
+Leaf subcommand:
+
+```go
+func GetPluginSubCommands() []components.Command {
+	return []components.Command{
+		{
+			Name:        "publish",
+			Description: "Publish a plugin to Artifactory.",
+			Arguments: []components.Argument{
+				{
+					Name:        "path",
+					Description: "Path to the plugin folder containing plugin.json.",
+				},
+			},
+			Flags:  publishFlags,
+			Action: publish.RunPublish,
+		},
+	}
+}
+```
+
+Keep the following on the parent group command:
+
+- Do not set `Action` (users must run a child verb, such as `publish`; otherwise the parent `Action` runs when no child is specified).
+- Do not set `Arguments` (the leaf command owns positional args so `jf ai plugins publish --help` shows publish-specific help).
+- Do not set `SkipFlagParsing` when `Subcommands` is non-empty. The converter rejects that combination because urfave/cli v1.22+ will not route to child commands when `SkipFlagParsing` is true.
+- Prefer not to set `Flags` on the parent; define flags on leaf subcommands unless you intentionally need flags shared across all children of the group.
+
+Use `SkipFlagParsing` only on leaf commands that forward raw arguments to an external tool (for example `jf mvn`), not on command groups.
+
 ## Adding a Command
 
 To add a command you need to insert an entry to the commands list. the entry is an instance of the `Command` structure that defines an `Action` to execute when triggered, as mentioned at this example:

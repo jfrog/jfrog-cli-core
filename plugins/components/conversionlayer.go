@@ -74,6 +74,9 @@ func convertCommands(commands []Command, nameSpaces ...string) ([]cli.Command, e
 }
 
 func convertCommand(cmd Command, namespaces ...string) (cli.Command, error) {
+	if err := validateCommandGroup(cmd, namespaces...); err != nil {
+		return cli.Command{}, err
+	}
 	if len(cmd.SupportedFormats) > 0 {
 		cmd.Flags = append([]Flag{GetFormatFlag(cmd.SupportedFormats, cmd.DefaultFormat)}, cmd.Flags...)
 	}
@@ -111,6 +114,18 @@ func convertCommand(cmd Command, namespaces ...string) (cli.Command, error) {
 		cliCmd.Action = getActionFunc(cmd)
 	}
 	return cliCmd, nil
+}
+
+// validateCommandGroup rejects SkipFlagParsing on commands with subcommands.
+// urfave/cli v1.22+ skips subcommand routing when SkipFlagParsing is true (see command.Run).
+func validateCommandGroup(cmd Command, namespaces ...string) error {
+	if len(cmd.Subcommands) == 0 || !cmd.SkipFlagParsing {
+		return nil
+	}
+	return fmt.Errorf(
+		"command %q: SkipFlagParsing cannot be used with subcommands; urfave/cli will not route to child commands",
+		getCmdUsageString(cmd, namespaces...),
+	)
 }
 
 func removeEmptyValues(slice []string) []string {

@@ -400,6 +400,21 @@ func TestGetValueForBoolFlag(t *testing.T) {
 	})
 }
 
+func TestConvertCommandSkipFlagParsingWithSubcommands(t *testing.T) {
+	parent := Command{
+		Name:            "plugins",
+		Description:     "AI agent plugin commands.",
+		SkipFlagParsing: true,
+		Subcommands: []Command{
+			{Name: "publish", Description: "Publish a plugin."},
+		},
+	}
+	_, err := convertCommand(parent, "ai")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ai plugins")
+	assert.Contains(t, err.Error(), "SkipFlagParsing")
+}
+
 func TestConvertCommandNestedSubcommands(t *testing.T) {
 	parent := Command{
 		Name:        "plugins",

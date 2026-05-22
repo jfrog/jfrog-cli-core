@@ -18,7 +18,12 @@ func ConfigGet(key, executablePath string, jsonOutput bool) (string, error) {
 		return "", errorutils.CheckError(err)
 	}
 	confValue := strings.TrimSpace(output)
-
+	// Yarn v4 returns the string "undefined" for config keys that are not explicitly set,
+	// whereas v3 returns the key's default value. Normalise to empty string so callers
+	// don't need to handle this difference themselves.
+	if confValue == "undefined" {
+		return "", nil
+	}
 	return confValue, nil
 }
 

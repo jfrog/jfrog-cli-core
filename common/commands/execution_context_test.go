@@ -78,11 +78,12 @@ func TestDetectExecutionContext_IsMemoized(t *testing.T) {
 // re-evaluate env vars. Restores the memoization state after the test.
 func resetExecutionContextForTest(t *testing.T) {
 	t.Helper()
-	prevOnce, prevCache := executionContextOnce, cachedExecutionContext
+	prevCache := cachedExecutionContext
 	executionContextOnce = sync.Once{}
 	cachedExecutionContext = ExecutionContext{}
 	t.Cleanup(func() {
-		executionContextOnce, cachedExecutionContext = prevOnce, prevCache
+		executionContextOnce = sync.Once{}
+		cachedExecutionContext = prevCache
 	})
 }
 

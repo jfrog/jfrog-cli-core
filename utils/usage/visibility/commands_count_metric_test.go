@@ -63,12 +63,15 @@ func TestNewCommandsCountMetricWithEnhancedData(t *testing.T) {
 	commandName := "enhanced-test-command"
 
 	metricsData := &MetricsData{
-		Flags:        []string{"verbose", "recursive", "threads"},
-		Platform:     "linux",
-		Architecture: "amd64",
-		IsCI:         true,
-		CISystem:     "github_actions",
-		IsContainer:  false,
+		Flags:         []string{"verbose", "recursive", "threads"},
+		Platform:      "linux",
+		Architecture:  "amd64",
+		IsCI:          true,
+		CISystem:      "github_actions",
+		IsContainer:   false,
+		IsAgent:       true,
+		Agent:         "cursor",
+		IsInteractive: false,
 	}
 
 	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
@@ -88,6 +91,9 @@ func TestNewCommandsCountMetricWithEnhancedData(t *testing.T) {
 	assert.Equal(t, "true", labels.IsCI)
 	assert.Equal(t, "github_actions", labels.CISystem)
 	assert.Equal(t, "false", labels.IsContainer)
+	assert.Equal(t, "true", labels.IsAgent)
+	assert.Equal(t, "cursor", labels.Agent)
+	assert.Equal(t, "false", labels.IsInteractive)
 }
 
 func TestNewCommandsCountMetricWithNilEnhancedData(t *testing.T) {
@@ -113,6 +119,58 @@ func TestNewCommandsCountMetricWithNilEnhancedData(t *testing.T) {
 	assert.Empty(t, labels.IsCI)
 	assert.Empty(t, labels.CISystem)
 	assert.Empty(t, labels.IsContainer)
+	assert.Empty(t, labels.IsAgent)
+	assert.Empty(t, labels.Agent)
+	assert.Empty(t, labels.IsInteractive)
+}
+
+func TestNewCommandsCountMetricWithAgentContext(t *testing.T) {
+	commandName := "rt_download"
+
+	metricsData := &MetricsData{
+		IsAgent:       true,
+		Agent:         "cursor",
+		IsInteractive: true,
+	}
+
+	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
+
+	labels, ok := metric.Labels.(*commandsCountLabels)
+	assert.True(t, ok, "Expected labels to be of type commandsCountLabels")
+
+	assert.Equal(t, "true", labels.IsAgent)
+	assert.Equal(t, "cursor", labels.Agent)
+	assert.Equal(t, "true", labels.IsInteractive)
+
+	metricJSON, err := json.Marshal(metric)
+	assert.NoError(t, err)
+	assert.Contains(t, string(metricJSON), `"is_agent":"true"`)
+	assert.Contains(t, string(metricJSON), `"agent":"cursor"`)
+	assert.Contains(t, string(metricJSON), `"is_interactive":"true"`)
+}
+
+func TestNewCommandsCountMetricWithoutAgentContext(t *testing.T) {
+	commandName := "rt_upload"
+
+	metricsData := &MetricsData{
+		IsAgent:       false,
+		IsInteractive: false,
+	}
+
+	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
+
+	labels, ok := metric.Labels.(*commandsCountLabels)
+	assert.True(t, ok, "Expected labels to be of type commandsCountLabels")
+
+	assert.Equal(t, "false", labels.IsAgent)
+	assert.Empty(t, labels.Agent)
+	assert.Equal(t, "false", labels.IsInteractive)
+
+	metricJSON, err := json.Marshal(metric)
+	assert.NoError(t, err)
+	assert.Contains(t, string(metricJSON), `"is_agent":"false"`)
+	assert.Contains(t, string(metricJSON), `"is_interactive":"false"`)
+	assert.NotContains(t, string(metricJSON), `"agent":`)
 }
 
 func TestMetricsDataStructure(t *testing.T) {

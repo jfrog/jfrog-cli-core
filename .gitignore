@@ -8,6 +8,7 @@ testdata/go/project1/go.sum
 testdata/go/tmp
 tmp
 out
+.gradle
 
 # Vim
 *~

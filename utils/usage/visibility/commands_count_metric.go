@@ -28,6 +28,9 @@ type commandsCountLabels struct {
 	IsCI                                 string `json:"is_ci"`
 	CISystem                             string `json:"ci_system,omitempty"`
 	IsContainer                          string `json:"is_container"`
+	IsAgent                              string `json:"is_agent,omitempty"`
+	Agent                                string `json:"agent,omitempty"`
+	IsInteractive                        string `json:"is_interactive,omitempty"`
 	PackageAlias                         string `json:"package_alias,omitempty"`
 	PackageManager                       string `json:"package_manager,omitempty"`
 }
@@ -78,6 +81,17 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 			labels.IsContainer = "true"
 		} else {
 			labels.IsContainer = "false"
+		}
+		if metricsData.IsAgent {
+			labels.IsAgent = "true"
+			labels.Agent = metricsData.Agent
+		} else {
+			labels.IsAgent = "false"
+		}
+		if metricsData.IsInteractive {
+			labels.IsInteractive = "true"
+		} else {
+			labels.IsInteractive = "false"
 		}
 		if metricsData.PackageAlias {
 			labels.PackageAlias = "true"

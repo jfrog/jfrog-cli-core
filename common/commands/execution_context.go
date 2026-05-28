@@ -55,6 +55,19 @@ var (
 	cachedExecutionContext ExecutionContext
 )
 
+// ResetExecutionContextForTest clears the memoized ExecutionContext so the
+// next DetectExecutionContext call re-evaluates env vars. Exported for tests
+// in downstream modules (e.g. jfrog-cli) that need to assert agent-detection
+// behaviour against in-process command invocations after other tests in the
+// same binary have already triggered memoization.
+//
+// Production code MUST NOT call this. Calling it concurrently with
+// DetectExecutionContext is unsafe.
+func ResetExecutionContextForTest() {
+	executionContextOnce = sync.Once{}
+	cachedExecutionContext = ExecutionContext{}
+}
+
 func computeExecutionContext() ExecutionContext {
 	ec := ExecutionContext{
 		IsInteractive: clientlog.IsStdOutTerminal(),

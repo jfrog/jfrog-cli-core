@@ -984,3 +984,58 @@ func TestMetricsIntegrationFlow(t *testing.T) {
 		t.Error("Expected metrics to be cleared after retrieval")
 	}
 }
+
+// TestAgentContextEndToEnd verifies that agent/is_agent/is_interactive
+// signals survive the full chain: env -> ExecutionContext -> CollectMetrics ->
+// GetCollectedMetrics -> visibility.MetricsData -> commandsCountLabels -> wire JSON.
+// This guards against any field being dropped at the boundaries between layers.
+func TestAgentContextEndToEnd(t *testing.T) {
+	ClearAllMetrics()
+	clearAgentEnvVars(t)
+	t.Setenv("CURSOR_AGENT", "1")
+	resetExecutionContextForTest(t)
+
+	commandName := "rt_download"
+	flags := []string{"recursive"}
+
+	CollectMetrics(commandName, flags)
+
+	collected := GetCollectedMetrics(commandName)
+	if collected == nil {
+		t.Fatal("Expected metrics to be collected")
+	}
+	if !collected.IsAgent || collected.Agent != "cursor" {
+		t.Errorf("collected IsAgent/Agent wrong: IsAgent=%v Agent=%q", collected.IsAgent, collected.Agent)
+	}
+
+	visibilityData := &visibility.MetricsData{
+		Flags:          collected.Flags,
+		Platform:       collected.Platform,
+		Architecture:   collected.Architecture,
+		IsCI:           collected.IsCI,
+		CISystem:       collected.CISystem,
+		IsContainer:    collected.IsContainer,
+		IsAgent:        collected.IsAgent,
+		Agent:          collected.Agent,
+		IsInteractive:  collected.IsInteractive,
+		PackageAlias:   collected.PackageAlias,
+		PackageManager: collected.PackageManager,
+	}
+
+	metric := visibility.NewCommandsCountMetricWithEnhancedData(commandName, visibilityData)
+	metricJSON, err := json.Marshal(metric)
+	if err != nil {
+		t.Fatalf("json marshal failed: %v", err)
+	}
+
+	wire := string(metricJSON)
+	if !strings.Contains(wire, `"is_agent":"true"`) {
+		t.Errorf("wire JSON missing is_agent=true: %s", wire)
+	}
+	if !strings.Contains(wire, `"agent":"cursor"`) {
+		t.Errorf("wire JSON missing agent=cursor: %s", wire)
+	}
+	if !strings.Contains(wire, `"is_interactive":`) {
+		t.Errorf("wire JSON missing is_interactive: %s", wire)
+	}
+}

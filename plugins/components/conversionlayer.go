@@ -47,7 +47,7 @@ func convertSubcommands(subcommands []Namespace, nameSpaces ...string) ([]cli.Co
 		nameSpaceCommand := cli.Command{
 			Name:     ns.Name,
 			Aliases:  ns.Aliases,
-			Usage:    ns.Description,
+			Usage:    common.ResolveDescription(ns.Description, ns.AIDescription),
 			Hidden:   ns.Hidden,
 			Category: ns.Category,
 		}
@@ -88,14 +88,15 @@ func convertCommand(cmd Command, namespaces ...string) (cli.Command, error) {
 	if err != nil {
 		return cli.Command{}, err
 	}
+	chosenDesc := common.ResolveDescription(cmd.Description, cmd.AIDescription)
 	cliCmd := cli.Command{
 		Name:            cmd.Name,
 		Flags:           convertedFlags,
 		Aliases:         cmd.Aliases,
 		Category:        cmd.Category,
-		Usage:           cmd.Description,
-		Description:     cmd.Description,
-		HelpName:        common.CreateUsage(getCmdUsageString(cmd, namespaces...), cmd.Description, cmdUsages),
+		Usage:           chosenDesc,
+		Description:     chosenDesc,
+		HelpName:        common.CreateUsage(getCmdUsageString(cmd, namespaces...), chosenDesc, cmdUsages),
 		UsageText:       createArgumentsSummary(cmd),
 		ArgsUsage:       createEnvVarsSummary(cmd),
 		BashComplete:    common.CreateBashCompletionFunc(),

@@ -446,3 +446,41 @@ func (d DummyFlagValue) String() string {
 func (d DummyFlagValue) Set(value string) error {
 	return nil
 }
+
+func TestConvertCommandAppliesAIHelp(t *testing.T) {
+	// Pin AI-help to "on" via env so the test is deterministic regardless of
+	// the parent process's agent detection (see docs/common/aihelp.go).
+	t.Setenv("JFROG_CLI_AI_HELP", "true")
+
+	cmd := Command{
+		Name:          "test-cmd",
+		Description:   "human description",
+		AIDescription: "ai description",
+	}
+
+	t.Run("env force-on uses AI text", func(t *testing.T) {
+		t.Setenv("JFROG_CLI_AI_HELP", "true")
+		converted, err := convertCommand(cmd, "test-ns")
+		require.NoError(t, err)
+		assert.Equal(t, "ai description", converted.Usage)
+		assert.Equal(t, "ai description", converted.Description)
+		assert.Contains(t, converted.HelpName, "ai description")
+	})
+
+	t.Run("env force-off uses human text", func(t *testing.T) {
+		t.Setenv("JFROG_CLI_AI_HELP", "false")
+		converted, err := convertCommand(cmd, "test-ns")
+		require.NoError(t, err)
+		assert.Equal(t, "human description", converted.Usage)
+		assert.Equal(t, "human description", converted.Description)
+		assert.Contains(t, converted.HelpName, "human description")
+	})
+
+	t.Run("empty AIDescription falls back to human even when force-on", func(t *testing.T) {
+		t.Setenv("JFROG_CLI_AI_HELP", "true")
+		humanOnly := Command{Name: "test-cmd", Description: "human only"}
+		converted, err := convertCommand(humanOnly, "test-ns")
+		require.NoError(t, err)
+		assert.Equal(t, "human only", converted.Usage)
+	})
+}

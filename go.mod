@@ -12,7 +12,7 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20260523204920-c264028e67ea
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.6.1
-	github.com/jedib0t/go-pretty/v6 v6.7.10
+	github.com/jedib0t/go-pretty/v6 v6.8.0
 	github.com/jfrog/build-info-go v1.13.1-0.20260429070557-93b98034d295
 	github.com/jfrog/gofrog v1.7.6
 	github.com/jfrog/jfrog-client-go v1.55.1-0.20251223101502-1a13a993b0c7

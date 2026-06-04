@@ -43,6 +43,14 @@ func Exec(command Command) error {
 	return err
 }
 
+// ExecWithPackageManager tags the command with the given package manager
+// name (e.g. "npm", "go", "docker") for telemetry, then runs Exec.
+// The package manager context is consumed by CollectMetrics inside Exec.
+func ExecWithPackageManager(command Command, packageManager string) error {
+	SetPackageManagerContext(packageManager)
+	return Exec(command)
+}
+
 // ExecAndThenReportUsage runs the command and then triggers a usage report.
 // Used for commands which don't have the full server details before execution.
 // For example: oidc exchange command, which will get access token only after execution.

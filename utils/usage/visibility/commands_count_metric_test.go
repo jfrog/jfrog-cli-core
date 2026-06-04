@@ -308,3 +308,28 @@ func TestNewCommandsCountMetricWithoutPackageAlias(t *testing.T) {
 	assert.NotContains(t, string(metricJSON), `"package_alias"`)
 	assert.NotContains(t, string(metricJSON), `"package_manager"`)
 }
+
+// TestNewCommandsCountMetric_PackageManagerWithoutAlias verifies that
+// package_manager is emitted for direct (non-alias) buildtool invocations
+// while package_alias remains absent from the wire payload.
+func TestNewCommandsCountMetric_PackageManagerWithoutAlias(t *testing.T) {
+	commandName := "npm_install"
+
+	metricsData := &MetricsData{
+		Flags:          []string{"save-dev"},
+		PackageAlias:   false,
+		PackageManager: "npm",
+	}
+
+	metric := NewCommandsCountMetricWithEnhancedData(commandName, metricsData)
+
+	labels, ok := metric.Labels.(*commandsCountLabels)
+	assert.True(t, ok, "Expected labels to be of type commandsCountLabels")
+	assert.Empty(t, labels.PackageAlias)
+	assert.Equal(t, "npm", labels.PackageManager)
+
+	metricJSON, err := json.Marshal(metric)
+	assert.NoError(t, err)
+	assert.NotContains(t, string(metricJSON), `"package_alias"`)
+	assert.Contains(t, string(metricJSON), `"package_manager":"npm"`)
+}

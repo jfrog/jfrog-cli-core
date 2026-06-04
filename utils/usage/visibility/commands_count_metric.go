@@ -95,6 +95,8 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 		}
 		if metricsData.PackageAlias {
 			labels.PackageAlias = "true"
+		}
+		if metricsData.PackageManager != "" {
 			labels.PackageManager = metricsData.PackageManager
 		}
 	}

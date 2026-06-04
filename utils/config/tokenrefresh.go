@@ -137,7 +137,7 @@ func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails,
 			return "", err
 		}
 
-		newToken, err = createTokensForConfig(serverConfiguration, expirySeconds)
+		newToken, err = CreateTokensForConfig(serverConfiguration, expirySeconds)
 		if err != nil {
 			return "", err
 		}
@@ -184,7 +184,10 @@ func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, r
 	return SaveServersConf(configurations)
 }
 
-func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {
+// CreateTokensForConfig creates a refreshable access token via the Access API using the credentials
+// stored in serverDetails. It first attempts basic auth, then falls back to bearer auth for reference tokens.
+// This is exported so that config.go can call it with the plain-text password before it is encrypted.
+func CreateTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {
 	expiresIn := uint(max(expirySeconds, 0)) // #nosec G115 -- expirySeconds is validated positive by callers
 	createTokenParams := accessservices.CreateTokenParams{
 		CommonTokenParams: auth.CommonTokenParams{
@@ -256,9 +259,18 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 		return
 	}
 
-	newToken, tokenErr := createTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
+	newToken, tokenErr := CreateTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
 	if tokenErr != nil {
 		serverDetails.ArtifactoryTokenRefreshInterval = 0
+		// Persist to disk so subsequent commands skip token creation entirely instead of
+		// repeating the failing attempts, which can increment failed-login lockout counters.
+		if serverDetails.ServerId != "" {
+			if configurations, loadErr := GetAllServersConfigs(); loadErr == nil {
+				_, configurations = GetAndRemoveConfiguration(serverDetails.ServerId, configurations)
+				configurations = append(configurations, serverDetails)
+				_ = SaveServersConf(configurations)
+			}
+		}
 		return nil
 	}
 	// Remove initializing value.

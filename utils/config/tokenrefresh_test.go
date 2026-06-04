@@ -710,3 +710,91 @@ func TestAccessAPITokenCreationFails_MockServer(t *testing.T) {
 	assert.Empty(t, serverDetails.AccessToken,
 		"No access token should be set when Access API fails")
 }
+
+// TestCreateInitialRefreshableTokensIfNeededPersistsFailureToDisk verifies Fix 1:
+// when token creation fails, ArtifactoryTokenRefreshInterval=0 is written to disk,
+// not only reset in memory. This prevents repeated 401 requests on every subsequent command.
+func TestCreateInitialRefreshableTokensIfNeededPersistsFailureToDisk(t *testing.T) {
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	defer cleanUpTempEnv()
+
+	serverDetails := &ServerDetails{
+		ServerId:                        "persist-test-server",
+		ArtifactoryTokenRefreshInterval: 60,
+		ArtifactoryRefreshToken:         "",
+		AccessToken:                     "",
+		ArtifactoryUrl:                  "http://localhost:19999/artifactory/", // unreachable — forces failure
+		Url:                             "http://localhost:19999/",
+		User:                            "testuser",
+		Password:                        "testpass",
+	}
+
+	require.NoError(t, SaveServersConf([]*ServerDetails{serverDetails}))
+
+	// Verify the initial disk state has interval=60
+	diskBefore, err := GetSpecificConfig(serverDetails.ServerId, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, 60, diskBefore.ArtifactoryTokenRefreshInterval, "initial disk interval should be 60")
+
+	// Call the function — token creation will fail (server unreachable)
+	err = CreateInitialRefreshableTokensIfNeeded(serverDetails)
+	assert.NoError(t, err, "graceful fallback should not return an error")
+
+	// Verify in-memory value is reset
+	assert.Equal(t, 0, serverDetails.ArtifactoryTokenRefreshInterval, "in-memory interval should be 0 after failure")
+
+	// Verify the failure was persisted to disk (Fix 1 — prevents repeated 401s on next command)
+	diskAfter, err := GetSpecificConfig(serverDetails.ServerId, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, 0, diskAfter.ArtifactoryTokenRefreshInterval,
+		"interval=0 must be persisted to disk so subsequent commands skip token creation")
+}
+
+// TestCreateInitialRefreshableTokensIfNeededPersistsTokenToDisk verifies that when token
+// creation succeeds, the access token is written to disk (existing behaviour, not regressed).
+func TestCreateInitialRefreshableTokensIfNeededPersistsTokenToDisk(t *testing.T) {
+	cleanUpTempEnv := configtests.CreateTempEnv(t, false)
+	defer cleanUpTempEnv()
+
+	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/access/api/v1/tokens" && r.Method == http.MethodPost {
+			w.Header().Set("Content-Type", "application/json")
+			// #nosec G101 -- mock test credentials, not real tokens
+			resp := map[string]interface{}{
+				"access_token":  "mock-persisted-access-token",  // #nosec G101
+				"refresh_token": "mock-persisted-refresh-token", // #nosec G101
+				"expires_in":    3600,
+				"scope":         "applied-permissions/user",
+				"token_type":    "Bearer",
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer mockServer.Close()
+
+	serverDetails := &ServerDetails{
+		ServerId:                        "token-persist-server",
+		ArtifactoryTokenRefreshInterval: 60,
+		ArtifactoryRefreshToken:         "",
+		AccessToken:                     "",
+		ArtifactoryUrl:                  mockServer.URL + "/artifactory/",
+		Url:                             mockServer.URL + "/",
+		User:                            "testuser",
+		Password:                        "testpass",
+	}
+
+	require.NoError(t, SaveServersConf([]*ServerDetails{serverDetails}))
+
+	err := CreateInitialRefreshableTokensIfNeeded(serverDetails)
+	assert.NoError(t, err)
+
+	// Verify the access token was written to disk
+	diskConfig, err := GetSpecificConfig(serverDetails.ServerId, false, false)
+	require.NoError(t, err)
+	assert.Equal(t, "mock-persisted-access-token", diskConfig.AccessToken,
+		"access token should be persisted to disk after successful creation")
+	assert.Equal(t, 0, diskConfig.ArtifactoryTokenRefreshInterval,
+		"interval should be 0 on disk after token is created")
+}

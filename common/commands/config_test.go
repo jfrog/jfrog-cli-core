@@ -2,12 +2,9 @@ package commands
 
 import (
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 	"os"
 	"testing"
-
-	"github.com/jfrog/jfrog-cli-core/v2/general/token"
 
 	"github.com/jfrog/jfrog-cli-core/v2/common/tests"
 	utilsTests "github.com/jfrog/jfrog-cli-core/v2/utils/tests"
@@ -17,7 +14,6 @@ import (
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -450,117 +446,4 @@ func configStructToString(t *testing.T, artConfig *config.ServerDetails) string 
 	marshaledStruct, err := json.Marshal(*artConfig) // #nosec G117 -- test helper
 	assert.NoError(t, err)
 	return string(marshaledStruct)
-}
-
-// TestEarlyTokenCreationSucceeds verifies Fix 2: when the Access API is reachable during
-// 'jf config add', the token is created immediately (before password encryption), so no
-// deferred token creation loop is needed and no 401s are generated on subsequent commands.
-func TestEarlyTokenCreationSucceeds(t *testing.T) {
-	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
-	require.NoError(t, err)
-	defer cleanUpJfrogHome()
-
-	// #nosec G101 -- mock test credentials
-	mockServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/access/api/v1/tokens" && r.Method == http.MethodPost:
-			w.Header().Set("Content-Type", "application/json")
-			resp := map[string]interface{}{
-				"access_token":  "early-created-access-token",  // #nosec G101
-				"refresh_token": "early-created-refresh-token", // #nosec G101
-				"expires_in":    3600,
-				"scope":         "applied-permissions/user",
-				"token_type":    "Bearer",
-			}
-			_ = json.NewEncoder(w).Encode(resp)
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer mockServer.Close()
-
-	inputDetails := &config.ServerDetails{
-		Url:            mockServer.URL + "/",
-		ArtifactoryUrl: mockServer.URL + "/artifactory/",
-		ServerId:       testServerId,
-		User:           "admin",
-		Password:       "password",
-		IsDefault:      true,
-	}
-
-	// encPassword=false so we don't need a real Artifactory for the encryption endpoint
-	configCmd := NewConfigCommand(AddOrEdit, testServerId).
-		SetDetails(inputDetails).
-		SetUseBasicAuthOnly(false).
-		SetInteractive(false)
-	configCmd.disablePrompts = true
-	require.NoError(t, configCmd.Run())
-
-	saved, err := GetConfig(testServerId, false)
-	require.NoError(t, err)
-
-	// Token must be set immediately — no deferred creation loop
-	assert.Equal(t, "early-created-access-token", saved.AccessToken,
-		"access token should be created during 'jf config add' when Access API is reachable")
-	assert.Equal(t, "early-created-refresh-token", saved.ArtifactoryRefreshToken,
-		"refresh token should be created during 'jf config add' when Access API is reachable")
-	// interval must be 0 — deferred creation skipped because token already exists
-	assert.Equal(t, coreutils.TokenRefreshDisabled, saved.ArtifactoryTokenRefreshInterval,
-		"ArtifactoryTokenRefreshInterval must be 0 when token is created early — no retry loop needed")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
-}
-
-// TestEarlyTokenCreationFailsGracefully verifies that when the Access API is unreachable during
-// 'jf config add', the command succeeds and falls back to the deferred creation path (Fix 1).
-func TestEarlyTokenCreationFailsGracefully(t *testing.T) {
-	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
-	require.NoError(t, err)
-	defer cleanUpJfrogHome()
-
-	inputDetails := &config.ServerDetails{
-		Url:            "http://localhost:19998/", // unreachable
-		ArtifactoryUrl: "http://localhost:19998/artifactory/",
-		ServerId:       testServerId,
-		User:           "admin",
-		Password:       "password",
-		IsDefault:      true,
-	}
-
-	configCmd := NewConfigCommand(AddOrEdit, testServerId).
-		SetDetails(inputDetails).
-		SetUseBasicAuthOnly(false).
-		SetInteractive(false)
-	configCmd.disablePrompts = true
-	// 'jf config add' must succeed even when the Access API is unreachable
-	require.NoError(t, configCmd.Run())
-
-	saved, err := GetConfig(testServerId, false)
-	require.NoError(t, err)
-
-	// No token — early creation failed
-	assert.Empty(t, saved.AccessToken, "no access token should be stored when Access API was unreachable")
-	// interval=60 — deferred creation will be tried on the first command (handled by Fix 1)
-	assert.Equal(t, coreutils.TokenRefreshDefaultInterval, saved.ArtifactoryTokenRefreshInterval,
-		"interval=60 should be set so Fix 1 (persist-on-failure) handles the deferred retry")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
-}
-
-// TestEarlyTokenCreationSkippedWithBasicAuthOnly verifies that --basic-auth-only completely
-// disables both early token creation and the deferred refresh interval.
-func TestEarlyTokenCreationSkippedWithBasicAuthOnly(t *testing.T) {
-	cleanUpJfrogHome, err := utilsTests.SetJfrogHome()
-	require.NoError(t, err)
-	defer cleanUpJfrogHome()
-
-	inputDetails := tests.CreateTestServerDetails()
-	inputDetails.User = "admin"
-	inputDetails.Password = "password"
-
-	outputConfig, configErr := configAndGetTestServer(t, inputDetails, true, false)
-	require.NoError(t, configErr)
-
-	assert.Empty(t, outputConfig.AccessToken, "access token must not be created when --basic-auth-only is set")
-	assert.Equal(t, coreutils.TokenRefreshDisabled, outputConfig.ArtifactoryTokenRefreshInterval,
-		"interval must be 0 (disabled) when --basic-auth-only is set")
-	assert.NoError(t, NewConfigCommand(Delete, testServerId).Run())
 }

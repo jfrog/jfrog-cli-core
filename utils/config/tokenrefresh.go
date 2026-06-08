@@ -2,13 +2,11 @@ package config
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/jfrog/jfrog-client-go/access"
 	accessservices "github.com/jfrog/jfrog-client-go/access/services"
-	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/errorutils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -137,7 +135,7 @@ func refreshArtifactoryTokenAndWriteToConfig(serverConfiguration *ServerDetails,
 			return "", err
 		}
 
-		newToken, err = CreateTokensForConfig(serverConfiguration, expirySeconds)
+		newToken, err = createTokensForConfig(serverConfiguration, expirySeconds)
 		if err != nil {
 			return "", err
 		}
@@ -184,60 +182,24 @@ func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, r
 	return SaveServersConf(configurations)
 }
 
-// CreateTokensForConfig creates a refreshable access token via the Access API using the credentials
-// stored in serverDetails. It first attempts basic auth, then falls back to bearer auth for reference tokens.
-// This is exported so that config.go can call it with the plain-text password before it is encrypted.
-func CreateTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {
-	expiresIn := uint(max(expirySeconds, 0)) // #nosec G115 -- expirySeconds is validated positive by callers
-	createTokenParams := accessservices.CreateTokenParams{
-		CommonTokenParams: auth.CommonTokenParams{
-			Scope:       "applied-permissions/user",
-			ExpiresIn:   &expiresIn,
-			Refreshable: clientutils.Pointer(true),
-		},
-		Username: serverDetails.User,
-	}
-
-	// First, try with the original credentials (basic auth: user + password).
-	servicesManager, err := createAccessTokensServiceManager(serverDetails)
+func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {
+	servicesManager, err := createArtifactoryTokensServiceManager(serverDetails)
 	if err != nil {
 		return auth.CreateTokenResponseData{}, err
 	}
-	newToken, err := servicesManager.CreateAccessToken(createTokenParams)
-	if err == nil {
-		return newToken, nil
+
+	createTokenParams := services.NewCreateTokenParams()
+	createTokenParams.Username = serverDetails.User
+	createTokenParams.ExpiresIn = expirySeconds
+	// User-scoped token
+	createTokenParams.Scope = "member-of-groups:*"
+	createTokenParams.Refreshable = true
+
+	newToken, err := servicesManager.CreateToken(createTokenParams)
+	if err != nil {
+		return auth.CreateTokenResponseData{}, err
 	}
-
-	// If basic auth failed and a password is available, retry using it as a Bearer token.
-	// This handles reference tokens, which the Access service can resolve server-side.
-	if serverDetails.Password != "" {
-		bearerDetails := serverDetailsForBearerAuth(serverDetails, serverDetails.Password)
-		servicesManager, err = createAccessTokensServiceManager(bearerDetails)
-		if err != nil {
-			return auth.CreateTokenResponseData{}, err
-		}
-		newToken, err = servicesManager.CreateAccessToken(createTokenParams)
-		if err == nil {
-			return newToken, nil
-		}
-		log.Debug("Access token creation with Bearer auth failed: " + err.Error())
-	}
-
-	return auth.CreateTokenResponseData{}, fmt.Errorf(
-		"automatic token creation via the Access API failed: %s. "+
-			"If your JFrog Platform version does not support the Access API, please upgrade. "+
-			"Alternatively, use the --basic-auth-only flag to skip automatic token creation",
-		err.Error())
-}
-
-// serverDetailsForBearerAuth returns a ServerDetails configured to authenticate using the
-// given token as a Bearer token, with user/password credentials cleared.
-func serverDetailsForBearerAuth(original *ServerDetails, token string) *ServerDetails {
-	details := *original
-	details.AccessToken = token
-	details.User = ""
-	details.Password = ""
-	return &details
+	return newToken, nil
 }
 
 func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err error) {
@@ -259,19 +221,9 @@ func CreateInitialRefreshableTokensIfNeeded(serverDetails *ServerDetails) (err e
 		return
 	}
 
-	newToken, tokenErr := CreateTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
-	if tokenErr != nil {
-		serverDetails.ArtifactoryTokenRefreshInterval = 0
-		// Persist to disk so subsequent commands skip token creation entirely instead of
-		// repeating the failing attempts, which can increment failed-login lockout counters.
-		if serverDetails.ServerId != "" {
-			if configurations, loadErr := GetAllServersConfigs(); loadErr == nil {
-				_, configurations = GetAndRemoveConfiguration(serverDetails.ServerId, configurations)
-				configurations = append(configurations, serverDetails)
-				_ = SaveServersConf(configurations)
-			}
-		}
-		return nil
+	newToken, err := createTokensForConfig(serverDetails, serverDetails.ArtifactoryTokenRefreshInterval*60)
+	if err != nil {
+		return
 	}
 	// Remove initializing value.
 	serverDetails.ArtifactoryTokenRefreshInterval = 0

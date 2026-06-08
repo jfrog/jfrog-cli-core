@@ -178,7 +178,6 @@ func (cc *ConfigCommand) config() error {
 	if err = cc.assertUrlsSafe(); err != nil {
 		return err
 	}
-	cc.tryCreateAccessTokenEarly()
 	if err = cc.encPasswordIfNeeded(); err != nil {
 		return err
 	}
@@ -288,35 +287,12 @@ func (cc *ConfigCommand) encPasswordIfNeeded() error {
 	return nil
 }
 
-// tryCreateAccessTokenEarly attempts to create an Access API token while the plain-text password
-// is still available — before encPasswordIfNeeded() encrypts it. The Access API requires
-// plain-text credentials and cannot decrypt Artifactory's encrypted password format, so this
-// must happen first. On failure, the function logs a debug message and returns silently;
-// configRefreshableTokenIfPossible will set interval=60 so the attempt is retried on the first
-// command (and Fix 1 in CreateInitialRefreshableTokensIfNeeded will persist the failure to disk).
-func (cc *ConfigCommand) tryCreateAccessTokenEarly() {
-	if cc.useBasicAuthOnly || cc.details.User == "" || cc.details.Password == "" || cc.details.AccessToken != "" {
-		return
-	}
-	newToken, err := config.CreateTokensForConfig(cc.details, coreutils.TokenRefreshDefaultInterval*60)
-	if err != nil {
-		log.Debug("Token creation during 'jf config add' failed (will retry on first command): " + err.Error())
-		return
-	}
-	cc.details.AccessToken = newToken.AccessToken
-	cc.details.ArtifactoryRefreshToken = newToken.RefreshToken
-}
-
 func (cc *ConfigCommand) configRefreshableTokenIfPossible() {
 	if cc.useBasicAuthOnly {
 		return
 	}
 	// If username and password weren't provided, then the artifactoryToken refresh mechanism isn't set.
 	if cc.details.User == "" || cc.details.Password == "" {
-		return
-	}
-	// If tryCreateAccessTokenEarly already succeeded, there is no need for deferred creation.
-	if cc.details.AccessToken != "" {
 		return
 	}
 	// Set the default interval for the refreshable tokens to be initialized in the next CLI run.

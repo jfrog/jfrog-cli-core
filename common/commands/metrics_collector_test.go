@@ -889,6 +889,7 @@ func TestSetPackageAliasContext(t *testing.T) {
 func TestCollectMetrics_WithoutPackageAlias(t *testing.T) {
 	ClearAllMetrics()
 	globalMetricsCollector.packageAliasContext = ""
+	globalMetricsCollector.packageManagerContext = ""
 
 	commandName := "rt_upload"
 	CollectMetrics(commandName, nil)
@@ -902,6 +903,62 @@ func TestCollectMetrics_WithoutPackageAlias(t *testing.T) {
 	}
 	if metrics.PackageManager != "" {
 		t.Errorf("Expected PackageManager to be empty, got '%s'", metrics.PackageManager)
+	}
+}
+
+func TestSetPackageManagerContext(t *testing.T) {
+	ClearAllMetrics()
+	globalMetricsCollector.packageAliasContext = ""
+	globalMetricsCollector.packageManagerContext = ""
+
+	commandName := "npm_install"
+	flags := []string{"save-dev"}
+
+	// Set the package manager context (simulates a direct `jf npm install` invocation).
+	SetPackageManagerContext("npm")
+	CollectMetrics(commandName, flags)
+
+	metrics := GetCollectedMetrics(commandName)
+	if metrics == nil {
+		t.Fatal("Expected metrics to be collected")
+	}
+	if metrics.PackageAlias {
+		t.Error("Expected PackageAlias to be false for direct invocation")
+	}
+	if metrics.PackageManager != "npm" {
+		t.Errorf("Expected PackageManager 'npm', got '%s'", metrics.PackageManager)
+	}
+
+	// packageManagerContext must be cleared after CollectMetrics.
+	if globalMetricsCollector.packageManagerContext != "" {
+		t.Errorf("Expected packageManagerContext to be cleared, got '%s'", globalMetricsCollector.packageManagerContext)
+	}
+}
+
+func TestSetPackageManagerContext_AliasWinsWhenBothSet(t *testing.T) {
+	ClearAllMetrics()
+	globalMetricsCollector.packageAliasContext = ""
+	globalMetricsCollector.packageManagerContext = ""
+
+	// Both contexts set: alias must take precedence to preserve existing
+	// alias-dispatch semantics. PackageAlias is true and PackageManager uses
+	// the alias tool name.
+	SetPackageAliasContext("npm")
+	SetPackageManagerContext("pip")
+	CollectMetrics("npm_install", nil)
+
+	metrics := GetCollectedMetrics("npm_install")
+	if metrics == nil {
+		t.Fatal("Expected metrics to be collected")
+	}
+	if !metrics.PackageAlias {
+		t.Error("Expected PackageAlias to be true when alias context set")
+	}
+	if metrics.PackageManager != "npm" {
+		t.Errorf("Expected PackageManager 'npm' (alias wins), got '%s'", metrics.PackageManager)
+	}
+	if globalMetricsCollector.packageAliasContext != "" || globalMetricsCollector.packageManagerContext != "" {
+		t.Error("Expected both context fields to be cleared after CollectMetrics")
 	}
 }
 
@@ -1037,5 +1094,120 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	}
 	if !strings.Contains(wire, `"is_interactive":`) {
 		t.Errorf("wire JSON missing is_interactive: %s", wire)
+	}
+}
+
+// TestExecWithPackageManager verifies that ExecWithPackageManager stamps the
+// package_manager label in the collected metrics before the command runs.
+func TestExecWithPackageManager(t *testing.T) {
+	ClearAllMetrics()
+	globalMetricsCollector.packageAliasContext = ""
+	globalMetricsCollector.packageManagerContext = ""
+
+	commandName := "rt_go"
+	cmd := &MockCommand{name: commandName}
+
+	if err := ExecWithPackageManager(cmd, "go"); err != nil {
+		t.Fatalf("ExecWithPackageManager returned unexpected error: %v", err)
+	}
+
+	m := GetCollectedMetrics(commandName)
+	if m == nil {
+		t.Fatal("expected metrics to be collected after ExecWithPackageManager")
+	}
+	if m.PackageManager != "go" {
+		t.Errorf("PackageManager: got %q want %q", m.PackageManager, "go")
+	}
+	if m.PackageAlias {
+		t.Errorf("PackageAlias should be false for direct ExecWithPackageManager call, got true")
+	}
+}
+
+// TestExecWithPackageManager_AliasWins verifies that when both alias context and
+// package manager are set, alias wins (is_package_alias=true, package_manager=alias value).
+func TestExecWithPackageManager_AliasWins(t *testing.T) {
+	ClearAllMetrics()
+	globalMetricsCollector.packageAliasContext = ""
+	globalMetricsCollector.packageManagerContext = ""
+
+	commandName := "rt_npm_install"
+	cmd := &MockCommand{name: commandName}
+
+	// Simulate alias path setting alias context first
+	SetPackageAliasContext("npm")
+	// Then ExecWithPackageManager also called (shouldn't override alias)
+	if err := ExecWithPackageManager(cmd, "npm"); err != nil {
+		t.Fatalf("ExecWithPackageManager returned unexpected error: %v", err)
+	}
+
+	m := GetCollectedMetrics(commandName)
+	if m == nil {
+		t.Fatal("expected metrics to be collected")
+	}
+	if !m.PackageAlias {
+		t.Error("PackageAlias should be true when alias context was set")
+	}
+	if m.PackageManager != "npm" {
+		t.Errorf("PackageManager: got %q want %q", m.PackageManager, "npm")
+	}
+}
+
+// TestExec_NonPMCommand_NoPackageManagerFields verifies that running a plain
+// non-PM command via Exec (e.g. rt_ping, rt_upload) does NOT set package_manager
+// or package_alias in the collected metrics.
+func TestExec_NonPMCommand_NoPackageManagerFields(t *testing.T) {
+	ClearAllMetrics()
+	globalMetricsCollector.packageAliasContext = ""
+	globalMetricsCollector.packageManagerContext = ""
+
+	cmd := &MockCommand{name: "rt_ping"}
+	if err := Exec(cmd); err != nil {
+		t.Fatalf("Exec returned unexpected error: %v", err)
+	}
+
+	m := GetCollectedMetrics("rt_ping")
+	if m == nil {
+		t.Fatal("expected metrics to be collected")
+	}
+	if m.PackageAlias {
+		t.Errorf("PackageAlias should be false for non-PM command, got true")
+	}
+	if m.PackageManager != "" {
+		t.Errorf("PackageManager should be empty for non-PM command, got %q", m.PackageManager)
+	}
+}
+
+// TestExec_NonPMAfterPM_NoLeakage verifies that running a non-PM command after
+// a PM command does NOT inherit the previous command's package_manager.
+// This guards against context leakage between sequential command executions.
+func TestExec_NonPMAfterPM_NoLeakage(t *testing.T) {
+	ClearAllMetrics()
+	globalMetricsCollector.packageAliasContext = ""
+	globalMetricsCollector.packageManagerContext = ""
+
+	// First: run a PM command
+	pmCmd := &MockCommand{name: "rt_go"}
+	if err := ExecWithPackageManager(pmCmd, "go"); err != nil {
+		t.Fatalf("ExecWithPackageManager: %v", err)
+	}
+	pmMetrics := GetCollectedMetrics("rt_go")
+	if pmMetrics == nil || pmMetrics.PackageManager != "go" {
+		t.Fatalf("PM command should have PackageManager=go, got: %+v", pmMetrics)
+	}
+
+	// Second: run a non-PM command immediately after
+	nonPMCmd := &MockCommand{name: "rt_ping"}
+	if err := Exec(nonPMCmd); err != nil {
+		t.Fatalf("Exec: %v", err)
+	}
+	nonPMMetrics := GetCollectedMetrics("rt_ping")
+	if nonPMMetrics == nil {
+		t.Fatal("expected metrics to be collected for non-PM command")
+	}
+	if nonPMMetrics.PackageManager != "" {
+		t.Errorf("non-PM command leaked package_manager=%q from previous PM command", nonPMMetrics.PackageManager)
+	}
+	if nonPMMetrics.PackageAlias {
+		t.Errorf("non-PM command leaked package_alias=true from previous PM command")
 	}
 }

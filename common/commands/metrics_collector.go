@@ -14,9 +14,10 @@ type MetricsData = metrics.MetricsData
 
 // metricsCollector provides thread-safe collection and storage of command metrics
 type metricsCollector struct {
-	mu                  sync.RWMutex
-	metricsData         map[string]*MetricsData
-	packageAliasContext string
+	mu                    sync.RWMutex
+	metricsData           map[string]*MetricsData
+	packageAliasContext   string
+	packageManagerContext string
 }
 
 var contextFlags []string
@@ -38,6 +39,16 @@ func CollectMetrics(commandName string, flags []string) {
 
 	pkgAliasTool := globalMetricsCollector.packageAliasContext
 	globalMetricsCollector.packageAliasContext = ""
+	pkgManagerTool := globalMetricsCollector.packageManagerContext
+	globalMetricsCollector.packageManagerContext = ""
+
+	// Alias path wins: if the command was dispatched via a package alias, that
+	// tool name is the source of truth for PackageManager. Otherwise the
+	// explicit SetPackageManagerContext value (set by buildtool actions) is used.
+	packageManager := pkgAliasTool
+	if packageManager == "" {
+		packageManager = pkgManagerTool
+	}
 
 	globalMetricsCollector.metricsData[commandName] = &MetricsData{
 		Flags:          flags,
@@ -50,7 +61,7 @@ func CollectMetrics(commandName string, flags []string) {
 		Agent:          ec.Agent,
 		IsInteractive:  ec.IsInteractive,
 		PackageAlias:   pkgAliasTool != "",
-		PackageManager: pkgAliasTool,
+		PackageManager: packageManager,
 	}
 }
 
@@ -183,4 +194,14 @@ func SetPackageAliasContext(tool string) {
 	globalMetricsCollector.mu.Lock()
 	defer globalMetricsCollector.mu.Unlock()
 	globalMetricsCollector.packageAliasContext = tool
+}
+
+// SetPackageManagerContext records the package manager associated with the
+// current CLI command (e.g. "npm", "go", "docker") for direct invocations
+// such as `jf npm install`. CollectMetrics reads and clears this value
+// automatically. SetPackageAliasContext takes precedence when both are set.
+func SetPackageManagerContext(tool string) {
+	globalMetricsCollector.mu.Lock()
+	defer globalMetricsCollector.mu.Unlock()
+	globalMetricsCollector.packageManagerContext = tool
 }

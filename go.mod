@@ -92,7 +92,10 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 
-// replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go master
+// replace github.com/jfrog/jfrog-client-go => /Users/assafa/code/jfrog/jfrog-client-go
+
+// attiasas:xray_component_resolution
+replace github.com/jfrog/jfrog-client-go => github.com/attiasas/jfrog-client-go v0.0.0-20260617113537-5536e6ba8c42
 
 //replace github.com/jfrog/build-info-go => github.com/fluxxBot/build-info-go v1.10.10-0.20260105064157-73c3f6f22ba2
 

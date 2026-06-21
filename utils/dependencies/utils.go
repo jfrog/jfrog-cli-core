@@ -158,7 +158,7 @@ func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 	}
 	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, shouldExplode, false)
 	if err != nil {
-		err = errorutils.CheckErrorf("received error while attempting to download '%s': %s"+downloadUrl, err.Error())
+		return errorutils.CheckErrorf("received error while attempting to download '%s': %s"+downloadUrl, err.Error())
 	}
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
 		return err

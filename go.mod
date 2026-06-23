@@ -95,7 +95,7 @@ require (
 // replace github.com/jfrog/jfrog-client-go => /Users/assafa/code/jfrog/jfrog-client-go
 
 // attiasas:xray_component_resolution
-replace github.com/jfrog/jfrog-client-go => github.com/attiasas/jfrog-client-go v0.0.0-20260618074648-a1bc0ef2898a
+replace github.com/jfrog/jfrog-client-go => github.com/attiasas/jfrog-client-go v0.0.0-20260623101014-8f8f09cbd450
 
 //replace github.com/jfrog/build-info-go => github.com/fluxxBot/build-info-go v1.10.10-0.20260105064157-73c3f6f22ba2
 

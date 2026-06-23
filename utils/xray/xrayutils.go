@@ -44,3 +44,15 @@ func CreateXrayServiceManager(serverDetails *config.ServerDetails, options ...Xr
 	}
 	return
 }
+
+func CreateXrayServiceManagerAndGetVersion(serviceDetails *config.ServerDetails, options ...XrayManagerOption) (*xray.XrayServicesManager, string, error) {
+	xrayManager, err := CreateXrayServiceManager(serviceDetails, options...)
+	if err != nil {
+		return nil, "", err
+	}
+	xrayVersion, err := xrayManager.GetVersion()
+	if err != nil {
+		return nil, "", err
+	}
+	return xrayManager, xrayVersion, nil
+}

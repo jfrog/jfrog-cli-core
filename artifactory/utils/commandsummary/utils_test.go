@@ -16,16 +16,13 @@ const (
 
 func TestGenerateArtifactUrl(t *testing.T) {
 	// Set up test environment
-	originalWorklfow, exists := os.LookupEnv(workflowEnvKey)
-	if !exists {
-		// this make the test pass locally
-		err := os.Setenv(workflowEnvKey, "JFrog CLI Core Tests")
+	originalWorklfow := os.Getenv(workflowEnvKey)
+	err := os.Setenv(workflowEnvKey, "JFrog CLI Core Tests")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		err = os.Setenv(workflowEnvKey, originalWorklfow)
 		require.NoError(t, err)
-		t.Cleanup(func() {
-			err = os.Setenv(workflowEnvKey, originalWorklfow)
-			require.NoError(t, err)
-		})
-	}
+	})
 
 	cases := []struct {
 		testName     string

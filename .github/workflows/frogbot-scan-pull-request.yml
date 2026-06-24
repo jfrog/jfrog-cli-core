@@ -1,9 +1,6 @@
 name: "Frogbot Scan Pull Request"
 on:
-  pull_request_target:
-    types: [opened, synchronize]
-    branches:
-      - master
+  workflow_call:
 permissions:
   pull-requests: write
   contents: read

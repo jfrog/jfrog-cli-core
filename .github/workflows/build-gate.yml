@@ -1,0 +1,27 @@
+name: Build Gate
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'pull_request_target' && 'build-gate' || '' }}
+    steps:
+      - run: echo "Approved — releasing frogbot and test suite."
+
+  frogbot:
+    needs: gate
+    uses: ./.github/workflows/frogbot-scan-pull-request.yml
+    secrets: inherit
+
+  tests:
+    needs: gate
+    uses: ./.github/workflows/test.yml
+    secrets: inherit

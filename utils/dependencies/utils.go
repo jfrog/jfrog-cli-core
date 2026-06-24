@@ -20,7 +20,7 @@ import (
 
 const (
 	ChecksumFileName  = "checksum.sha2"
-	jarsDocumentation = "https://docs.jfrog-applications.jfrog.io/jfrog-applications/jfrog-cli/binaries-management-with-jfrog-artifactory/package-managers-integration#downloading-the-maven-and-gradle-extractor-jars"
+	jarsDocumentation = "https://docs.jfrog.com/artifactory/docs/jf-mvn#downloading-the-maven-and-gradle-extractor-jars"
 )
 
 // Download the relevant build-info-extractor jar.

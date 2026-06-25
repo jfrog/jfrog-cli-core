@@ -12,7 +12,7 @@ require (
 	github.com/gocarina/gocsv v0.0.0-20260523204920-c264028e67ea
 	github.com/google/uuid v1.6.0
 	github.com/gookit/color v1.6.1
-	github.com/jedib0t/go-pretty/v6 v6.7.10
+	github.com/jedib0t/go-pretty/v6 v6.8.1
 	github.com/jfrog/build-info-go v1.13.1-0.20260429070557-93b98034d295
 	github.com/jfrog/gofrog v1.7.6
 	github.com/jfrog/jfrog-client-go v1.55.1-0.20251223101502-1a13a993b0c7
@@ -24,9 +24,9 @@ require (
 	github.com/urfave/cli v1.22.17
 	github.com/vbauerster/mpb/v8 v8.12.1
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
-	golang.org/x/sync v0.20.0
-	golang.org/x/term v0.43.0
-	golang.org/x/text v0.37.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/term v0.44.0
+	golang.org/x/text v0.38.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -88,7 +88,7 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
 

@@ -1,17 +1,18 @@
 name: "Frogbot Scan Pull Request"
 on:
-  pull_request_target:
-    types: [opened, synchronize]
-    branches:
-      - master
+  workflow_call:
 permissions:
   pull-requests: write
   contents: read
 jobs:
   scan-pull-request:
     runs-on: ubuntu-latest
-    environment: frogbot
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
       - name: Setup Go with cache
         uses: jfrog/.github/actions/install-go-with-cache@main
 

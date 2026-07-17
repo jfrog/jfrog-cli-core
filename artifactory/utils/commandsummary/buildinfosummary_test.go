@@ -40,14 +40,11 @@ func (m *MockScanResult) GetVulnerabilities() string {
 func prepareBuildInfoTest(t *testing.T) (*BuildInfoSummary, func()) {
 	// Set up test environment
 	originalWorkflow := os.Getenv(workflowEnvKey)
-	if originalWorkflow == "" {
-		// this make the test pass locally
-		err := os.Setenv(workflowEnvKey, "JFrog CLI Core Tests")
-		require.NoError(t, err)
-		t.Cleanup(func() {
-			_ = os.Setenv(workflowEnvKey, originalWorkflow)
-		})
-	}
+	err := os.Setenv(workflowEnvKey, "JFrog CLI Core Tests")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Setenv(workflowEnvKey, originalWorkflow)
+	})
 	// Mock the scan results defaults
 	StaticMarkdownConfig.scanResultsMapping = make(map[string]ScanResult)
 	StaticMarkdownConfig.scanResultsMapping[NonScannedResult] = &MockScanResult{

@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -186,4 +190,40 @@ func TestRunWithAqlPatternFilteringPagination(t *testing.T) {
 
 	// Verify both pages were fetched
 	assert.Equal(t, 2, aqlCallCount, "AQL should be called twice for two pages")
+}
+
+func TestMaybeWarnCompletedFolderSkippedWithFilter(t *testing.T) {
+	t.Run("no warning without filter", func(t *testing.T) {
+		buffer, stderrBuffer, previousLog := tests.RedirectLogOutputToBuffer()
+		defer log.SetLogger(previousLog)
+
+		phase := &fullTransferPhase{}
+		phase.maybeWarnCompletedFolderSkippedWithFilter()
+		phase.maybeWarnCompletedFolderSkippedWithFilter()
+		assert.NotContains(t, buffer.String()+stderrBuffer.String(), "--ignore-state")
+	})
+
+	t.Run("warns once when filter active", func(t *testing.T) {
+		buffer, stderrBuffer, previousLog := tests.RedirectLogOutputToBuffer()
+		defer log.SetLogger(previousLog)
+
+		phase := &fullTransferPhase{
+			phaseBase: phaseBase{
+				timestampFilter: &timestampFilter{field: createdFilterField, timestamp: "2025-01-01T00:00:00.000Z"},
+			},
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < 10; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				phase.maybeWarnCompletedFolderSkippedWithFilter()
+			}()
+		}
+		wg.Wait()
+
+		output := buffer.String() + stderrBuffer.String()
+		assert.Contains(t, output, "--ignore-state")
+		assert.Equal(t, 1, strings.Count(output, "--ignore-state"))
+	})
 }

@@ -40,6 +40,7 @@ type transferPhase interface {
 	setStopSignal(stopSignal chan os.Signal)
 	setMinCheckSumDeploySize(minCheckSumDeploySize int64)
 	setIncludeFilesPatterns(includeFilesPatterns []string)
+	setTimestampFilter(filter *timestampFilter)
 	StopGracefully()
 }
 
@@ -63,6 +64,7 @@ type phaseBase struct {
 	locallyGeneratedFilter    *locallyGeneratedFilter
 	stopSignal                chan os.Signal
 	includeFilesPatterns      []string
+	timestampFilter           *timestampFilter
 	// Optimization in Artifactory version 7.37 and above enables the exclusion of setting DISTINCT in SQL queries
 	disabledDistinctiveAql bool
 	minCheckSumDeploySize  int64
@@ -161,6 +163,10 @@ func (pb *phaseBase) setStopSignal(stopSignal chan os.Signal) {
 
 func (pb *phaseBase) setIncludeFilesPatterns(includeFilesPatterns []string) {
 	pb.includeFilesPatterns = includeFilesPatterns
+}
+
+func (pb *phaseBase) setTimestampFilter(filter *timestampFilter) {
+	pb.timestampFilter = filter
 }
 
 func createTransferPhase(i int) transferPhase {

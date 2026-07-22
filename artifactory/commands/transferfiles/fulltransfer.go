@@ -3,6 +3,7 @@ package transferfiles
 import (
 	"fmt"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/jfrog/gofrog/safeconvert"
@@ -23,7 +24,8 @@ import (
 // New folders found are handled as a separate task, and files are uploaded in chunks and polled on for status.
 type fullTransferPhase struct {
 	phaseBase
-	transferManager *transferManager
+	transferManager              *transferManager
+	completedFolderFilterWarning sync.Once
 }
 
 func (m *fullTransferPhase) initProgressBar() error {
@@ -191,7 +193,7 @@ func (m *fullTransferPhase) runWithAqlPatternFiltering() error {
 
 // getPatternMatchingFiles fetches files from source Artifactory using AQL with pattern filtering.
 func (m *fullTransferPhase) getPatternMatchingFiles(paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
-	query := generatePatternBasedAqlQuery(m.repoKey, m.includeFilesPatterns, paginationOffset, m.disabledDistinctiveAql)
+	query := generatePatternBasedAqlQuery(m.repoKey, m.includeFilesPatterns, paginationOffset, m.disabledDistinctiveAql, m.timestampFilter)
 	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
 	if err != nil {
 		return []servicesUtils.ResultItem{}, false, err
@@ -364,7 +366,7 @@ func getFolderRelativePath(folderName, relativeLocation string) string {
 }
 
 func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginationOffset int) (result []servicesUtils.ResultItem, lastPage bool, err error) {
-	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset, m.disabledDistinctiveAql)
+	query := generateFolderContentAqlQuery(m.repoKey, relativePath, paginationOffset, m.disabledDistinctiveAql, m.timestampFilter)
 	aqlResults, err := runAql(m.context, m.srcRtDetails, query)
 	if err != nil {
 		return []servicesUtils.ResultItem{}, false, err
@@ -375,8 +377,15 @@ func (m *fullTransferPhase) getDirectoryContentAql(relativePath string, paginati
 	return
 }
 
-func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int, disabledDistinctiveAql bool) string {
-	query := fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
+func generateFolderContentAqlQuery(repoKey, relativePath string, paginationOffset int, disabledDistinctiveAql bool, filter *timestampFilter) string {
+	var query string
+	if filter == nil {
+		query = fmt.Sprintf(`items.find({"type":"any","$or":[{"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}}]}]})`, repoKey, relativePath)
+	} else {
+		// Keep folders unfiltered so old parents do not hide newer files; require files to match the timestamp.
+		query = fmt.Sprintf(`items.find({"$and":[{"repo":"%s","path":{"$match":"%s"},"name":{"$match":"*"}},{"$or":[{"type":"folder"},{"$and":[{"type":"file"},%s]}]}]})`,
+			repoKey, relativePath, aqlInclusiveTimestampCondition(filter))
+	}
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	query += appendDistinctIfNeeded(disabledDistinctiveAql)
@@ -404,6 +413,7 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(relativePath string) (node
 		return
 	}
 	if completed {
+		m.maybeWarnCompletedFolderSkippedWithFilter()
 		log.Debug("Skipping completed folder:", path.Join(m.repoKey, relativePath))
 		return
 	}
@@ -411,4 +421,16 @@ func (m *fullTransferPhase) getAndHandleDirectoryNode(relativePath string) (node
 	// Remove all files names because we will begin exploring from the beginning.
 	err = node.RestartExploring()
 	return
+}
+
+// maybeWarnCompletedFolderSkippedWithFilter emits one informational warning when a timestamp filter is
+// active and Phase 1 skips folders already marked completed by a previous run.
+func (m *fullTransferPhase) maybeWarnCompletedFolderSkippedWithFilter() {
+	if m.timestampFilter == nil {
+		return
+	}
+	m.completedFolderFilterWarning.Do(func() {
+		log.Warn("A timestamp filter is active, but some folders were already marked completed by a previous transfer. " +
+			"Those folders will not be re-scanned under the current filter. Use --ignore-state for a full re-scan.")
+	})
 }

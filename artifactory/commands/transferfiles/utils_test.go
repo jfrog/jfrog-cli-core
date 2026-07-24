@@ -715,7 +715,7 @@ func TestGeneratePatternBasedAqlQuery(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := generatePatternBasedAqlQuery(testCase.repoKey, testCase.patterns, testCase.paginationOffset, false)
+			result := generatePatternBasedAqlQuery(testCase.repoKey, testCase.patterns, testCase.paginationOffset, false, nil)
 			for _, expected := range testCase.expectedContains {
 				assert.Contains(t, result, expected)
 			}
@@ -759,7 +759,7 @@ func TestGenerateDiffAqlQueryWithPatterns(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := generateDiffAqlQueryWithPatterns(testCase.repoKey, fromTimestamp, toTimestamp, testCase.patterns, 0, false)
+			result := generateDiffAqlQueryWithPatterns(testCase.repoKey, fromTimestamp, toTimestamp, testCase.patterns, 0, false, nil)
 			for _, expected := range testCase.expectedContains {
 				assert.Contains(t, result, expected)
 			}
@@ -793,10 +793,114 @@ func TestGenerateDockerManifestAqlQueryWithPatterns(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			result := generateDockerManifestAqlQueryWithPatterns(testCase.repoKey, fromTimestamp, toTimestamp, testCase.patterns, 0, false)
+			result := generateDockerManifestAqlQueryWithPatterns(testCase.repoKey, fromTimestamp, toTimestamp, testCase.patterns, 0, false, nil)
 			for _, expected := range testCase.expectedContains {
 				assert.Contains(t, result, expected)
 			}
 		})
 	}
+}
+
+func TestGenerateDiffAndDockerAqlWithPatternsAndTimestampFilter(t *testing.T) {
+	fromTimestamp := "2024-01-01T00:00:00Z"
+	toTimestamp := "2024-01-02T00:00:00Z"
+	filter := &timestampFilter{field: createdFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+
+	t.Run("diff with patterns and created filter", func(t *testing.T) {
+		query := generateDiffAqlQueryWithPatterns("test-repo", fromTimestamp, toTimestamp, []string{"org/company/*"}, 0, false, filter)
+		assert.Contains(t, query, `"modified":{"$gte":"2024-01-01T00:00:00Z"}`)
+		assert.Contains(t, query, `{"$or":[{"path":{"$match":"*org/company*"}}]}`)
+		assert.Contains(t, query, `,{"$or":[{"type":"folder"},{"$and":[{"type":"file"},{"created":{"$gte":"2025-01-01T00:00:00.000Z"}}]}]}`)
+		assert.NotContains(t, query, `"type":"any"`)
+	})
+
+	t.Run("docker manifest with patterns and created filter", func(t *testing.T) {
+		query := generateDockerManifestAqlQueryWithPatterns("docker-repo", fromTimestamp, toTimestamp, []string{"myapp/*"}, 0, false, filter)
+		assert.Contains(t, query, `"name":"manifest.json"`)
+		assert.Contains(t, query, `{"$or":[{"path":{"$match":"*myapp*"}}]}`)
+		assert.Contains(t, query, `"created":{"$gte":"2025-01-01T00:00:00.000Z"}`)
+	})
+}
+
+func TestAqlTimestampFilterHelpers(t *testing.T) {
+	createdFilter := &timestampFilter{field: createdFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+	downloadedFilter := &timestampFilter{field: downloadedFilterField, timestamp: "2024-06-15T12:30:45.123Z"}
+
+	t.Run("nil filter returns empty helpers", func(t *testing.T) {
+		assert.Empty(t, aqlInclusiveTimestampCondition(nil))
+		assert.Empty(t, aqlInclusiveTimestampAndCondition(nil))
+		assert.Empty(t, aqlFileOnlyTimestampAndCondition(nil))
+		assert.Empty(t, aqlMixedContentTimestampAndCondition(nil))
+	})
+
+	t.Run("created inclusive condition", func(t *testing.T) {
+		assert.Equal(t, `{"created":{"$gte":"2025-01-01T00:00:00.000Z"}}`, aqlInclusiveTimestampCondition(createdFilter))
+	})
+
+	t.Run("downloaded inclusive condition", func(t *testing.T) {
+		assert.Equal(t, `{"stat.downloaded":{"$gte":"2024-06-15T12:30:45.123Z"}}`, aqlInclusiveTimestampCondition(downloadedFilter))
+	})
+
+	t.Run("inclusive and-condition", func(t *testing.T) {
+		assert.Equal(t, `,{"created":{"$gte":"2025-01-01T00:00:00.000Z"}}`, aqlInclusiveTimestampAndCondition(createdFilter))
+		assert.Equal(t, `,{"stat.downloaded":{"$gte":"2024-06-15T12:30:45.123Z"}}`, aqlInclusiveTimestampAndCondition(downloadedFilter))
+	})
+
+	t.Run("file-only and-condition", func(t *testing.T) {
+		assert.Equal(t, `,"created":{"$gte":"2025-01-01T00:00:00.000Z"}`, aqlFileOnlyTimestampAndCondition(createdFilter))
+		assert.Equal(t, `,"stat.downloaded":{"$gte":"2024-06-15T12:30:45.123Z"}`, aqlFileOnlyTimestampAndCondition(downloadedFilter))
+	})
+
+	t.Run("mixed content preserves folders", func(t *testing.T) {
+		mixed := aqlMixedContentTimestampAndCondition(createdFilter)
+		assert.Equal(t,
+			`,{"$or":[{"type":"folder"},{"$and":[{"type":"file"},{"created":{"$gte":"2025-01-01T00:00:00.000Z"}}]}]}`,
+			mixed)
+		assert.Contains(t, mixed, `"type":"folder"`)
+		assert.Contains(t, mixed, `"type":"file"`)
+	})
+}
+
+func TestGenerateFolderContentAqlQueryWithTimestampFilter(t *testing.T) {
+	const noFilterExpected = `items.find({"type":"any","$or":[{"$and":[{"repo":"repo1","path":{"$match":"."},"name":{"$match":"*"}}]}]}).include("repo","path","name","type","size").sort({"$asc":["name"]}).offset(0).limit(10000)`
+
+	t.Run("no filter unchanged", func(t *testing.T) {
+		assert.Equal(t, noFilterExpected, generateFolderContentAqlQuery("repo1", ".", 0, false, nil))
+	})
+
+	t.Run("created after filters files and keeps folders", func(t *testing.T) {
+		filter := &timestampFilter{field: createdFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+		query := generateFolderContentAqlQuery("repo1", ".", 0, false, filter)
+		assert.Contains(t, query, `"$or":[{"type":"folder"},{"$and":[{"type":"file"},{"created":{"$gte":"2025-01-01T00:00:00.000Z"}}]}]`)
+		assert.Contains(t, query, `"repo":"repo1"`)
+		assert.Contains(t, query, `"path":{"$match":"."}`)
+	})
+
+	t.Run("downloaded after uses stat.downloaded", func(t *testing.T) {
+		filter := &timestampFilter{field: downloadedFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+		query := generateFolderContentAqlQuery("repo1", "path/to", 0, false, filter)
+		assert.Contains(t, query, `{"stat.downloaded":{"$gte":"2025-01-01T00:00:00.000Z"}}`)
+		assert.Contains(t, query, `"type":"folder"`)
+	})
+}
+
+func TestGeneratePatternBasedAqlQueryWithTimestampFilter(t *testing.T) {
+	t.Run("no filter unchanged semantics", func(t *testing.T) {
+		without := generatePatternBasedAqlQuery("test-repo", []string{"org/company/*"}, 0, false, nil)
+		assert.Contains(t, without, `"type":"file","repo":"test-repo"`)
+		assert.NotContains(t, without, `"$gte"`)
+	})
+
+	t.Run("created after appended to file query", func(t *testing.T) {
+		filter := &timestampFilter{field: createdFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+		query := generatePatternBasedAqlQuery("test-repo", []string{"org/company/*"}, 0, false, filter)
+		assert.Contains(t, query, `"type":"file","repo":"test-repo","created":{"$gte":"2025-01-01T00:00:00.000Z"}`)
+		assert.Contains(t, query, `"$or":[{"path":{"$match":"*org/company*"}}]`)
+	})
+
+	t.Run("downloaded after appended to file query", func(t *testing.T) {
+		filter := &timestampFilter{field: downloadedFilterField, timestamp: "2024-06-15T12:30:45.123Z"}
+		query := generatePatternBasedAqlQuery("test-repo", []string{"org/company/*"}, 0, false, filter)
+		assert.Contains(t, query, `"stat.downloaded":{"$gte":"2024-06-15T12:30:45.123Z"}`)
+	})
 }

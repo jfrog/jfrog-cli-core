@@ -49,6 +49,7 @@ const (
 	Ruby
 	Conan
 	UV
+	AgentApm
 )
 
 type ConfigType string
@@ -81,6 +82,7 @@ var ProjectTypes = []string{
 	"ruby",
 	"conan",
 	"uv",
+	"agent-apm",
 }
 
 func (projectType ProjectType) String() string {

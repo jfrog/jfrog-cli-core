@@ -69,7 +69,7 @@ func TestConfigureArtifactoryRepository_NewFile(t *testing.T) {
 		`<username>user</username>`,
 		`<password>pass</password>`,
 		`<url>https://mycompany.jfrog.io/artifactory/maven-virtual</url>`,
-		`<mirrorOf>*</mirrorOf>`,
+		`<mirrorOf>external:*</mirrorOf>`,
 		`<id>artifactory-deploy</id>`,
 		`<activeByDefault>true</activeByDefault>`,
 		`<altDeploymentRepository>artifactory-mirror::default::https://mycompany.jfrog.io/artifactory/maven-virtual</altDeploymentRepository>`,
@@ -261,7 +261,7 @@ func TestConfigureArtifactoryRepository_ComplexExistingFile(t *testing.T) {
 		`<username>admin</username>`,
 		`<password>token123</password>`,
 		`<url>https://artifactory.example.com/libs-repo</url>`,
-		`<mirrorOf>*</mirrorOf>`,
+		`<mirrorOf>external:*</mirrorOf>`,
 		`<id>artifactory-deploy</id>`,
 		`<altDeploymentRepository>artifactory-mirror::default::https://artifactory.example.com/libs-repo</altDeploymentRepository>`,
 	}
@@ -273,6 +273,88 @@ func TestConfigureArtifactoryRepository_ComplexExistingFile(t *testing.T) {
 	// Verify no xmlns duplication
 	xmlnsCount := strings.Count(xmlContent, `xmlns="http://maven.apache.org/SETTINGS/1.2.0"`)
 	assert.Equal(t, 1, xmlnsCount, "Should have exactly one xmlns declaration")
+}
+
+// mirrorOfByID returns the <mirrorOf> value of the mirror with the given id, or "" when that
+// mirror is absent. Reading the value by id keeps the assertion unambiguous when an unrelated
+// user mirror happens to declare the same scope as ours.
+func mirrorOfByID(t *testing.T, settingsPath, mirrorID string) string {
+	t.Helper()
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+	root := manager.doc.SelectElement(xmlElementSettings)
+	require.NotNil(t, root, "expected root settings element")
+	mirrors := root.SelectElement(xmlElementMirrors)
+	require.NotNil(t, mirrors, "expected mirrors element")
+	mirror := findElementByID(mirrors, xmlElementMirror, mirrorID)
+	if mirror == nil {
+		return ""
+	}
+	mirrorOf := mirror.SelectElement(xmlElementMirrorOf)
+	if mirrorOf == nil {
+		return ""
+	}
+	return mirrorOf.Text()
+}
+
+// The Artifactory mirror must cover remote repositories without capturing localhost/file://
+// ones, which Artifactory cannot serve. A user's own mirror must keep its own scope.
+func TestConfigureArtifactoryRepository_MirrorScopeIsExternalOnly(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	// A pre-existing user mirror with a scope of its own.
+	existing := `<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0">
+  <mirrors>
+    <mirror>
+      <id>user-central-mirror</id>
+      <name>User Central Mirror</name>
+      <url>https://user.example.com/maven</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+</settings>`
+	require.NoError(t, os.WriteFile(settingsPath, []byte(existing), 0o600))
+
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+	require.NoError(t, manager.ConfigureArtifactoryRepository(
+		"https://mycompany.jfrog.io/artifactory", "maven-virtual", "user", "token"))
+
+	// Our mirror is scoped to external repositories only.
+	assert.Equal(t, "external:*", mirrorOfByID(t, settingsPath, ArtifactoryMirrorID),
+		"Artifactory mirror should be scoped to external:*")
+	assert.NotEqual(t, "*", mirrorOfByID(t, settingsPath, ArtifactoryMirrorID),
+		"Artifactory mirror must not capture localhost/file:// repositories")
+
+	// The user's mirror keeps its own scope.
+	assert.Equal(t, "central", mirrorOfByID(t, settingsPath, "user-central-mirror"),
+		"an existing user mirror should keep its own mirrorOf")
+}
+
+// Re-running against a different repository repoints the existing mirror instead of adding a
+// second one, and the scope stays external-only.
+func TestConfigureArtifactoryRepository_MirrorScopeStableOnRepoint(t *testing.T) {
+	tempDir := t.TempDir()
+	settingsPath := filepath.Join(tempDir, "settings.xml")
+
+	manager, err := NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+	require.NoError(t, manager.ConfigureArtifactoryRepository(
+		"https://first.jfrog.io/artifactory", "first-virtual", "user", "token"))
+
+	manager, err = NewSettingsXmlManagerWithPath(settingsPath)
+	require.NoError(t, err)
+	require.NoError(t, manager.ConfigureArtifactoryRepository(
+		"https://second.jfrog.io/artifactory", "second-virtual", "user", "token"))
+
+	content, err := os.ReadFile(settingsPath)
+	require.NoError(t, err)
+	assert.Equal(t, 1, strings.Count(string(content), "<mirror>"), "should keep exactly one mirror")
+	assert.Equal(t, "external:*", mirrorOfByID(t, settingsPath, ArtifactoryMirrorID))
+	assert.Contains(t, string(content), "https://second.jfrog.io/artifactory/second-virtual",
+		"mirror should point at the most recently configured repository")
 }
 
 func TestConfigureArtifactoryRepository_NoCredentials(t *testing.T) {
@@ -802,7 +884,7 @@ func TestComprehensiveXMLPreservation(t *testing.T) {
 		`<username>admin</username>`,
 		`<password>secret123</password>`,
 		`<url>https://artifactory.example.com/maven-virtual</url>`,
-		`<mirrorOf>*</mirrorOf>`,
+		`<mirrorOf>external:*</mirrorOf>`,
 		`<id>artifactory-deploy</id>`,
 		`<altDeploymentRepository>artifactory-mirror::default::https://artifactory.example.com/maven-virtual</altDeploymentRepository>`,
 	}
@@ -911,7 +993,7 @@ func TestValidateArtifactoryRepository_PartiallyConfigured(t *testing.T) {
     <mirror>
       <id>artifactory-mirror</id>
       <url>https://artifactory.example.com/maven-virtual</url>
-      <mirrorOf>*</mirrorOf>
+      <mirrorOf>external:*</mirrorOf>
     </mirror>
   </mirrors>
   <profiles>

@@ -25,7 +25,9 @@ import (
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
 	artifactoryUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandleStopInitAndClose(t *testing.T) {
@@ -479,4 +481,132 @@ func TestCreateErrorsSummaryFile(t *testing.T) {
 	expectedFileErrors := new([]api.FileUploadStatusResponse)
 	assert.NoError(t, gocsv.UnmarshalFile(expectedFile, expectedFileErrors))
 	assert.ElementsMatch(t, *expectedFileErrors, *actualFileErrors)
+}
+
+func TestResolveTimestampFilter(t *testing.T) {
+	const validTs = "2025-01-01T00:00:00.000Z"
+
+	cases := []struct {
+		name            string
+		createdAfter    string
+		downloadedAfter string
+		wantField       timestampFilterField
+		wantTimestamp   string
+		wantNil         bool
+		wantErrContains string
+		wantWarn        bool
+	}{
+		{
+			name:    "no filter",
+			wantNil: true,
+		},
+		{
+			name:          "created after only",
+			createdAfter:  validTs,
+			wantField:     createdFilterField,
+			wantTimestamp: validTs,
+		},
+		{
+			name:            "downloaded after only",
+			downloadedAfter: validTs,
+			wantField:       downloadedFilterField,
+			wantTimestamp:   validTs,
+		},
+		{
+			name:            "created takes precedence when both set",
+			createdAfter:    validTs,
+			downloadedAfter: "2024-06-01T12:30:45.123Z",
+			wantField:       createdFilterField,
+			wantTimestamp:   validTs,
+			wantWarn:        true,
+		},
+		{
+			name:            "rejects date only",
+			createdAfter:    "2025-01-01",
+			wantErrContains: "YYYY-MM-DDTHH:mm:ss.sssZ",
+		},
+		{
+			name:            "rejects missing milliseconds",
+			createdAfter:    "2025-01-01T00:00:00Z",
+			wantErrContains: "YYYY-MM-DDTHH:mm:ss.sssZ",
+		},
+		{
+			name:            "rejects timezone offset",
+			createdAfter:    "2025-01-01T00:00:00.000+00:00",
+			wantErrContains: "YYYY-MM-DDTHH:mm:ss.sssZ",
+		},
+		{
+			name:            "rejects invalid date",
+			createdAfter:    "2025-13-01T00:00:00.000Z",
+			wantErrContains: "YYYY-MM-DDTHH:mm:ss.sssZ",
+		},
+		{
+			name:            "rejects trailing data",
+			createdAfter:    "2025-01-01T00:00:00.000Zextra",
+			wantErrContains: "YYYY-MM-DDTHH:mm:ss.sssZ",
+		},
+		{
+			name:            "rejects downloaded after with bad format",
+			downloadedAfter: "not-a-timestamp",
+			wantErrContains: "YYYY-MM-DDTHH:mm:ss.sssZ",
+		},
+		{
+			name:            "rejects future created after",
+			createdAfter:    "9999-01-01T00:00:00.000Z",
+			wantErrContains: "must not be in the future",
+		},
+		{
+			name:            "rejects future downloaded after",
+			downloadedAfter: "9999-01-01T00:00:00.000Z",
+			wantErrContains: "must not be in the future",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			buffer, stderrBuffer, previousLog := tests.RedirectLogOutputToBuffer()
+			defer log.SetLogger(previousLog)
+
+			cmd, err := NewTransferFilesCommand(nil, nil)
+			assert.NoError(t, err)
+			cmd.SetCreatedAfter(tc.createdAfter)
+			cmd.SetDownloadedAfter(tc.downloadedAfter)
+
+			filter, err := cmd.resolveTimestampFilter()
+			if tc.wantErrContains != "" {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErrContains)
+				assert.Nil(t, filter)
+				return
+			}
+			assert.NoError(t, err)
+			if tc.wantNil {
+				assert.Nil(t, filter)
+			} else {
+				require.NotNil(t, filter)
+				assert.Equal(t, tc.wantField, filter.field)
+				assert.Equal(t, tc.wantTimestamp, filter.timestamp)
+			}
+			logOutput := buffer.String() + stderrBuffer.String()
+			if tc.wantWarn {
+				assert.Contains(t, logOutput, "ignoring --downloaded-after")
+			} else {
+				assert.NotContains(t, logOutput, "ignoring --downloaded-after")
+			}
+		})
+	}
+}
+
+func TestInitNewPhasePropagatesTimestampFilter(t *testing.T) {
+	cmd, err := NewTransferFilesCommand(nil, nil)
+	assert.NoError(t, err)
+	cmd.SetCreatedAfter("2025-01-01T00:00:00.000Z")
+	filter, err := cmd.resolveTimestampFilter()
+	assert.NoError(t, err)
+	require.NotNil(t, filter)
+	cmd.timestampFilter = filter
+
+	phase := &fullTransferPhase{}
+	cmd.initNewPhase(phase, nil, artifactoryUtils.RepositorySummary{}, "repo1", false, 0)
+	assert.Equal(t, filter, phase.timestampFilter)
 }

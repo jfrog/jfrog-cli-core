@@ -1,15 +1,7 @@
 name: JFrog CLI Core Tests
 on:
+  workflow_call:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    tags-ignore:
-      - "**"
-  pull_request_target:
-    branches:
-      - master
-    types: [labeled]
 jobs:
   test:
     runs-on: ${{ matrix.os }}-latest
@@ -23,7 +15,7 @@ jobs:
       JFROG_CLI_LOG_LEVEL: "DEBUG"
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
 

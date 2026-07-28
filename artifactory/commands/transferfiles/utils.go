@@ -814,14 +814,51 @@ func filterFilesByPattern(files []api.FileRepresentation, patterns []string) []a
 	return filtered
 }
 
+// aqlInclusiveTimestampCondition returns an inclusive AQL predicate for the effective filter,
+// e.g. {"created":{"$gte":"..."}}. Returns empty string when filter is nil.
+func aqlInclusiveTimestampCondition(filter *timestampFilter) string {
+	if filter == nil {
+		return ""
+	}
+	return fmt.Sprintf(`{"%s":{"$gte":"%s"}}`, filter.field, filter.timestamp)
+}
+
+// aqlInclusiveTimestampAndCondition returns a comma-prefixed predicate suitable for an AQL $and array.
+func aqlInclusiveTimestampAndCondition(filter *timestampFilter) string {
+	if filter == nil {
+		return ""
+	}
+	return "," + aqlInclusiveTimestampCondition(filter)
+}
+
+// aqlFileOnlyTimestampAndCondition returns a comma-prefixed field condition suitable for appending
+// inside a file-only items.find object. Returns empty string when filter is nil.
+func aqlFileOnlyTimestampAndCondition(filter *timestampFilter) string {
+	if filter == nil {
+		return ""
+	}
+	return fmt.Sprintf(`,"%s":{"$gte":"%s"}`, filter.field, filter.timestamp)
+}
+
+// aqlMixedContentTimestampAndCondition returns a comma-prefixed $or object suitable for an AQL $and
+// array. It keeps all folders while requiring files to match the inclusive timestamp predicate.
+// Returns empty string when filter is nil.
+func aqlMixedContentTimestampAndCondition(filter *timestampFilter) string {
+	if filter == nil {
+		return ""
+	}
+	return fmt.Sprintf(`,{"$or":[{"type":"folder"},{"$and":[{"type":"file"},%s]}]}`, aqlInclusiveTimestampCondition(filter))
+}
+
 // generatePatternBasedAqlQuery generates an AQL query that fetches all files matching the include patterns.
 // This is used when --include-files is provided, as an alternative to folder traversal.
 // The query uses $or to combine multiple pattern conditions.
-func generatePatternBasedAqlQuery(repoKey string, patterns []string, paginationOffset int, disabledDistinctiveAql bool) string {
+func generatePatternBasedAqlQuery(repoKey string, patterns []string, paginationOffset int, disabledDistinctiveAql bool, filter *timestampFilter) string {
 	// Build pattern conditions for AQL
 	patternConditions := generatePatternConditionsAql(patterns)
+	timestampCondition := aqlFileOnlyTimestampAndCondition(filter)
 
-	query := fmt.Sprintf(`items.find({"type":"file","repo":"%s"%s})`, repoKey, patternConditions)
+	query := fmt.Sprintf(`items.find({"type":"file","repo":"%s"%s%s})`, repoKey, timestampCondition, patternConditions)
 	query += `.include("repo","path","name","type","size")`
 	query += fmt.Sprintf(`.sort({"$asc":["path","name"]}).offset(%d).limit(%d)`, paginationOffset*AqlPaginationLimit, AqlPaginationLimit)
 	query += appendDistinctIfNeeded(disabledDistinctiveAql)
@@ -869,18 +906,25 @@ func convertPatternToAqlMatch(pattern string) string {
 }
 
 // generateDiffAqlQueryWithPatterns generates a diff AQL query with pattern filtering.
-func generateDiffAqlQueryWithPatterns(repoKey, fromTimestamp, toTimestamp string, patterns []string, paginationOffset int, disabledDistinctiveAql bool) string {
+func generateDiffAqlQueryWithPatterns(repoKey, fromTimestamp, toTimestamp string, patterns []string, paginationOffset int, disabledDistinctiveAql bool, filter *timestampFilter) string {
 	patternOrCondition := generatePatternOrConditionForAnd(patterns)
-	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","type":"any"}%s]})`, fromTimestamp, toTimestamp, repoKey, patternOrCondition)
+	repoClause := fmt.Sprintf(`{"repo":"%s","type":"any"}`, repoKey)
+	timestampClause := ""
+	if filter != nil {
+		repoClause = fmt.Sprintf(`{"repo":"%s"}`, repoKey)
+		timestampClause = aqlMixedContentTimestampAndCondition(filter)
+	}
+	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},%s%s%s]})`, fromTimestamp, toTimestamp, repoClause, patternOrCondition, timestampClause)
 	query += `.include("repo","path","name","type","modified","size")`
 	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
 }
 
 // generateDockerManifestAqlQueryWithPatterns generates a Docker manifest AQL query with pattern filtering.
-func generateDockerManifestAqlQueryWithPatterns(repoKey, fromTimestamp, toTimestamp string, patterns []string, paginationOffset int, disabledDistinctiveAql bool) string {
+func generateDockerManifestAqlQueryWithPatterns(repoKey, fromTimestamp, toTimestamp string, patterns []string, paginationOffset int, disabledDistinctiveAql bool, filter *timestampFilter) string {
 	patternOrCondition := generatePatternOrConditionForAnd(patterns)
+	timestampClause := aqlInclusiveTimestampAndCondition(filter)
 	query := `items.find({"$and":`
-	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}%s`, repoKey, fromTimestamp, toTimestamp, patternOrCondition)
+	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}%s%s`, repoKey, fromTimestamp, toTimestamp, patternOrCondition, timestampClause)
 	query += `]}).include("repo","path","name","type","modified")`
 	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
 }

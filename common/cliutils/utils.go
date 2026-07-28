@@ -187,6 +187,11 @@ func ShouldOfferConfig() (bool, error) {
 	if ci {
 		return false, nil
 	}
+	// Suppress the interactive prompt when invoked by an AI agent.
+	// Agents cannot respond to stdin prompts; hanging is worse than a fast failure.
+	if commands.DetectExecutionContext().IsAgent {
+		return false, nil
+	}
 
 	msg := fmt.Sprintf("To avoid this message in the future, set the %s environment variable to true.\n"+
 		"The CLI commands require the URL and authentication details\n"+

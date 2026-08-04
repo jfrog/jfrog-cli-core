@@ -50,6 +50,7 @@ const (
 	Conan
 	UV
 	AgentApm
+	Apt
 )
 
 type ConfigType string
@@ -83,6 +84,7 @@ var ProjectTypes = []string{
 	"conan",
 	"uv",
 	"agent-apm",
+	"apt",
 }
 
 func (projectType ProjectType) String() string {

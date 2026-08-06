@@ -40,6 +40,46 @@ func TestDetectAgent_CursorCLINotASessionMarker(t *testing.T) {
 	assert.Equal(t, "", detectAgent())
 }
 
+func TestDetectAgent_CursorTraceIDNotASessionMarker(t *testing.T) {
+	// CURSOR_TRACE_ID is also set for regular Cursor integrated terminals.
+	clearAgentEnvVars(t)
+	t.Setenv("CURSOR_TRACE_ID", "trace-123")
+	assert.Equal(t, "", detectAgent())
+}
+
+func TestDetectAgent_CopilotConfigNotASessionMarker(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("COPILOT_MODEL", "gpt-5.2")
+	assert.Equal(t, "", detectAgent())
+	t.Setenv("COPILOT_ALLOW_ALL", "true")
+	assert.Equal(t, "", detectAgent())
+}
+
+func TestDetectAgent_ClaudeIDETerminalNotASessionMarker(t *testing.T) {
+	// CLAUDECODE / CLAUDE_CODE / CLAUDE_CODE_ENTRYPOINT leak into IDE
+	// integrated terminals where humans run CLIs directly.
+	clearAgentEnvVars(t)
+	t.Setenv("CLAUDECODE", "1")
+	assert.Equal(t, "", detectAgent())
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE", "1")
+	assert.Equal(t, "", detectAgent())
+	t.Setenv("CLAUDE_CODE", "")
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "cli")
+	assert.Equal(t, "", detectAgent())
+}
+
+func TestDetectAgent_RemovedIPCNotASessionMarker(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("KILO_IPC_SOCKET_PATH", "/tmp/kilo.sock")
+	t.Setenv("KILO_SERVER_PASSWORD", "x")
+	assert.Equal(t, "", detectAgent())
+	t.Setenv("KILO_IPC_SOCKET_PATH", "")
+	t.Setenv("KILO_SERVER_PASSWORD", "")
+	t.Setenv("ROO_CODE_IPC_SOCKET_PATH", "/tmp/roo.sock")
+	assert.Equal(t, "", detectAgent())
+}
+
 func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv("AGENT", "some_random_value")
@@ -82,7 +122,7 @@ func TestDetectAgent_TableOrderGeminiBeforeCursor(t *testing.T) {
 
 func TestDetectAgent_TableWinsOverGenericValue(t *testing.T) {
 	clearAgentEnvVars(t)
-	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
 	t.Setenv("AI_AGENT", "cursor")
 	assert.Equal(t, "claude", detectAgent())
 }
@@ -104,7 +144,7 @@ func TestDetectAgentTraceID(t *testing.T) {
 func TestDetectExecutionContext_Agent(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
 
 	ec := DetectExecutionContext()
 	assert.True(t, ec.IsAgent)
@@ -124,11 +164,11 @@ func TestDetectExecutionContext_NoEnv(t *testing.T) {
 func TestDetectExecutionContext_IsMemoized(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
 	first := DetectExecutionContext()
 
 	// Mutate env after first call; result must not change without reset.
-	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "")
 	t.Setenv("CURSOR_AGENT", "1")
 	second := DetectExecutionContext()
 
@@ -161,7 +201,18 @@ func clearAgentEnvVars(t *testing.T) {
 	}
 	t.Setenv("AGENT", "")
 	t.Setenv("AI_AGENT", "")
+	// Cleared even though no longer detectors — leftover process env must not
+	// bleed into tests that assert human / strong-signal behaviour.
 	t.Setenv("CURSOR_TRACE_ID", "")
+	t.Setenv("CURSOR_CLI", "")
+	t.Setenv("CLAUDECODE", "")
+	t.Setenv("CLAUDE_CODE", "")
+	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "")
+	t.Setenv("COPILOT_MODEL", "")
+	t.Setenv("COPILOT_ALLOW_ALL", "")
+	t.Setenv("KILO_IPC_SOCKET_PATH", "")
+	t.Setenv("KILO_SERVER_PASSWORD", "")
+	t.Setenv("ROO_CODE_IPC_SOCKET_PATH", "")
 	t.Setenv("TERM_PROGRAM", "")
 	t.Setenv("JFROG_CLI_AI_MODEL", "")
 }
@@ -169,7 +220,7 @@ func clearAgentEnvVars(t *testing.T) {
 func TestDetectExecutionContext_ModelAgentOnly(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
 	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
 
 	assert.Equal(t, "opus-4.7", DetectExecutionContext().Model)
@@ -200,7 +251,7 @@ func TestSanitizeToken(t *testing.T) {
 func TestDetectExecutionContext_ClientAgentOnly(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	t.Setenv("CLAUDECODE", "1")
+	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
 	t.Setenv("TERM_PROGRAM", "vscode")
 
 	ec := DetectExecutionContext()

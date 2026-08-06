@@ -45,11 +45,11 @@ type agentDetector struct {
 //
 // | Wire name   | Session signals                                              |
 // |-------------|--------------------------------------------------------------|
-// | claude      | CLAUDECODE, CLAUDE_CODE, CLAUDE_CODE_ENTRYPOINT              |
+// | claude      | CLAUDE_CODE_CHILD_SESSION                                    |
 // | gemini      | GEMINI_CLI                                                   |
 // | goose       | GOOSE_TERMINAL                                               |
-// | cursor      | CURSOR_AGENT, CURSOR_TRACE_ID, CURSOR_EXTENSION_HOST_ROLE=agent-exec |
-// | copilot     | COPILOT_CLI, COPILOT_AGENT_SESSION_ID, COPILOT_MODEL, COPILOT_ALLOW_ALL |
+// | cursor      | CURSOR_AGENT, CURSOR_EXTENSION_HOST_ROLE=agent-exec          |
+// | copilot     | COPILOT_CLI, COPILOT_AGENT_SESSION_ID                        |
 // | kilocode    | KILOCODE_FEATURE, KILO_PID                                   |
 // | roo_code    | ROO_ACTIVE, ROO_CLI_RUNTIME                                  |
 // | codex       | CODEX_CI, CODEX_THREAD_ID, CODEX_SANDBOX                     |
@@ -70,18 +70,21 @@ type agentDetector struct {
 // Client axis: sanitized TERM_PROGRAM (any host app; not an allowlist).
 // Model axis: sanitized JFROG_CLI_AI_MODEL (skill/user supplied slug).
 var agentEnvDetectors = []agentDetector{
-	// CLAUDECODE is Anthropic's documented marker; CLAUDE_CODE is the
-	// ecosystem alias (Vercel/HF/Firebase). CLAUDE_CODE_ENTRYPOINT is set
-	// when Claude Code spawns a subprocess.
-	{"claude", []string{"CLAUDECODE", "CLAUDE_CODE", "CLAUDE_CODE_ENTRYPOINT"}, nil},
+	// CLAUDE_CODE_CHILD_SESSION is set only on tool/hook/status-line spawns
+	// (Anthropic docs). CLAUDECODE / CLAUDE_CODE / CLAUDE_CODE_ENTRYPOINT are
+	// omitted: IDE extensions also set them in integrated terminals (humans).
+	{"claude", []string{"CLAUDE_CODE_CHILD_SESSION"}, nil},
 	{"gemini", []string{"GEMINI_CLI"}, nil},
 	{"goose", []string{"GOOSE_TERMINAL"}, nil},
 	// CURSOR_AGENT is Cursor's documented agent-session marker (live-verified).
 	// CURSOR_EXTENSION_HOST_ROLE=agent-exec is the agent-exec extension host.
-	// CURSOR_TRACE_ID is the IDE/agent correlation id (Vercel/HF).
-	// CURSOR_CLI is omitted: set for all Cursor integrated terminals (humans too).
-	{"cursor", []string{"CURSOR_AGENT", "CURSOR_TRACE_ID"}, map[string]string{"CURSOR_EXTENSION_HOST_ROLE": "agent-exec"}},
-	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT_SESSION_ID", "COPILOT_MODEL", "COPILOT_ALLOW_ALL"}, nil},
+	// CURSOR_TRACE_ID / CURSOR_CLI are omitted: set for Cursor integrated
+	// terminals (humans too). TRACE_ID is still read for correlation after a
+	// strong cursor hit — see detectAgentTraceID.
+	{"cursor", []string{"CURSOR_AGENT"}, map[string]string{"CURSOR_EXTENSION_HOST_ROLE": "agent-exec"}},
+	// COPILOT_MODEL / COPILOT_ALLOW_ALL are user config flags (GitHub docs),
+	// not exclusive session markers — a human shell can export them.
+	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT_SESSION_ID"}, nil},
 	// KILOCODE_FEATURE / KILO_PID are session markers; IPC socket + password are not.
 	{"kilocode", []string{"KILOCODE_FEATURE", "KILO_PID"}, nil},
 	// ROO_ACTIVE / ROO_CLI_RUNTIME are session markers; IPC socket path is enablement.

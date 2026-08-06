@@ -173,17 +173,17 @@ func TestSanitizeToken(t *testing.T) {
 	assert.Equal(t, maxTokenLen, len(sanitizeToken(strings.Repeat("a", maxTokenLen+100))))
 }
 
-func TestDetectExecutionContext_AIClientAgentOnly(t *testing.T) {
+func TestDetectExecutionContext_ClientAgentOnly(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("CLAUDECODE", "1")
 	t.Setenv("TERM_PROGRAM", "vscode")
 
 	ec := DetectExecutionContext()
-	assert.Equal(t, "vscode", ec.AIClient)
+	assert.Equal(t, "vscode", ec.Client)
 }
 
-func TestDetectExecutionContext_AIClientSkippedForHuman(t *testing.T) {
+func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	// No agent signal: a human in a VS Code terminal must not be recorded.
@@ -191,5 +191,5 @@ func TestDetectExecutionContext_AIClientSkippedForHuman(t *testing.T) {
 
 	ec := DetectExecutionContext()
 	assert.False(t, ec.IsAgent)
-	assert.Equal(t, "", ec.AIClient)
+	assert.Equal(t, "", ec.Client)
 }

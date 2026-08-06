@@ -71,7 +71,7 @@ func TestNewCommandsCountMetricWithEnhancedData(t *testing.T) {
 		IsContainer:   false,
 		IsAgent:       true,
 		Agent:         "cursor",
-		AIClient:      "vscode",
+		Client:        "vscode",
 		AIModel:       "opus-4.7",
 		IsInteractive: false,
 	}
@@ -95,7 +95,7 @@ func TestNewCommandsCountMetricWithEnhancedData(t *testing.T) {
 	assert.Equal(t, "false", labels.IsContainer)
 	assert.Equal(t, "true", labels.IsAgent)
 	assert.Equal(t, "cursor", labels.Agent)
-	assert.Equal(t, "vscode", labels.AIClient)
+	assert.Equal(t, "vscode", labels.Client)
 	assert.Equal(t, "opus-4.7", labels.AIModel)
 	assert.Equal(t, "false", labels.IsInteractive)
 }

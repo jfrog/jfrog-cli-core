@@ -14,21 +14,19 @@ import (
 const AgentUnknown = "unknown"
 
 // ExecutionContext describes how a CLI invocation was launched.
+// AI stack (agent sessions only): Client → Agent → Model.
 type ExecutionContext struct {
-	// Agent: which AI product ran jf (e.g. "cursor", "claude", "copilot").
-	// Empty for humans. Same Cursor Agent in VS Code or iTerm → still "cursor".
+	// Agent: AI product that ran jf — "cursor", "claude", "copilot". Empty for humans.
 	Agent string
 
 	IsAgent       bool
 	IsInteractive bool   // stdout is a TTY
 	TraceID       string // e.g. CURSOR_TRACE_ID; empty if none
 
-	// AIClient: which editor/terminal hosts that agent (TERM_PROGRAM), e.g.
-	// "vscode", "zed", "iterm.app". Agent-only — same Cursor Agent reports
-	// "vscode" in VS Code and "iterm.app" in iTerm; humans stay empty.
-	AIClient string
+	// Client: app hosting the agent (TERM_PROGRAM) — "vscode", "zed", "iterm.app".
+	Client string
 
-	// AIModel: model slug from JFROG_CLI_AI_MODEL (e.g. "opus-4.7"). Agent-only.
+	// AIModel: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
 	AIModel string
 }
 
@@ -118,26 +116,19 @@ func computeExecutionContext() ExecutionContext {
 	ec.Agent = detectAgent()
 	ec.IsAgent = ec.Agent != ""
 	ec.TraceID = detectAgentTraceID(ec.Agent)
-	// Client app and model are recorded only for agent sessions: a human running
-	// the CLI from a VS Code/Zed terminal must stay indistinguishable from today.
+	// Client/model only for agent sessions (human in VS Code stays unmarked).
 	if ec.IsAgent {
-		ec.AIClient = detectAIClient()
+		ec.Client = detectClient()
 		ec.AIModel = detectAIModel()
 	}
 	return ec
 }
 
-// detectAIModel returns the AI model slug the harness advertised via
-// JFROG_CLI_AI_MODEL. Env detection cannot infer the model, so the harness (or
-// the jfrog setup skill) supplies it. Sanitized; empty when unset.
 func detectAIModel() string {
 	return sanitizeToken(os.Getenv("JFROG_CLI_AI_MODEL"))
 }
 
-// detectAIClient returns the client app (editor or terminal) hosting the AI
-// agent from the TERM_PROGRAM convention (set by VS Code, Zed, Warp, iTerm,
-// ...). The value is sanitized so no raw env content reaches the wire.
-func detectAIClient() string {
+func detectClient() string {
 	return sanitizeToken(os.Getenv("TERM_PROGRAM"))
 }
 

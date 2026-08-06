@@ -10,9 +10,9 @@ type MetricsData struct {
 	CISystem       string   `json:"ci_system,omitempty"`
 	IsContainer    bool     `json:"is_container,omitempty"`
 	IsAgent        bool     `json:"is_agent,omitempty"`
-	Agent          string   `json:"agent,omitempty"`
-	AIClient       string   `json:"ai_client,omitempty"`
-	AIModel        string   `json:"ai_model,omitempty"`
+	Agent          string   `json:"agent,omitempty"`     // AI harness (who): "cursor", "claude", …
+	AIClient       string   `json:"ai_client,omitempty"` // host app (where): "vscode", "zed", …
+	AIModel        string   `json:"ai_model,omitempty"`  // model slug (what): "opus-4.7", …
 	IsInteractive  bool     `json:"is_interactive,omitempty"`
 	PackageAlias   bool     `json:"package_alias,omitempty"`
 	PackageManager string   `json:"package_manager,omitempty"`

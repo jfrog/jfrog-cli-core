@@ -42,6 +42,33 @@ type agentDetector struct {
 // agentEnvDetectors is the agent detection table. First match wins.
 // Signals are session markers only — not API keys, install roots, or IPC
 // enablement flags that humans/IDEs also set.
+//
+// | Wire name   | Session signals                                              |
+// |-------------|--------------------------------------------------------------|
+// | claude      | CLAUDECODE, CLAUDE_CODE, CLAUDE_CODE_ENTRYPOINT              |
+// | gemini      | GEMINI_CLI                                                   |
+// | goose       | GOOSE_TERMINAL                                               |
+// | cursor      | CURSOR_AGENT, CURSOR_TRACE_ID, CURSOR_EXTENSION_HOST_ROLE=agent-exec |
+// | copilot     | COPILOT_CLI, COPILOT_AGENT_SESSION_ID, COPILOT_MODEL, COPILOT_ALLOW_ALL |
+// | kilocode    | KILOCODE_FEATURE, KILO_PID                                   |
+// | roo_code    | ROO_ACTIVE, ROO_CLI_RUNTIME                                  |
+// | codex       | CODEX_CI, CODEX_THREAD_ID, CODEX_SANDBOX                     |
+// | windsurf    | WINDSURF_CASCADE_TERMINAL                                    |
+// | aider       | (AI_AGENT/AGENT only)                                        |
+// | cline       | CLINE_ACTIVE                                                 |
+// | opencode    | OPENCODE, OPENCODE_CLIENT                                    |
+// | amp         | AMP_CURRENT_THREAD_ID                                        |
+// | augment     | AUGMENT_AGENT                                                |
+// | qwen        | QWEN_CODE                                                    |
+// | antigravity | ANTIGRAVITY_AGENT                                            |
+// | crush       | CRUSH                                                        |
+// | iflow       | IFLOW_CLI                                                    |
+// | trae        | TRAE_AI_SHELL_ID                                             |
+// | amazon_q    | (AI_AGENT/AGENT only)                                        |
+// | unknown     | AI_AGENT/AGENT set to an unrecognized value                  |
+//
+// Client axis: sanitized TERM_PROGRAM (any host app; not an allowlist).
+// Model axis: sanitized JFROG_CLI_AI_MODEL (skill/user supplied slug).
 var agentEnvDetectors = []agentDetector{
 	// CLAUDECODE is Anthropic's documented marker; CLAUDE_CODE is the
 	// ecosystem alias (Vercel/HF/Firebase). CLAUDE_CODE_ENTRYPOINT is set

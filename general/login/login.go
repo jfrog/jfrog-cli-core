@@ -15,7 +15,8 @@ const (
 )
 
 type LoginCommand struct {
-	serverId string
+	serverId            string
+	disableTokenRefresh *bool
 }
 
 func NewLoginCommand() *LoginCommand {
@@ -27,23 +28,33 @@ func (lc *LoginCommand) SetServerId(serverId string) *LoginCommand {
 	return lc
 }
 
+// SetDisableTokenRefresh sets whether automatic access token refresh should be disabled for the logged-in server.
+// Pass nil to leave any previously configured value untouched (e.g. when the CLI flag wasn't explicitly provided).
+func (lc *LoginCommand) SetDisableTokenRefresh(disableTokenRefresh *bool) *LoginCommand {
+	lc.disableTokenRefresh = disableTokenRefresh
+	return lc
+}
+
 func (lc *LoginCommand) Run() error {
 	if lc.serverId != "" {
-		return existingServerLogin(lc.serverId)
+		return existingServerLogin(lc.serverId, lc.disableTokenRefresh)
 	}
 	configurations, err := config.GetAllServersConfigs()
 	if err != nil {
 		return err
 	}
 	if len(configurations) == 0 {
-		return newConfLogin()
+		return newConfLogin(lc.disableTokenRefresh)
 	}
-	return existingConfLogin(configurations)
+	return existingConfLogin(configurations, lc.disableTokenRefresh)
 }
 
-func newConfLogin() error {
+func newConfLogin(disableTokenRefresh *bool) error {
 	platformUrl := promptPlatformUrl()
 	newServer := config.ServerDetails{Url: platformUrl}
+	if disableTokenRefresh != nil {
+		newServer.DisableTokenRefresh = *disableTokenRefresh
+	}
 	return general.ConfigServerWithDeducedId(&newServer, true, true)
 }
 
@@ -60,26 +71,30 @@ func promptPlatformUrl() string {
 	return platformUrl
 }
 
-func existingConfLogin(configurations []*config.ServerDetails) error {
+func existingConfLogin(configurations []*config.ServerDetails, disableTokenRefresh *bool) error {
 	selectedChoice, err := promptAddOrEdit(configurations)
 	if err != nil {
 		return err
 	}
 	if selectedChoice == newSeverPlaceholder {
-		return selectedNewServer()
+		return selectedNewServer(disableTokenRefresh)
 	}
-	return existingServerLogin(selectedChoice)
+	return existingServerLogin(selectedChoice, disableTokenRefresh)
 }
 
 // When configurations exist and the user chose to log in with a new server we direct him to a clean config process,
 // where he will be prompted for server ID and URL.
-func selectedNewServer() error {
-	return general.ConfigServerAsDefault(nil, "", true, true)
+func selectedNewServer(disableTokenRefresh *bool) error {
+	var newServer *config.ServerDetails
+	if disableTokenRefresh != nil {
+		newServer = &config.ServerDetails{DisableTokenRefresh: *disableTokenRefresh}
+	}
+	return general.ConfigServerAsDefault(newServer, "", true, true)
 }
 
 // When a user chose to log in to an existing server,
 // we run a config process while keeping all his current server details except credentials.
-func existingServerLogin(serverId string) error {
+func existingServerLogin(serverId string, disableTokenRefresh *bool) error {
 	serverDetails, err := commands.GetConfig(serverId, true)
 	if err != nil {
 		return err
@@ -94,6 +109,9 @@ func existingServerLogin(serverId string) error {
 		serverDetails.Password = ""
 		serverDetails.AccessToken = ""
 		serverDetails.RefreshToken = ""
+	}
+	if disableTokenRefresh != nil {
+		serverDetails.DisableTokenRefresh = *disableTokenRefresh
 	}
 	return general.ConfigServerAsDefault(serverDetails, serverId, true, true)
 }

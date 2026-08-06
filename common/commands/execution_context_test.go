@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"strings"
 	"sync"
 	"testing"
 
@@ -168,6 +169,8 @@ func TestSanitizeToken(t *testing.T) {
 	// Header-splitting and stray characters (CR/LF, colon, spaces) are stripped.
 	assert.Equal(t, "xyz", sanitizeToken("x\r\n y: z"))
 	assert.Equal(t, "", sanitizeToken(""))
+	// Pathological env values are truncated so they cannot inflate the wire payload.
+	assert.Equal(t, maxTokenLen, len(sanitizeToken(strings.Repeat("a", maxTokenLen+100))))
 }
 
 func TestDetectExecutionContext_AIClientAgentOnly(t *testing.T) {

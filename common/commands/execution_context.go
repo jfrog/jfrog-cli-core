@@ -73,6 +73,10 @@ var agentNameAliases = map[string]string{
 // Memoized for the process lifetime so independent call sites (metrics
 // collector, trace-ID setup, User-Agent enrichment) cannot diverge if a
 // later caller mutates the environment.
+//
+// Best-effort and side-effect free: only reads env / TTY state, never returns
+// an error, never logs, and must never fail or alter the success of a CLI
+// command. Missing or malformed signals yield empty fields.
 func DetectExecutionContext() ExecutionContext {
 	executionContextOnce.Do(func() {
 		cachedExecutionContext = computeExecutionContext()
@@ -128,6 +132,10 @@ func detectAIClient() string {
 	return sanitizeToken(os.Getenv("TERM_PROGRAM"))
 }
 
+// maxTokenLen caps sanitized identity tokens so a pathological env value cannot
+// inflate User-Agent / metrics payloads. Excess is truncated after filtering.
+const maxTokenLen = 64
+
 // sanitizeToken lowercases s and keeps only [a-z0-9._-], bounding cardinality
 // and guaranteeing no header-splitting sequence can reach the wire.
 func sanitizeToken(s string) string {
@@ -136,6 +144,9 @@ func sanitizeToken(s string) string {
 	for _, r := range s {
 		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '_' {
 			b.WriteRune(r)
+			if b.Len() >= maxTokenLen {
+				break
+			}
 		}
 	}
 	return b.String()

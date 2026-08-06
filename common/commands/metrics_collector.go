@@ -27,6 +27,8 @@ var globalMetricsCollector = &metricsCollector{
 
 // CollectMetrics stores enhanced metrics information for a command execution.
 // Collects system information, CI environment details, and container detection.
+// Best-effort census only: never returns an error, never logs, and must not
+// affect whether the command itself succeeds or fails.
 func CollectMetrics(commandName string, flags []string) {
 	// Compute detection outside the lock; these are pure env reads and don't
 	// touch shared state. Keeps the critical section minimal.

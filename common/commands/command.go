@@ -151,7 +151,7 @@ func reportUsageToVisibilitySystem(commandName string, serverDetails *config.Ser
 			IsAgent:        metricsData.IsAgent,
 			Agent:          metricsData.Agent,
 			Client:         metricsData.Client,
-			AIModel:        metricsData.AIModel,
+			Model:          metricsData.Model,
 			IsInteractive:  metricsData.IsInteractive,
 			PackageAlias:   metricsData.PackageAlias,
 			PackageManager: metricsData.PackageManager,

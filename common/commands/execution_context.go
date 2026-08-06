@@ -26,8 +26,8 @@ type ExecutionContext struct {
 	// Client: app hosting the agent (TERM_PROGRAM) — "vscode", "zed", "iterm.app".
 	Client string
 
-	// AIModel: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
-	AIModel string
+	// Model: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
+	Model string
 }
 
 // agentDetector maps an agent name to env vars whose presence proves the agent
@@ -119,12 +119,12 @@ func computeExecutionContext() ExecutionContext {
 	// Client/model only for agent sessions (human in VS Code stays unmarked).
 	if ec.IsAgent {
 		ec.Client = detectClient()
-		ec.AIModel = detectAIModel()
+		ec.Model = detectModel()
 	}
 	return ec
 }
 
-func detectAIModel() string {
+func detectModel() string {
 	return sanitizeToken(os.Getenv("JFROG_CLI_AI_MODEL"))
 }
 

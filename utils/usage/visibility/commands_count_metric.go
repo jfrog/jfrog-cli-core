@@ -31,7 +31,7 @@ type commandsCountLabels struct {
 	IsAgent                              string `json:"is_agent,omitempty"`
 	Agent                                string `json:"agent,omitempty"`
 	Client                               string `json:"client,omitempty"`
-	AIModel                              string `json:"ai_model,omitempty"`
+	Model                                string `json:"model,omitempty"`
 	IsInteractive                        string `json:"is_interactive,omitempty"`
 	PackageAlias                         string `json:"package_alias,omitempty"`
 	PackageManager                       string `json:"package_manager,omitempty"`
@@ -88,7 +88,7 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 			labels.IsAgent = "true"
 			labels.Agent = metricsData.Agent
 			labels.Client = metricsData.Client
-			labels.AIModel = metricsData.AIModel
+			labels.Model = metricsData.Model
 		} else {
 			labels.IsAgent = "false"
 		}

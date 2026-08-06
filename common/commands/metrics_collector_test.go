@@ -1042,7 +1042,7 @@ func TestMetricsIntegrationFlow(t *testing.T) {
 	}
 }
 
-// TestAgentContextEndToEnd verifies that agent/is_agent/client/ai_model/
+// TestAgentContextEndToEnd verifies that agent/is_agent/client/model/
 // is_interactive signals survive the full chain: env -> ExecutionContext -> CollectMetrics ->
 // GetCollectedMetrics -> visibility.MetricsData -> commandsCountLabels -> wire JSON.
 // This guards against any field being dropped at the boundaries between layers.
@@ -1066,8 +1066,8 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !collected.IsAgent || collected.Agent != "cursor" {
 		t.Errorf("collected IsAgent/Agent wrong: IsAgent=%v Agent=%q", collected.IsAgent, collected.Agent)
 	}
-	if collected.Client != "vscode" || collected.AIModel != "opus-4.7" {
-		t.Errorf("collected Client/AIModel wrong: Client=%q AIModel=%q", collected.Client, collected.AIModel)
+	if collected.Client != "vscode" || collected.Model != "opus-4.7" {
+		t.Errorf("collected Client/Model wrong: Client=%q Model=%q", collected.Client, collected.Model)
 	}
 
 	visibilityData := &visibility.MetricsData{
@@ -1080,7 +1080,7 @@ func TestAgentContextEndToEnd(t *testing.T) {
 		IsAgent:        collected.IsAgent,
 		Agent:          collected.Agent,
 		Client:         collected.Client,
-		AIModel:        collected.AIModel,
+		Model:          collected.Model,
 		IsInteractive:  collected.IsInteractive,
 		PackageAlias:   collected.PackageAlias,
 		PackageManager: collected.PackageManager,
@@ -1102,8 +1102,8 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !strings.Contains(wire, `"client":"vscode"`) {
 		t.Errorf("wire JSON missing client=vscode: %s", wire)
 	}
-	if !strings.Contains(wire, `"ai_model":"opus-4.7"`) {
-		t.Errorf("wire JSON missing ai_model=opus-4.7: %s", wire)
+	if !strings.Contains(wire, `"model":"opus-4.7"`) {
+		t.Errorf("wire JSON missing model=opus-4.7: %s", wire)
 	}
 	if !strings.Contains(wire, `"is_interactive":`) {
 		t.Errorf("wire JSON missing is_interactive: %s", wire)

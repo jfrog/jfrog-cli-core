@@ -142,23 +142,23 @@ func clearAgentEnvVars(t *testing.T) {
 	t.Setenv("JFROG_CLI_AI_MODEL", "")
 }
 
-func TestDetectExecutionContext_AIModelAgentOnly(t *testing.T) {
+func TestDetectExecutionContext_ModelAgentOnly(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("CLAUDECODE", "1")
 	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
 
-	assert.Equal(t, "opus-4.7", DetectExecutionContext().AIModel)
+	assert.Equal(t, "opus-4.7", DetectExecutionContext().Model)
 }
 
-func TestDetectExecutionContext_AIModelSkippedForHuman(t *testing.T) {
+func TestDetectExecutionContext_ModelSkippedForHuman(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
 
 	ec := DetectExecutionContext()
 	assert.False(t, ec.IsAgent)
-	assert.Equal(t, "", ec.AIModel)
+	assert.Equal(t, "", ec.Model)
 }
 
 func TestSanitizeToken(t *testing.T) {

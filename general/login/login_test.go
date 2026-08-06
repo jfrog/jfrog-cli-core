@@ -46,4 +46,3 @@ func TestRunWithNonExistentServerId(t *testing.T) {
 	err = lc.Run()
 	assert.ErrorContains(t, err, "non-existent-server")
 }
-

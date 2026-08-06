@@ -11,6 +11,8 @@ type MetricsData struct {
 	IsContainer    bool     `json:"is_container,omitempty"`
 	IsAgent        bool     `json:"is_agent,omitempty"`
 	Agent          string   `json:"agent,omitempty"`
+	AIClient       string   `json:"ai_client,omitempty"`
+	AIModel        string   `json:"ai_model,omitempty"`
 	IsInteractive  bool     `json:"is_interactive,omitempty"`
 	PackageAlias   bool     `json:"package_alias,omitempty"`
 	PackageManager string   `json:"package_manager,omitempty"`

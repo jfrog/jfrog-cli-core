@@ -2,6 +2,7 @@ package commands
 
 import (
 	"os"
+	"strings"
 	"sync"
 
 	clientlog "github.com/jfrog/jfrog-client-go/utils/log"
@@ -18,6 +19,8 @@ type ExecutionContext struct {
 	IsAgent       bool
 	IsInteractive bool   // stdout is a TTY
 	TraceID       string // propagated trace ID (e.g. CURSOR_TRACE_ID), empty if none
+	AIClient      string // client app (TERM_PROGRAM: editor or terminal) hosting the AI agent, agent sessions only
+	AIModel       string // AI model slug advertised via JFROG_CLI_AI_MODEL, agent sessions only
 }
 
 // agentDetector maps an agent name to env vars whose presence proves the agent
@@ -33,10 +36,37 @@ var agentEnvDetectors = []agentDetector{
 	{"gemini", []string{"GEMINI_CLI"}},
 	{"goose", []string{"GOOSE_TERMINAL"}},
 	{"cursor", []string{"CURSOR_AGENT", "CURSOR_CLI", "CURSOR_TRACE_ID"}},
-	{"copilot", []string{"COPILOT_CLI"}},
+	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT_SESSION_ID"}},
 	{"kilocode", []string{"KILO_IPC_SOCKET_PATH", "KILO_SERVER_PASSWORD"}},
-	{"roo_code", []string{"ROO_CODE_IPC_SOCKET_PATH"}},
-	{"codex", []string{"CODEX_CI"}},
+	{"roo_code", []string{"ROO_CODE_IPC_SOCKET_PATH", "ROO_ACTIVE"}},
+	{"codex", []string{"CODEX_CI", "CODEX_THREAD_ID", "CODEX_SANDBOX"}},
+	{"windsurf", []string{"WINDSURF_AGENT", "CODEIUM_EDITOR_APP_ROOT"}},
+	{"aider", []string{"AIDER_API_KEY"}},
+	{"cline", []string{"CLINE_ACTIVE"}},
+	{"opencode", []string{"OPENCODE", "OPENCODE_CLIENT"}},
+	{"amp", []string{"AMP_CURRENT_THREAD_ID"}},
+	{"augment", []string{"AUGMENT_AGENT"}},
+	{"qwen", []string{"QWEN_CODE"}},
+	{"antigravity", []string{"ANTIGRAVITY_AGENT"}},
+	{"crush", []string{"CRUSH"}},
+	{"iflow", []string{"IFLOW_CLI"}},
+	{"trae", []string{"TRAE_AI_SHELL_ID"}},
+}
+
+// agentNameAliases maps generic AI_AGENT/AGENT values whose spelling differs
+// from our canonical table names (the ecosystem tends to use hyphenated ids,
+// e.g. @vercel/detect-agent). Values already matching a table name resolve via
+// knownAgentName and need no entry here.
+var agentNameAliases = map[string]string{
+	"claude-code":    "claude",
+	"gemini-cli":     "gemini",
+	"cursor-cli":     "cursor",
+	"github-copilot": "copilot",
+	"copilot-cli":    "copilot",
+	"roo-code":       "roo_code",
+	"amazon-q-cli":   "amazon_q",
+	"amazon-q":       "amazon_q",
+	"qwen-code":      "qwen",
 }
 
 // DetectExecutionContext captures signals about who executed the CLI.
@@ -75,7 +105,40 @@ func computeExecutionContext() ExecutionContext {
 	ec.Agent = detectAgent()
 	ec.IsAgent = ec.Agent != ""
 	ec.TraceID = detectAgentTraceID(ec.Agent)
+	// Client app and model are recorded only for agent sessions: a human running
+	// the CLI from a VS Code/Zed terminal must stay indistinguishable from today.
+	if ec.IsAgent {
+		ec.AIClient = detectAIClient()
+		ec.AIModel = detectAIModel()
+	}
 	return ec
+}
+
+// detectAIModel returns the AI model slug the harness advertised via
+// JFROG_CLI_AI_MODEL. Env detection cannot infer the model, so the harness (or
+// the jfrog setup skill) supplies it. Sanitized; empty when unset.
+func detectAIModel() string {
+	return sanitizeToken(os.Getenv("JFROG_CLI_AI_MODEL"))
+}
+
+// detectAIClient returns the client app (editor or terminal) hosting the AI
+// agent from the TERM_PROGRAM convention (set by VS Code, Zed, Warp, iTerm,
+// ...). The value is sanitized so no raw env content reaches the wire.
+func detectAIClient() string {
+	return sanitizeToken(os.Getenv("TERM_PROGRAM"))
+}
+
+// sanitizeToken lowercases s and keeps only [a-z0-9._-], bounding cardinality
+// and guaranteeing no header-splitting sequence can reach the wire.
+func sanitizeToken(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	var b strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '_' {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 func detectAgent() string {
@@ -86,12 +149,53 @@ func detectAgent() string {
 			}
 		}
 	}
-	// Generic AGENT env var (goose convention, codex pending). Don't propagate the
-	// raw value into metrics — collapse to "unknown" to keep cardinality bounded.
-	if os.Getenv("AGENT") != "" {
-		return AgentUnknown
+	// Generic AI_AGENT / AGENT convention (agents.md proposal, @vercel/detect-agent):
+	// the value names the agent. Honor it when recognized; any other non-empty value
+	// collapses to "unknown" so a raw value never reaches metrics and cardinality
+	// stays bounded.
+	if name := canonicalAgentName(os.Getenv("AI_AGENT")); name != "" {
+		return name
 	}
-	return ""
+	return canonicalAgentName(os.Getenv("AGENT"))
+}
+
+// canonicalAgentName maps a generic AI_AGENT/AGENT value to a known agent name.
+// Returns "" for an empty value, the canonical name when recognized, or
+// AgentUnknown for any other non-empty value.
+func canonicalAgentName(raw string) string {
+	name := strings.ToLower(strings.TrimSpace(raw))
+	if name == "" {
+		return ""
+	}
+	// Strip a version suffix, e.g. "goose@1.2.3".
+	if i := strings.IndexByte(name, '@'); i >= 0 {
+		name = name[:i]
+	}
+	if mapped, ok := agentNameAliases[name]; ok {
+		return mapped
+	}
+	if knownAgentName(name) {
+		return name
+	}
+	return AgentUnknown
+}
+
+// knownAgentName reports whether name is a canonical agent id we emit on the
+// wire — either a table detector name, or an alias-only id (e.g. amazon_q)
+// that has no reliable env var but must still round-trip when AI_AGENT/AGENT
+// already carries the canonical spelling.
+func knownAgentName(name string) bool {
+	for _, d := range agentEnvDetectors {
+		if d.name == name {
+			return true
+		}
+	}
+	for _, mapped := range agentNameAliases {
+		if mapped == name {
+			return true
+		}
+	}
+	return false
 }
 
 // detectAgentTraceID returns a trace ID propagated by the parent agent, if any.

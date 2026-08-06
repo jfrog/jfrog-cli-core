@@ -1042,14 +1042,16 @@ func TestMetricsIntegrationFlow(t *testing.T) {
 	}
 }
 
-// TestAgentContextEndToEnd verifies that agent/is_agent/is_interactive
-// signals survive the full chain: env -> ExecutionContext -> CollectMetrics ->
+// TestAgentContextEndToEnd verifies that agent/is_agent/ai_client/ai_model/
+// is_interactive signals survive the full chain: env -> ExecutionContext -> CollectMetrics ->
 // GetCollectedMetrics -> visibility.MetricsData -> commandsCountLabels -> wire JSON.
 // This guards against any field being dropped at the boundaries between layers.
 func TestAgentContextEndToEnd(t *testing.T) {
 	ClearAllMetrics()
 	clearAgentEnvVars(t)
 	t.Setenv("CURSOR_AGENT", "1")
+	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
 	resetExecutionContextForTest(t)
 
 	commandName := "rt_download"
@@ -1064,6 +1066,9 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !collected.IsAgent || collected.Agent != "cursor" {
 		t.Errorf("collected IsAgent/Agent wrong: IsAgent=%v Agent=%q", collected.IsAgent, collected.Agent)
 	}
+	if collected.AIClient != "vscode" || collected.AIModel != "opus-4.7" {
+		t.Errorf("collected AIClient/AIModel wrong: AIClient=%q AIModel=%q", collected.AIClient, collected.AIModel)
+	}
 
 	visibilityData := &visibility.MetricsData{
 		Flags:          collected.Flags,
@@ -1074,6 +1079,8 @@ func TestAgentContextEndToEnd(t *testing.T) {
 		IsContainer:    collected.IsContainer,
 		IsAgent:        collected.IsAgent,
 		Agent:          collected.Agent,
+		AIClient:       collected.AIClient,
+		AIModel:        collected.AIModel,
 		IsInteractive:  collected.IsInteractive,
 		PackageAlias:   collected.PackageAlias,
 		PackageManager: collected.PackageManager,
@@ -1091,6 +1098,12 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	}
 	if !strings.Contains(wire, `"agent":"cursor"`) {
 		t.Errorf("wire JSON missing agent=cursor: %s", wire)
+	}
+	if !strings.Contains(wire, `"ai_client":"vscode"`) {
+		t.Errorf("wire JSON missing ai_client=vscode: %s", wire)
+	}
+	if !strings.Contains(wire, `"ai_model":"opus-4.7"`) {
+		t.Errorf("wire JSON missing ai_model=opus-4.7: %s", wire)
 	}
 	if !strings.Contains(wire, `"is_interactive":`) {
 		t.Errorf("wire JSON missing is_interactive: %s", wire)

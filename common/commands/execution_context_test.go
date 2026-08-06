@@ -17,7 +17,27 @@ func TestDetectAgent_FromTable(t *testing.T) {
 				assert.Equal(t, d.name, detectAgent())
 			})
 		}
+		for k, v := range d.envEquals {
+			t.Run(k+"="+v, func(t *testing.T) {
+				clearAgentEnvVars(t)
+				t.Setenv(k, v)
+				assert.Equal(t, d.name, detectAgent())
+			})
+		}
 	}
+}
+
+func TestDetectAgent_EnvEqualsRequiresExactValue(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("CURSOR_EXTENSION_HOST_ROLE", "extension-host")
+	assert.Equal(t, "", detectAgent())
+}
+
+func TestDetectAgent_CursorCLINotASessionMarker(t *testing.T) {
+	// CURSOR_CLI is set for Cursor integrated terminals (humans included).
+	clearAgentEnvVars(t)
+	t.Setenv("CURSOR_CLI", "1")
+	assert.Equal(t, "", detectAgent())
 }
 
 func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
@@ -36,6 +56,7 @@ func TestDetectAgent_GenericValueMapsToKnownAgent(t *testing.T) {
 		"qwen":            "qwen",
 		"amazon-q-cli":    "amazon_q",
 		"amazon_q":        "amazon_q", // alias-only id still round-trips
+		"aider":           "aider",    // table row with no session env
 		"goose@1.2.3":     "goose",    // version suffix stripped
 		"CURSOR":          "cursor",   // case-insensitive
 		"totally-made-up": AgentUnknown,
@@ -133,6 +154,9 @@ func clearAgentEnvVars(t *testing.T) {
 	for _, d := range agentEnvDetectors {
 		for _, e := range d.envs {
 			t.Setenv(e, "")
+		}
+		for k := range d.envEquals {
+			t.Setenv(k, "")
 		}
 	}
 	t.Setenv("AGENT", "")

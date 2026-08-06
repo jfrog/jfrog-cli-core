@@ -30,40 +30,54 @@ type ExecutionContext struct {
 	Model string
 }
 
-// agentDetector maps an agent name to env vars whose presence proves the agent
-// invoked the CLI.
+// agentDetector maps an agent name to env signals that prove the agent
+// invoked the CLI. Envs match on any non-empty value; EnvEquals requires an
+// exact value (used when a var is shared with non-agent hosts).
 type agentDetector struct {
-	name string
-	envs []string
+	name      string
+	envs      []string
+	envEquals map[string]string
 }
 
 // agentEnvDetectors is the agent detection table. First match wins.
+// Signals are session markers only — not API keys, install roots, or IPC
+// enablement flags that humans/IDEs also set.
 var agentEnvDetectors = []agentDetector{
-	{"claude", []string{"CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT"}},
-	{"gemini", []string{"GEMINI_CLI"}},
-	{"goose", []string{"GOOSE_TERMINAL"}},
-	{"cursor", []string{"CURSOR_AGENT", "CURSOR_CLI", "CURSOR_TRACE_ID"}},
-	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT_SESSION_ID"}},
-	{"kilocode", []string{"KILO_IPC_SOCKET_PATH", "KILO_SERVER_PASSWORD"}},
-	{"roo_code", []string{"ROO_CODE_IPC_SOCKET_PATH", "ROO_ACTIVE"}},
-	{"codex", []string{"CODEX_CI", "CODEX_THREAD_ID", "CODEX_SANDBOX"}},
-	{"windsurf", []string{"WINDSURF_AGENT", "CODEIUM_EDITOR_APP_ROOT"}},
-	{"aider", []string{"AIDER_API_KEY"}},
-	{"cline", []string{"CLINE_ACTIVE"}},
-	{"opencode", []string{"OPENCODE", "OPENCODE_CLIENT"}},
-	{"amp", []string{"AMP_CURRENT_THREAD_ID"}},
-	{"augment", []string{"AUGMENT_AGENT"}},
-	{"qwen", []string{"QWEN_CODE"}},
-	{"antigravity", []string{"ANTIGRAVITY_AGENT"}},
-	{"crush", []string{"CRUSH"}},
-	{"iflow", []string{"IFLOW_CLI"}},
-	{"trae", []string{"TRAE_AI_SHELL_ID"}},
+	// CLAUDECODE is Anthropic's documented marker; CLAUDE_CODE is the
+	// ecosystem alias (Vercel/HF/Firebase). CLAUDE_CODE_ENTRYPOINT is set
+	// when Claude Code spawns a subprocess.
+	{"claude", []string{"CLAUDECODE", "CLAUDE_CODE", "CLAUDE_CODE_ENTRYPOINT"}, nil},
+	{"gemini", []string{"GEMINI_CLI"}, nil},
+	{"goose", []string{"GOOSE_TERMINAL"}, nil},
+	// CURSOR_AGENT is Cursor's documented agent-session marker (live-verified).
+	// CURSOR_EXTENSION_HOST_ROLE=agent-exec is the agent-exec extension host.
+	// CURSOR_TRACE_ID is the IDE/agent correlation id (Vercel/HF).
+	// CURSOR_CLI is omitted: set for all Cursor integrated terminals (humans too).
+	{"cursor", []string{"CURSOR_AGENT", "CURSOR_TRACE_ID"}, map[string]string{"CURSOR_EXTENSION_HOST_ROLE": "agent-exec"}},
+	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT_SESSION_ID", "COPILOT_MODEL", "COPILOT_ALLOW_ALL"}, nil},
+	// KILOCODE_FEATURE / KILO_PID are session markers; IPC socket + password are not.
+	{"kilocode", []string{"KILOCODE_FEATURE", "KILO_PID"}, nil},
+	// ROO_ACTIVE / ROO_CLI_RUNTIME are session markers; IPC socket path is enablement.
+	{"roo_code", []string{"ROO_ACTIVE", "ROO_CLI_RUNTIME"}, nil},
+	{"codex", []string{"CODEX_CI", "CODEX_THREAD_ID", "CODEX_SANDBOX"}, nil},
+	// Cascade terminal marker; CODEIUM_EDITOR_APP_ROOT is IDE install (false positive).
+	{"windsurf", []string{"WINDSURF_CASCADE_TERMINAL"}, nil},
+	// aider has no reliable session env (AIDER_API_KEY is config); AI_AGENT only.
+	{"aider", []string{}, nil},
+	{"cline", []string{"CLINE_ACTIVE"}, nil},
+	{"opencode", []string{"OPENCODE", "OPENCODE_CLIENT"}, nil},
+	{"amp", []string{"AMP_CURRENT_THREAD_ID"}, nil},
+	{"augment", []string{"AUGMENT_AGENT"}, nil},
+	{"qwen", []string{"QWEN_CODE"}, nil},
+	{"antigravity", []string{"ANTIGRAVITY_AGENT"}, nil},
+	{"crush", []string{"CRUSH"}, nil},
+	{"iflow", []string{"IFLOW_CLI"}, nil},
+	{"trae", []string{"TRAE_AI_SHELL_ID"}, nil},
 }
 
-// agentNameAliases maps generic AI_AGENT/AGENT values whose spelling differs
-// from our canonical table names (the ecosystem tends to use hyphenated ids,
-// e.g. @vercel/detect-agent). Values already matching a table name resolve via
-// knownAgentName and need no entry here.
+// agentNameAliases maps hyphenated ecosystem spellings (e.g. @vercel/detect-agent)
+// to our wire names. Identity entries for table names are not needed — see
+// agentCanonical.
 var agentNameAliases = map[string]string{
 	"claude-code":    "claude",
 	"gemini-cli":     "gemini",
@@ -74,6 +88,22 @@ var agentNameAliases = map[string]string{
 	"amazon-q-cli":   "amazon_q",
 	"amazon-q":       "amazon_q",
 	"qwen-code":      "qwen",
+}
+
+// agentCanonical is the AI_AGENT/AGENT lookup: every detector name, every alias,
+// and every alias target (so amazon_q round-trips with no env detector).
+var agentCanonical = buildAgentCanonical()
+
+func buildAgentCanonical() map[string]string {
+	m := make(map[string]string, len(agentEnvDetectors)+2*len(agentNameAliases))
+	for _, d := range agentEnvDetectors {
+		m[d.name] = d.name
+	}
+	for alias, canonical := range agentNameAliases {
+		m[alias] = canonical
+		m[canonical] = canonical
+	}
+	return m
 }
 
 // DetectExecutionContext captures signals about who executed the CLI.
@@ -139,23 +169,31 @@ const maxTokenLen = 64
 // sanitizeToken lowercases s and keeps only [a-z0-9._-], bounding cardinality
 // and guaranteeing no header-splitting sequence can reach the wire.
 func sanitizeToken(s string) string {
-	s = strings.ToLower(strings.TrimSpace(s))
-	var b strings.Builder
-	for _, r := range s {
-		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '.' || r == '-' || r == '_' {
-			b.WriteRune(r)
-			if b.Len() >= maxTokenLen {
-				break
-			}
+	s = strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			return r + ('a' - 'A')
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '.', r == '-', r == '_':
+			return r
+		default:
+			return -1
 		}
+	}, strings.TrimSpace(s))
+	if len(s) > maxTokenLen {
+		return s[:maxTokenLen]
 	}
-	return b.String()
+	return s
 }
 
 func detectAgent() string {
 	for _, d := range agentEnvDetectors {
 		for _, e := range d.envs {
 			if os.Getenv(e) != "" {
+				return d.name
+			}
+		}
+		for k, v := range d.envEquals {
+			if os.Getenv(k) == v {
 				return d.name
 			}
 		}
@@ -170,9 +208,8 @@ func detectAgent() string {
 	return canonicalAgentName(os.Getenv("AGENT"))
 }
 
-// canonicalAgentName maps a generic AI_AGENT/AGENT value to a known agent name.
-// Returns "" for an empty value, the canonical name when recognized, or
-// AgentUnknown for any other non-empty value.
+// canonicalAgentName maps a generic AI_AGENT/AGENT value to a wire name.
+// Returns "" for empty, a table/alias name when recognized, else AgentUnknown.
 func canonicalAgentName(raw string) string {
 	name := strings.ToLower(strings.TrimSpace(raw))
 	if name == "" {
@@ -182,31 +219,10 @@ func canonicalAgentName(raw string) string {
 	if i := strings.IndexByte(name, '@'); i >= 0 {
 		name = name[:i]
 	}
-	if mapped, ok := agentNameAliases[name]; ok {
+	if mapped, ok := agentCanonical[name]; ok {
 		return mapped
 	}
-	if knownAgentName(name) {
-		return name
-	}
 	return AgentUnknown
-}
-
-// knownAgentName reports whether name is a canonical agent id we emit on the
-// wire — either a table detector name, or an alias-only id (e.g. amazon_q)
-// that has no reliable env var but must still round-trip when AI_AGENT/AGENT
-// already carries the canonical spelling.
-func knownAgentName(name string) bool {
-	for _, d := range agentEnvDetectors {
-		if d.name == name {
-			return true
-		}
-	}
-	for _, mapped := range agentNameAliases {
-		if mapped == name {
-			return true
-		}
-	}
-	return false
 }
 
 // detectAgentTraceID returns a trace ID propagated by the parent agent, if any.

@@ -1,11 +1,43 @@
 package config
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 
 	configtests "github.com/jfrog/jfrog-cli-core/v2/utils/config/tests"
+	"github.com/jfrog/jfrog-client-go/auth"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestRefreshThresholdForTokenType(t *testing.T) {
+	t.Run("artifactory token uses fixed threshold", func(t *testing.T) {
+		threshold, err := refreshThresholdForTokenType("irrelevant-token", ArtifactoryToken)
+		assert.NoError(t, err)
+		assert.Equal(t, auth.RefreshArtifactoryTokenBeforeExpiryMinutes, threshold)
+	})
+
+	t.Run("short-lived platform token uses proportional threshold", func(t *testing.T) {
+		token := buildTestAccessToken(1000, 1000+7*24*60*60) // 7-day lifetime
+		threshold, err := refreshThresholdForTokenType(token, AccessToken)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(1008), threshold) // 10% of 7 days, in minutes
+	})
+
+	t.Run("1-year platform token is capped at the historical threshold", func(t *testing.T) {
+		token := buildTestAccessToken(1000, 1000+365*24*60*60) // 1-year lifetime
+		threshold, err := refreshThresholdForTokenType(token, AccessToken)
+		assert.NoError(t, err)
+		assert.Equal(t, auth.RefreshPlatformTokenBeforeExpiryMinutes, threshold)
+	})
+}
+
+// buildTestAccessToken builds an unsigned JWT-shaped token with the given iat/exp claims.
+func buildTestAccessToken(iat, exp int64) string {
+	payload, _ := json.Marshal(map[string]int64{"iat": iat, "exp": exp})
+	encodedPayload := base64.RawStdEncoding.EncodeToString(payload)
+	return "header." + encodedPayload + ".signature"
+}
 
 func TestCreateInitialRefreshableTokensIfNeededEarlyReturns(t *testing.T) {
 	tests := []struct {

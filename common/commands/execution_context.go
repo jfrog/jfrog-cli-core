@@ -14,50 +14,21 @@ import (
 const AgentUnknown = "unknown"
 
 // ExecutionContext describes how a CLI invocation was launched.
-//
-// AI-driven runs record three orthogonal axes (all empty for humans):
-//
-//   - Agent    — WHICH harness invoked jf?     ("claude", "cursor", "copilot")
-//   - AIClient — WHERE is that harness hosted? ("vscode", "zed", "iterm.app")
-//   - AIModel  — WHAT model is it running?     ("opus-4.7", "composer-2-fast")
-//
-// Concrete example — Cursor Agent inside VS Code, model exported by the skill:
-//
-//	Agent="cursor"  AIClient="vscode"  AIModel="opus-4.7"
-//	→ User-Agent … ai-agent/cursor ai-client/vscode ai-model/opus-4.7
-//
-// A human typing jf in a VS Code terminal keeps Agent="" (so AIClient/AIModel
-// stay empty too) and the wire shape stays identical to today.
 type ExecutionContext struct {
-	// Agent is the AI harness / product that invoked the CLI — the "who".
-	// From known env vars (CLAUDECODE, CURSOR_AGENT, …) or a recognized
-	// AI_AGENT/AGENT value.
-	//   ""        = human / CI, no agent signal
-	//   "unknown" = some agent present but not named
-	//   examples  = "claude", "cursor", "gemini", "copilot", "codex"
+	// Agent: which AI product ran jf (e.g. "cursor", "claude", "copilot").
+	// Empty for humans. Same Cursor Agent in VS Code or iTerm → still "cursor".
 	Agent string
 
-	// IsAgent is true when Agent != "" (including Agent == "unknown").
-	IsAgent bool
+	IsAgent       bool
+	IsInteractive bool   // stdout is a TTY
+	TraceID       string // e.g. CURSOR_TRACE_ID; empty if none
 
-	// IsInteractive is true when stdout is a TTY.
-	IsInteractive bool
-
-	// TraceID is a parent-propagated trace id when the harness supplies one
-	// (today: CURSOR_TRACE_ID when Agent == "cursor"). Empty → CLI generates
-	// its own.
-	TraceID string
-
-	// AIClient is the editor or terminal hosting the agent — the "where".
-	// From TERM_PROGRAM; set only when IsAgent (a human in VS Code must not
-	// look like an agent session).
-	// Examples: "vscode", "zed", "warpterminal", "apple_terminal", "iterm.app".
+	// AIClient: which editor/terminal hosts that agent (TERM_PROGRAM), e.g.
+	// "vscode", "zed", "iterm.app". Agent-only — same Cursor Agent reports
+	// "vscode" in VS Code and "iterm.app" in iTerm; humans stay empty.
 	AIClient string
 
-	// AIModel is the model slug the harness is running — the "what".
-	// From JFROG_CLI_AI_MODEL (cannot be inferred; skill/harness must export
-	// it). Set only when IsAgent.
-	// Examples: "opus-4.7", "sonnet-4", "composer-2-fast", "gpt-5".
+	// AIModel: model slug from JFROG_CLI_AI_MODEL (e.g. "opus-4.7"). Agent-only.
 	AIModel string
 }
 

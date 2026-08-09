@@ -16,7 +16,7 @@ const AgentUnknown = "unknown"
 // ExecutionContext describes how a CLI invocation was launched.
 // AI stack (agent sessions only): Client → Agent → Model.
 type ExecutionContext struct {
-	// Agent: AI product that ran jf — "cursor", "claude", "copilot". Empty for humans.
+	// Agent: AI product that ran jf — "cursor", "claude", "copilot". Empty when not an agent.
 	Agent string
 
 	IsAgent       bool
@@ -56,7 +56,7 @@ type agentDetector struct {
 // | windsurf    | WINDSURF_CASCADE_TERMINAL                                    |
 // | aider       | (AI_AGENT/AGENT only)                                        |
 // | cline       | CLINE_ACTIVE                                                 |
-// | opencode    | OPENCODE, OPENCODE_CLIENT                                    |
+// | opencode    | OPENCODE, OPENCODE_SESSION_ID                                |
 // | amp         | AMP_CURRENT_THREAD_ID                                        |
 // | augment     | AUGMENT_AGENT                                                |
 // | qwen        | QWEN_CODE                                                    |
@@ -95,7 +95,10 @@ var agentEnvDetectors = []agentDetector{
 	// aider has no reliable session env (AIDER_API_KEY is config); AI_AGENT only.
 	{"aider", []string{}, nil},
 	{"cline", []string{"CLINE_ACTIVE"}, nil},
-	{"opencode", []string{"OPENCODE", "OPENCODE_CLIENT"}, nil},
+	// OPENCODE is the process session marker; OPENCODE_SESSION_ID is injected
+	// into tool/shell child envs. OPENCODE_CLIENT is config (which client UI),
+	// not a session marker — a human shell can export it.
+	{"opencode", []string{"OPENCODE", "OPENCODE_SESSION_ID"}, nil},
 	{"amp", []string{"AMP_CURRENT_THREAD_ID"}, nil},
 	{"augment", []string{"AUGMENT_AGENT"}, nil},
 	{"qwen", []string{"QWEN_CODE"}, nil},

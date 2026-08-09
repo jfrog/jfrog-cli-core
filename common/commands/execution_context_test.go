@@ -55,6 +55,13 @@ func TestDetectAgent_CopilotConfigNotASessionMarker(t *testing.T) {
 	assert.Equal(t, "", detectAgent())
 }
 
+func TestDetectAgent_OpenCodeClientNotASessionMarker(t *testing.T) {
+	// OPENCODE_CLIENT names which OpenCode UI is configured; humans can export it.
+	clearAgentEnvVars(t)
+	t.Setenv("OPENCODE_CLIENT", "cli")
+	assert.Equal(t, "", detectAgent())
+}
+
 func TestDetectAgent_ClaudeIDETerminalNotASessionMarker(t *testing.T) {
 	// CLAUDECODE / CLAUDE_CODE / CLAUDE_CODE_ENTRYPOINT leak into IDE
 	// integrated terminals where humans run CLIs directly.
@@ -210,6 +217,7 @@ func clearAgentEnvVars(t *testing.T) {
 	t.Setenv("CLAUDE_CODE_ENTRYPOINT", "")
 	t.Setenv("COPILOT_MODEL", "")
 	t.Setenv("COPILOT_ALLOW_ALL", "")
+	t.Setenv("OPENCODE_CLIENT", "")
 	t.Setenv("KILO_IPC_SOCKET_PATH", "")
 	t.Setenv("KILO_SERVER_PASSWORD", "")
 	t.Setenv("ROO_CODE_IPC_SOCKET_PATH", "")

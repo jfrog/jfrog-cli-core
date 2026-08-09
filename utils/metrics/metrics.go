@@ -10,7 +10,7 @@ type MetricsData struct {
 	CISystem       string   `json:"ci_system,omitempty"`
 	IsContainer    bool     `json:"is_container,omitempty"`
 	IsAgent        bool     `json:"is_agent,omitempty"`
-	Agent          string   `json:"agent,omitempty"`  // "cursor", "claude"
+	Agent          string   `json:"agent,omitempty"`  // "cursor", "claude"; empty when not an agent
 	Client         string   `json:"client,omitempty"` // "vscode", "zed"
 	Model          string   `json:"model,omitempty"`  // "opus-4.7"
 	IsInteractive  bool     `json:"is_interactive,omitempty"`

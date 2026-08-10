@@ -31,6 +31,14 @@ func TestSetDisableTokenRefresh(t *testing.T) {
 	assert.Nil(t, lc.disableTokenRefresh)
 }
 
+func TestSetLegacy(t *testing.T) {
+	lc := NewLoginCommand()
+	result := lc.SetLegacy(true)
+	assert.True(t, lc.legacy)
+	// Verify fluent API returns the same instance
+	assert.Same(t, lc, result)
+}
+
 func TestRunWithNonExistentServerId(t *testing.T) {
 	cleanUp, err := utilsTests.SetJfrogHome()
 	require.NoError(t, err)

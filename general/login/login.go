@@ -17,6 +17,9 @@ const (
 type LoginCommand struct {
 	serverId            string
 	disableTokenRefresh *bool
+	// When true, preserve per-service URL prompts (Artifactory/Distribution/Xray/Mission Control/Pipelines)
+	// and skip the browser-based web login, for Artifactory v6.x self-hosted customers.
+	legacy bool
 }
 
 func NewLoginCommand() *LoginCommand {
@@ -35,27 +38,32 @@ func (lc *LoginCommand) SetDisableTokenRefresh(disableTokenRefresh *bool) *Login
 	return lc
 }
 
+func (lc *LoginCommand) SetLegacy(legacy bool) *LoginCommand {
+	lc.legacy = legacy
+	return lc
+}
+
 func (lc *LoginCommand) Run() error {
 	if lc.serverId != "" {
-		return existingServerLogin(lc.serverId, lc.disableTokenRefresh)
+		return existingServerLogin(lc.serverId, lc.disableTokenRefresh, lc.legacy)
 	}
 	configurations, err := config.GetAllServersConfigs()
 	if err != nil {
 		return err
 	}
 	if len(configurations) == 0 {
-		return newConfLogin(lc.disableTokenRefresh)
+		return newConfLogin(lc.disableTokenRefresh, lc.legacy)
 	}
-	return existingConfLogin(configurations, lc.disableTokenRefresh)
+	return existingConfLogin(configurations, lc.disableTokenRefresh, lc.legacy)
 }
 
-func newConfLogin(disableTokenRefresh *bool) error {
+func newConfLogin(disableTokenRefresh *bool, legacy bool) error {
 	platformUrl := promptPlatformUrl()
 	newServer := config.ServerDetails{Url: platformUrl}
 	if disableTokenRefresh != nil {
 		newServer.DisableTokenRefresh = *disableTokenRefresh
 	}
-	return general.ConfigServerWithDeducedId(&newServer, true, true)
+	return general.ConfigServerWithDeducedId(&newServer, true, !legacy, legacy)
 }
 
 func promptPlatformUrl() string {
@@ -71,30 +79,30 @@ func promptPlatformUrl() string {
 	return platformUrl
 }
 
-func existingConfLogin(configurations []*config.ServerDetails, disableTokenRefresh *bool) error {
+func existingConfLogin(configurations []*config.ServerDetails, disableTokenRefresh *bool, legacy bool) error {
 	selectedChoice, err := promptAddOrEdit(configurations)
 	if err != nil {
 		return err
 	}
 	if selectedChoice == newSeverPlaceholder {
-		return selectedNewServer(disableTokenRefresh)
+		return selectedNewServer(disableTokenRefresh, legacy)
 	}
-	return existingServerLogin(selectedChoice, disableTokenRefresh)
+	return existingServerLogin(selectedChoice, disableTokenRefresh, legacy)
 }
 
 // When configurations exist and the user chose to log in with a new server we direct him to a clean config process,
 // where he will be prompted for server ID and URL.
-func selectedNewServer(disableTokenRefresh *bool) error {
+func selectedNewServer(disableTokenRefresh *bool, legacy bool) error {
 	var newServer *config.ServerDetails
 	if disableTokenRefresh != nil {
 		newServer = &config.ServerDetails{DisableTokenRefresh: *disableTokenRefresh}
 	}
-	return general.ConfigServerAsDefault(newServer, "", true, true)
+	return general.ConfigServerAsDefault(newServer, "", true, !legacy, legacy)
 }
 
 // When a user chose to log in to an existing server,
 // we run a config process while keeping all his current server details except credentials.
-func existingServerLogin(serverId string, disableTokenRefresh *bool) error {
+func existingServerLogin(serverId string, disableTokenRefresh *bool, legacy bool) error {
 	serverDetails, err := commands.GetConfig(serverId, true)
 	if err != nil {
 		return err
@@ -102,7 +110,7 @@ func existingServerLogin(serverId string, disableTokenRefresh *bool) error {
 	if serverDetails.Url == "" {
 		serverDetails = &config.ServerDetails{ServerId: serverDetails.ServerId}
 	} else {
-		if fileutils.IsSshUrl(serverDetails.Url) {
+		if !legacy && fileutils.IsSshUrl(serverDetails.Url) {
 			return errorutils.CheckErrorf("web login cannot be performed via SSH. Please try again with different server configuration or configure a new one")
 		}
 		serverDetails.User = ""
@@ -113,7 +121,7 @@ func existingServerLogin(serverId string, disableTokenRefresh *bool) error {
 	if disableTokenRefresh != nil {
 		serverDetails.DisableTokenRefresh = *disableTokenRefresh
 	}
-	return general.ConfigServerAsDefault(serverDetails, serverId, true, true)
+	return general.ConfigServerAsDefault(serverDetails, serverId, true, !legacy, legacy)
 }
 
 // Prompt a list of all server IDs and an option for a new server, and let the user choose to which to log in.

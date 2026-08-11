@@ -50,6 +50,8 @@ const (
 	Conan
 	UV
 	Cargo
+	Apt
+	Apk
 )
 
 type ConfigType string
@@ -83,6 +85,8 @@ var ProjectTypes = []string{
 	"conan",
 	"uv",
 	"cargo",
+	"apt",
+	"apk",
 }
 
 func (projectType ProjectType) String() string {

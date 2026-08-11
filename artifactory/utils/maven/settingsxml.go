@@ -19,8 +19,17 @@ const (
 	// AltDeploymentRepositoryProperty is the Maven property for overriding deployment repository.
 	AltDeploymentRepositoryProperty = "altDeploymentRepository"
 
-	// mirrorOfAllRepositories configures the mirror to proxy all repositories.
-	mirrorOfAllRepositories = "*"
+	// mirrorOfExternalRepositories configures the mirror to proxy every remote repository,
+	// excluding repositories served from localhost or a file:// URL.
+	//
+	// "external:*" is used rather than "*" because Artifactory cannot serve artifacts that
+	// live on the developer's own machine: a file:// repository (for example the staging
+	// repository used by maven-invoker-plugin integration tests) or a repository the project
+	// deliberately declares on localhost. Mirroring those to Artifactory can only ever fail
+	// to resolve, while excluding them costs no governance -- they are not downloads from a
+	// remote registry. Every repository that IS fetched over the network still goes through
+	// Artifactory. See https://maven.apache.org/guides/mini/guide-mirror-settings.html.
+	mirrorOfExternalRepositories = "external:*"
 
 	// XML element names
 	xmlElementSettings        = "settings"
@@ -104,11 +113,14 @@ func buildRepositoryURL(artifactoryUrl, repoName string) string {
 
 // ConfigureArtifactoryRepository configures Maven to use Artifactory for both downloading and deployment.
 // It updates or creates the following in settings.xml:
-//   - Mirror configuration for downloading artifacts from Artifactory
+//   - Mirror configuration for downloading artifacts from Artifactory. The mirror covers
+//     every remote repository but not localhost/file:// ones -- see mirrorOfExternalRepositories.
 //   - Server credentials for authentication (if username and password are provided)
 //   - Deployment profile with altDeploymentRepository property for mvn deploy
 //
-// All existing configuration in settings.xml is preserved.
+// All existing configuration in settings.xml is preserved. Note that the mirror is keyed by
+// ArtifactoryMirrorID, so calling this again with a different repository repoints the existing
+// mirror rather than adding a second one.
 //
 // Parameters:
 //   - artifactoryUrl: Base URL of the Artifactory instance (e.g., "https://mycompany.jfrog.io/artifactory")
@@ -166,7 +178,7 @@ func (sxm *SettingsXmlManager) configureMirror(root *etree.Element, repoUrl, rep
 	setOrCreateChildElement(mirror, xmlElementID, ArtifactoryMirrorID)
 	setOrCreateChildElement(mirror, xmlElementName, repoName)
 	setOrCreateChildElement(mirror, xmlElementURL, repoUrl)
-	setOrCreateChildElement(mirror, xmlElementMirrorOf, mirrorOfAllRepositories)
+	setOrCreateChildElement(mirror, xmlElementMirrorOf, mirrorOfExternalRepositories)
 }
 
 // configureDeploymentProfile updates or creates the deployment profile.

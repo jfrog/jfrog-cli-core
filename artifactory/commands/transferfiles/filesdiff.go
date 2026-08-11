@@ -218,10 +218,10 @@ func (f *filesDiffPhase) getNonDockerTimeFrameFilesDiff(fromTimestamp, toTimesta
 	var query string
 	if len(f.includeFilesPatterns) > 0 {
 		// Use AQL with pattern filtering
-		query = generateDiffAqlQueryWithPatterns(f.repoKey, fromTimestamp, toTimestamp, f.includeFilesPatterns, paginationOffset, f.disabledDistinctiveAql)
+		query = generateDiffAqlQueryWithPatterns(f.repoKey, fromTimestamp, toTimestamp, f.includeFilesPatterns, paginationOffset, f.disabledDistinctiveAql, f.timestampFilter)
 	} else {
 		// Use default query without pattern filtering
-		query = generateDiffAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
+		query = generateDiffAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql, f.timestampFilter)
 	}
 	return runAql(f.context, f.srcRtDetails, query)
 }
@@ -235,9 +235,9 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 	// Get all newly created or modified manifest files ("manifest.json" and "list.manifest.json" files)
 	var query string
 	if len(f.includeFilesPatterns) > 0 {
-		query = generateDockerManifestAqlQueryWithPatterns(f.repoKey, fromTimestamp, toTimestamp, f.includeFilesPatterns, paginationOffset, f.disabledDistinctiveAql)
+		query = generateDockerManifestAqlQueryWithPatterns(f.repoKey, fromTimestamp, toTimestamp, f.includeFilesPatterns, paginationOffset, f.disabledDistinctiveAql, f.timestampFilter)
 	} else {
-		query = generateDockerManifestAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql)
+		query = generateDockerManifestAqlQuery(f.repoKey, fromTimestamp, toTimestamp, paginationOffset, f.disabledDistinctiveAql, f.timestampFilter)
 	}
 	manifestFilesResult, err := runAql(f.context, f.srcRtDetails, query)
 	if err != nil {
@@ -275,8 +275,14 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 	return
 }
 
-func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int, disabledDistinctiveAql bool) string {
-	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"repo":"%s","type":"any"}]})`, fromTimestamp, toTimestamp, repoKey)
+func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int, disabledDistinctiveAql bool, filter *timestampFilter) string {
+	repoClause := fmt.Sprintf(`{"repo":"%s","type":"any"}`, repoKey)
+	timestampClause := ""
+	if filter != nil {
+		repoClause = fmt.Sprintf(`{"repo":"%s"}`, repoKey)
+		timestampClause = aqlMixedContentTimestampAndCondition(filter)
+	}
+	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},%s%s]})`, fromTimestamp, toTimestamp, repoClause, timestampClause)
 	query += `.include("repo","path","name","type","modified","size")`
 	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
 }
@@ -296,9 +302,10 @@ func generateGetDirContentAqlQuery(repoKey string, paths []string) string {
 }
 
 // This function generates an AQL that searches for all files named "manifest.json" and "list.manifest.json" in a specific repository.
-func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int, disabledDistinctiveAql bool) string {
+func generateDockerManifestAqlQuery(repoKey, fromTimestamp, toTimestamp string, paginationOffset int, disabledDistinctiveAql bool, filter *timestampFilter) string {
+	timestampClause := aqlInclusiveTimestampAndCondition(filter)
 	query := `items.find({"$and":`
-	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}`, repoKey, fromTimestamp, toTimestamp)
+	query += fmt.Sprintf(`[{"repo":"%s"},{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},{"$or":[{"name":"manifest.json"},{"name":"list.manifest.json"}]}%s`, repoKey, fromTimestamp, toTimestamp, timestampClause)
 	query += `]}).include("repo","path","name","type","modified")`
 	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
 }

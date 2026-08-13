@@ -14,7 +14,7 @@ import (
 // Duplicated as a string (not imported from jfrog-cli) to avoid an import cycle.
 const EnvUserAgent = "JFROG_CLI_USER_AGENT"
 
-// aiTriggerAllowlist is the only values accepted for Visibility ai_trigger.
+// aiTriggerFromUA extracts allowlisted trigger=skill|hook from UA parens.
 var aiTriggerFromUA = regexp.MustCompile(`(?:^|[;(]\s*)trigger=(skill|hook)(?:\s*[;)]|$)`)
 
 // MetricsData is shared from utils/metrics to avoid import cycles.

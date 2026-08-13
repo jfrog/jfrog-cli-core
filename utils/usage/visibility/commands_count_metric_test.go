@@ -97,7 +97,6 @@ func TestNewCommandsCountMetricWithEnhancedData(t *testing.T) {
 	assert.Equal(t, "cursor", labels.Agent)
 	assert.Equal(t, "vscode", labels.Client)
 	assert.Equal(t, "opus-4.7", labels.Model)
-	assert.Empty(t, labels.Trigger)
 	assert.Equal(t, "false", labels.IsInteractive)
 
 	metricJSON, err := json.Marshal(metric)
@@ -106,22 +105,6 @@ func TestNewCommandsCountMetricWithEnhancedData(t *testing.T) {
 	assert.Contains(t, wire, `"ai_client":"vscode"`)
 	assert.Contains(t, wire, `"ai_model":"opus-4.7"`)
 	assert.NotContains(t, wire, `"client":"`)
-}
-
-func TestNewCommandsCountMetricWithAiTrigger(t *testing.T) {
-	metricsData := &MetricsData{
-		IsAgent: true,
-		Agent:   "cursor",
-		Trigger: "skill",
-	}
-	metric := NewCommandsCountMetricWithEnhancedData("rt_ping", metricsData)
-	labels, ok := metric.Labels.(*commandsCountLabels)
-	assert.True(t, ok)
-	assert.Equal(t, "skill", labels.Trigger)
-
-	wire, err := json.Marshal(metric)
-	assert.NoError(t, err)
-	assert.Contains(t, string(wire), `"ai_trigger":"skill"`)
 }
 
 func TestNewCommandsCountMetricWithNilEnhancedData(t *testing.T) {

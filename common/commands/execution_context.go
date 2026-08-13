@@ -2,7 +2,6 @@ package commands
 
 import (
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -29,14 +28,7 @@ type ExecutionContext struct {
 
 	// Model: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
 	Model string
-
-	// Trigger: wrapper invocation type from JFROG_CLI_USER_AGENT — "skill" or "hook".
-	Trigger string
 }
-
-const envUserAgent = "JFROG_CLI_USER_AGENT"
-
-var aiTriggerFromUA = regexp.MustCompile(`(?:^|[;(]\s*)trigger=(skill|hook)(?:\s*[;)]|$)`)
 
 // agentDetector maps an agent name to env signals that prove the agent
 // invoked the CLI. Envs match on any non-empty value; EnvEquals requires an
@@ -191,7 +183,6 @@ func computeExecutionContext() ExecutionContext {
 	if ec.IsAgent {
 		ec.Client = detectClient()
 		ec.Model = detectModel()
-		ec.Trigger = detectTrigger()
 	}
 	return ec
 }
@@ -202,14 +193,6 @@ func detectModel() string {
 
 func detectClient() string {
 	return sanitizeToken(os.Getenv("TERM_PROGRAM"))
-}
-
-func detectTrigger() string {
-	match := aiTriggerFromUA.FindStringSubmatch(os.Getenv(envUserAgent))
-	if len(match) < 2 {
-		return ""
-	}
-	return match[1]
 }
 
 // maxTokenLen caps sanitized identity tokens so a pathological env value cannot

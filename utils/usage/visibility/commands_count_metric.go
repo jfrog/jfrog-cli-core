@@ -32,7 +32,6 @@ type commandsCountLabels struct {
 	Agent                                string `json:"agent,omitempty"`
 	Client                               string `json:"ai_client,omitempty"`
 	Model                                string `json:"ai_model,omitempty"`
-	Trigger                              string `json:"ai_trigger,omitempty"`
 	IsInteractive                        string `json:"is_interactive,omitempty"`
 	PackageAlias                         string `json:"package_alias,omitempty"`
 	PackageManager                       string `json:"package_manager,omitempty"`
@@ -93,8 +92,6 @@ func NewCommandsCountMetricWithEnhancedData(commandName string, metricsData *Met
 		} else {
 			labels.IsAgent = "false"
 		}
-		// Path attribution (jfrog-skills/plugin): independent of IsAgent.
-		labels.Trigger = metricsData.Trigger
 		if metricsData.IsInteractive {
 			labels.IsInteractive = "true"
 		} else {

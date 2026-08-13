@@ -1042,7 +1042,7 @@ func TestMetricsIntegrationFlow(t *testing.T) {
 	}
 }
 
-// TestAgentContextEndToEnd verifies that agent/is_agent/client/model/trigger/
+// TestAgentContextEndToEnd verifies that agent/is_agent/client/model/
 // is_interactive signals survive the full chain: env -> ExecutionContext -> CollectMetrics ->
 // GetCollectedMetrics -> visibility.MetricsData -> commandsCountLabels -> wire JSON.
 // This guards against any field being dropped at the boundaries between layers.
@@ -1052,7 +1052,6 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	t.Setenv("CURSOR_AGENT", "1")
 	t.Setenv("TERM_PROGRAM", "vscode")
 	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
-	t.Setenv(envUserAgent, "jfrog-skills/0.22.0 (trigger=skill; tool=cursor; client=vscode; model=opus-4.7) jfrog-cli-go/2.120.0")
 	resetExecutionContextForTest(t)
 
 	commandName := "rt_download"
@@ -1070,10 +1069,6 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if collected.Client != "vscode" || collected.Model != "opus-4.7" {
 		t.Errorf("collected Client/Model wrong: Client=%q Model=%q", collected.Client, collected.Model)
 	}
-	if collected.Trigger != "skill" {
-		t.Errorf("collected Trigger wrong: %q", collected.Trigger)
-	}
-
 	visibilityData := &visibility.MetricsData{
 		Flags:          collected.Flags,
 		Platform:       collected.Platform,
@@ -1085,7 +1080,6 @@ func TestAgentContextEndToEnd(t *testing.T) {
 		Agent:          collected.Agent,
 		Client:         collected.Client,
 		Model:          collected.Model,
-		Trigger:        collected.Trigger,
 		IsInteractive:  collected.IsInteractive,
 		PackageAlias:   collected.PackageAlias,
 		PackageManager: collected.PackageManager,
@@ -1110,32 +1104,8 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !strings.Contains(wire, `"ai_model":"opus-4.7"`) {
 		t.Errorf("wire JSON missing ai_model=opus-4.7: %s", wire)
 	}
-	if !strings.Contains(wire, `"ai_trigger":"skill"`) {
-		t.Errorf("wire JSON missing ai_trigger=skill: %s", wire)
-	}
 	if !strings.Contains(wire, `"is_interactive":`) {
 		t.Errorf("wire JSON missing is_interactive: %s", wire)
-	}
-}
-
-func TestDetectTrigger(t *testing.T) {
-	cases := []struct {
-		ua   string
-		want string
-	}{
-		{"jfrog-skills/0.22.0 (trigger=skill; tool=cursor) jfrog-cli-go/2.120.0", "skill"},
-		{"jfrog-skills/0.1.0 (trigger=hook) jfrog-cli-go/2.119.0", "hook"},
-		{"jfrog-skills/0.9.0 (trigger=skill) jfrog-cli-go/2.120.0 ai-agent/cursor", "skill"},
-		{"setup-jfrog-cli-github-action/5.1.0", ""},
-		{"jfrog-cli-go/2.119.0 ai-agent/claude", ""},
-		{"jfrog-skills/0.22.0 (trigger=evil) jfrog-cli-go/2.120.0", ""},
-		{"", ""},
-	}
-	for _, tc := range cases {
-		t.Setenv(envUserAgent, tc.ua)
-		if got := detectTrigger(); got != tc.want {
-			t.Errorf("detectTrigger() with %q=%q want %q", tc.ua, got, tc.want)
-		}
 	}
 }
 

@@ -1052,6 +1052,7 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	t.Setenv("CURSOR_AGENT", "1")
 	t.Setenv("TERM_PROGRAM", "vscode")
 	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
+	t.Setenv(EnvUserAgent, "jfrog-skills/0.22.0 (trigger=skill; tool=cursor; client=vscode; model=opus-4.7) jfrog-cli-go/2.120.0")
 	resetExecutionContextForTest(t)
 
 	commandName := "rt_download"
@@ -1069,6 +1070,9 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if collected.Client != "vscode" || collected.Model != "opus-4.7" {
 		t.Errorf("collected Client/Model wrong: Client=%q Model=%q", collected.Client, collected.Model)
 	}
+	if collected.Trigger != "skill" {
+		t.Errorf("collected Trigger wrong: %q", collected.Trigger)
+	}
 
 	visibilityData := &visibility.MetricsData{
 		Flags:          collected.Flags,
@@ -1081,6 +1085,7 @@ func TestAgentContextEndToEnd(t *testing.T) {
 		Agent:          collected.Agent,
 		Client:         collected.Client,
 		Model:          collected.Model,
+		Trigger:        collected.Trigger,
 		IsInteractive:  collected.IsInteractive,
 		PackageAlias:   collected.PackageAlias,
 		PackageManager: collected.PackageManager,
@@ -1099,14 +1104,37 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !strings.Contains(wire, `"agent":"cursor"`) {
 		t.Errorf("wire JSON missing agent=cursor: %s", wire)
 	}
-	if !strings.Contains(wire, `"client":"vscode"`) {
-		t.Errorf("wire JSON missing client=vscode: %s", wire)
+	if !strings.Contains(wire, `"ai_client":"vscode"`) {
+		t.Errorf("wire JSON missing ai_client=vscode: %s", wire)
 	}
-	if !strings.Contains(wire, `"model":"opus-4.7"`) {
-		t.Errorf("wire JSON missing model=opus-4.7: %s", wire)
+	if !strings.Contains(wire, `"ai_model":"opus-4.7"`) {
+		t.Errorf("wire JSON missing ai_model=opus-4.7: %s", wire)
+	}
+	if !strings.Contains(wire, `"ai_trigger":"skill"`) {
+		t.Errorf("wire JSON missing ai_trigger=skill: %s", wire)
 	}
 	if !strings.Contains(wire, `"is_interactive":`) {
 		t.Errorf("wire JSON missing is_interactive: %s", wire)
+	}
+}
+
+func TestDetectAiTrigger(t *testing.T) {
+	cases := []struct {
+		ua   string
+		want string
+	}{
+		{"jfrog-skills/0.22.0 (trigger=skill; tool=cursor) jfrog-cli-go/2.120.0", "skill"},
+		{"jfrog-skills/0.1.0 (trigger=hook) jfrog-cli-go/2.119.0", "hook"},
+		{"jfrog-skills/0.9.0 (trigger=skill) jfrog-cli-go/2.120.0 ai-agent/cursor", "skill"},
+		{"setup-jfrog-cli-github-action/5.1.0", ""},
+		{"jfrog-cli-go/2.119.0 ai-agent/claude", ""},
+		{"jfrog-skills/0.22.0 (trigger=evil) jfrog-cli-go/2.120.0", ""},
+		{"", ""},
+	}
+	for _, tc := range cases {
+		if got := detectAiTrigger(tc.ua); got != tc.want {
+			t.Errorf("detectAiTrigger(%q)=%q want %q", tc.ua, got, tc.want)
+		}
 	}
 }
 

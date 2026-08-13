@@ -2,12 +2,20 @@ package commands
 
 import (
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 
 	metrics "github.com/jfrog/jfrog-cli-core/v2/utils/metrics"
 )
+
+// EnvUserAgent is the process env that skills/hooks set for wrapper identity.
+// Duplicated as a string (not imported from jfrog-cli) to avoid an import cycle.
+const EnvUserAgent = "JFROG_CLI_USER_AGENT"
+
+// aiTriggerAllowlist is the only values accepted for Visibility ai_trigger.
+var aiTriggerFromUA = regexp.MustCompile(`(?:^|[;(]\s*)trigger=(skill|hook)(?:\s*[;)]|$)`)
 
 // MetricsData is shared from utils/metrics to avoid import cycles.
 type MetricsData = metrics.MetricsData
@@ -35,6 +43,7 @@ func CollectMetrics(commandName string, flags []string) {
 	ec := DetectExecutionContext()
 	ciSystem := detectCISystem()
 	isContainer := isRunningInContainer()
+	trigger := detectAiTrigger(os.Getenv(EnvUserAgent))
 
 	globalMetricsCollector.mu.Lock()
 	defer globalMetricsCollector.mu.Unlock()
@@ -63,6 +72,7 @@ func CollectMetrics(commandName string, flags []string) {
 		Agent:          ec.Agent,
 		Client:         ec.Client,
 		Model:          ec.Model,
+		Trigger:        trigger,
 		IsInteractive:  ec.IsInteractive,
 		PackageAlias:   pkgAliasTool != "",
 		PackageManager: packageManager,
@@ -91,10 +101,24 @@ func GetCollectedMetrics(commandName string) *MetricsData {
 		Agent:          metrics.Agent,
 		Client:         metrics.Client,
 		Model:          metrics.Model,
+		Trigger:        metrics.Trigger,
 		IsInteractive:  metrics.IsInteractive,
 		PackageAlias:   metrics.PackageAlias,
 		PackageManager: metrics.PackageManager,
 	}
+}
+
+// detectAiTrigger reads trigger=skill|hook from JFROG_CLI_USER_AGENT parens
+// (jfrog-skills / plugin path). Unrecognized values are ignored (cardinality).
+func detectAiTrigger(userAgent string) string {
+	if userAgent == "" {
+		return ""
+	}
+	m := aiTriggerFromUA.FindStringSubmatch(userAgent)
+	if len(m) < 2 {
+		return ""
+	}
+	return m[1]
 }
 
 // detectCISystem identifies the CI environment and returns the system name

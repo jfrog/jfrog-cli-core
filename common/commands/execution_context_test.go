@@ -223,6 +223,7 @@ func clearAgentEnvVars(t *testing.T) {
 	t.Setenv("ROO_CODE_IPC_SOCKET_PATH", "")
 	t.Setenv("TERM_PROGRAM", "")
 	t.Setenv("JFROG_CLI_AI_MODEL", "")
+	t.Setenv(envUserAgent, "")
 }
 
 func TestDetectExecutionContext_ModelAgentOnly(t *testing.T) {
@@ -275,4 +276,23 @@ func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 	ec := DetectExecutionContext()
 	assert.False(t, ec.IsAgent)
 	assert.Equal(t, "", ec.Client)
+}
+
+func TestDetectExecutionContext_TriggerAgentOnly(t *testing.T) {
+	resetExecutionContextForTest(t)
+	clearAgentEnvVars(t)
+	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
+	t.Setenv(envUserAgent, "jfrog-skills/0.22.0 (trigger=hook) jfrog-cli-go/2.120.0")
+
+	assert.Equal(t, "hook", DetectExecutionContext().Trigger)
+}
+
+func TestDetectExecutionContext_TriggerSkippedForHuman(t *testing.T) {
+	resetExecutionContextForTest(t)
+	clearAgentEnvVars(t)
+	t.Setenv(envUserAgent, "jfrog-skills/0.22.0 (trigger=skill) jfrog-cli-go/2.120.0")
+
+	ec := DetectExecutionContext()
+	assert.False(t, ec.IsAgent)
+	assert.Empty(t, ec.Trigger)
 }

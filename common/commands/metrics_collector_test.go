@@ -1042,7 +1042,7 @@ func TestMetricsIntegrationFlow(t *testing.T) {
 	}
 }
 
-// TestAgentContextEndToEnd verifies that agent/is_agent/client/model/
+// TestAgentContextEndToEnd verifies that agent/is_agent/client/model/trigger/
 // is_interactive signals survive the full chain: env -> ExecutionContext -> CollectMetrics ->
 // GetCollectedMetrics -> visibility.MetricsData -> commandsCountLabels -> wire JSON.
 // This guards against any field being dropped at the boundaries between layers.
@@ -1052,7 +1052,7 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	t.Setenv("CURSOR_AGENT", "1")
 	t.Setenv("TERM_PROGRAM", "vscode")
 	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
-	t.Setenv(EnvUserAgent, "jfrog-skills/0.22.0 (trigger=skill; tool=cursor; client=vscode; model=opus-4.7) jfrog-cli-go/2.120.0")
+	t.Setenv(envUserAgent, "jfrog-skills/0.22.0 (trigger=skill; tool=cursor; client=vscode; model=opus-4.7) jfrog-cli-go/2.120.0")
 	resetExecutionContextForTest(t)
 
 	commandName := "rt_download"
@@ -1118,7 +1118,7 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	}
 }
 
-func TestDetectAiTrigger(t *testing.T) {
+func TestDetectTrigger(t *testing.T) {
 	cases := []struct {
 		ua   string
 		want string
@@ -1132,8 +1132,9 @@ func TestDetectAiTrigger(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range cases {
-		if got := detectAiTrigger(tc.ua); got != tc.want {
-			t.Errorf("detectAiTrigger(%q)=%q want %q", tc.ua, got, tc.want)
+		t.Setenv(envUserAgent, tc.ua)
+		if got := detectTrigger(); got != tc.want {
+			t.Errorf("detectTrigger() with %q=%q want %q", tc.ua, got, tc.want)
 		}
 	}
 }

@@ -6,7 +6,7 @@ require github.com/c-bata/go-prompt v0.2.6 // Should not be updated to 0.2.6 due
 
 require (
 	github.com/beevik/etree v1.7.0
-	github.com/buger/jsonparser v1.3.0
+	github.com/buger/jsonparser v1.6.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.4.1
 	github.com/gocarina/gocsv v0.0.0-20260523204920-c264028e67ea
@@ -22,7 +22,7 @@ require (
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.17
-	github.com/vbauerster/mpb/v8 v8.14.0
+	github.com/vbauerster/mpb/v8 v8.15.2
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0

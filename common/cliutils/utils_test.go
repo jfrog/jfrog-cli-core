@@ -83,7 +83,7 @@ func TestShouldOfferConfig_AgentSkipsPrompt(t *testing.T) {
 	tests := []struct {
 		name        string
 		ciEnv       string
-		agentEnv    string // CLAUDECODE env var to simulate an agent
+		agentEnv    string // CLAUDE_CODE_CHILD_SESSION to simulate an agent
 		wantOffer   bool
 		wantErr     bool
 	}{
@@ -127,10 +127,10 @@ func TestShouldOfferConfig_AgentSkipsPrompt(t *testing.T) {
 			}
 
 			if tt.agentEnv != "" {
-				assert.NoError(t, os.Setenv("CLAUDECODE", tt.agentEnv))
-				defer func() { _ = os.Unsetenv("CLAUDECODE") }()
+				assert.NoError(t, os.Setenv("CLAUDE_CODE_CHILD_SESSION", tt.agentEnv))
+				defer func() { _ = os.Unsetenv("CLAUDE_CODE_CHILD_SESSION") }()
 			} else {
-				_ = os.Unsetenv("CLAUDECODE")
+				_ = os.Unsetenv("CLAUDE_CODE_CHILD_SESSION")
 			}
 
 			offer, err := ShouldOfferConfig()

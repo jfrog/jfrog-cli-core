@@ -17,6 +17,28 @@ func TestSetServerId(t *testing.T) {
 	assert.Same(t, lc, result)
 }
 
+func TestSetDisableTokenRefresh(t *testing.T) {
+	lc := NewLoginCommand()
+	disableTokenRefresh := true
+	result := lc.SetDisableTokenRefresh(&disableTokenRefresh)
+	require.NotNil(t, lc.disableTokenRefresh)
+	assert.True(t, *lc.disableTokenRefresh)
+	// Verify fluent API returns the same instance
+	assert.Same(t, lc, result)
+
+	// Passing nil should leave any previously configured value untouched (i.e. clears back to "not specified")
+	lc.SetDisableTokenRefresh(nil)
+	assert.Nil(t, lc.disableTokenRefresh)
+}
+
+func TestSetLegacy(t *testing.T) {
+	lc := NewLoginCommand()
+	result := lc.SetLegacy(true)
+	assert.True(t, lc.legacy)
+	// Verify fluent API returns the same instance
+	assert.Same(t, lc, result)
+}
+
 func TestRunWithNonExistentServerId(t *testing.T) {
 	cleanUp, err := utilsTests.SetJfrogHome()
 	require.NoError(t, err)
@@ -32,4 +54,3 @@ func TestRunWithNonExistentServerId(t *testing.T) {
 	err = lc.Run()
 	assert.ErrorContains(t, err, "non-existent-server")
 }
-

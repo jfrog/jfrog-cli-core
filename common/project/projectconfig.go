@@ -51,6 +51,7 @@ const (
 	UV
 	AgentApm
 	Apt
+	Apk
 )
 
 type ConfigType string
@@ -85,6 +86,7 @@ var ProjectTypes = []string{
 	"uv",
 	"agent-apm",
 	"apt",
+	"apk",
 }
 
 func (projectType ProjectType) String() string {

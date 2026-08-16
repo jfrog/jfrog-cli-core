@@ -84,7 +84,7 @@ var ProjectTypes = []string{
 	"ruby",
 	"conan",
 	"uv",
-	"agent-apm",
+	"apm",
 	"apt",
 	"apk",
 }

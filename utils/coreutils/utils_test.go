@@ -279,3 +279,21 @@ func TestGetMaskedCommandString(t *testing.T) {
 		"pip -i ***@someurl.com/repo --access-token=***",
 		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo", "--access-token=123")))
 }
+
+func TestGetJfrogCertsDirFromEnv(t *testing.T) {
+	t.Setenv("JFROG_CLI_CERTS_DIR", "/custom/certs")
+
+	certsDir, err := GetJfrogCertsDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/custom/certs", certsDir)
+}
+
+func TestGetJfrogCertsDirFallsBackToHomeDir(t *testing.T) {
+	t.Setenv("JFROG_CLI_HOME_DIR", "/tmp/jfrog")
+
+	certsDir, err := GetJfrogCertsDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, "/tmp/jfrog/security/certs", certsDir)
+}

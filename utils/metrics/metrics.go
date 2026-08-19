@@ -11,7 +11,7 @@ type MetricsData struct {
 	IsContainer    bool     `json:"is_container,omitempty"`
 	IsAgent        bool     `json:"is_agent,omitempty"`
 	Agent          string   `json:"agent,omitempty"`  // "cursor", "claude"; empty when not an agent
-	Client         string   `json:"client,omitempty"` // "vscode", "zed"
+	Client         string   `json:"client,omitempty"` // IDE only: "cursor" or "vscode"
 	Model          string   `json:"model,omitempty"`  // "opus-4.7"
 	IsInteractive  bool     `json:"is_interactive,omitempty"`
 	PackageAlias   bool     `json:"package_alias,omitempty"`

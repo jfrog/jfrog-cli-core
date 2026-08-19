@@ -23,7 +23,8 @@ type ExecutionContext struct {
 	IsInteractive bool   // stdout is a TTY
 	TraceID       string // e.g. CURSOR_TRACE_ID; empty if none
 
-	// Client: app hosting the agent (TERM_PROGRAM) — "vscode", "zed", "iterm.app".
+	// Client: IDE host only — "cursor" or "vscode". Empty when there is no IDE
+	// (Claude Code TUI, Copilot CLI, Gemini, …). Never TERM_PROGRAM / a terminal emulator.
 	Client string
 
 	// Model: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
@@ -32,11 +33,13 @@ type ExecutionContext struct {
 
 // agentDetector maps an agent name to env signals that prove the agent
 // invoked the CLI. Envs match on any non-empty value; EnvEquals requires an
-// exact value (used when a var is shared with non-agent hosts).
+// exact value (used when a var is shared with non-agent hosts). EnvContains
+// matches when the named env value contains the substring (Amazon Q CLI).
 type agentDetector struct {
-	name      string
-	envs      []string
-	envEquals map[string]string
+	name        string
+	envs        []string
+	envEquals   map[string]string
+	envContains map[string]string
 }
 
 // agentEnvDetectors is the agent detection table. First match wins.
@@ -45,14 +48,17 @@ type agentDetector struct {
 //
 // | Wire name   | Session signals                                              |
 // |-------------|--------------------------------------------------------------|
-// | claude      | CLAUDE_CODE_CHILD_SESSION                                    |
+// | grok        | GROK_AGENT=1                                                 |
+// | claude      | CLAUDE_CODE_IS_COWORK, CLAUDE_CODE_CHILD_SESSION             |
 // | gemini      | GEMINI_CLI                                                   |
 // | goose       | GOOSE_TERMINAL                                               |
 // | cursor      | CURSOR_AGENT, CURSOR_EXTENSION_HOST_ROLE=agent-exec          |
-// | copilot     | COPILOT_CLI, COPILOT_AGENT_SESSION_ID                        |
-// | kilocode    | KILOCODE_FEATURE, KILO_PID                                   |
+// | copilot     | COPILOT_CLI, COPILOT_AGENT, COPILOT_AGENT_JOB_ID,            |
+// |             | COPILOT_AGENT_SESSION_ID                                     |
+// | kilocode    | KILOCODE_FEATURE=cli                                         |
 // | roo_code    | ROO_ACTIVE, ROO_CLI_RUNTIME                                  |
-// | codex       | CODEX_CI, CODEX_THREAD_ID, CODEX_SANDBOX                     |
+// | codex       | CODEX_CI, CODEX_THREAD_ID, CODEX_SANDBOX,                    |
+// |             | CODEX_SANDBOX_NETWORK_DISABLED                               |
 // | windsurf    | WINDSURF_CASCADE_TERMINAL                                    |
 // | aider       | (AI_AGENT/AGENT only)                                        |
 // | cline       | CLINE_ACTIVE                                                 |
@@ -64,63 +70,74 @@ type agentDetector struct {
 // | crush       | CRUSH                                                        |
 // | iflow       | IFLOW_CLI                                                    |
 // | trae        | TRAE_AI_SHELL_ID                                             |
-// | amazon_q    | (AI_AGENT/AGENT only)                                        |
+// | pi          | PI_CODING_AGENT                                              |
+// | amazon_q    | AWS_EXECUTION_ENV contains AmazonQ-For-CLI                   |
 // | unknown     | AI_AGENT/AGENT set to an unrecognized value                  |
 //
-// Client axis: sanitized TERM_PROGRAM (any host app; not an allowlist).
+// Client axis: IDE only (cursor / vscode). Never TERM_PROGRAM.
 // Model axis: sanitized JFROG_CLI_AI_MODEL (skill/user supplied slug).
 var agentEnvDetectors = []agentDetector{
+	// GROK_AGENT is also a profile *path* for humans — exact "1" only.
+	{"grok", nil, map[string]string{"GROK_AGENT": "1"}, nil},
+	// Cowork before generic Claude: same wire name, no extra pie slice.
+	{"claude", []string{"CLAUDE_CODE_IS_COWORK"}, nil, nil},
 	// CLAUDE_CODE_CHILD_SESSION is set only on tool/hook/status-line spawns
 	// (Anthropic docs). CLAUDECODE / CLAUDE_CODE / CLAUDE_CODE_ENTRYPOINT are
 	// omitted: IDE extensions also set them in integrated terminals (humans).
-	{"claude", []string{"CLAUDE_CODE_CHILD_SESSION"}, nil},
-	{"gemini", []string{"GEMINI_CLI"}, nil},
-	{"goose", []string{"GOOSE_TERMINAL"}, nil},
+	{"claude", []string{"CLAUDE_CODE_CHILD_SESSION"}, nil, nil},
+	{"gemini", []string{"GEMINI_CLI"}, nil, nil},
+	{"goose", []string{"GOOSE_TERMINAL"}, nil, nil},
 	// CURSOR_AGENT is Cursor's documented agent-session marker (live-verified).
 	// CURSOR_EXTENSION_HOST_ROLE=agent-exec is the agent-exec extension host.
 	// CURSOR_TRACE_ID / CURSOR_CLI are omitted: set for Cursor integrated
 	// terminals (humans too). TRACE_ID is still read for correlation after a
 	// strong cursor hit — see detectAgentTraceID.
-	{"cursor", []string{"CURSOR_AGENT"}, map[string]string{"CURSOR_EXTENSION_HOST_ROLE": "agent-exec"}},
+	{"cursor", []string{"CURSOR_AGENT"}, map[string]string{"CURSOR_EXTENSION_HOST_ROLE": "agent-exec"}, nil},
 	// COPILOT_MODEL / COPILOT_ALLOW_ALL are user config flags (GitHub docs),
 	// not exclusive session markers — a human shell can export them.
-	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT_SESSION_ID"}, nil},
-	// KILOCODE_FEATURE / KILO_PID are session markers; IPC socket + password are not.
-	{"kilocode", []string{"KILOCODE_FEATURE", "KILO_PID"}, nil},
+	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT", "COPILOT_AGENT_JOB_ID", "COPILOT_AGENT_SESSION_ID"}, nil, nil},
+	// KILOCODE_FEATURE=cli is the CLI session; KILO_PID and bare/other FEATURE
+	// values fire in the VS Code extension (humans). IPC socket + password are not.
+	{"kilocode", nil, map[string]string{"KILOCODE_FEATURE": "cli"}, nil},
 	// ROO_ACTIVE / ROO_CLI_RUNTIME are session markers; IPC socket path is enablement.
-	{"roo_code", []string{"ROO_ACTIVE", "ROO_CLI_RUNTIME"}, nil},
-	{"codex", []string{"CODEX_CI", "CODEX_THREAD_ID", "CODEX_SANDBOX"}, nil},
+	{"roo_code", []string{"ROO_ACTIVE", "ROO_CLI_RUNTIME"}, nil, nil},
+	{"codex", []string{"CODEX_CI", "CODEX_THREAD_ID", "CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED"}, nil, nil},
 	// Cascade terminal marker; CODEIUM_EDITOR_APP_ROOT is IDE install (false positive).
-	{"windsurf", []string{"WINDSURF_CASCADE_TERMINAL"}, nil},
+	{"windsurf", []string{"WINDSURF_CASCADE_TERMINAL"}, nil, nil},
 	// aider has no reliable session env (AIDER_API_KEY is config); AI_AGENT only.
-	{"aider", []string{}, nil},
-	{"cline", []string{"CLINE_ACTIVE"}, nil},
+	{"aider", []string{}, nil, nil},
+	{"cline", []string{"CLINE_ACTIVE"}, nil, nil},
 	// OPENCODE is the process session marker; OPENCODE_SESSION_ID is injected
 	// into tool/shell child envs. OPENCODE_CLIENT is config (which client UI),
 	// not a session marker — a human shell can export it.
-	{"opencode", []string{"OPENCODE", "OPENCODE_SESSION_ID"}, nil},
-	{"amp", []string{"AMP_CURRENT_THREAD_ID"}, nil},
-	{"augment", []string{"AUGMENT_AGENT"}, nil},
-	{"qwen", []string{"QWEN_CODE"}, nil},
-	{"antigravity", []string{"ANTIGRAVITY_AGENT"}, nil},
-	{"crush", []string{"CRUSH"}, nil},
-	{"iflow", []string{"IFLOW_CLI"}, nil},
-	{"trae", []string{"TRAE_AI_SHELL_ID"}, nil},
+	{"opencode", []string{"OPENCODE", "OPENCODE_SESSION_ID"}, nil, nil},
+	{"amp", []string{"AMP_CURRENT_THREAD_ID"}, nil, nil},
+	{"augment", []string{"AUGMENT_AGENT"}, nil, nil},
+	{"qwen", []string{"QWEN_CODE"}, nil, nil},
+	{"antigravity", []string{"ANTIGRAVITY_AGENT"}, nil, nil},
+	{"crush", []string{"CRUSH"}, nil, nil},
+	{"iflow", []string{"IFLOW_CLI"}, nil, nil},
+	{"trae", []string{"TRAE_AI_SHELL_ID"}, nil, nil},
+	{"pi", []string{"PI_CODING_AGENT"}, nil, nil},
+	{"amazon_q", nil, nil, map[string]string{"AWS_EXECUTION_ENV": "AmazonQ-For-CLI"}},
 }
 
 // agentNameAliases maps hyphenated ecosystem spellings (e.g. @vercel/detect-agent)
 // to our wire names. Identity entries for table names are not needed — see
 // agentCanonical.
 var agentNameAliases = map[string]string{
-	"claude-code":    "claude",
-	"gemini-cli":     "gemini",
-	"cursor-cli":     "cursor",
-	"github-copilot": "copilot",
-	"copilot-cli":    "copilot",
-	"roo-code":       "roo_code",
-	"amazon-q-cli":   "amazon_q",
-	"amazon-q":       "amazon_q",
-	"qwen-code":      "qwen",
+	"claude-code":                 "claude",
+	"gemini-cli":                  "gemini",
+	"cursor-cli":                  "cursor",
+	"github-copilot":              "copilot",
+	"copilot-cli":                 "copilot",
+	"roo-code":                    "roo_code",
+	"amazon-q-cli":                "amazon_q",
+	"amazon-q":                    "amazon_q",
+	"qwen-code":                   "qwen",
+	"github_copilot_vscode_agent": "copilot",
+	"grok-cli":                    "grok",
+	"grok-build":                  "grok",
 }
 
 // agentCanonical is the AI_AGENT/AGENT lookup: every detector name, every alias,
@@ -181,7 +198,7 @@ func computeExecutionContext() ExecutionContext {
 	ec.TraceID = detectAgentTraceID(ec.Agent)
 	// Client/model only for agent sessions (human in VS Code stays unmarked).
 	if ec.IsAgent {
-		ec.Client = detectClient()
+		ec.Client = detectClient(ec.Agent)
 		ec.Model = detectModel()
 	}
 	return ec
@@ -191,8 +208,22 @@ func detectModel() string {
 	return sanitizeToken(os.Getenv("JFROG_CLI_AI_MODEL"))
 }
 
-func detectClient() string {
-	return sanitizeToken(os.Getenv("TERM_PROGRAM"))
+// detectClient returns the IDE host for an agent session. Cursor always
+// reports "cursor" (agent shells often inherit TERM_PROGRAM=vscode). Copilot
+// reports "vscode" only for the first-party VS Code plugin. Every other
+// agent — including Copilot CLI and Claude — omits the axis.
+func detectClient(agent string) string {
+	switch agent {
+	case "cursor":
+		return "cursor"
+	case "copilot":
+		if os.Getenv("COPILOT_AGENT") == "1" || os.Getenv("AI_AGENT") == "github_copilot_vscode_agent" {
+			return "vscode"
+		}
+		return ""
+	default:
+		return ""
+	}
 }
 
 // maxTokenLen caps sanitized identity tokens so a pathological env value cannot
@@ -227,6 +258,11 @@ func detectAgent() string {
 		}
 		for k, v := range d.envEquals {
 			if os.Getenv(k) == v {
+				return d.name
+			}
+		}
+		for k, substr := range d.envContains {
+			if substr != "" && strings.Contains(os.Getenv(k), substr) {
 				return d.name
 			}
 		}

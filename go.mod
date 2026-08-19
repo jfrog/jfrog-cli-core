@@ -5,8 +5,8 @@ go 1.25.5
 require github.com/c-bata/go-prompt v0.2.6 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 
 require (
-	github.com/beevik/etree v1.7.0
-	github.com/buger/jsonparser v1.3.0
+	github.com/beevik/etree v1.7.1
+	github.com/buger/jsonparser v1.6.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.4.1
 	github.com/gocarina/gocsv v0.0.0-20260523204920-c264028e67ea
@@ -20,13 +20,13 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/viper v1.21.0
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	github.com/urfave/cli v1.22.17
-	github.com/vbauerster/mpb/v8 v8.14.0
+	github.com/vbauerster/mpb/v8 v8.15.2
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
-	golang.org/x/text v0.40.0
+	golang.org/x/text v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -265,6 +265,13 @@ func clearAgentEnvVars(t *testing.T) {
 	t.Setenv("JFROG_CLI_AI_MODEL", "")
 	t.Setenv("COPILOT_AGENT", "")
 	t.Setenv("COPILOT_AGENT_JOB_ID", "")
+	// Host-window signals: a developer running these tests from a Zed, JetBrains
+	// or Cursor terminal must not have their editor leak into client assertions.
+	t.Setenv("ZED_TERM", "")
+	t.Setenv("TERMINAL_EMULATOR", "")
+	for _, env := range askpassEnvVars {
+		t.Setenv(env, "")
+	}
 }
 
 func TestDetectExecutionContext_ModelAgentOnly(t *testing.T) {
@@ -355,10 +362,61 @@ func TestDetectExecutionContext_ClientCopilotViaAIAgentAlias(t *testing.T) {
 func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	// No agent signal: a human in a VS Code terminal must not be recorded.
+	// No agent signal: a human in a VS Code or Zed terminal must not be recorded,
+	// however loudly the editor announces itself.
 	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("ZED_TERM", "true")
 
 	ec := DetectExecutionContext()
 	assert.False(t, ec.IsAgent)
 	assert.Equal(t, "", ec.Client)
+}
+
+// The host axis must follow the editor, not the agent: the same agent reports a
+// different window depending on where the user opened it.
+func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
+	askpass := func(app string) map[string]string {
+		return map[string]string{"VSCODE_GIT_ASKPASS_MAIN": "/Applications/" + app + "/out/askpass-main.js"}
+	}
+	testCases := []struct {
+		name     string
+		env      map[string]string
+		expected string
+	}{
+		{"copilot in jetbrains", map[string]string{"COPILOT_AGENT": "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, "jetbrains"},
+		{"claude in jetbrains", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, "jetbrains"},
+		{"claude in zed", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "ZED_TERM": "true"}, "zed"},
+		{"claude in cursor", mergeEnv(map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1"}, askpass("Cursor.app")), "cursor"},
+		{"cline in windsurf", mergeEnv(map[string]string{"CLINE_ACTIVE": "1"}, askpass("Windsurf.app")), "windsurf"},
+		{"gemini in antigravity", mergeEnv(map[string]string{"GEMINI_CLI": "1"}, askpass("Antigravity.app")), "antigravity"},
+		// A fork inherits the upstream Copilot marker; the fork must still win.
+		{"copilot in windsurf", mergeEnv(map[string]string{"COPILOT_AGENT": "1"}, askpass("Windsurf.app")), "windsurf"},
+		// Cursor keeps its identity when the window is proven by trace ID alone.
+		{"claude in cursor via trace id", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "CURSOR_TRACE_ID": "abc"}, "cursor"},
+		// Terminal-only agents have no window to report.
+		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERM_PROGRAM": "iTerm.app"}, ""},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			resetExecutionContextForTest(t)
+			clearAgentEnvVars(t)
+			for key, value := range testCase.env {
+				t.Setenv(key, value)
+			}
+
+			ec := DetectExecutionContext()
+			assert.True(t, ec.IsAgent)
+			assert.Equal(t, testCase.expected, ec.Client)
+		})
+	}
+}
+
+func mergeEnv(envs ...map[string]string) map[string]string {
+	merged := map[string]string{}
+	for _, env := range envs {
+		for key, value := range env {
+			merged[key] = value
+		}
+	}
+	return merged
 }

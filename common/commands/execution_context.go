@@ -23,8 +23,10 @@ type ExecutionContext struct {
 	IsInteractive bool   // stdout is a TTY
 	TraceID       string // e.g. CURSOR_TRACE_ID; empty if none
 
-	// Client: IDE host only — "cursor" or "vscode". Empty when there is no IDE
-	// (Claude Code TUI, Copilot CLI, Gemini, …). Never TERM_PROGRAM / a terminal emulator.
+	// Client: host editor window — "cursor", "vscode", "zed", "jetbrains",
+	// "windsurf", "antigravity". Empty when the session has no editor (Claude
+	// Code TUI, Copilot CLI, Gemini, CI) or when the host cannot be proven.
+	// Never TERM_PROGRAM / a terminal emulator.
 	Client string
 
 	// Model: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
@@ -74,7 +76,7 @@ type agentDetector struct {
 // | amazon_q    | AWS_EXECUTION_ENV contains AmazonQ-For-CLI                   |
 // | unknown     | AI_AGENT/AGENT set to an unrecognized value                  |
 //
-// Client axis: IDE only (cursor / vscode). Never TERM_PROGRAM.
+// Client axis: host editor window, from editor-owned env — see detectClient.
 // Model axis: sanitized JFROG_CLI_AI_MODEL (skill/user supplied slug).
 var agentEnvDetectors = []agentDetector{
 	// GROK_AGENT is also a profile *path* for humans — exact "1" only.
@@ -208,22 +210,62 @@ func detectModel() string {
 	return sanitizeToken(os.Getenv("JFROG_CLI_AI_MODEL"))
 }
 
-// detectClient returns the IDE host for an agent session. Cursor always
-// reports "cursor" (agent shells often inherit TERM_PROGRAM=vscode). Copilot
-// reports "vscode" only for the first-party VS Code plugin. Every other
-// agent — including Copilot CLI and Claude — omits the axis.
+// detectClient returns the editor window hosting an agent session. The host is
+// read from env the *editor* owns, not inferred from the agent name: Copilot and
+// Claude both run inside JetBrains, Zed and VS Code, so agent alone cannot name
+// the window.
+//
+// | Client      | Host-owned signal                                          |
+// |-------------|------------------------------------------------------------|
+// | zed         | ZED_TERM                                                   |
+// | jetbrains   | TERMINAL_EMULATOR=JetBrains-JediTerm                       |
+// | cursor      | CURSOR_TRACE_ID, agent=cursor, or "cursor" askpass path    |
+// | windsurf    | "windsurf" askpass path                                    |
+// | antigravity | "antigravity" askpass path                                 |
+// | vscode      | first-party Copilot plugin markers                         |
+//
+// Order is significant: every VS Code fork inherits TERM_PROGRAM=vscode and the
+// VSCODE_* vars from upstream, so forks must resolve before anything reports
+// "vscode" (product rule P13 — a Cursor session must never be labelled vscode).
+// Unproven hosts omit the axis rather than guess.
+//
+// JetBrains publishes one terminal value for the whole family, so IntelliJ,
+// GoLand and PyCharm collapse to "jetbrains"; separating them would need a
+// parent-process walk on every command.
 func detectClient(agent string) string {
-	switch agent {
-	case "cursor":
+	switch {
+	case os.Getenv("ZED_TERM") != "":
+		return "zed"
+	case os.Getenv("TERMINAL_EMULATOR") == "JetBrains-JediTerm":
+		return "jetbrains"
+	case agent == "cursor", os.Getenv("CURSOR_TRACE_ID") != "", askpassPathContains("cursor"):
 		return "cursor"
-	case "copilot":
-		if os.Getenv("COPILOT_AGENT") == "1" || os.Getenv("AI_AGENT") == "github_copilot_vscode_agent" {
-			return "vscode"
-		}
-		return ""
+	case askpassPathContains("windsurf"):
+		return "windsurf"
+	case askpassPathContains("antigravity"):
+		return "antigravity"
+	case os.Getenv("COPILOT_AGENT") == "1", os.Getenv("AI_AGENT") == "github_copilot_vscode_agent":
+		// Last resort: these prove the first-party plugin, not the window. A
+		// JetBrains host is caught above, so this only fires with no host marker.
+		return "vscode"
 	default:
 		return ""
 	}
+}
+
+// askpassEnvVars hold the path of the editor's git askpass helper, which embeds
+// the application name (…/Cursor.app/…, …/windsurf/…). It is the only env that
+// separates a VS Code fork from upstream, since forks copy the VSCODE_* names
+// verbatim. Path-shaped, so match case-insensitively on a substring.
+var askpassEnvVars = []string{"VSCODE_GIT_ASKPASS_MAIN", "VSCODE_GIT_ASKPASS_NODE", "GIT_ASKPASS"}
+
+func askpassPathContains(app string) bool {
+	for _, env := range askpassEnvVars {
+		if strings.Contains(strings.ToLower(os.Getenv(env)), app) {
+			return true
+		}
+	}
+	return false
 }
 
 // maxTokenLen caps sanitized identity tokens so a pathological env value cannot

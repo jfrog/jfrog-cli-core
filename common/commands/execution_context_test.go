@@ -24,6 +24,13 @@ func TestDetectAgent_FromTable(t *testing.T) {
 				assert.Equal(t, d.name, detectAgent())
 			})
 		}
+		for k, substr := range d.envContains {
+			t.Run(k+" contains "+substr, func(t *testing.T) {
+				clearAgentEnvVars(t)
+				t.Setenv(k, "prefix-"+substr+"-suffix")
+				assert.Equal(t, d.name, detectAgent())
+			})
+		}
 	}
 }
 
@@ -87,6 +94,31 @@ func TestDetectAgent_RemovedIPCNotASessionMarker(t *testing.T) {
 	assert.Equal(t, "", detectAgent())
 }
 
+func TestDetectAgent_KiloExtensionNotASessionMarker(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("KILO_PID", "12345")
+	t.Setenv("KILOCODE_FEATURE", "vscode-extension")
+	assert.Equal(t, "", detectAgent())
+}
+
+func TestDetectAgent_KiloCLIIsASessionMarker(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("KILOCODE_FEATURE", "cli")
+	assert.Equal(t, "kilocode", detectAgent())
+}
+
+func TestDetectAgent_GrokAgentPathIsNotASessionMarker(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("GROK_AGENT", "/Users/me/.grok/profile")
+	assert.Equal(t, "", detectAgent())
+}
+
+func TestDetectAgent_CoworkEmitsClaude(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("CLAUDE_CODE_IS_COWORK", "1")
+	assert.Equal(t, "claude", detectAgent())
+}
+
 func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv("AGENT", "some_random_value")
@@ -95,18 +127,21 @@ func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 
 func TestDetectAgent_GenericValueMapsToKnownAgent(t *testing.T) {
 	cases := map[string]string{
-		"claude-code":     "claude",
-		"gemini-cli":      "gemini",
-		"github-copilot":  "copilot",
-		"roo-code":        "roo_code",
-		"roo_code":        "roo_code", // canonical form round-trips
-		"qwen":            "qwen",
-		"amazon-q-cli":    "amazon_q",
-		"amazon_q":        "amazon_q", // alias-only id still round-trips
-		"aider":           "aider",    // table row with no session env
-		"goose@1.2.3":     "goose",    // version suffix stripped
-		"CURSOR":          "cursor",   // case-insensitive
-		"totally-made-up": AgentUnknown,
+		"claude-code":                 "claude",
+		"gemini-cli":                  "gemini",
+		"github-copilot":              "copilot",
+		"roo-code":                    "roo_code",
+		"roo_code":                    "roo_code", // canonical form round-trips
+		"qwen":                        "qwen",
+		"amazon-q-cli":                "amazon_q",
+		"amazon_q":                    "amazon_q",
+		"aider":                       "aider",
+		"goose@1.2.3":                 "goose",
+		"CURSOR":                      "cursor",
+		"github_copilot_vscode_agent": "copilot",
+		"grok-cli":                    "grok",
+		"grok-build":                  "grok",
+		"totally-made-up":             AgentUnknown,
 	}
 	for value, want := range cases {
 		t.Run(value, func(t *testing.T) {
@@ -205,6 +240,9 @@ func clearAgentEnvVars(t *testing.T) {
 		for k := range d.envEquals {
 			t.Setenv(k, "")
 		}
+		for k := range d.envContains {
+			t.Setenv(k, "")
+		}
 	}
 	t.Setenv("AGENT", "")
 	t.Setenv("AI_AGENT", "")
@@ -221,8 +259,19 @@ func clearAgentEnvVars(t *testing.T) {
 	t.Setenv("KILO_IPC_SOCKET_PATH", "")
 	t.Setenv("KILO_SERVER_PASSWORD", "")
 	t.Setenv("ROO_CODE_IPC_SOCKET_PATH", "")
+	t.Setenv("KILO_PID", "")
+	t.Setenv("KILOCODE_FEATURE", "")
 	t.Setenv("TERM_PROGRAM", "")
 	t.Setenv("JFROG_CLI_AI_MODEL", "")
+	t.Setenv("COPILOT_AGENT", "")
+	t.Setenv("COPILOT_AGENT_JOB_ID", "")
+	// Host-window signals: a developer running these tests from a Zed, JetBrains
+	// or Cursor terminal must not have their editor leak into client assertions.
+	t.Setenv("ZED_TERM", "")
+	t.Setenv("TERMINAL_EMULATOR", "")
+	for _, env := range askpassEnvVars {
+		t.Setenv(env, "")
+	}
 }
 
 func TestDetectExecutionContext_ModelAgentOnly(t *testing.T) {
@@ -256,23 +305,119 @@ func TestSanitizeToken(t *testing.T) {
 	assert.Equal(t, maxTokenLen, len(sanitizeToken(strings.Repeat("a", maxTokenLen+100))))
 }
 
-func TestDetectExecutionContext_ClientAgentOnly(t *testing.T) {
+func TestDetectExecutionContext_ClientCursorIgnoresTermProgram(t *testing.T) {
+	resetExecutionContextForTest(t)
+	clearAgentEnvVars(t)
+	t.Setenv("CURSOR_AGENT", "1")
+	t.Setenv("TERM_PROGRAM", "vscode")
+
+	ec := DetectExecutionContext()
+	assert.Equal(t, "cursor", ec.Agent)
+	assert.Equal(t, "cursor", ec.Client)
+}
+
+func TestDetectExecutionContext_ClientOmittedForClaude(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
 	t.Setenv("TERM_PROGRAM", "vscode")
 
 	ec := DetectExecutionContext()
+	assert.Equal(t, "claude", ec.Agent)
+	assert.Equal(t, "", ec.Client)
+}
+
+func TestDetectExecutionContext_ClientCopilotVscodePlugin(t *testing.T) {
+	resetExecutionContextForTest(t)
+	clearAgentEnvVars(t)
+	t.Setenv("COPILOT_AGENT", "1")
+	t.Setenv("TERM_PROGRAM", "iTerm.app")
+
+	ec := DetectExecutionContext()
+	assert.Equal(t, "copilot", ec.Agent)
+	assert.Equal(t, "vscode", ec.Client)
+}
+
+func TestDetectExecutionContext_ClientOmittedForCopilotCLI(t *testing.T) {
+	resetExecutionContextForTest(t)
+	clearAgentEnvVars(t)
+	t.Setenv("COPILOT_CLI", "1")
+	t.Setenv("TERM_PROGRAM", "vscode")
+
+	ec := DetectExecutionContext()
+	assert.Equal(t, "copilot", ec.Agent)
+	assert.Equal(t, "", ec.Client)
+}
+
+func TestDetectExecutionContext_ClientCopilotViaAIAgentAlias(t *testing.T) {
+	resetExecutionContextForTest(t)
+	clearAgentEnvVars(t)
+	t.Setenv("AI_AGENT", "github_copilot_vscode_agent")
+
+	ec := DetectExecutionContext()
+	assert.Equal(t, "copilot", ec.Agent)
 	assert.Equal(t, "vscode", ec.Client)
 }
 
 func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	// No agent signal: a human in a VS Code terminal must not be recorded.
+	// No agent signal: a human in a VS Code or Zed terminal must not be recorded,
+	// however loudly the editor announces itself.
 	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("ZED_TERM", "true")
 
 	ec := DetectExecutionContext()
 	assert.False(t, ec.IsAgent)
 	assert.Equal(t, "", ec.Client)
+}
+
+// The host axis must follow the editor, not the agent: the same agent reports a
+// different window depending on where the user opened it.
+func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
+	askpass := func(app string) map[string]string {
+		return map[string]string{"VSCODE_GIT_ASKPASS_MAIN": "/Applications/" + app + "/out/askpass-main.js"}
+	}
+	testCases := []struct {
+		name     string
+		env      map[string]string
+		expected string
+	}{
+		{"copilot in jetbrains", map[string]string{"COPILOT_AGENT": "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, "jetbrains"},
+		{"claude in jetbrains", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, "jetbrains"},
+		{"claude in zed", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "ZED_TERM": "true"}, "zed"},
+		{"claude in cursor", mergeEnv(map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1"}, askpass("Cursor.app")), "cursor"},
+		{"cline in windsurf", mergeEnv(map[string]string{"CLINE_ACTIVE": "1"}, askpass("Windsurf.app")), "windsurf"},
+		{"gemini in antigravity", mergeEnv(map[string]string{"GEMINI_CLI": "1"}, askpass("Antigravity.app")), "antigravity"},
+		// A fork inherits the upstream Copilot marker; the fork must still win.
+		{"copilot in windsurf", mergeEnv(map[string]string{"COPILOT_AGENT": "1"}, askpass("Windsurf.app")), "windsurf"},
+		// Cursor keeps its identity when the window is proven by trace ID alone.
+		{"claude in cursor via trace id", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "CURSOR_TRACE_ID": "abc"}, "cursor"},
+		// Terminal-only agents have no window to report.
+		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERM_PROGRAM": "iTerm.app"}, ""},
+		{"claude in vscode via askpass", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "VSCODE_GIT_ASKPASS_MAIN": "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, "vscode"},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			resetExecutionContextForTest(t)
+			clearAgentEnvVars(t)
+			for key, value := range testCase.env {
+				t.Setenv(key, value)
+			}
+
+			ec := DetectExecutionContext()
+			assert.True(t, ec.IsAgent)
+			assert.Equal(t, testCase.expected, ec.Client)
+		})
+	}
+}
+
+func mergeEnv(envs ...map[string]string) map[string]string {
+	merged := map[string]string{}
+	for _, env := range envs {
+		for key, value := range env {
+			merged[key] = value
+		}
+	}
+	return merged
 }

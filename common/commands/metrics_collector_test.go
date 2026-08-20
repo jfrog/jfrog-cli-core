@@ -1066,7 +1066,7 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !collected.IsAgent || collected.Agent != "cursor" {
 		t.Errorf("collected IsAgent/Agent wrong: IsAgent=%v Agent=%q", collected.IsAgent, collected.Agent)
 	}
-	if collected.Client != "vscode" || collected.Model != "opus-4.7" {
+	if collected.Client != "cursor" || collected.Model != "opus-4.7" {
 		t.Errorf("collected Client/Model wrong: Client=%q Model=%q", collected.Client, collected.Model)
 	}
 
@@ -1099,8 +1099,8 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !strings.Contains(wire, `"agent":"cursor"`) {
 		t.Errorf("wire JSON missing agent=cursor: %s", wire)
 	}
-	if !strings.Contains(wire, `"client":"vscode"`) {
-		t.Errorf("wire JSON missing client=vscode: %s", wire)
+	if !strings.Contains(wire, `"client":"cursor"`) {
+		t.Errorf("wire JSON missing client=cursor: %s", wire)
 	}
 	if !strings.Contains(wire, `"model":"opus-4.7"`) {
 		t.Errorf("wire JSON missing model=opus-4.7: %s", wire)

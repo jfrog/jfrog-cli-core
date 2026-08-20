@@ -395,6 +395,7 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		{"claude in cursor via trace id", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "CURSOR_TRACE_ID": "abc"}, "cursor"},
 		// Terminal-only agents have no window to report.
 		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERM_PROGRAM": "iTerm.app"}, ""},
+		{"claude in vscode via askpass", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "VSCODE_GIT_ASKPASS_MAIN": "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, "vscode"},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

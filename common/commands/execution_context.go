@@ -222,7 +222,7 @@ func detectModel() string {
 // | cursor      | CURSOR_TRACE_ID, agent=cursor, or "cursor" askpass path    |
 // | windsurf    | "windsurf" askpass path                                    |
 // | antigravity | "antigravity" askpass path                                 |
-// | vscode      | first-party Copilot plugin markers                         |
+// | vscode      | Copilot plugin markers, or stock VS Code askpass           |
 //
 // Order is significant: every VS Code fork inherits TERM_PROGRAM=vscode and the
 // VSCODE_* vars from upstream, so forks must resolve before anything reports
@@ -247,6 +247,9 @@ func detectClient(agent string) string {
 	case os.Getenv("COPILOT_AGENT") == "1", os.Getenv("AI_AGENT") == "github_copilot_vscode_agent":
 		// Last resort: these prove the first-party plugin, not the window. A
 		// JetBrains host is caught above, so this only fires with no host marker.
+		return "vscode"
+	case os.Getenv("VSCODE_GIT_ASKPASS_MAIN") != "", os.Getenv("VSCODE_GIT_ASKPASS_NODE") != "":
+		// Stock VS Code after forks were ruled out. GIT_ASKPASS is generic git.
 		return "vscode"
 	default:
 		return ""

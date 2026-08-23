@@ -23,10 +23,10 @@ type ExecutionContext struct {
 	IsInteractive bool   // stdout is a TTY
 	TraceID       string // e.g. CURSOR_TRACE_ID; empty if none
 
-	// Client: host editor window — "cursor", "vscode", "zed", "jetbrains",
-	// "windsurf", "antigravity". Empty when the session has no editor (Claude
-	// Code TUI, Copilot CLI, Gemini, CI) or when the host cannot be proven.
-	// Never TERM_PROGRAM / a terminal emulator.
+	// Client: app hosting the agent session. Prefer a known IDE ("cursor",
+	// "vscode", "zed", "jetbrains", "windsurf", "antigravity"), then a known
+	// agent app ("claude"), then a short terminal name from TERM_PROGRAM
+	// ("iterm", "warp", "terminal", "tmux"). Empty when unknown.
 	Client string
 
 	// Model: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
@@ -76,7 +76,7 @@ type agentDetector struct {
 // | amazon_q    | AWS_EXECUTION_ENV contains AmazonQ-For-CLI                   |
 // | unknown     | AI_AGENT/AGENT set to an unrecognized value                  |
 //
-// Client axis: host editor window, from editor-owned env — see detectClient.
+// Client axis: host app, preferring editor-owned env — see detectClient.
 // Model axis: sanitized JFROG_CLI_AI_MODEL (skill/user supplied slug).
 var agentEnvDetectors = []agentDetector{
 	// GROK_AGENT is also a profile *path* for humans — exact "1" only.
@@ -210,24 +210,25 @@ func detectModel() string {
 	return sanitizeToken(os.Getenv("JFROG_CLI_AI_MODEL"))
 }
 
-// detectClient returns the editor window hosting an agent session. The host is
-// read from env the *editor* owns, not inferred from the agent name: Copilot and
-// Claude both run inside JetBrains, Zed and VS Code, so agent alone cannot name
-// the window.
+// detectClient returns the app hosting an agent session. It starts with
+// editor-owned env because Copilot and Claude can run inside JetBrains, Zed,
+// Cursor and VS Code. If no IDE is proven, a known standalone app wins, then
+// TERM_PROGRAM is mapped to a short product name the same way IDEs are.
 //
 // | Client      | Host-owned signal                                          |
 // |-------------|------------------------------------------------------------|
 // | zed         | ZED_TERM                                                   |
 // | jetbrains   | TERMINAL_EMULATOR=JetBrains-JediTerm                       |
 // | cursor      | CURSOR_TRACE_ID, agent=cursor, or "cursor" askpass path    |
-// | windsurf    | "windsurf" askpass path                                    |
-// | antigravity | "antigravity" askpass path                                 |
+// | windsurf    | agent=windsurf or "windsurf" askpass path                  |
+// | antigravity | agent=antigravity or "antigravity" askpass path            |
 // | vscode      | Copilot plugin markers, or stock VS Code askpass           |
+// | claude      | agent=claude after IDE checks                              |
+// | iterm/warp/…| canonical TERM_PROGRAM (iterm.app→iterm, WarpTerminal→warp)|
 //
 // Order is significant: every VS Code fork inherits TERM_PROGRAM=vscode and the
 // VSCODE_* vars from upstream, so forks must resolve before anything reports
 // "vscode" (product rule P13 — a Cursor session must never be labelled vscode).
-// Unproven hosts omit the axis rather than guess.
 //
 // JetBrains publishes one terminal value for the whole family, so IntelliJ,
 // GoLand and PyCharm collapse to "jetbrains"; separating them would need a
@@ -240,27 +241,66 @@ func detectClient(agent string) string {
 		return "jetbrains"
 	case agent == "cursor", os.Getenv("CURSOR_TRACE_ID") != "", askpassPathContains("cursor"):
 		return "cursor"
-	case askpassPathContains("windsurf"):
+	case agent == "windsurf", askpassPathContains("windsurf"):
 		return "windsurf"
-	case askpassPathContains("antigravity"):
+	case agent == "antigravity", askpassPathContains("antigravity"):
 		return "antigravity"
 	case os.Getenv("COPILOT_AGENT") == "1", os.Getenv("AI_AGENT") == "github_copilot_vscode_agent":
 		// Last resort: these prove the first-party plugin, not the window. A
 		// JetBrains host is caught above, so this only fires with no host marker.
 		return "vscode"
 	case os.Getenv("VSCODE_GIT_ASKPASS_MAIN") != "", os.Getenv("VSCODE_GIT_ASKPASS_NODE") != "":
-		// Stock VS Code after forks were ruled out. GIT_ASKPASS is generic git.
+		// Stock VS Code after known forks were ruled out.
 		return "vscode"
+	case agent == "claude":
+		return "claude"
 	default:
+		return canonicalTerminalName(os.Getenv("TERM_PROGRAM"))
+	}
+}
+
+// terminalNameAliases maps sanitized TERM_PROGRAM values to short product
+// names, matching the IDE style (cursor, vscode) rather than raw env spellings.
+var terminalNameAliases = map[string]string{
+	"iterm.app":      "iterm",
+	"iterm":          "iterm",
+	"apple_terminal": "terminal",
+	"warpterminal":   "warp",
+	"warp":           "warp",
+	"tmux":           "tmux",
+	"wezterm":        "wezterm",
+	"alacritty":      "alacritty",
+	"kitty":          "kitty",
+	"ghostty":        "ghostty",
+	"hyper":          "hyper",
+}
+
+func canonicalTerminalName(raw string) string {
+	name := sanitizeToken(raw)
+	if name == "" {
 		return ""
 	}
+	if mapped, ok := terminalNameAliases[name]; ok {
+		return mapped
+	}
+	name = strings.TrimSuffix(name, ".app")
+	if mapped, ok := terminalNameAliases[name]; ok {
+		return mapped
+	}
+	// TERM_PROGRAM=vscode is inherited by every VS Code fork. Do not treat it
+	// as a proven vscode window — that is how Copilot CLI gets mislabelled.
+	if name == "vscode" {
+		return ""
+	}
+	return name
 }
 
 // askpassEnvVars hold the path of the editor's git askpass helper, which embeds
 // the application name (…/Cursor.app/…, …/windsurf/…). It is the only env that
 // separates a VS Code fork from upstream, since forks copy the VSCODE_* names
-// verbatim. Path-shaped, so match case-insensitively on a substring.
-var askpassEnvVars = []string{"VSCODE_GIT_ASKPASS_MAIN", "VSCODE_GIT_ASKPASS_NODE", "GIT_ASKPASS"}
+// verbatim. Generic GIT_ASKPASS is excluded because arbitrary paths can contain
+// an app name without proving the host. Match case-insensitively on a substring.
+var askpassEnvVars = []string{"VSCODE_GIT_ASKPASS_MAIN", "VSCODE_GIT_ASKPASS_NODE"}
 
 func askpassPathContains(app string) bool {
 	for _, env := range askpassEnvVars {

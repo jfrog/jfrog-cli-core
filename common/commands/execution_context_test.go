@@ -269,6 +269,7 @@ func clearAgentEnvVars(t *testing.T) {
 	// or Cursor terminal must not have their editor leak into client assertions.
 	t.Setenv("ZED_TERM", "")
 	t.Setenv("TERMINAL_EMULATOR", "")
+	t.Setenv("GIT_ASKPASS", "")
 	for _, env := range askpassEnvVars {
 		t.Setenv(env, "")
 	}
@@ -316,15 +317,15 @@ func TestDetectExecutionContext_ClientCursorIgnoresTermProgram(t *testing.T) {
 	assert.Equal(t, "cursor", ec.Client)
 }
 
-func TestDetectExecutionContext_ClientOmittedForClaude(t *testing.T) {
+func TestDetectExecutionContext_ClientClaudeAppWithoutKnownIDE(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
-	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("TERM_PROGRAM", "iTerm.app")
 
 	ec := DetectExecutionContext()
 	assert.Equal(t, "claude", ec.Agent)
-	assert.Equal(t, "", ec.Client)
+	assert.Equal(t, "claude", ec.Client)
 }
 
 func TestDetectExecutionContext_ClientCopilotVscodePlugin(t *testing.T) {
@@ -338,15 +339,15 @@ func TestDetectExecutionContext_ClientCopilotVscodePlugin(t *testing.T) {
 	assert.Equal(t, "vscode", ec.Client)
 }
 
-func TestDetectExecutionContext_ClientOmittedForCopilotCLI(t *testing.T) {
+func TestDetectExecutionContext_ClientCopilotCLIFallsBackToTerminalApp(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("COPILOT_CLI", "1")
-	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("TERM_PROGRAM", "iTerm.app")
 
 	ec := DetectExecutionContext()
 	assert.Equal(t, "copilot", ec.Agent)
-	assert.Equal(t, "", ec.Client)
+	assert.Equal(t, "iterm", ec.Client)
 }
 
 func TestDetectExecutionContext_ClientCopilotViaAIAgentAlias(t *testing.T) {
@@ -393,9 +394,20 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		{"copilot in windsurf", mergeEnv(map[string]string{"COPILOT_AGENT": "1"}, askpass("Windsurf.app")), "windsurf"},
 		// Cursor keeps its identity when the window is proven by trace ID alone.
 		{"claude in cursor via trace id", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "CURSOR_TRACE_ID": "abc"}, "cursor"},
-		// Terminal-only agents have no window to report.
-		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERM_PROGRAM": "iTerm.app"}, ""},
+		// Claude Code is itself the app when no IDE is proven.
+		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERM_PROGRAM": "iTerm.app"}, "claude"},
 		{"claude in vscode via askpass", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "VSCODE_GIT_ASKPASS_MAIN": "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, "vscode"},
+		{"windsurf agent without askpass", map[string]string{"WINDSURF_CASCADE_TERMINAL": "1", "TERM_PROGRAM": "vscode"}, "windsurf"},
+		{"antigravity agent without askpass", map[string]string{"ANTIGRAVITY_AGENT": "1", "TERM_PROGRAM": "vscode"}, "antigravity"},
+		// Other CLI agents fall back to the terminal app.
+		{"gemini in iterm", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app"}, "iterm"},
+		{"gemini in warp", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "WarpTerminal"}, "warp"},
+		{"gemini in apple terminal", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "Apple_Terminal"}, "terminal"},
+		{"gemini in tmux", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "tmux"}, "tmux"},
+		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app", "GIT_ASKPASS": "/Users/cursor/bin/askpass"}, "iterm"},
+		// Inherited TERM_PROGRAM=vscode is not a vscode window (P13).
+		{"gemini with inherited vscode term", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "vscode"}, ""},
+		{"copilot cli with inherited vscode term", map[string]string{"COPILOT_CLI": "1", "TERM_PROGRAM": "vscode"}, ""},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

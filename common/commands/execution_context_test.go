@@ -404,7 +404,7 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		{"gemini in warp", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "WarpTerminal"}, "warp"},
 		{"gemini in apple terminal", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "Apple_Terminal"}, "terminal"},
 		{"gemini in tmux", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "tmux"}, "tmux"},
-		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app", "GIT_ASKPASS": "/Users/cursor/bin/askpass"}, "iterm"},
+		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app", "GIT_ASKPASS": "/Users/cursor/bin/git-helper"}, "iterm"}, // #nosec G101 -- fixture path, not a credential
 		// Inherited TERM_PROGRAM=vscode is not a vscode window (P13).
 		{"gemini with inherited vscode term", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "vscode"}, ""},
 		{"copilot cli with inherited vscode term", map[string]string{"COPILOT_CLI": "1", "TERM_PROGRAM": "vscode"}, ""},

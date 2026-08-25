@@ -297,3 +297,18 @@ func TestGetJfrogCertsDirFallsBackToHomeDir(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "/tmp/jfrog/security/certs", certsDir)
 }
+
+func TestGetJfrogCertsDirNormalizesPath(t *testing.T) {
+	t.Setenv(CertsDir, filepath.Join("test", "..", "custom", "certs"))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(CertsDir))
+	}()
+
+	expectedDir, err := filepath.Abs(filepath.Join("custom", "certs"))
+	assert.NoError(t, err)
+
+	certsDir, err := GetJfrogCertsDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedDir, certsDir)
+}

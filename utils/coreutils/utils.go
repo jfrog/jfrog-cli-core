@@ -342,8 +342,15 @@ func GetJfrogSecurityDir() (string, error) {
 
 func GetJfrogCertsDir() (string, error) {
 	if dir := os.Getenv(CertsDir); dir != "" {
-    return dir, nil
-}
+		dir = filepath.Clean(dir)
+
+		absoluteDir, err := filepath.Abs(dir)
+		if err != nil {
+			return "", errorutils.CheckError(err)
+		}
+
+		return absoluteDir, nil
+	}
 
 	securityDir, err := GetJfrogSecurityDir()
 	if err != nil {

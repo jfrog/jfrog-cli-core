@@ -341,9 +341,9 @@ func GetJfrogSecurityDir() (string, error) {
 }
 
 func GetJfrogCertsDir() (string, error) {
-	if os.Getenv(CertsDir) != "" {
-		return os.Getenv(CertsDir), nil
-	}
+	if dir := os.Getenv(CertsDir); dir != "" {
+    return dir, nil
+}
 
 	securityDir, err := GetJfrogSecurityDir()
 	if err != nil {

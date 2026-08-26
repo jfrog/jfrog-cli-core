@@ -13,6 +13,46 @@ import (
 // metric cardinality bounded.
 const AgentUnknown = "unknown"
 
+// Canonical wire names reused as detector names, alias targets, and host-client
+// results. One-off table keys stay string literals.
+const (
+	NameAlacritty       = "alacritty"
+	NameAmazonQ         = "amazon_q"
+	NameAntigravity     = "antigravity"
+	NameClaude          = "claude"
+	NameCodium          = "codium"
+	NameCopilot         = "copilot"
+	NameCursor          = "cursor"
+	NameGemini          = "gemini"
+	NameGhostty         = "ghostty"
+	NameGrok            = "grok"
+	NameHyper           = "hyper"
+	NameIterm           = "iterm"
+	NameJetBrains       = "jetbrains"
+	NameKitty           = "kitty"
+	NameQwen            = "qwen"
+	NameRooCode         = "roo_code"
+	NameTerminal        = "terminal"
+	NameTmux            = "tmux"
+	NameTrae            = "trae"
+	NameVisualStudio    = "visualstudio"
+	NameVSCode          = "vscode"
+	NameWarp            = "warp"
+	NameWezterm         = "wezterm"
+	NameWindsurf        = "windsurf"
+	NameWindowsTerminal = "windows-terminal"
+	NameZed             = "zed"
+
+	EnvAIAgent              = "AI_AGENT"
+	EnvCopilotAgent         = "COPILOT_AGENT"
+	EnvCursorTraceID        = "CURSOR_TRACE_ID"
+	EnvVSCodeGitAskpassMain = "VSCODE_GIT_ASKPASS_MAIN"
+	EnvVSCodeGitAskpassNode = "VSCODE_GIT_ASKPASS_NODE"
+	EnvVisualStudioVersion  = "VisualStudioVersion"
+
+	AliasGitHubCopilotVSCodeAgent = "github_copilot_vscode_agent"
+)
+
 // ExecutionContext describes how a CLI invocation was launched.
 // AI stack (agent sessions only): Client → Agent → Model.
 type ExecutionContext struct {
@@ -24,9 +64,10 @@ type ExecutionContext struct {
 	TraceID       string // e.g. CURSOR_TRACE_ID; empty if none
 
 	// Client: app hosting the agent session. Prefer a known IDE ("cursor",
-	// "vscode", "zed", "jetbrains", "windsurf", "antigravity"), then a known
-	// agent app ("claude"), then a short terminal name from TERM_PROGRAM
-	// ("iterm", "warp", "terminal", "tmux"). Empty when unknown.
+	// "vscode", "zed", "jetbrains", "windsurf", "antigravity", "codium",
+	// "trae", "visualstudio"), then a known agent app ("claude"), then a
+	// short terminal name ("iterm", "warp", "terminal", "tmux",
+	// "windows-terminal"). Empty when unknown.
 	Client string
 
 	// Model: model slug (JFROG_CLI_AI_MODEL) — "opus-4.7".
@@ -80,32 +121,32 @@ type agentDetector struct {
 // Model axis: sanitized JFROG_CLI_AI_MODEL (skill/user supplied slug).
 var agentEnvDetectors = []agentDetector{
 	// GROK_AGENT is also a profile *path* for humans — exact "1" only.
-	{"grok", nil, map[string]string{"GROK_AGENT": "1"}, nil},
+	{NameGrok, nil, map[string]string{"GROK_AGENT": "1"}, nil},
 	// Cowork before generic Claude: same wire name, no extra pie slice.
-	{"claude", []string{"CLAUDE_CODE_IS_COWORK"}, nil, nil},
+	{NameClaude, []string{"CLAUDE_CODE_IS_COWORK"}, nil, nil},
 	// CLAUDE_CODE_CHILD_SESSION is set only on tool/hook/status-line spawns
 	// (Anthropic docs). CLAUDECODE / CLAUDE_CODE / CLAUDE_CODE_ENTRYPOINT are
 	// omitted: IDE extensions also set them in integrated terminals (humans).
-	{"claude", []string{"CLAUDE_CODE_CHILD_SESSION"}, nil, nil},
-	{"gemini", []string{"GEMINI_CLI"}, nil, nil},
+	{NameClaude, []string{"CLAUDE_CODE_CHILD_SESSION"}, nil, nil},
+	{NameGemini, []string{"GEMINI_CLI"}, nil, nil},
 	{"goose", []string{"GOOSE_TERMINAL"}, nil, nil},
 	// CURSOR_AGENT is Cursor's documented agent-session marker (live-verified).
 	// CURSOR_EXTENSION_HOST_ROLE=agent-exec is the agent-exec extension host.
 	// CURSOR_TRACE_ID / CURSOR_CLI are omitted: set for Cursor integrated
 	// terminals (humans too). TRACE_ID is still read for correlation after a
 	// strong cursor hit — see detectAgentTraceID.
-	{"cursor", []string{"CURSOR_AGENT"}, map[string]string{"CURSOR_EXTENSION_HOST_ROLE": "agent-exec"}, nil},
+	{NameCursor, []string{"CURSOR_AGENT"}, map[string]string{"CURSOR_EXTENSION_HOST_ROLE": "agent-exec"}, nil},
 	// COPILOT_MODEL / COPILOT_ALLOW_ALL are user config flags (GitHub docs),
 	// not exclusive session markers — a human shell can export them.
-	{"copilot", []string{"COPILOT_CLI", "COPILOT_AGENT", "COPILOT_AGENT_JOB_ID", "COPILOT_AGENT_SESSION_ID"}, nil, nil},
+	{NameCopilot, []string{"COPILOT_CLI", EnvCopilotAgent, "COPILOT_AGENT_JOB_ID", "COPILOT_AGENT_SESSION_ID"}, nil, nil},
 	// KILOCODE_FEATURE=cli is the CLI session; KILO_PID and bare/other FEATURE
 	// values fire in the VS Code extension (humans). IPC socket + password are not.
 	{"kilocode", nil, map[string]string{"KILOCODE_FEATURE": "cli"}, nil},
 	// ROO_ACTIVE / ROO_CLI_RUNTIME are session markers; IPC socket path is enablement.
-	{"roo_code", []string{"ROO_ACTIVE", "ROO_CLI_RUNTIME"}, nil, nil},
+	{NameRooCode, []string{"ROO_ACTIVE", "ROO_CLI_RUNTIME"}, nil, nil},
 	{"codex", []string{"CODEX_CI", "CODEX_THREAD_ID", "CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED"}, nil, nil},
 	// Cascade terminal marker; CODEIUM_EDITOR_APP_ROOT is IDE install (false positive).
-	{"windsurf", []string{"WINDSURF_CASCADE_TERMINAL"}, nil, nil},
+	{NameWindsurf, []string{"WINDSURF_CASCADE_TERMINAL"}, nil, nil},
 	// aider has no reliable session env (AIDER_API_KEY is config); AI_AGENT only.
 	{"aider", []string{}, nil, nil},
 	{"cline", []string{"CLINE_ACTIVE"}, nil, nil},
@@ -115,31 +156,31 @@ var agentEnvDetectors = []agentDetector{
 	{"opencode", []string{"OPENCODE", "OPENCODE_SESSION_ID"}, nil, nil},
 	{"amp", []string{"AMP_CURRENT_THREAD_ID"}, nil, nil},
 	{"augment", []string{"AUGMENT_AGENT"}, nil, nil},
-	{"qwen", []string{"QWEN_CODE"}, nil, nil},
-	{"antigravity", []string{"ANTIGRAVITY_AGENT"}, nil, nil},
+	{NameQwen, []string{"QWEN_CODE"}, nil, nil},
+	{NameAntigravity, []string{"ANTIGRAVITY_AGENT"}, nil, nil},
 	{"crush", []string{"CRUSH"}, nil, nil},
 	{"iflow", []string{"IFLOW_CLI"}, nil, nil},
-	{"trae", []string{"TRAE_AI_SHELL_ID"}, nil, nil},
+	{NameTrae, []string{"TRAE_AI_SHELL_ID"}, nil, nil},
 	{"pi", []string{"PI_CODING_AGENT"}, nil, nil},
-	{"amazon_q", nil, nil, map[string]string{"AWS_EXECUTION_ENV": "AmazonQ-For-CLI"}},
+	{NameAmazonQ, nil, nil, map[string]string{"AWS_EXECUTION_ENV": "AmazonQ-For-CLI"}},
 }
 
 // agentNameAliases maps hyphenated ecosystem spellings (e.g. @vercel/detect-agent)
 // to our wire names. Identity entries for table names are not needed — see
 // agentCanonical.
 var agentNameAliases = map[string]string{
-	"claude-code":                 "claude",
-	"gemini-cli":                  "gemini",
-	"cursor-cli":                  "cursor",
-	"github-copilot":              "copilot",
-	"copilot-cli":                 "copilot",
-	"roo-code":                    "roo_code",
-	"amazon-q-cli":                "amazon_q",
-	"amazon-q":                    "amazon_q",
-	"qwen-code":                   "qwen",
-	"github_copilot_vscode_agent": "copilot",
-	"grok-cli":                    "grok",
-	"grok-build":                  "grok",
+	"claude-code":                 NameClaude,
+	"gemini-cli":                  NameGemini,
+	"cursor-cli":                  NameCursor,
+	"github-copilot":              NameCopilot,
+	"copilot-cli":                 NameCopilot,
+	"roo-code":                    NameRooCode,
+	"amazon-q-cli":                NameAmazonQ,
+	"amazon-q":                    NameAmazonQ,
+	"qwen-code":                   NameQwen,
+	AliasGitHubCopilotVSCodeAgent: NameCopilot,
+	"grok-cli":                    NameGrok,
+	"grok-build":                  NameGrok,
 }
 
 // agentCanonical is the AI_AGENT/AGENT lookup: every detector name, every alias,
@@ -215,16 +256,19 @@ func detectModel() string {
 // Cursor and VS Code. If no IDE is proven, a known standalone app wins, then
 // TERM_PROGRAM is mapped to a short product name the same way IDEs are.
 //
-// | Client      | Host-owned signal                                          |
-// |-------------|------------------------------------------------------------|
-// | zed         | ZED_TERM                                                   |
-// | jetbrains   | TERMINAL_EMULATOR=JetBrains-JediTerm                       |
-// | cursor      | CURSOR_TRACE_ID, agent=cursor, or "cursor" askpass path    |
-// | windsurf    | agent=windsurf or "windsurf" askpass path                  |
-// | antigravity | agent=antigravity or "antigravity" askpass path            |
-// | vscode      | Copilot plugin markers, or stock VS Code askpass           |
-// | claude      | agent=claude after IDE checks                              |
-// | iterm/warp/…| canonical TERM_PROGRAM (iterm.app→iterm, WarpTerminal→warp)|
+// | Client          | Host-owned signal                                              |
+// |-----------------|----------------------------------------------------------------|
+// | zed             | ZED_TERM                                                       |
+// | jetbrains       | TERMINAL_EMULATOR=JetBrains-JediTerm                           |
+// | cursor          | CURSOR_TRACE_ID, agent=cursor, or Cursor.app /cursor/resources |
+// | windsurf        | agent=windsurf or Windsurf.app /windsurf/resources             |
+// | antigravity     | agent=antigravity or Antigravity.app /antigravity/resources    |
+// | trae            | agent=trae or Trae.app /trae/resources                         |
+// | codium          | VSCodium.app /vscodium/resources or /codium/resources          |
+// | visualstudio    | VisualStudioVersion (desktop VS, not VS Code)                  |
+// | vscode          | Copilot plugin markers, or stock VS Code askpass               |
+// | claude          | agent=claude after IDE checks                                  |
+// | iterm/warp/…    | TERM_PROGRAM, else TMUX / WT_SESSION / TERM=xterm-ghostty      |
 //
 // Order is significant: every VS Code fork inherits TERM_PROGRAM=vscode and the
 // VSCODE_* vars from upstream, so forks must resolve before anything reports
@@ -232,47 +276,58 @@ func detectModel() string {
 //
 // JetBrains publishes one terminal value for the whole family, so IntelliJ,
 // GoLand and PyCharm collapse to "jetbrains"; separating them would need a
-// parent-process walk on every command.
+// parent-process walk on every command. Do not split the family via macOS
+// bundle IDs (peers that do that also mis-label JediTerm as PyCharm).
 func detectClient(agent string) string {
 	switch {
 	case os.Getenv("ZED_TERM") != "":
-		return "zed"
+		return NameZed
 	case os.Getenv("TERMINAL_EMULATOR") == "JetBrains-JediTerm":
-		return "jetbrains"
-	case agent == "cursor", os.Getenv("CURSOR_TRACE_ID") != "", askpassPathContains("cursor"):
-		return "cursor"
-	case agent == "windsurf", askpassPathContains("windsurf"):
-		return "windsurf"
-	case agent == "antigravity", askpassPathContains("antigravity"):
-		return "antigravity"
-	case os.Getenv("COPILOT_AGENT") == "1", os.Getenv("AI_AGENT") == "github_copilot_vscode_agent":
+		return NameJetBrains
+	case agent == NameCursor, os.Getenv(EnvCursorTraceID) != "", askpassPathContains(NameCursor):
+		return NameCursor
+	case agent == NameWindsurf, askpassPathContains(NameWindsurf):
+		return NameWindsurf
+	case agent == NameAntigravity, askpassPathContains(NameAntigravity):
+		return NameAntigravity
+	case agent == NameTrae, askpassPathContains(NameTrae):
+		return NameTrae
+	case askpassPathContains("vscodium"), askpassPathContains(NameCodium):
+		return NameCodium
+	case os.Getenv(EnvVisualStudioVersion) != "":
+		return NameVisualStudio
+	case os.Getenv(EnvCopilotAgent) == "1", os.Getenv(EnvAIAgent) == AliasGitHubCopilotVSCodeAgent:
 		// Last resort: these prove the first-party plugin, not the window. A
-		// JetBrains host is caught above, so this only fires with no host marker.
-		return "vscode"
-	case os.Getenv("VSCODE_GIT_ASKPASS_MAIN") != "", os.Getenv("VSCODE_GIT_ASKPASS_NODE") != "":
+		// JetBrains or Visual Studio host is caught above, so this only fires
+		// with no host marker.
+		return NameVSCode
+	case os.Getenv(EnvVSCodeGitAskpassMain) != "", os.Getenv(EnvVSCodeGitAskpassNode) != "":
 		// Stock VS Code after known forks were ruled out.
-		return "vscode"
-	case agent == "claude":
-		return "claude"
+		return NameVSCode
+	case agent == NameClaude:
+		return NameClaude
 	default:
-		return canonicalTerminalName(os.Getenv("TERM_PROGRAM"))
+		if name := canonicalTerminalName(os.Getenv("TERM_PROGRAM")); name != "" {
+			return name
+		}
+		return fallbackTerminalName()
 	}
 }
 
 // terminalNameAliases maps sanitized TERM_PROGRAM values to short product
 // names, matching the IDE style (cursor, vscode) rather than raw env spellings.
 var terminalNameAliases = map[string]string{
-	"iterm.app":      "iterm",
-	"iterm":          "iterm",
-	"apple_terminal": "terminal",
-	"warpterminal":   "warp",
-	"warp":           "warp",
-	"tmux":           "tmux",
-	"wezterm":        "wezterm",
-	"alacritty":      "alacritty",
-	"kitty":          "kitty",
-	"ghostty":        "ghostty",
-	"hyper":          "hyper",
+	"iterm.app":      NameIterm,
+	NameIterm:        NameIterm,
+	"apple_terminal": NameTerminal,
+	"warpterminal":   NameWarp,
+	NameWarp:         NameWarp,
+	NameTmux:         NameTmux,
+	NameWezterm:      NameWezterm,
+	NameAlacritty:    NameAlacritty,
+	NameKitty:        NameKitty,
+	NameGhostty:      NameGhostty,
+	NameHyper:        NameHyper,
 }
 
 func canonicalTerminalName(raw string) string {
@@ -289,22 +344,50 @@ func canonicalTerminalName(raw string) string {
 	}
 	// TERM_PROGRAM=vscode is inherited by every VS Code fork. Do not treat it
 	// as a proven vscode window — that is how Copilot CLI gets mislabelled.
-	if name == "vscode" {
+	if name == NameVSCode {
 		return ""
 	}
 	return name
 }
 
-// askpassEnvVars hold the path of the editor's git askpass helper, which embeds
-// the application name (…/Cursor.app/…, …/windsurf/…). It is the only env that
-// separates a VS Code fork from upstream, since forks copy the VSCODE_* names
-// verbatim. Generic GIT_ASKPASS is excluded because arbitrary paths can contain
-// an app name without proving the host. Match case-insensitively on a substring.
-var askpassEnvVars = []string{"VSCODE_GIT_ASKPASS_MAIN", "VSCODE_GIT_ASKPASS_NODE"}
+// fallbackTerminalName is used when TERM_PROGRAM is missing or is the inherited
+// vscode value that canonicalTerminalName refuses. These vars name a real app
+// (tmux, Windows Terminal, Ghostty, Kitty, Alacritty) without proving vscode.
+func fallbackTerminalName() string {
+	switch {
+	case os.Getenv("TMUX") != "":
+		return NameTmux
+	case os.Getenv("WT_SESSION") != "":
+		return NameWindowsTerminal
+	case os.Getenv("TERM") == "xterm-ghostty":
+		return NameGhostty
+	case os.Getenv("KITTY_WINDOW_ID") != "":
+		return NameKitty
+	case os.Getenv("ALACRITTY_LOG") != "":
+		return NameAlacritty
+	default:
+		return ""
+	}
+}
 
+// askpassEnvVars hold the path of the editor's git askpass helper, which embeds
+// the application name (…/Cursor.app/…, …/windsurf/resources/…). It is the only
+// env that separates a VS Code fork from upstream, since forks copy the VSCODE_*
+// names verbatim. Generic GIT_ASKPASS is excluded because arbitrary paths can
+// contain an app name without proving the host.
+var askpassEnvVars = []string{EnvVSCodeGitAskpassMain, EnvVSCodeGitAskpassNode}
+
+// askpassPathContains reports whether a VS Code-fork askpass path is that
+// editor's install, not an unrelated substring. A Windows VS Code path lives
+// under the user profile, so a login named "cursor" would otherwise match.
 func askpassPathContains(app string) bool {
+	needle := strings.ToLower(app)
 	for _, env := range askpassEnvVars {
-		if strings.Contains(strings.ToLower(os.Getenv(env)), app) {
+		p := strings.ToLower(strings.ReplaceAll(os.Getenv(env), "\\", "/"))
+		if p == "" {
+			continue
+		}
+		if strings.Contains(p, "/"+needle+".app") || strings.Contains(p, "/"+needle+"/resources") {
 			return true
 		}
 	}
@@ -356,7 +439,7 @@ func detectAgent() string {
 	// the value names the agent. Honor it when recognized; any other non-empty value
 	// collapses to "unknown" so a raw value never reaches metrics and cardinality
 	// stays bounded.
-	if name := canonicalAgentName(os.Getenv("AI_AGENT")); name != "" {
+	if name := canonicalAgentName(os.Getenv(EnvAIAgent)); name != "" {
 		return name
 	}
 	return canonicalAgentName(os.Getenv("AGENT"))
@@ -384,8 +467,8 @@ func canonicalAgentName(raw string) string {
 // (e.g. CURSOR_TRACE_ID present while the actual invoker is Claude Code).
 // Empty result means the CLI should generate its own trace ID.
 func detectAgentTraceID(agent string) string {
-	if agent == "cursor" {
-		return os.Getenv("CURSOR_TRACE_ID")
+	if agent == NameCursor {
+		return os.Getenv(EnvCursorTraceID)
 	}
 	return ""
 }

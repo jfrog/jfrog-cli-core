@@ -50,7 +50,7 @@ func TestDetectAgent_CursorCLINotASessionMarker(t *testing.T) {
 func TestDetectAgent_CursorTraceIDNotASessionMarker(t *testing.T) {
 	// CURSOR_TRACE_ID is also set for regular Cursor integrated terminals.
 	clearAgentEnvVars(t)
-	t.Setenv("CURSOR_TRACE_ID", "trace-123")
+	t.Setenv(EnvCursorTraceID, "trace-123")
 	assert.Equal(t, "", detectAgent())
 }
 
@@ -116,7 +116,7 @@ func TestDetectAgent_GrokAgentPathIsNotASessionMarker(t *testing.T) {
 func TestDetectAgent_CoworkEmitsClaude(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv("CLAUDE_CODE_IS_COWORK", "1")
-	assert.Equal(t, "claude", detectAgent())
+	assert.Equal(t, NameClaude, detectAgent())
 }
 
 func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
@@ -127,26 +127,26 @@ func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 
 func TestDetectAgent_GenericValueMapsToKnownAgent(t *testing.T) {
 	cases := map[string]string{
-		"claude-code":                 "claude",
-		"gemini-cli":                  "gemini",
-		"github-copilot":              "copilot",
-		"roo-code":                    "roo_code",
-		"roo_code":                    "roo_code", // canonical form round-trips
-		"qwen":                        "qwen",
-		"amazon-q-cli":                "amazon_q",
-		"amazon_q":                    "amazon_q",
+		"claude-code":                 NameClaude,
+		"gemini-cli":                  NameGemini,
+		"github-copilot":              NameCopilot,
+		"roo-code":                    NameRooCode,
+		NameRooCode:                   NameRooCode, // canonical form round-trips
+		NameQwen:                      NameQwen,
+		"amazon-q-cli":                NameAmazonQ,
+		NameAmazonQ:                   NameAmazonQ,
 		"aider":                       "aider",
 		"goose@1.2.3":                 "goose",
-		"CURSOR":                      "cursor",
-		"github_copilot_vscode_agent": "copilot",
-		"grok-cli":                    "grok",
-		"grok-build":                  "grok",
+		"CURSOR":                      NameCursor,
+		AliasGitHubCopilotVSCodeAgent: NameCopilot,
+		"grok-cli":                    NameGrok,
+		"grok-build":                  NameGrok,
 		"totally-made-up":             AgentUnknown,
 	}
 	for value, want := range cases {
 		t.Run(value, func(t *testing.T) {
 			clearAgentEnvVars(t)
-			t.Setenv("AI_AGENT", value)
+			t.Setenv(EnvAIAgent, value)
 			assert.Equal(t, want, detectAgent())
 		})
 	}
@@ -159,14 +159,14 @@ func TestDetectAgent_TableOrderGeminiBeforeCursor(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv("GEMINI_CLI", "1")
 	t.Setenv("CURSOR_AGENT", "1")
-	assert.Equal(t, "gemini", detectAgent())
+	assert.Equal(t, NameGemini, detectAgent())
 }
 
 func TestDetectAgent_TableWinsOverGenericValue(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv("CLAUDE_CODE_CHILD_SESSION", "1")
-	t.Setenv("AI_AGENT", "cursor")
-	assert.Equal(t, "claude", detectAgent())
+	t.Setenv(EnvAIAgent, NameCursor)
+	assert.Equal(t, NameClaude, detectAgent())
 }
 
 func TestDetectAgent_None(t *testing.T) {
@@ -175,11 +175,11 @@ func TestDetectAgent_None(t *testing.T) {
 }
 
 func TestDetectAgentTraceID(t *testing.T) {
-	t.Setenv("CURSOR_TRACE_ID", "trace-abc")
-	assert.Equal(t, "trace-abc", detectAgentTraceID("cursor"))
+	t.Setenv(EnvCursorTraceID, "trace-abc")
+	assert.Equal(t, "trace-abc", detectAgentTraceID(NameCursor))
 	// Trace ID gated on agent identity: a leaked CURSOR_TRACE_ID from an outer
 	// shell must not be reused when the real invoker is a different agent.
-	assert.Equal(t, "", detectAgentTraceID("claude"))
+	assert.Equal(t, "", detectAgentTraceID(NameClaude))
 	assert.Equal(t, "", detectAgentTraceID(""))
 }
 
@@ -190,7 +190,7 @@ func TestDetectExecutionContext_Agent(t *testing.T) {
 
 	ec := DetectExecutionContext()
 	assert.True(t, ec.IsAgent)
-	assert.Equal(t, "claude", ec.Agent)
+	assert.Equal(t, NameClaude, ec.Agent)
 }
 
 func TestDetectExecutionContext_NoEnv(t *testing.T) {
@@ -215,7 +215,7 @@ func TestDetectExecutionContext_IsMemoized(t *testing.T) {
 	second := DetectExecutionContext()
 
 	assert.Equal(t, first, second)
-	assert.Equal(t, "claude", second.Agent)
+	assert.Equal(t, NameClaude, second.Agent)
 }
 
 // resetExecutionContextForTest forces the next DetectExecutionContext call to
@@ -245,10 +245,10 @@ func clearAgentEnvVars(t *testing.T) {
 		}
 	}
 	t.Setenv("AGENT", "")
-	t.Setenv("AI_AGENT", "")
+	t.Setenv(EnvAIAgent, "")
 	// Cleared even though no longer detectors — leftover process env must not
 	// bleed into tests that assert human / strong-signal behaviour.
-	t.Setenv("CURSOR_TRACE_ID", "")
+	t.Setenv(EnvCursorTraceID, "")
 	t.Setenv("CURSOR_CLI", "")
 	t.Setenv("CLAUDECODE", "")
 	t.Setenv("CLAUDE_CODE", "")
@@ -262,9 +262,15 @@ func clearAgentEnvVars(t *testing.T) {
 	t.Setenv("KILO_PID", "")
 	t.Setenv("KILOCODE_FEATURE", "")
 	t.Setenv("TERM_PROGRAM", "")
+	t.Setenv("TERM", "")
+	t.Setenv("TMUX", "")
+	t.Setenv("WT_SESSION", "")
+	t.Setenv("KITTY_WINDOW_ID", "")
+	t.Setenv("ALACRITTY_LOG", "")
 	t.Setenv("JFROG_CLI_AI_MODEL", "")
-	t.Setenv("COPILOT_AGENT", "")
+	t.Setenv(EnvCopilotAgent, "")
 	t.Setenv("COPILOT_AGENT_JOB_ID", "")
+	t.Setenv(EnvVisualStudioVersion, "")
 	// Host-window signals: a developer running these tests from a Zed, JetBrains
 	// or Cursor terminal must not have their editor leak into client assertions.
 	t.Setenv("ZED_TERM", "")
@@ -295,7 +301,7 @@ func TestDetectExecutionContext_ModelSkippedForHuman(t *testing.T) {
 }
 
 func TestSanitizeToken(t *testing.T) {
-	assert.Equal(t, "vscode", sanitizeToken("vscode"))
+	assert.Equal(t, NameVSCode, sanitizeToken(NameVSCode))
 	assert.Equal(t, "apple_terminal", sanitizeToken("Apple_Terminal"))
 	assert.Equal(t, "iterm.app", sanitizeToken("  iTerm.app  "))
 	assert.Equal(t, "1.2.3-beta", sanitizeToken("1.2.3-beta"))
@@ -310,11 +316,11 @@ func TestDetectExecutionContext_ClientCursorIgnoresTermProgram(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
 	t.Setenv("CURSOR_AGENT", "1")
-	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("TERM_PROGRAM", NameVSCode)
 
 	ec := DetectExecutionContext()
-	assert.Equal(t, "cursor", ec.Agent)
-	assert.Equal(t, "cursor", ec.Client)
+	assert.Equal(t, NameCursor, ec.Agent)
+	assert.Equal(t, NameCursor, ec.Client)
 }
 
 func TestDetectExecutionContext_ClientClaudeAppWithoutKnownIDE(t *testing.T) {
@@ -324,19 +330,19 @@ func TestDetectExecutionContext_ClientClaudeAppWithoutKnownIDE(t *testing.T) {
 	t.Setenv("TERM_PROGRAM", "iTerm.app")
 
 	ec := DetectExecutionContext()
-	assert.Equal(t, "claude", ec.Agent)
-	assert.Equal(t, "claude", ec.Client)
+	assert.Equal(t, NameClaude, ec.Agent)
+	assert.Equal(t, NameClaude, ec.Client)
 }
 
 func TestDetectExecutionContext_ClientCopilotVscodePlugin(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	t.Setenv("COPILOT_AGENT", "1")
+	t.Setenv(EnvCopilotAgent, "1")
 	t.Setenv("TERM_PROGRAM", "iTerm.app")
 
 	ec := DetectExecutionContext()
-	assert.Equal(t, "copilot", ec.Agent)
-	assert.Equal(t, "vscode", ec.Client)
+	assert.Equal(t, NameCopilot, ec.Agent)
+	assert.Equal(t, NameVSCode, ec.Client)
 }
 
 func TestDetectExecutionContext_ClientCopilotCLIFallsBackToTerminalApp(t *testing.T) {
@@ -346,18 +352,18 @@ func TestDetectExecutionContext_ClientCopilotCLIFallsBackToTerminalApp(t *testin
 	t.Setenv("TERM_PROGRAM", "iTerm.app")
 
 	ec := DetectExecutionContext()
-	assert.Equal(t, "copilot", ec.Agent)
-	assert.Equal(t, "iterm", ec.Client)
+	assert.Equal(t, NameCopilot, ec.Agent)
+	assert.Equal(t, NameIterm, ec.Client)
 }
 
 func TestDetectExecutionContext_ClientCopilotViaAIAgentAlias(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
-	t.Setenv("AI_AGENT", "github_copilot_vscode_agent")
+	t.Setenv(EnvAIAgent, AliasGitHubCopilotVSCodeAgent)
 
 	ec := DetectExecutionContext()
-	assert.Equal(t, "copilot", ec.Agent)
-	assert.Equal(t, "vscode", ec.Client)
+	assert.Equal(t, NameCopilot, ec.Agent)
+	assert.Equal(t, NameVSCode, ec.Client)
 }
 
 func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
@@ -365,7 +371,7 @@ func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 	clearAgentEnvVars(t)
 	// No agent signal: a human in a VS Code or Zed terminal must not be recorded,
 	// however loudly the editor announces itself.
-	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("TERM_PROGRAM", NameVSCode)
 	t.Setenv("ZED_TERM", "true")
 
 	ec := DetectExecutionContext()
@@ -377,37 +383,52 @@ func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 // different window depending on where the user opened it.
 func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 	askpass := func(app string) map[string]string {
-		return map[string]string{"VSCODE_GIT_ASKPASS_MAIN": "/Applications/" + app + "/out/askpass-main.js"}
+		return map[string]string{EnvVSCodeGitAskpassMain: "/Applications/" + app + "/out/askpass-main.js"}
 	}
 	testCases := []struct {
 		name     string
 		env      map[string]string
 		expected string
 	}{
-		{"copilot in jetbrains", map[string]string{"COPILOT_AGENT": "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, "jetbrains"},
-		{"claude in jetbrains", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, "jetbrains"},
-		{"claude in zed", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "ZED_TERM": "true"}, "zed"},
-		{"claude in cursor", mergeEnv(map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1"}, askpass("Cursor.app")), "cursor"},
-		{"cline in windsurf", mergeEnv(map[string]string{"CLINE_ACTIVE": "1"}, askpass("Windsurf.app")), "windsurf"},
-		{"gemini in antigravity", mergeEnv(map[string]string{"GEMINI_CLI": "1"}, askpass("Antigravity.app")), "antigravity"},
+		{"copilot in jetbrains", map[string]string{EnvCopilotAgent: "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, NameJetBrains},
+		{"claude in jetbrains", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERMINAL_EMULATOR": "JetBrains-JediTerm"}, NameJetBrains},
+		{"claude in zed", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "ZED_TERM": "true"}, NameZed},
+		{"claude in cursor", mergeEnv(map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1"}, askpass("Cursor.app")), NameCursor},
+		{"cline in windsurf", mergeEnv(map[string]string{"CLINE_ACTIVE": "1"}, askpass("Windsurf.app")), NameWindsurf},
+		{"gemini in antigravity", mergeEnv(map[string]string{"GEMINI_CLI": "1"}, askpass("Antigravity.app")), NameAntigravity},
 		// A fork inherits the upstream Copilot marker; the fork must still win.
-		{"copilot in windsurf", mergeEnv(map[string]string{"COPILOT_AGENT": "1"}, askpass("Windsurf.app")), "windsurf"},
+		{"copilot in windsurf", mergeEnv(map[string]string{EnvCopilotAgent: "1"}, askpass("Windsurf.app")), NameWindsurf},
 		// Cursor keeps its identity when the window is proven by trace ID alone.
-		{"claude in cursor via trace id", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "CURSOR_TRACE_ID": "abc"}, "cursor"},
+		{"claude in cursor via trace id", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", EnvCursorTraceID: "abc"}, NameCursor},
 		// Claude Code is itself the app when no IDE is proven.
-		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERM_PROGRAM": "iTerm.app"}, "claude"},
-		{"claude in vscode via askpass", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "VSCODE_GIT_ASKPASS_MAIN": "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, "vscode"},
-		{"windsurf agent without askpass", map[string]string{"WINDSURF_CASCADE_TERMINAL": "1", "TERM_PROGRAM": "vscode"}, "windsurf"},
-		{"antigravity agent without askpass", map[string]string{"ANTIGRAVITY_AGENT": "1", "TERM_PROGRAM": "vscode"}, "antigravity"},
+		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", "TERM_PROGRAM": "iTerm.app"}, NameClaude},
+		{"claude in vscode via askpass", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", EnvVSCodeGitAskpassMain: "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, NameVSCode},
+		{"windsurf agent without askpass", map[string]string{"WINDSURF_CASCADE_TERMINAL": "1", "TERM_PROGRAM": NameVSCode}, NameWindsurf},
+		{"antigravity agent without askpass", map[string]string{"ANTIGRAVITY_AGENT": "1", "TERM_PROGRAM": NameVSCode}, NameAntigravity},
 		// Other CLI agents fall back to the terminal app.
-		{"gemini in iterm", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app"}, "iterm"},
-		{"gemini in warp", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "WarpTerminal"}, "warp"},
-		{"gemini in apple terminal", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "Apple_Terminal"}, "terminal"},
-		{"gemini in tmux", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "tmux"}, "tmux"},
-		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app", "GIT_ASKPASS": "/Users/cursor/bin/git-helper"}, "iterm"}, // #nosec G101 -- fixture path, not a credential
-		// Inherited TERM_PROGRAM=vscode is not a vscode window (P13).
-		{"gemini with inherited vscode term", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "vscode"}, ""},
-		{"copilot cli with inherited vscode term", map[string]string{"COPILOT_CLI": "1", "TERM_PROGRAM": "vscode"}, ""},
+		{"gemini in iterm", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app"}, NameIterm},
+		{"gemini in warp", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "WarpTerminal"}, NameWarp},
+		{"gemini in apple terminal", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "Apple_Terminal"}, NameTerminal},
+		{"gemini in tmux", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": NameTmux}, NameTmux},
+		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "iTerm.app", "GIT_ASKPASS": "/Users/cursor/bin/git-helper"}, NameIterm}, // #nosec G101 -- fixture path, not a credential
+		// A VS Code install under a login named "cursor" must not become client=cursor.
+		{"vscode askpass under cursor home is vscode", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: "/Users/cursor/AppData/Local/Programs/Microsoft VS Code/resources/app/extensions/git/dist/askpass-main.js"}, NameVSCode},
+		{"windows cursor install is cursor", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: `C:\Users\bob\AppData\Local\Programs\cursor\resources\app\extensions\git\dist\askpass-main.js`}, NameCursor},
+		// Inherited TERM_PROGRAM=vscode is not a vscode window (P13). Askpass of
+		// stock VS Code is stronger and does prove the host.
+		{"gemini with inherited vscode term", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": NameVSCode}, ""},
+		{"copilot cli with inherited vscode term", map[string]string{"COPILOT_CLI": "1", "TERM_PROGRAM": NameVSCode}, ""},
+		{"copilot cli in stock vscode via askpass", map[string]string{"COPILOT_CLI": "1", EnvVSCodeGitAskpassMain: "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, NameVSCode},
+		{"gemini in unknown terminal app", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": "FooBar.app"}, "foobar"},
+		{"gemini in vscodium via askpass", mergeEnv(map[string]string{"GEMINI_CLI": "1"}, askpass("VSCodium.app")), NameCodium},
+		{"trae agent is not vscode", map[string]string{"TRAE_AI_SHELL_ID": "1", "TERM_PROGRAM": NameVSCode}, NameTrae},
+		{"copilot in visual studio", map[string]string{EnvCopilotAgent: "1", EnvVisualStudioVersion: "17.0"}, NameVisualStudio},
+		{"gemini in tmux via TMUX", map[string]string{"GEMINI_CLI": "1", "TMUX": "1"}, NameTmux},
+		{"gemini in windows terminal", map[string]string{"GEMINI_CLI": "1", "WT_SESSION": "abc"}, NameWindowsTerminal},
+		{"gemini in ghostty via TERM", map[string]string{"GEMINI_CLI": "1", "TERM": "xterm-ghostty"}, NameGhostty},
+		{"gemini in kitty via window id", map[string]string{"GEMINI_CLI": "1", "KITTY_WINDOW_ID": "1"}, NameKitty},
+		{"gemini in alacritty via log", map[string]string{"GEMINI_CLI": "1", "ALACRITTY_LOG": "/tmp/alacritty.log"}, NameAlacritty},
+		{"inherited vscode term plus tmux is tmux", map[string]string{"GEMINI_CLI": "1", "TERM_PROGRAM": NameVSCode, "TMUX": "1"}, NameTmux},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

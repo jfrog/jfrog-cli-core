@@ -1050,7 +1050,7 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	ClearAllMetrics()
 	clearAgentEnvVars(t)
 	t.Setenv("CURSOR_AGENT", "1")
-	t.Setenv("TERM_PROGRAM", "vscode")
+	t.Setenv("TERM_PROGRAM", NameVSCode)
 	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
 	resetExecutionContextForTest(t)
 
@@ -1063,10 +1063,10 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if collected == nil {
 		t.Fatal("Expected metrics to be collected")
 	}
-	if !collected.IsAgent || collected.Agent != "cursor" {
+	if !collected.IsAgent || collected.Agent != NameCursor {
 		t.Errorf("collected IsAgent/Agent wrong: IsAgent=%v Agent=%q", collected.IsAgent, collected.Agent)
 	}
-	if collected.Client != "cursor" || collected.Model != "opus-4.7" {
+	if collected.Client != NameCursor || collected.Model != "opus-4.7" {
 		t.Errorf("collected Client/Model wrong: Client=%q Model=%q", collected.Client, collected.Model)
 	}
 
@@ -1096,11 +1096,11 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	if !strings.Contains(wire, `"is_agent":"true"`) {
 		t.Errorf("wire JSON missing is_agent=true: %s", wire)
 	}
-	if !strings.Contains(wire, `"agent":"cursor"`) {
-		t.Errorf("wire JSON missing agent=cursor: %s", wire)
+	if !strings.Contains(wire, `"agent":"`+NameCursor+`"`) {
+		t.Errorf("wire JSON missing agent=%s: %s", NameCursor, wire)
 	}
-	if !strings.Contains(wire, `"client":"cursor"`) {
-		t.Errorf("wire JSON missing client=cursor: %s", wire)
+	if !strings.Contains(wire, `"client":"`+NameCursor+`"`) {
+		t.Errorf("wire JSON missing client=%s: %s", NameCursor, wire)
 	}
 	if !strings.Contains(wire, `"model":"opus-4.7"`) {
 		t.Errorf("wire JSON missing model=opus-4.7: %s", wire)

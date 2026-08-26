@@ -43,19 +43,22 @@ const (
 	NameWindowsTerminal = "windows-terminal"
 	NameZed             = "zed"
 
-	EnvAIAgent              = "AI_AGENT"
-	EnvAgent                = "AGENT"
-	EnvAlacrittyLog         = "ALACRITTY_LOG"
-	EnvCopilotAgent         = "COPILOT_AGENT"
-	EnvCursorTraceID        = "CURSOR_TRACE_ID"
-	EnvGitAskpass           = "GIT_ASKPASS"
-	EnvJFrogCLIAIModel      = "JFROG_CLI_AI_MODEL"
-	EnvKittyWindowID        = "KITTY_WINDOW_ID"
-	EnvTerm                 = "TERM"
-	EnvTerminalEmulator     = "TERMINAL_EMULATOR"
-	EnvTermProgram          = "TERM_PROGRAM"
-	EnvTmux                 = "TMUX"
+	EnvAIAgent       = "AI_AGENT"
+	EnvAgent         = "AGENT"
+	EnvAlacrittyLog  = "ALACRITTY_LOG"
+	EnvCopilotAgent  = "COPILOT_AGENT"
+	EnvCursorTraceID = "CURSOR_TRACE_ID"
+	//#nosec G101 // False positive: env var name, not a credential.
+	EnvGitAskpass       = "GIT_ASKPASS"
+	EnvJFrogCLIAIModel  = "JFROG_CLI_AI_MODEL"
+	EnvKittyWindowID    = "KITTY_WINDOW_ID"
+	EnvTerm             = "TERM"
+	EnvTerminalEmulator = "TERMINAL_EMULATOR"
+	EnvTermProgram      = "TERM_PROGRAM"
+	EnvTmux             = "TMUX"
+	//#nosec G101 // False positive: env var name, not a credential.
 	EnvVSCodeGitAskpassMain = "VSCODE_GIT_ASKPASS_MAIN"
+	//#nosec G101 // False positive: env var name, not a credential.
 	EnvVSCodeGitAskpassNode = "VSCODE_GIT_ASKPASS_NODE"
 	EnvVisualStudioVersion  = "VisualStudioVersion"
 	EnvWTSession            = "WT_SESSION"
@@ -279,11 +282,11 @@ func detectModel() string {
 // |-----------------|----------------------------------------------------------------|
 // | zed             | ZED_TERM                                                       |
 // | jetbrains       | TERMINAL_EMULATOR=JetBrains-JediTerm                           |
-// | cursor          | CURSOR_TRACE_ID, agent=cursor, or Cursor.app /cursor/resources |
-// | windsurf        | agent=windsurf or Windsurf.app /windsurf/resources             |
-// | antigravity     | agent=antigravity or Antigravity.app /antigravity/resources    |
-// | trae            | agent=trae or Trae.app /trae/resources                         |
-// | codium          | VSCodium.app /vscodium/resources or /codium/resources          |
+// | cursor          | CURSOR_TRACE_ID, agent=cursor, or Cursor.app /cursor/resources / .cursor-server |
+// | windsurf        | agent=windsurf or Windsurf.app /windsurf/resources / .windsurf-server           |
+// | antigravity     | agent=antigravity or Antigravity.app /antigravity/resources / .antigravity-server |
+// | trae            | agent=trae or Trae.app /trae/resources / .trae-server                           |
+// | codium          | VSCodium.app /vscodium/resources /codium/resources / .vscodium-server            |
 // | visualstudio    | VisualStudioVersion (desktop VS, not VS Code)                  |
 // | vscode          | Copilot plugin markers, or stock VS Code askpass               |
 // | claude          | agent=claude after IDE checks                                  |
@@ -315,7 +318,7 @@ func detectClient(agent string) string {
 		return NameCodium
 	case os.Getenv(EnvVisualStudioVersion) != "":
 		return NameVisualStudio
-	case os.Getenv(EnvCopilotAgent) == "1", os.Getenv(EnvAIAgent) == AliasGitHubCopilotVSCodeAgent:
+	case os.Getenv(EnvCopilotAgent) == "1", isCopilotVSCodePluginAlias():
 		// Last resort: these prove the first-party plugin, not the window. A
 		// JetBrains or Visual Studio host is caught above, so this only fires
 		// with no host marker.
@@ -399,6 +402,8 @@ var askpassEnvVars = []string{EnvVSCodeGitAskpassMain, EnvVSCodeGitAskpassNode}
 // askpassPathContains reports whether a VS Code-fork askpass path is that
 // editor's install, not an unrelated substring. A Windows VS Code path lives
 // under the user profile, so a login named "cursor" would otherwise match.
+// Remote-SSH installs use ~/.cursor-server (and the same .*-server layout
+// on other forks); those must not fall through to client=vscode.
 func askpassPathContains(app string) bool {
 	needle := strings.ToLower(app)
 	for _, env := range askpassEnvVars {
@@ -406,7 +411,11 @@ func askpassPathContains(app string) bool {
 		if p == "" {
 			continue
 		}
-		if strings.Contains(p, "/"+needle+".app") || strings.Contains(p, "/"+needle+"/resources") {
+		if strings.Contains(p, "/"+needle+".app") ||
+			strings.Contains(p, "/"+needle+"/resources") ||
+			// Remote-SSH installs live under ~/.cursor-server (and the same
+			// .*-server layout on other VS Code forks).
+			strings.Contains(p, "/."+needle+"-server") {
 			return true
 		}
 	}
@@ -464,16 +473,34 @@ func detectAgent() string {
 	return canonicalAgentName(os.Getenv(EnvAgent))
 }
 
-// canonicalAgentName maps a generic AI_AGENT/AGENT value to a wire name.
-// Returns "" for empty, a table/alias name when recognized, else AgentUnknown.
-func canonicalAgentName(raw string) string {
+// foldAgentToken lowercases and trims a generic AI_AGENT/AGENT value and
+// strips a version suffix (e.g. "goose@1.2.3"). Empty input stays empty.
+func foldAgentToken(raw string) string {
 	name := strings.ToLower(strings.TrimSpace(raw))
 	if name == "" {
 		return ""
 	}
-	// Strip a version suffix, e.g. "goose@1.2.3".
 	if i := strings.IndexByte(name, '@'); i >= 0 {
 		name = name[:i]
+	}
+	return name
+}
+
+// isCopilotVSCodePluginAlias reports the github_copilot_vscode_agent spelling
+// on AI_AGENT or AGENT after the same fold detectAgent uses. Do not reuse
+// canonicalAgentName here: that also maps copilot / copilot-cli, which are
+// the CLI and must not force client=vscode.
+func isCopilotVSCodePluginAlias() bool {
+	return foldAgentToken(os.Getenv(EnvAIAgent)) == AliasGitHubCopilotVSCodeAgent ||
+		foldAgentToken(os.Getenv(EnvAgent)) == AliasGitHubCopilotVSCodeAgent
+}
+
+// canonicalAgentName maps a generic AI_AGENT/AGENT value to a wire name.
+// Returns "" for empty, a table/alias name when recognized, else AgentUnknown.
+func canonicalAgentName(raw string) string {
+	name := foldAgentToken(raw)
+	if name == "" {
+		return ""
 	}
 	if mapped, ok := agentCanonical[name]; ok {
 		return mapped

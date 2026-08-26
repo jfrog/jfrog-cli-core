@@ -119,6 +119,12 @@ func TestDetectAgent_CoworkEmitsClaude(t *testing.T) {
 	assert.Equal(t, NameClaude, detectAgent())
 }
 
+func TestDetectAgent_AmazonQUnrelatedExecutionEnv(t *testing.T) {
+	clearAgentEnvVars(t)
+	t.Setenv("AWS_EXECUTION_ENV", "AWS_ECS_FARGATE")
+	assert.Equal(t, "", detectAgent())
+}
+
 func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv(EnvAgent, "some_random_value")
@@ -302,15 +308,24 @@ func TestDetectExecutionContext_ModelSkippedForHuman(t *testing.T) {
 
 func TestSanitizeToken(t *testing.T) {
 	assert.Equal(t, NameVSCode, sanitizeToken(NameVSCode))
-	assert.Equal(t, NameTerminal, canonicalTerminalName(TermProgramApple))
-	assert.Equal(t, NameIterm, canonicalTerminalName("  "+TermProgramItermApp+"  "))
-	assert.Equal(t, NameWarp, canonicalTerminalName(TermProgramWarp))
+	assert.Equal(t, "apple_terminal", sanitizeToken(TermProgramApple))
+	assert.Equal(t, "iterm.app", sanitizeToken("  "+TermProgramItermApp+"  "))
 	assert.Equal(t, "1.2.3-beta", sanitizeToken("1.2.3-beta"))
 	// Header-splitting and stray characters (CR/LF, colon, spaces) are stripped.
 	assert.Equal(t, "xyz", sanitizeToken("x\r\n y: z"))
 	assert.Equal(t, "", sanitizeToken(""))
 	// Pathological env values are truncated so they cannot inflate the wire payload.
 	assert.Equal(t, maxTokenLen, len(sanitizeToken(strings.Repeat("a", maxTokenLen+100))))
+}
+
+func TestCanonicalTerminalName(t *testing.T) {
+	assert.Equal(t, NameTerminal, canonicalTerminalName(TermProgramApple))
+	assert.Equal(t, NameIterm, canonicalTerminalName("  "+TermProgramItermApp+"  "))
+	assert.Equal(t, NameWarp, canonicalTerminalName(TermProgramWarp))
+	assert.Equal(t, NameWezterm, canonicalTerminalName("WezTerm"))
+	assert.Equal(t, NameHyper, canonicalTerminalName("Hyper"))
+	assert.Equal(t, "", canonicalTerminalName(NameVSCode))
+	assert.Equal(t, "foobar", canonicalTerminalName("FooBar.app"))
 }
 
 func TestDetectExecutionContext_ClientCursorIgnoresTermProgram(t *testing.T) {
@@ -367,6 +382,29 @@ func TestDetectExecutionContext_ClientCopilotViaAIAgentAlias(t *testing.T) {
 	assert.Equal(t, NameVSCode, ec.Client)
 }
 
+func TestDetectExecutionContext_ClientCopilotAliasFoldsLikeSession(t *testing.T) {
+	testCases := []struct {
+		name string
+		key  string
+		val  string
+	}{
+		{"AI_AGENT uppercase", EnvAIAgent, "GITHUB_COPILOT_VSCODE_AGENT"},
+		{"AI_AGENT padded versioned", EnvAIAgent, "  github_copilot_vscode_agent@1.2.3  "},
+		{"AGENT lowercase", EnvAgent, AliasGitHubCopilotVSCodeAgent},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			resetExecutionContextForTest(t)
+			clearAgentEnvVars(t)
+			t.Setenv(testCase.key, testCase.val)
+
+			ec := DetectExecutionContext()
+			assert.Equal(t, NameCopilot, ec.Agent)
+			assert.Equal(t, NameVSCode, ec.Client)
+		})
+	}
+}
+
 func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 	resetExecutionContextForTest(t)
 	clearAgentEnvVars(t)
@@ -384,7 +422,7 @@ func TestDetectExecutionContext_ClientSkippedForHuman(t *testing.T) {
 // different window depending on where the user opened it.
 func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 	askpass := func(app string) map[string]string {
-		return map[string]string{EnvVSCodeGitAskpassMain: "/Applications/" + app + "/out/askpass-main.js"}
+		return map[string]string{EnvVSCodeGitAskpassMain: vscodeGitHelperPath("/Applications/" + app + "/out")}
 	}
 	testCases := []struct {
 		name     string
@@ -403,7 +441,7 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		{"claude in cursor via trace id", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", EnvCursorTraceID: "abc"}, NameCursor},
 		// Claude Code is itself the app when no IDE is proven.
 		{"claude in a plain terminal", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", EnvTermProgram: TermProgramItermApp}, NameClaude},
-		{"claude in vscode via askpass", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", EnvVSCodeGitAskpassMain: "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, NameVSCode},
+		{"claude in vscode via askpass", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPath("/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist")}, NameVSCode},
 		{"windsurf agent without askpass", map[string]string{"WINDSURF_CASCADE_TERMINAL": "1", EnvTermProgram: NameVSCode}, NameWindsurf},
 		{"antigravity agent without askpass", map[string]string{"ANTIGRAVITY_AGENT": "1", EnvTermProgram: NameVSCode}, NameAntigravity},
 		// Other CLI agents fall back to the terminal app.
@@ -411,15 +449,19 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		{"gemini in warp", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramWarp}, NameWarp},
 		{"gemini in apple terminal", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramApple}, NameTerminal},
 		{"gemini in tmux", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: NameTmux}, NameTmux},
-		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramItermApp, EnvGitAskpass: "/Users/cursor/bin/git-helper"}, NameIterm}, // #nosec G101 -- fixture path, not a credential
+		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramItermApp, EnvGitAskpass: "/Users/cursor/bin/git-helper"}, NameIterm},
 		// A VS Code install under a login named "cursor" must not become client=cursor.
-		{"vscode askpass under cursor home is vscode", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: "/Users/cursor/AppData/Local/Programs/Microsoft VS Code/resources/app/extensions/git/dist/askpass-main.js"}, NameVSCode},
-		{"windows cursor install is cursor", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: `C:\Users\bob\AppData\Local\Programs\cursor\resources\app\extensions\git\dist\askpass-main.js`}, NameCursor},
+		{"vscode askpass under cursor home is vscode", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPath("/Users/cursor/AppData/Local/Programs/Microsoft VS Code/resources/app/extensions/git/dist")}, NameVSCode},
+		{"windows cursor install is cursor", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPathWin(`C:\Users\bob\AppData\Local\Programs\cursor\resources\app\extensions\git\dist`)}, NameCursor},
+		{"cursor remote server askpass is cursor", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPath("/home/ubuntu/.cursor-server/bin")}, NameCursor},
+		{"windsurf remote server askpass is windsurf", map[string]string{"CLINE_ACTIVE": "1", EnvVSCodeGitAskpassNode: vscodeGitHelperPath("/home/ubuntu/.windsurf-server/bin")}, NameWindsurf},
+		{"stock vscode remote server is vscode", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPath("/home/ubuntu/.vscode-server/bin")}, NameVSCode},
+		{"stock vscode via askpass node only", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassNode: vscodeGitHelperPath("/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist")}, NameVSCode},
 		// Inherited TERM_PROGRAM=vscode is not a vscode window (P13). Askpass of
 		// stock VS Code is stronger and does prove the host.
 		{"gemini with inherited vscode term", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: NameVSCode}, ""},
 		{"copilot cli with inherited vscode term", map[string]string{"COPILOT_CLI": "1", EnvTermProgram: NameVSCode}, ""},
-		{"copilot cli in stock vscode via askpass", map[string]string{"COPILOT_CLI": "1", EnvVSCodeGitAskpassMain: "/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist/askpass-main.js"}, NameVSCode},
+		{"copilot cli in stock vscode via askpass", map[string]string{"COPILOT_CLI": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPath("/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist")}, NameVSCode},
 		{"gemini in unknown terminal app", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: "FooBar.app"}, "foobar"},
 		{"gemini in vscodium via askpass", mergeEnv(map[string]string{"GEMINI_CLI": "1"}, askpass("VSCodium.app")), NameCodium},
 		{"trae agent is not vscode", map[string]string{"TRAE_AI_SHELL_ID": "1", EnvTermProgram: NameVSCode}, NameTrae},
@@ -444,6 +486,17 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 			assert.Equal(t, testCase.expected, ec.Client)
 		})
 	}
+}
+
+// vscodeGitHelperPath builds a VS Code-family git-askpass fixture. The
+// filename is isolated here so gosec G101 does not treat every table row
+// as a hardcoded credential.
+func vscodeGitHelperPath(dir string) string {
+	return dir + "/askpass-main.js" // #nosec G101 -- fixture path, not a credential
+}
+
+func vscodeGitHelperPathWin(dir string) string {
+	return dir + `\askpass-main.js` // #nosec G101 -- fixture path, not a credential
 }
 
 func mergeEnv(envs ...map[string]string) map[string]string {

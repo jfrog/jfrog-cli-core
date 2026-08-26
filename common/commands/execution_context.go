@@ -44,11 +44,30 @@ const (
 	NameZed             = "zed"
 
 	EnvAIAgent              = "AI_AGENT"
+	EnvAgent                = "AGENT"
+	EnvAlacrittyLog         = "ALACRITTY_LOG"
 	EnvCopilotAgent         = "COPILOT_AGENT"
 	EnvCursorTraceID        = "CURSOR_TRACE_ID"
+	EnvGitAskpass           = "GIT_ASKPASS"
+	EnvJFrogCLIAIModel      = "JFROG_CLI_AI_MODEL"
+	EnvKittyWindowID        = "KITTY_WINDOW_ID"
+	EnvTerm                 = "TERM"
+	EnvTerminalEmulator     = "TERMINAL_EMULATOR"
+	EnvTermProgram          = "TERM_PROGRAM"
+	EnvTmux                 = "TMUX"
 	EnvVSCodeGitAskpassMain = "VSCODE_GIT_ASKPASS_MAIN"
 	EnvVSCodeGitAskpassNode = "VSCODE_GIT_ASKPASS_NODE"
 	EnvVisualStudioVersion  = "VisualStudioVersion"
+	EnvWTSession            = "WT_SESSION"
+	EnvZedTerm              = "ZED_TERM"
+
+	// OS spellings and exact env values (not wire names).
+	AskpassVSCodium     = "vscodium"
+	JediTerm            = "JetBrains-JediTerm"
+	TermProgramApple    = "Apple_Terminal"
+	TermProgramItermApp = "iTerm.app"
+	TermProgramWarp     = "WarpTerminal"
+	TermXtermGhostty    = "xterm-ghostty"
 
 	AliasGitHubCopilotVSCodeAgent = "github_copilot_vscode_agent"
 )
@@ -248,7 +267,7 @@ func computeExecutionContext() ExecutionContext {
 }
 
 func detectModel() string {
-	return sanitizeToken(os.Getenv("JFROG_CLI_AI_MODEL"))
+	return sanitizeToken(os.Getenv(EnvJFrogCLIAIModel))
 }
 
 // detectClient returns the app hosting an agent session. It starts with
@@ -280,9 +299,9 @@ func detectModel() string {
 // bundle IDs (peers that do that also mis-label JediTerm as PyCharm).
 func detectClient(agent string) string {
 	switch {
-	case os.Getenv("ZED_TERM") != "":
+	case os.Getenv(EnvZedTerm) != "":
 		return NameZed
-	case os.Getenv("TERMINAL_EMULATOR") == "JetBrains-JediTerm":
+	case os.Getenv(EnvTerminalEmulator) == JediTerm:
 		return NameJetBrains
 	case agent == NameCursor, os.Getenv(EnvCursorTraceID) != "", askpassPathContains(NameCursor):
 		return NameCursor
@@ -292,7 +311,7 @@ func detectClient(agent string) string {
 		return NameAntigravity
 	case agent == NameTrae, askpassPathContains(NameTrae):
 		return NameTrae
-	case askpassPathContains("vscodium"), askpassPathContains(NameCodium):
+	case askpassPathContains(AskpassVSCodium), askpassPathContains(NameCodium):
 		return NameCodium
 	case os.Getenv(EnvVisualStudioVersion) != "":
 		return NameVisualStudio
@@ -307,7 +326,7 @@ func detectClient(agent string) string {
 	case agent == NameClaude:
 		return NameClaude
 	default:
-		if name := canonicalTerminalName(os.Getenv("TERM_PROGRAM")); name != "" {
+		if name := canonicalTerminalName(os.Getenv(EnvTermProgram)); name != "" {
 			return name
 		}
 		return fallbackTerminalName()
@@ -317,17 +336,17 @@ func detectClient(agent string) string {
 // terminalNameAliases maps sanitized TERM_PROGRAM values to short product
 // names, matching the IDE style (cursor, vscode) rather than raw env spellings.
 var terminalNameAliases = map[string]string{
-	"iterm.app":      NameIterm,
-	NameIterm:        NameIterm,
-	"apple_terminal": NameTerminal,
-	"warpterminal":   NameWarp,
-	NameWarp:         NameWarp,
-	NameTmux:         NameTmux,
-	NameWezterm:      NameWezterm,
-	NameAlacritty:    NameAlacritty,
-	NameKitty:        NameKitty,
-	NameGhostty:      NameGhostty,
-	NameHyper:        NameHyper,
+	sanitizeToken(TermProgramItermApp): NameIterm,
+	NameIterm:                          NameIterm,
+	sanitizeToken(TermProgramApple):    NameTerminal,
+	sanitizeToken(TermProgramWarp):     NameWarp,
+	NameWarp:                           NameWarp,
+	NameTmux:                           NameTmux,
+	NameWezterm:                        NameWezterm,
+	NameAlacritty:                      NameAlacritty,
+	NameKitty:                          NameKitty,
+	NameGhostty:                        NameGhostty,
+	NameHyper:                          NameHyper,
 }
 
 func canonicalTerminalName(raw string) string {
@@ -355,15 +374,15 @@ func canonicalTerminalName(raw string) string {
 // (tmux, Windows Terminal, Ghostty, Kitty, Alacritty) without proving vscode.
 func fallbackTerminalName() string {
 	switch {
-	case os.Getenv("TMUX") != "":
+	case os.Getenv(EnvTmux) != "":
 		return NameTmux
-	case os.Getenv("WT_SESSION") != "":
+	case os.Getenv(EnvWTSession) != "":
 		return NameWindowsTerminal
-	case os.Getenv("TERM") == "xterm-ghostty":
+	case os.Getenv(EnvTerm) == TermXtermGhostty:
 		return NameGhostty
-	case os.Getenv("KITTY_WINDOW_ID") != "":
+	case os.Getenv(EnvKittyWindowID) != "":
 		return NameKitty
-	case os.Getenv("ALACRITTY_LOG") != "":
+	case os.Getenv(EnvAlacrittyLog) != "":
 		return NameAlacritty
 	default:
 		return ""
@@ -442,7 +461,7 @@ func detectAgent() string {
 	if name := canonicalAgentName(os.Getenv(EnvAIAgent)); name != "" {
 		return name
 	}
-	return canonicalAgentName(os.Getenv("AGENT"))
+	return canonicalAgentName(os.Getenv(EnvAgent))
 }
 
 // canonicalAgentName maps a generic AI_AGENT/AGENT value to a wire name.

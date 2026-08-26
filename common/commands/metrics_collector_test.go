@@ -1050,8 +1050,8 @@ func TestAgentContextEndToEnd(t *testing.T) {
 	ClearAllMetrics()
 	clearAgentEnvVars(t)
 	t.Setenv("CURSOR_AGENT", "1")
-	t.Setenv("TERM_PROGRAM", NameVSCode)
-	t.Setenv("JFROG_CLI_AI_MODEL", "opus-4.7")
+	t.Setenv(EnvTermProgram, NameVSCode)
+	t.Setenv(EnvJFrogCLIAIModel, "opus-4.7")
 	resetExecutionContextForTest(t)
 
 	commandName := "rt_download"

@@ -48,7 +48,7 @@ const (
 	EnvAlacrittyLog  = "ALACRITTY_LOG"
 	EnvCopilotAgent  = "COPILOT_AGENT"
 	EnvCursorTraceID = "CURSOR_TRACE_ID"
-	//#nosec G101 // False positive: env var name, not a credential.
+	//#nosec G101 jfrog-ignore // False positive: env var name, not a credential.
 	EnvGitAskpass       = "GIT_ASKPASS"
 	EnvJFrogCLIAIModel  = "JFROG_CLI_AI_MODEL"
 	EnvKittyWindowID    = "KITTY_WINDOW_ID"
@@ -56,9 +56,9 @@ const (
 	EnvTerminalEmulator = "TERMINAL_EMULATOR"
 	EnvTermProgram      = "TERM_PROGRAM"
 	EnvTmux             = "TMUX"
-	//#nosec G101 // False positive: env var name, not a credential.
+	//#nosec G101 jfrog-ignore // False positive: env var name, not a credential.
 	EnvVSCodeGitAskpassMain = "VSCODE_GIT_ASKPASS_MAIN"
-	//#nosec G101 // False positive: env var name, not a credential.
+	//#nosec G101 jfrog-ignore // False positive: env var name, not a credential.
 	EnvVSCodeGitAskpassNode = "VSCODE_GIT_ASKPASS_NODE"
 	EnvVisualStudioVersion  = "VisualStudioVersion"
 	EnvWTSession            = "WT_SESSION"
@@ -270,7 +270,7 @@ func computeExecutionContext() ExecutionContext {
 }
 
 func detectModel() string {
-	return sanitizeToken(os.Getenv(EnvJFrogCLIAIModel))
+	return sanitizeWireName(os.Getenv(EnvJFrogCLIAIModel))
 }
 
 // detectClient returns the app hosting an agent session. It starts with
@@ -339,21 +339,21 @@ func detectClient(agent string) string {
 // terminalNameAliases maps sanitized TERM_PROGRAM values to short product
 // names, matching the IDE style (cursor, vscode) rather than raw env spellings.
 var terminalNameAliases = map[string]string{
-	sanitizeToken(TermProgramItermApp): NameIterm,
-	NameIterm:                          NameIterm,
-	sanitizeToken(TermProgramApple):    NameTerminal,
-	sanitizeToken(TermProgramWarp):     NameWarp,
-	NameWarp:                           NameWarp,
-	NameTmux:                           NameTmux,
-	NameWezterm:                        NameWezterm,
-	NameAlacritty:                      NameAlacritty,
-	NameKitty:                          NameKitty,
-	NameGhostty:                        NameGhostty,
-	NameHyper:                          NameHyper,
+	sanitizeWireName(TermProgramItermApp): NameIterm,
+	NameIterm:                             NameIterm,
+	sanitizeWireName(TermProgramApple):    NameTerminal,
+	sanitizeWireName(TermProgramWarp):     NameWarp,
+	NameWarp:                              NameWarp,
+	NameTmux:                              NameTmux,
+	NameWezterm:                           NameWezterm,
+	NameAlacritty:                         NameAlacritty,
+	NameKitty:                             NameKitty,
+	NameGhostty:                           NameGhostty,
+	NameHyper:                             NameHyper,
 }
 
 func canonicalTerminalName(raw string) string {
-	name := sanitizeToken(raw)
+	name := sanitizeWireName(raw)
 	if name == "" {
 		return ""
 	}
@@ -422,13 +422,13 @@ func askpassPathContains(app string) bool {
 	return false
 }
 
-// maxTokenLen caps sanitized identity tokens so a pathological env value cannot
-// inflate User-Agent / metrics payloads. Excess is truncated after filtering.
-const maxTokenLen = 64
+// maxWireNameLen caps client/model/terminal names so a pathological env value
+// cannot inflate User-Agent / metrics payloads. Excess is truncated after filtering.
+const maxWireNameLen = 64
 
-// sanitizeToken lowercases s and keeps only [a-z0-9._-], bounding cardinality
+// sanitizeWireName lowercases s and keeps only [a-z0-9._-], bounding cardinality
 // and guaranteeing no header-splitting sequence can reach the wire.
-func sanitizeToken(s string) string {
+func sanitizeWireName(s string) string {
 	s = strings.Map(func(r rune) rune {
 		switch {
 		case r >= 'A' && r <= 'Z':
@@ -439,8 +439,8 @@ func sanitizeToken(s string) string {
 			return -1
 		}
 	}, strings.TrimSpace(s))
-	if len(s) > maxTokenLen {
-		return s[:maxTokenLen]
+	if len(s) > maxWireNameLen {
+		return s[:maxWireNameLen]
 	}
 	return s
 }
@@ -473,9 +473,9 @@ func detectAgent() string {
 	return canonicalAgentName(os.Getenv(EnvAgent))
 }
 
-// foldAgentToken lowercases and trims a generic AI_AGENT/AGENT value and
+// foldAgentName lowercases and trims a generic AI_AGENT/AGENT value and
 // strips a version suffix (e.g. "goose@1.2.3"). Empty input stays empty.
-func foldAgentToken(raw string) string {
+func foldAgentName(raw string) string {
 	name := strings.ToLower(strings.TrimSpace(raw))
 	if name == "" {
 		return ""
@@ -491,14 +491,14 @@ func foldAgentToken(raw string) string {
 // canonicalAgentName here: that also maps copilot / copilot-cli, which are
 // the CLI and must not force client=vscode.
 func isCopilotVSCodePluginAlias() bool {
-	return foldAgentToken(os.Getenv(EnvAIAgent)) == AliasGitHubCopilotVSCodeAgent ||
-		foldAgentToken(os.Getenv(EnvAgent)) == AliasGitHubCopilotVSCodeAgent
+	return foldAgentName(os.Getenv(EnvAIAgent)) == AliasGitHubCopilotVSCodeAgent ||
+		foldAgentName(os.Getenv(EnvAgent)) == AliasGitHubCopilotVSCodeAgent
 }
 
 // canonicalAgentName maps a generic AI_AGENT/AGENT value to a wire name.
 // Returns "" for empty, a table/alias name when recognized, else AgentUnknown.
 func canonicalAgentName(raw string) string {
-	name := foldAgentToken(raw)
+	name := foldAgentName(raw)
 	if name == "" {
 		return ""
 	}

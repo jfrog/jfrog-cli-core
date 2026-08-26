@@ -306,16 +306,16 @@ func TestDetectExecutionContext_ModelSkippedForHuman(t *testing.T) {
 	assert.Equal(t, "", ec.Model)
 }
 
-func TestSanitizeToken(t *testing.T) {
-	assert.Equal(t, NameVSCode, sanitizeToken(NameVSCode))
-	assert.Equal(t, "apple_terminal", sanitizeToken(TermProgramApple))
-	assert.Equal(t, "iterm.app", sanitizeToken("  "+TermProgramItermApp+"  "))
-	assert.Equal(t, "1.2.3-beta", sanitizeToken("1.2.3-beta"))
+func TestSanitizeWireName(t *testing.T) {
+	assert.Equal(t, NameVSCode, sanitizeWireName(NameVSCode))
+	assert.Equal(t, "apple_terminal", sanitizeWireName(TermProgramApple))
+	assert.Equal(t, "iterm.app", sanitizeWireName("  "+TermProgramItermApp+"  "))
+	assert.Equal(t, "1.2.3-beta", sanitizeWireName("1.2.3-beta"))
 	// Header-splitting and stray characters (CR/LF, colon, spaces) are stripped.
-	assert.Equal(t, "xyz", sanitizeToken("x\r\n y: z"))
-	assert.Equal(t, "", sanitizeToken(""))
+	assert.Equal(t, "xyz", sanitizeWireName("x\r\n y: z"))
+	assert.Equal(t, "", sanitizeWireName(""))
 	// Pathological env values are truncated so they cannot inflate the wire payload.
-	assert.Equal(t, maxTokenLen, len(sanitizeToken(strings.Repeat("a", maxTokenLen+100))))
+	assert.Equal(t, maxWireNameLen, len(sanitizeWireName(strings.Repeat("a", maxWireNameLen+100))))
 }
 
 func TestCanonicalTerminalName(t *testing.T) {
@@ -382,7 +382,7 @@ func TestDetectExecutionContext_ClientCopilotViaAIAgentAlias(t *testing.T) {
 	assert.Equal(t, NameVSCode, ec.Client)
 }
 
-func TestDetectExecutionContext_ClientCopilotAliasFoldsLikeSession(t *testing.T) {
+func TestDetectExecutionContext_ClientCopilotAliasMatchesSession(t *testing.T) {
 	testCases := []struct {
 		name string
 		key  string
@@ -449,7 +449,7 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		{"gemini in warp", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramWarp}, NameWarp},
 		{"gemini in apple terminal", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramApple}, NameTerminal},
 		{"gemini in tmux", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: NameTmux}, NameTmux},
-		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramItermApp, EnvGitAskpass: "/Users/cursor/bin/git-helper"}, NameIterm},
+		{"generic git askpass does not claim cursor", map[string]string{"GEMINI_CLI": "1", EnvTermProgram: TermProgramItermApp, EnvGitAskpass: "/Users/cursor/bin/git-helper"}, NameIterm}, // #nosec G101 jfrog-ignore -- fixture path, not a credential
 		// A VS Code install under a login named "cursor" must not become client=cursor.
 		{"vscode askpass under cursor home is vscode", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPath("/Users/cursor/AppData/Local/Programs/Microsoft VS Code/resources/app/extensions/git/dist")}, NameVSCode},
 		{"windows cursor install is cursor", map[string]string{"GEMINI_CLI": "1", EnvVSCodeGitAskpassMain: vscodeGitHelperPathWin(`C:\Users\bob\AppData\Local\Programs\cursor\resources\app\extensions\git\dist`)}, NameCursor},
@@ -492,11 +492,11 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 // filename is isolated here so gosec G101 does not treat every table row
 // as a hardcoded credential.
 func vscodeGitHelperPath(dir string) string {
-	return dir + "/askpass-main.js" // #nosec G101 -- fixture path, not a credential
+	return dir + "/askpass-main.js" // #nosec G101 jfrog-ignore -- fixture path, not a credential
 }
 
 func vscodeGitHelperPathWin(dir string) string {
-	return dir + `\askpass-main.js` // #nosec G101 -- fixture path, not a credential
+	return dir + `\askpass-main.js` // #nosec G101 jfrog-ignore -- fixture path, not a credential
 }
 
 func mergeEnv(envs ...map[string]string) map[string]string {

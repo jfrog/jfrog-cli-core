@@ -125,6 +125,13 @@ func TestDetectAgent_AmazonQUnrelatedExecutionEnv(t *testing.T) {
 	assert.Equal(t, "", detectAgent())
 }
 
+func TestDetectAgent_AmazonQExecutionEnv(t *testing.T) {
+	// Literal is independent of the detector table so a typo there fails this test.
+	clearAgentEnvVars(t)
+	t.Setenv("AWS_EXECUTION_ENV", "AmazonQ-For-CLI")
+	assert.Equal(t, nameAmazonQ, detectAgent())
+}
+
 func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv(envAgent, "some_random_value")
@@ -325,7 +332,7 @@ func TestCanonicalTerminalName(t *testing.T) {
 	assert.Equal(t, nameWezterm, canonicalTerminalName("WezTerm"))
 	assert.Equal(t, nameHyper, canonicalTerminalName("Hyper"))
 	assert.Equal(t, "", canonicalTerminalName(nameVSCode))
-	assert.Equal(t, "foobar", canonicalTerminalName("FooBar.app"))
+	assert.Equal(t, "", canonicalTerminalName("FooBar.app"))
 }
 
 func TestDetectExecutionContext_ClientCursorIgnoresTermProgram(t *testing.T) {
@@ -463,7 +470,7 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		{"gemini with inherited vscode term", map[string]string{"GEMINI_CLI": "1", envTermProgram: nameVSCode}, ""},
 		{"copilot cli with inherited vscode term", map[string]string{"COPILOT_CLI": "1", envTermProgram: nameVSCode}, ""},
 		{"copilot cli in stock vscode via askpass", map[string]string{"COPILOT_CLI": "1", envVSCodeGitAskpassMain: vscodeGitHelperPath("/Applications/Visual Studio Code.app/Contents/Resources/app/extensions/git/dist")}, nameVSCode},
-		{"gemini in unknown terminal app", map[string]string{"GEMINI_CLI": "1", envTermProgram: "FooBar.app"}, "foobar"},
+		{"gemini in unknown terminal app", map[string]string{"GEMINI_CLI": "1", envTermProgram: "FooBar.app"}, ""},
 		{"gemini in vscodium via askpass", mergeEnv(map[string]string{"GEMINI_CLI": "1"}, askpass("VSCodium.app")), nameCodium},
 		{"trae agent is not vscode", map[string]string{"TRAE_AI_SHELL_ID": "1", envTermProgram: nameVSCode}, nameTrae},
 		{"copilot in visual studio", map[string]string{envCopilotAgent: "1", envVisualStudioVersion: "17.0"}, nameVisualStudio},

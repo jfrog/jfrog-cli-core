@@ -185,6 +185,8 @@ var agentEnvDetectors = []agentDetector{
 	{"iflow", []string{"IFLOW_CLI"}, nil, nil},
 	{nameTrae, []string{"TRAE_AI_SHELL_ID"}, nil, nil},
 	{"pi", []string{"PI_CODING_AGENT"}, nil, nil},
+	// Amazon Q Developer CLI sets AWS_EXECUTION_ENV to a value containing
+	// AmazonQ-For-CLI (AWS CLI execution-environment convention).
 	{nameAmazonQ, nil, nil, map[string]string{"AWS_EXECUTION_ENV": "AmazonQ-For-CLI"}},
 }
 
@@ -374,12 +376,9 @@ func canonicalTerminalName(raw string) string {
 	if mapped, ok := terminalNameAliases[name]; ok {
 		return mapped
 	}
-	// TERM_PROGRAM=vscode is inherited by every VS Code fork. Do not treat it
-	// as a proven vscode window — that is how Copilot CLI gets mislabelled.
-	if name == nameVSCode {
-		return ""
-	}
-	return name
+	// Unmapped values (including inherited TERM_PROGRAM=vscode) stay empty so
+	// the client label stays on the known-app allowlist.
+	return ""
 }
 
 // fallbackTerminalName is used when TERM_PROGRAM is missing or is the inherited

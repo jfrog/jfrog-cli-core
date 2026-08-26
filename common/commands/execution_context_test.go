@@ -132,6 +132,12 @@ func TestDetectAgent_AmazonQExecutionEnv(t *testing.T) {
 	assert.Equal(t, nameAmazonQ, detectAgent())
 }
 
+func TestJediTermMatchesJetBrainsOSValue(t *testing.T) {
+	// JetBrains sets TERMINAL_EMULATOR=JetBrains-JediTerm (capital J).
+	// Assert the literal so a const rename cannot hide a production miss.
+	assert.Equal(t, "JetBrains-JediTerm", jediTerm)
+}
+
 func TestDetectAgent_GenericAgentEnvCollapsesToUnknown(t *testing.T) {
 	clearAgentEnvVars(t)
 	t.Setenv(envAgent, "some_random_value")
@@ -437,8 +443,8 @@ func TestDetectExecutionContext_ClientFollowsHostEditor(t *testing.T) {
 		env      map[string]string
 		expected string
 	}{
-		{"copilot in jetbrains", map[string]string{envCopilotAgent: "1", envTerminalEmulator: jediTerm}, nameJetBrains},
-		{"claude in jetbrains", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", envTerminalEmulator: jediTerm}, nameJetBrains},
+		{"copilot in jetbrains", map[string]string{envCopilotAgent: "1", envTerminalEmulator: "JetBrains-JediTerm"}, nameJetBrains},
+		{"claude in jetbrains", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", envTerminalEmulator: "JetBrains-JediTerm"}, nameJetBrains},
 		{"claude in zed", map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1", envZedTerm: "true"}, nameZed},
 		{"claude in cursor", mergeEnv(map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1"}, askpass("Cursor.app")), nameCursor},
 		{"cline in windsurf", mergeEnv(map[string]string{"CLINE_ACTIVE": "1"}, askpass("Windsurf.app")), nameWindsurf},

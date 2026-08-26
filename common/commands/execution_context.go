@@ -67,7 +67,7 @@ const (
 
 	// OS spellings and exact env values (not wire names).
 	askpassVSCodium     = "vscodium"
-	jediTerm            = "JetBrains-jediTerm"
+	jediTerm            = "JetBrains-JediTerm"
 	termProgramApple    = "Apple_Terminal"
 	termProgramItermApp = "iTerm.app"
 	termProgramWarp     = "WarpTerminal"
@@ -284,7 +284,7 @@ func detectModel() string {
 // | Client          | Host-owned signal                                              |
 // |-----------------|----------------------------------------------------------------|
 // | zed             | ZED_TERM                                                       |
-// | jetbrains       | TERMINAL_EMULATOR=JetBrains-jediTerm                           |
+// | jetbrains       | TERMINAL_EMULATOR=JetBrains-JediTerm                           |
 // | cursor          | CURSOR_TRACE_ID, or Cursor.app /cursor/resources / .cursor-server |
 // | windsurf        | agent=windsurf or Windsurf.app /windsurf/resources / .windsurf-server           |
 // | antigravity     | agent=antigravity or Antigravity.app /antigravity/resources / .antigravity-server |

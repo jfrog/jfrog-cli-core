@@ -1,15 +1,7 @@
 name: JFrog CLI Core Tests
 on:
+  workflow_call:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    tags-ignore:
-      - "**"
-  pull_request_target:
-    branches:
-      - master
-    types: [labeled]
 jobs:
   test:
     runs-on: ${{ matrix.os }}-latest
@@ -26,6 +18,8 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          # Safe: this workflow only runs after human approval via the build-gate environment.
+          allow-unsafe-pr-checkout: true
 
       - name: Setup Python3
         uses: actions/setup-python@v6

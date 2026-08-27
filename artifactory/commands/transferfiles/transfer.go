@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/jfrog/gofrog/safeconvert"
 	"github.com/jfrog/jfrog-client-go/artifactory/services"
@@ -38,7 +39,22 @@ const (
 	retriesWaitMilliSecs         = 5000
 	dataTransferPluginMinVersion = "1.7.0"
 	disableDistinctAqlMinVersion = "7.37"
+	// Exact UTC-millisecond timestamp expected by --created-after / --downloaded-after.
+	timestampFilterLayout = "2006-01-02T15:04:05.000Z"
 )
+
+type timestampFilterField string
+
+const (
+	createdFilterField    timestampFilterField = "created"
+	downloadedFilterField timestampFilterField = "stat.downloaded"
+)
+
+// timestampFilter is the resolved AQL timestamp criterion for the current invocation.
+type timestampFilter struct {
+	field     timestampFilterField
+	timestamp string
+}
 
 type TransferFilesCommand struct {
 	context                   context.Context
@@ -52,6 +68,9 @@ type TransferFilesCommand struct {
 	includeReposPatterns      []string
 	excludeReposPatterns      []string
 	includeFilesPatterns      []string
+	createdAfter              string
+	downloadedAfter           string
+	timestampFilter           *timestampFilter
 	ignoreState               bool
 	proxyKey                  string
 	status                    bool
@@ -100,8 +119,42 @@ func (tdc *TransferFilesCommand) SetIncludeFilesPatterns(includeFilesPatterns []
 	tdc.includeFilesPatterns = includeFilesPatterns
 }
 
+func (tdc *TransferFilesCommand) SetCreatedAfter(createdAfter string) {
+	tdc.createdAfter = createdAfter
+}
+
+func (tdc *TransferFilesCommand) SetDownloadedAfter(downloadedAfter string) {
+	tdc.downloadedAfter = downloadedAfter
+}
+
 func (tdc *TransferFilesCommand) SetIgnoreState(ignoreState bool) {
 	tdc.ignoreState = ignoreState
+}
+
+// resolveTimestampFilter validates the raw timestamp options and returns the effective filter.
+// When both options are set, --created-after takes precedence and --downloaded-after is ignored with a warning.
+func (tdc *TransferFilesCommand) resolveTimestampFilter() (*timestampFilter, error) {
+	if tdc.createdAfter == "" && tdc.downloadedAfter == "" {
+		return nil, nil
+	}
+	if tdc.createdAfter != "" {
+		if tdc.downloadedAfter != "" {
+			log.Warn("Both --created-after and --downloaded-after were provided; using --created-after and ignoring --downloaded-after")
+		}
+		return parseTimestampFilter(createdFilterField, tdc.createdAfter)
+	}
+	return parseTimestampFilter(downloadedFilterField, tdc.downloadedAfter)
+}
+
+func parseTimestampFilter(field timestampFilterField, value string) (*timestampFilter, error) {
+	parsed, err := time.Parse(timestampFilterLayout, value)
+	if err != nil || parsed.Format(timestampFilterLayout) != value {
+		return nil, errorutils.CheckErrorf("invalid timestamp %q: expected format YYYY-MM-DDTHH:mm:ss.sssZ", value)
+	}
+	if parsed.After(time.Now().UTC()) {
+		return nil, errorutils.CheckErrorf("timestamp %q must not be in the future", value)
+	}
+	return &timestampFilter{field: field, timestamp: value}, nil
 }
 
 func (tdc *TransferFilesCommand) SetProxyKey(proxyKey string) {
@@ -161,6 +214,9 @@ func (tdc *TransferFilesCommand) Run() (err error) {
 	}
 	if tdc.stop {
 		return tdc.signalStop()
+	}
+	if tdc.timestampFilter, err = tdc.resolveTimestampFilter(); err != nil {
+		return err
 	}
 	if err = tdc.stateManager.TryLockTransferStateManager(); err != nil {
 		return err
@@ -628,6 +684,7 @@ func (tdc *TransferFilesCommand) initNewPhase(newPhase transferPhase, srcUpServi
 	newPhase.setStopSignal(tdc.stopSignal)
 	newPhase.setMinCheckSumDeploySize(minChecksumDeploySize)
 	newPhase.setIncludeFilesPatterns(tdc.includeFilesPatterns)
+	newPhase.setTimestampFilter(tdc.timestampFilter)
 }
 
 // Get all local and build-info repositories of the input server

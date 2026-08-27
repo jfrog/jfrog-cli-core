@@ -52,10 +52,31 @@ var generateDiffAqlQueryTestCases = []struct {
 func TestGenerateDiffAqlQuery(t *testing.T) {
 	for _, testCase := range generateDiffAqlQueryTestCases {
 		t.Run("", func(*testing.T) {
-			results := generateDiffAqlQuery(repo1Key, "1", "2", testCase.paginationOffset, testCase.disabledDistinctiveAql)
+			results := generateDiffAqlQuery(repo1Key, "1", "2", testCase.paginationOffset, testCase.disabledDistinctiveAql, nil)
 			assert.Equal(t, testCase.expectedAql, results)
 		})
 	}
+}
+
+func TestGenerateDiffAqlQueryWithTimestampFilter(t *testing.T) {
+	createdFilter := &timestampFilter{field: createdFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+	downloadedFilter := &timestampFilter{field: downloadedFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+
+	t.Run("created after filters files keeps folders", func(t *testing.T) {
+		query := generateDiffAqlQuery(repo1Key, "1", "2", 0, false, createdFilter)
+		assert.Contains(t, query, `"modified":{"$gte":"1"}`)
+		assert.Contains(t, query, `"modified":{"$lt":"2"}`)
+		assert.Contains(t, query, `"repo":"repo1"`)
+		assert.NotContains(t, query, `"type":"any"`)
+		assert.Equal(t,
+			`items.find({"$and":[{"modified":{"$gte":"1"}},{"modified":{"$lt":"2"}},{"repo":"repo1"},{"$or":[{"type":"folder"},{"$and":[{"type":"file"},{"created":{"$gte":"2025-01-01T00:00:00.000Z"}}]}]}]}).include("repo","path","name","type","modified","size").sort({"$asc":["name","path"]}).offset(0).limit(10000)`,
+			query)
+	})
+
+	t.Run("downloaded after uses stat.downloaded", func(t *testing.T) {
+		query := generateDiffAqlQuery(repo1Key, "1", "2", 0, false, downloadedFilter)
+		assert.Contains(t, query, `,{"$or":[{"type":"folder"},{"$and":[{"type":"file"},{"stat.downloaded":{"$gte":"2025-01-01T00:00:00.000Z"}}]}]}`)
+	})
 }
 
 var generateDockerManifestAqlQueryTestCases = []struct {
@@ -72,10 +93,26 @@ var generateDockerManifestAqlQueryTestCases = []struct {
 func TestGenerateDockerManifestAqlQuery(t *testing.T) {
 	for _, testCase := range generateDockerManifestAqlQueryTestCases {
 		t.Run("", func(*testing.T) {
-			results := generateDockerManifestAqlQuery(repo1Key, "1", "2", testCase.paginationOffset, testCase.disabledDistinctiveAql)
+			results := generateDockerManifestAqlQuery(repo1Key, "1", "2", testCase.paginationOffset, testCase.disabledDistinctiveAql, nil)
 			assert.Equal(t, testCase.expectedAql, results)
 		})
 	}
+}
+
+func TestGenerateDockerManifestAqlQueryWithTimestampFilter(t *testing.T) {
+	filter := &timestampFilter{field: createdFilterField, timestamp: "2025-01-01T00:00:00.000Z"}
+	query := generateDockerManifestAqlQuery(repo1Key, "1", "2", 0, false, filter)
+	assert.Contains(t, query, `"name":"manifest.json"`)
+	assert.Contains(t, query, `"created":{"$gte":"2025-01-01T00:00:00.000Z"}`)
+	assert.Contains(t, query, `"modified":{"$gte":"1"}`)
+}
+
+func TestGenerateGetDirContentAqlQueryUnfiltered(t *testing.T) {
+	query := generateGetDirContentAqlQuery(repo1Key, []string{"library/nginx/1.0"})
+	assert.NotContains(t, query, `"$gte"`)
+	assert.NotContains(t, query, "stat.downloaded")
+	assert.NotContains(t, query, `"created":{`)
+	assert.Contains(t, query, `"path":{"$match":"library/nginx/1.0"}`)
 }
 
 // TestGetNonDockerTimeFrameFilesDiffWithPatterns tests that getNonDockerTimeFrameFilesDiff uses pattern filtering when patterns are set

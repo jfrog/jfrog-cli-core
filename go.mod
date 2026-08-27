@@ -15,7 +15,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/jfrog/build-info-go v1.13.1-0.20260429070557-93b98034d295
 	github.com/jfrog/gofrog v1.7.6
-	github.com/jfrog/jfrog-client-go v1.55.1-0.20260813100550-0f2168d02558
+	github.com/jfrog/jfrog-client-go v1.55.1-0.20260827094947-e7a90ebc8049
 	github.com/magiconair/properties v1.18.11
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
@@ -92,9 +92,6 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )
-
-// TODO: remove this replace before merge (after jfrog/jfrog-client-go#1379 is merged)
-replace github.com/jfrog/jfrog-client-go => github.com/mnsboev/jfrog-client-go v0.0.0-20260818132447-d5b984492757
 
 // replace github.com/jfrog/jfrog-client-go => github.com/jfrog/jfrog-client-go master
 

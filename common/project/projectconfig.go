@@ -50,6 +50,7 @@ const (
 	Conan
 	UV
 	AgentApm
+	Cargo
 	Apt
 	Apk
 )
@@ -85,6 +86,7 @@ var ProjectTypes = []string{
 	"conan",
 	"uv",
 	"apm",
+	"cargo",
 	"apt",
 	"apk",
 }

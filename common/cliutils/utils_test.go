@@ -81,11 +81,11 @@ func TestReadJFrogApplicationKeyFromConfigOrEnv(t *testing.T) {
 
 func TestShouldOfferConfig_AgentSkipsPrompt(t *testing.T) {
 	tests := []struct {
-		name        string
-		ciEnv       string
-		agentEnv    string // CLAUDE_CODE_CHILD_SESSION to simulate an agent
-		wantOffer   bool
-		wantErr     bool
+		name      string
+		ciEnv     string
+		agentEnv  string // CLAUDE_CODE_CHILD_SESSION to simulate an agent
+		wantOffer bool
+		wantErr   bool
 	}{
 		{
 			name:      "agent env set — no prompt",

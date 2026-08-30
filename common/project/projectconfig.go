@@ -49,7 +49,7 @@ const (
 	Ruby
 	Conan
 	UV
-	AgentApm
+	Apm
 	Cargo
 	Apt
 	Apk

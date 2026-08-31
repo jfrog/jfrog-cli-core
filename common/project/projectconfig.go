@@ -49,6 +49,7 @@ const (
 	Ruby
 	Conan
 	UV
+	Apm
 	Cargo
 	Apt
 	Apk
@@ -84,6 +85,7 @@ var ProjectTypes = []string{
 	"ruby",
 	"conan",
 	"uv",
+	"apm",
 	"cargo",
 	"apt",
 	"apk",

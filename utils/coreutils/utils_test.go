@@ -279,3 +279,48 @@ func TestGetMaskedCommandString(t *testing.T) {
 		"pip -i ***@someurl.com/repo --access-token=***",
 		GetMaskedCommandString(exec.Command("pip", "-i", "https://user:pass@someurl.com/repo", "--access-token=123")))
 }
+
+func TestGetJfrogCertsDirFromEnv(t *testing.T) {
+	certsDirPath, err := filepath.Abs(filepath.Join("/", "custom", "certs"))
+	assert.NoError(t, err)
+
+	t.Setenv(CertsDir, certsDirPath)
+	defer func() {
+		assert.NoError(t, os.Unsetenv(CertsDir))
+	}()
+
+	certsDir, err := GetJfrogCertsDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, certsDirPath, certsDir)
+}
+
+func TestGetJfrogCertsDirFallsBackToHomeDir(t *testing.T) {
+	certsDirPath, err := filepath.Abs(filepath.Join("tmp", "jfrog"))
+	assert.NoError(t, err)
+
+	t.Setenv(HomeDir, certsDirPath)
+	defer func() {
+		assert.NoError(t, os.Unsetenv(HomeDir))
+	}()
+
+	certsDir, err := GetJfrogCertsDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, filepath.Join(certsDirPath, JfrogSecurityDirName, JfrogCertsDirName), certsDir)
+}
+
+func TestGetJfrogCertsDirNormalizesPath(t *testing.T) {
+	t.Setenv(CertsDir, filepath.Join("test", "..", "custom", "certs"))
+	defer func() {
+		assert.NoError(t, os.Unsetenv(CertsDir))
+	}()
+
+	expectedDir, err := filepath.Abs(filepath.Join("custom", "certs"))
+	assert.NoError(t, err)
+
+	certsDir, err := GetJfrogCertsDir()
+
+	assert.NoError(t, err)
+	assert.Equal(t, expectedDir, certsDir)
+}

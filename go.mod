@@ -5,8 +5,8 @@ go 1.25.5
 require github.com/c-bata/go-prompt v0.2.6 // Should not be updated to 0.2.6 due to a bug (https://github.com/jfrog/jfrog-cli-core/pull/372)
 
 require (
-	github.com/beevik/etree v1.7.0
-	github.com/buger/jsonparser v1.3.0
+	github.com/beevik/etree v1.7.1
+	github.com/buger/jsonparser v1.6.1
 	github.com/chzyer/readline v1.5.1
 	github.com/forPelevin/gomoji v1.4.1
 	github.com/gocarina/gocsv v0.0.0-20260523204920-c264028e67ea
@@ -20,13 +20,13 @@ require (
 	github.com/manifoldco/promptui v0.9.0
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/viper v1.21.0
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	github.com/urfave/cli v1.22.17
-	github.com/vbauerster/mpb/v8 v8.14.0
+	github.com/vbauerster/mpb/v8 v8.16.0
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3
 	golang.org/x/sync v0.22.0
 	golang.org/x/term v0.45.0
-	golang.org/x/text v0.40.0
+	golang.org/x/text v0.41.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -62,7 +62,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
-	github.com/mattn/go-runewidth v0.0.27 // indirect
+	github.com/mattn/go-runewidth v0.0.28 // indirect
 	github.com/mattn/go-tty v0.0.8 // indirect
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/nwaples/rardecode/v2 v2.2.3 // indirect
@@ -86,7 +86,7 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect

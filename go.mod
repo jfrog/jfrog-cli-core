@@ -14,7 +14,7 @@ require (
 	github.com/gookit/color v1.6.1
 	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/jfrog/build-info-go v1.13.1-0.20260429070557-93b98034d295
-	github.com/jfrog/gofrog v1.7.6
+	github.com/jfrog/gofrog v1.7.7
 	github.com/jfrog/jfrog-client-go v1.55.1-0.20260827094947-e7a90ebc8049
 	github.com/magiconair/properties v1.18.11
 	github.com/manifoldco/promptui v0.9.0
@@ -55,7 +55,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/jfrog/archiver/v3 v3.6.4 // indirect
+	github.com/jfrog/archiver/v3 v3.6.5 // indirect
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect

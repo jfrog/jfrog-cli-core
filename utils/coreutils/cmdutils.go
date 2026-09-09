@@ -211,6 +211,10 @@ func ExtractTagFromArgs(args []string) (cleanArgs []string, tag string, err erro
 	return ExtractStringOptionFromArgs(args, "tag")
 }
 
+func ExtractIncludeSharedBuildFromArgs(args []string) (cleanArgs []string, includeSharedBuild bool, err error) {
+	return extractBoolOptionFromArgs(args, "include-shared-build")
+}
+
 func ExtractStringOptionFromArgs(args []string, optionName string) (cleanArgs []string, value string, err error) {
 	cleanArgs = append([]string(nil), args...)
 

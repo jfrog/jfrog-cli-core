@@ -33,16 +33,21 @@ const (
 type TokenType string
 
 func AccessTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
-	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, AccessToken, auth.RefreshPlatformTokenBeforeExpiryMinutes)
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, AccessToken)
 }
 
 func ArtifactoryTokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails) (err error) {
-	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, ArtifactoryToken, auth.RefreshArtifactoryTokenBeforeExpiryMinutes)
+	return tokenRefreshPreRequestInterceptor(fields, httpClientDetails, ArtifactoryToken)
 }
 
-func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails, tokenType TokenType, refreshBeforeExpiryMinutes int64) (err error) {
+func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClientDetails *httputils.HttpClientDetails, tokenType TokenType) (err error) {
 	if fields.GetAccessToken() == "" || httpClientDetails.AccessToken == "" {
 		return nil
+	}
+
+	refreshBeforeExpiryMinutes, err := refreshThresholdForTokenType(httpClientDetails.AccessToken, tokenType)
+	if err != nil {
+		return err
 	}
 
 	timeLeft, err := auth.GetTokenMinutesLeft(httpClientDetails.AccessToken)
@@ -65,6 +70,17 @@ func tokenRefreshPreRequestInterceptor(fields *auth.CommonConfigFields, httpClie
 	// Copy new token from the mutual struct CommonConfigFields to the private struct in httpClientDetails
 	httpClientDetails.AccessToken = fields.AccessToken
 	return nil
+}
+
+// refreshThresholdForTokenType returns, in minutes, how long before expiry a token of the given type
+// should be refreshed. Artifactory refresh tokens use a fixed threshold (60-minute lifetime). Platform
+// access tokens use a threshold proportional to their own lifetime, since they aren't always issued
+// with the historical 1-year expiry.
+func refreshThresholdForTokenType(token string, tokenType TokenType) (int64, error) {
+	if tokenType == ArtifactoryToken {
+		return auth.RefreshArtifactoryTokenBeforeExpiryMinutes, nil
+	}
+	return auth.GetPlatformTokenRefreshThreshold(token)
 }
 
 func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAccessToken string, err error) {

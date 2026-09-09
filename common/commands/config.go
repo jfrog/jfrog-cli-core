@@ -62,6 +62,9 @@ type ConfigCommand struct {
 	serverId         string
 	// Preselected web login authentication method, supported on an interactive command only.
 	useWebLogin bool
+	// Preserve per-service URL prompts (Artifactory/Distribution/Xray/Mission Control/Pipelines),
+	// for Artifactory v6.x self-hosted customers where these products don't share a single platform URL.
+	legacy bool
 	// Forcibly make the configured server default.
 	makeDefault bool
 	// For unit tests
@@ -91,6 +94,11 @@ func (cc *ConfigCommand) SetUseBasicAuthOnly(useBasicAuthOnly bool) *ConfigComma
 
 func (cc *ConfigCommand) SetUseWebLogin(useWebLogin bool) *ConfigCommand {
 	cc.useWebLogin = useWebLogin
+	return cc
+}
+
+func (cc *ConfigCommand) SetLegacy(legacy bool) *ConfigCommand {
+	cc.legacy = legacy
 	return cc
 }
 
@@ -385,8 +393,10 @@ func (cc *ConfigCommand) getConfigurationFromUser() (err error) {
 	}
 
 	disallowUsingSavedPassword := cc.fillSpecificUrlsFromPlatform()
-	if err = cc.promptUrls(&disallowUsingSavedPassword); err != nil {
-		return
+	if cc.legacy {
+		if err = cc.promptUrls(&disallowUsingSavedPassword); err != nil {
+			return
+		}
 	}
 
 	if cc.details.Password == "" && cc.details.AccessToken == "" {
@@ -896,6 +906,7 @@ type ConfigCommandConfiguration struct {
 	Interactive   bool
 	EncPassword   bool
 	BasicAuthOnly bool
+	Legacy        bool
 }
 
 func GetAllServerIds() []string {

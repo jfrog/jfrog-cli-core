@@ -16,6 +16,7 @@ type DistributionRule struct {
 	SiteName     string   `json:"site_name,omitempty"`
 	CityName     string   `json:"city_name,omitempty"`
 	CountryCodes []string `json:"country_codes,omitempty"`
+	Priority     string   `json:"priority,omitempty"`
 }
 
 func (distributionRules *DistributionRules) Get(index int) *DistributionRule {
@@ -30,6 +31,7 @@ func (distributionRule *DistributionRule) ToDistributionCommonParams() *distribu
 		SiteName:     distributionRule.SiteName,
 		CityName:     distributionRule.CityName,
 		CountryCodes: distributionRule.CountryCodes,
+		Priority:     distributionRule.Priority,
 	}
 }
 

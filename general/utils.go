@@ -12,12 +12,12 @@ import (
 const defaultServerId = "default-server"
 
 // Deduce the server ID from the URL and add server details to config.
-func ConfigServerWithDeducedId(server *config.ServerDetails, interactive, webLogin bool) error {
+func ConfigServerWithDeducedId(server *config.ServerDetails, interactive, webLogin, legacy bool) error {
 	serverId, err := deduceServerId(server.Url)
 	if err != nil {
 		return err
 	}
-	return ConfigServerAsDefault(server, serverId, interactive, webLogin)
+	return ConfigServerAsDefault(server, serverId, interactive, webLogin, legacy)
 }
 
 func deduceServerId(platformUrl string) (string, error) {
@@ -36,8 +36,8 @@ func deduceServerId(platformUrl string) (string, error) {
 }
 
 // Add the given server details to the CLI's config by running a 'jf config' command, and make it the default server.
-func ConfigServerAsDefault(server *config.ServerDetails, serverId string, interactive, webLogin bool) error {
+func ConfigServerAsDefault(server *config.ServerDetails, serverId string, interactive, webLogin, legacy bool) error {
 	return commands.NewConfigCommand(commands.AddOrEdit, serverId).
-		SetInteractive(interactive).SetUseWebLogin(webLogin).
+		SetInteractive(interactive).SetUseWebLogin(webLogin).SetLegacy(legacy).
 		SetDetails(server).SetMakeDefault(true).Run()
 }

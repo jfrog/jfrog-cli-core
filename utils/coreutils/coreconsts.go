@@ -74,6 +74,7 @@ var (
 	ApplicationKey = "JFROG_CLI_APPLICATION_KEY"
 	SigningKey     = "JFROG_CLI_SIGNING_KEY"
 	KeyAlias       = "JFROG_CLI_KEY_ALIAS"
+	CertsDir       = "JFROG_CLI_CERTS_DIR"
 	//#nosec G101
 	EncryptionKey = "JFROG_CLI_ENCRYPTION_KEY"
 	// For CI runs

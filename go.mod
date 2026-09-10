@@ -14,7 +14,7 @@ require (
 	github.com/gookit/color v1.6.1
 	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/jfrog/build-info-go v1.13.1-0.20260429070557-93b98034d295
-	github.com/jfrog/gofrog v1.7.6
+	github.com/jfrog/gofrog v1.7.7
 	github.com/jfrog/jfrog-client-go v1.55.1-0.20260827094947-e7a90ebc8049
 	github.com/magiconair/properties v1.18.11
 	github.com/manifoldco/promptui v0.9.0
@@ -49,13 +49,13 @@ require (
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.9.0 // indirect
-	github.com/go-git/go-git/v5 v5.19.1 // indirect
+	github.com/go-git/go-git/v5 v5.19.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
-	github.com/jfrog/archiver/v3 v3.6.4 // indirect
+	github.com/jfrog/archiver/v3 v3.6.5 // indirect
 	github.com/kevinburke/ssh_config v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
@@ -87,8 +87,8 @@ require (
 	github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/crypto v0.52.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
+	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 )

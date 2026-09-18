@@ -53,6 +53,7 @@ const (
 	Cargo
 	Apt
 	Apk
+	PSResource
 )
 
 type ConfigType string
@@ -89,6 +90,7 @@ var ProjectTypes = []string{
 	"cargo",
 	"apt",
 	"apk",
+	"psresource",
 }
 
 func (projectType ProjectType) String() string {

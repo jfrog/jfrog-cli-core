@@ -53,6 +53,7 @@ const (
 	Cargo
 	Apt
 	Apk
+	PSResource
 	Choco
 )
 
@@ -90,6 +91,7 @@ var ProjectTypes = []string{
 	"cargo",
 	"apt",
 	"apk",
+	"psresource",
 	"choco",
 }
 

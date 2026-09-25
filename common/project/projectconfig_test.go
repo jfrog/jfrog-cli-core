@@ -40,3 +40,8 @@ func TestCargoStringRoundTrip(t *testing.T) {
 	assert.Equal(t, "cargo", Cargo.String())
 	assert.Equal(t, Cargo, FromString(Cargo.String()))
 }
+
+func TestChocoStringRoundTrip(t *testing.T) {
+	assert.Equal(t, "choco", Choco.String())
+	assert.Equal(t, Choco, FromString(Choco.String()))
+}

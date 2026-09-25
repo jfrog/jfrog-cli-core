@@ -54,6 +54,7 @@ const (
 	Apt
 	Apk
 	PSResource
+	Choco
 )
 
 type ConfigType string
@@ -91,6 +92,7 @@ var ProjectTypes = []string{
 	"apt",
 	"apk",
 	"psresource",
+	"choco",
 }
 
 func (projectType ProjectType) String() string {

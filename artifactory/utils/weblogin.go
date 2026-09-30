@@ -34,7 +34,11 @@ func DoWebLogin(serverDetails *config.ServerDetails) (token auth.CommonTokenPara
 				"Don't worry! You can use the \"jf c add\" command to authenticate with the JFrog Platform using other methods"))
 		return
 	}
-	log.Info("After logging in via your web browser, please enter the code if prompted: " + coreutils.PrintBoldTitle(uuidStr[len(uuidStr)-4:]))
+	code := uuidStr[len(uuidStr)-4:]
+	log.Info("After logging in via your web browser, please enter the code if prompted: " + coreutils.PrintBoldTitle(code))
+	if clipboardErr := coreutils.CopyToClipboard(code); clipboardErr != nil {
+		log.Debug("Failed to copy the login code to the clipboard: " + clipboardErr.Error())
+	}
 
 	loginUrl := clientUtils.AddTrailingSlashIfNeeded(serverDetails.Url) + "ui/login?jfClientSession=" + uuidStr + "&jfClientName=JFrog-CLI&jfClientCode=1"
 	log.Info("Please open the following URL in your browser to authenticate:")

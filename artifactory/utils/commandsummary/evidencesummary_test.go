@@ -2,6 +2,7 @@ package commandsummary
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -180,6 +181,27 @@ func TestFormatEvidenceType(t *testing.T) {
 			},
 			expectedType: "⚠️ Unknown",
 		},
+		{
+			name: "PredicateSlug with HTML",
+			evidence: EvidenceSummaryData{
+				PredicateSlug: `</td></tr><tr><td><a href="https://attacker.example">x</a>`,
+			},
+			expectedType: "&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td&gt;&lt;a href=&#34;https://attacker.example&#34;&gt;x&lt;/a&gt;",
+		},
+		{
+			name: "PredicateType with HTML",
+			evidence: EvidenceSummaryData{
+				PredicateType: `https://slsa.dev/provenance/v1"><img src=x>`,
+			},
+			expectedType: "https://slsa.dev/provenance/v1&#34;&gt;&lt;img src=x&gt;",
+		},
+		{
+			name: "PredicateSlug with line breaks",
+			evidence: EvidenceSummaryData{
+				PredicateSlug: "in-toto\r\n\n# heading",
+			},
+			expectedType: "in-toto   # heading",
+		},
 	}
 
 	for _, tt := range tests {
@@ -188,4 +210,98 @@ func TestFormatEvidenceType(t *testing.T) {
 			assert.Equal(t, tt.expectedType, result)
 		})
 	}
+}
+
+func TestFormatSubjectWithLink(t *testing.T) {
+	evidenceSummary, cleanUp := prepareEvidenceTest(t)
+	defer func() {
+		cleanUp()
+	}()
+
+	const evidenceUrl = "https://myplatform.com/ui/repos/tree/Evidence/repo/file.txt?clearFilter=true&amp;gh_job_id=JFrog+CLI+Core+Tests&amp;gh_section=evidence&amp;m=3&amp;s=1"
+
+	tests := []struct {
+		name        string
+		platformUrl string
+		evidence    EvidenceSummaryData
+		expected    string
+	}{
+		{
+			name:        "Benign display name",
+			platformUrl: testPlatformUrl,
+			evidence: EvidenceSummaryData{
+				Subject:     "repo/file.txt",
+				DisplayName: "file.txt",
+				SubjectType: SubjectTypeArtifact,
+			},
+			expected: `📄 <a href="` + evidenceUrl + `">file.txt</a>`,
+		},
+		{
+			name:        "Display name with HTML",
+			platformUrl: testPlatformUrl,
+			evidence: EvidenceSummaryData{
+				Subject:     "repo/file.txt",
+				DisplayName: `file"<img src=x>`,
+				SubjectType: SubjectTypeArtifact,
+			},
+			expected: `📄 <a href="` + evidenceUrl + `">file&#34;&lt;img src=x&gt;</a>`,
+		},
+		{
+			name:        "Display name with line breaks",
+			platformUrl: testPlatformUrl,
+			evidence: EvidenceSummaryData{
+				Subject:     "repo/file.txt",
+				DisplayName: "file.txt\n\n# heading",
+				SubjectType: SubjectTypeArtifact,
+			},
+			expected: `📄 <a href="` + evidenceUrl + `">file.txt  # heading</a>`,
+		},
+		{
+			name:        "Non HTTP evidence URL",
+			platformUrl: "javascript:alert(1)//",
+			evidence: EvidenceSummaryData{
+				Subject:     "repo/file.txt",
+				SubjectType: SubjectTypeArtifact,
+			},
+			expected: "📄 repo/file.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			StaticMarkdownConfig.setPlatformUrl(tt.platformUrl)
+			defer StaticMarkdownConfig.setPlatformUrl(testPlatformUrl)
+			result := evidenceSummary.formatSubjectWithLink(tt.evidence)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestEvidenceTableEscapesValues(t *testing.T) {
+	evidenceSummary, cleanUp := prepareEvidenceTest(t)
+	defer func() {
+		cleanUp()
+	}()
+
+	var evidenceData = []EvidenceSummaryData{
+		{
+			Subject:       "repo/file.txt",
+			PredicateSlug: `</td></tr><tr><td><a href="https://attacker.example">x</a>`,
+			DisplayName:   `file"<img src=x>`,
+			SubjectType:   SubjectTypeArtifact,
+		},
+		{
+			Subject:       "repo/file.txt",
+			PredicateSlug: "in-toto\n\n# heading",
+			SubjectType:   SubjectTypeArtifact,
+		},
+	}
+
+	res := evidenceSummary.generateEvidenceTable(evidenceData)
+	// The header row and one row per evidence
+	assert.Equal(t, 3, strings.Count(res, "<tr>"))
+	assert.Equal(t, 2, strings.Count(res, "<a "))
+	assert.NotContains(t, res, "attacker.example\"")
+	assert.NotContains(t, res, "<img")
+	assert.NotContains(t, res, "\n\n")
 }

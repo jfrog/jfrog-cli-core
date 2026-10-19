@@ -2,6 +2,8 @@ package commandsummary
 
 import (
 	"fmt"
+	"html"
+	"net/url"
 	"strings"
 	"time"
 
@@ -110,11 +112,12 @@ func (es *EvidenceSummary) formatSubjectWithLink(evidence EvidenceSummaryData) s
 	if displayName == "" {
 		displayName = evidence.Subject
 	}
+	displayName = escapeHtmlValue(displayName)
 
 	var viewLink string
 	subjectType := es.formatSubjectType(evidence.SubjectType)
-	if evidenceUrl != "" {
-		viewLink = fmt.Sprintf(`%s <a href="%s">%s</a>`, subjectType, evidenceUrl, displayName)
+	if isHttpUrl(evidenceUrl) {
+		viewLink = fmt.Sprintf(`%s <a href="%s">%s</a>`, subjectType, escapeHtmlValue(evidenceUrl), displayName)
 	} else {
 		viewLink = fmt.Sprintf("%s %s", subjectType, displayName)
 	}
@@ -134,9 +137,9 @@ func (es *EvidenceSummary) formatEvidenceType(evidence EvidenceSummaryData) stri
 		if evidence.PredicateType == "" {
 			return "⚠️ Unknown"
 		}
-		return evidence.PredicateType
+		return escapeHtmlValue(evidence.PredicateType)
 	}
-	return evidence.PredicateSlug
+	return escapeHtmlValue(evidence.PredicateSlug)
 }
 
 func (es *EvidenceSummary) formatSubjectType(subjectType SubjectType) string {
@@ -154,4 +157,15 @@ func (es *EvidenceSummary) formatSubjectType(subjectType SubjectType) string {
 	default:
 		return ""
 	}
+}
+
+// escapeHtmlValue makes a value safe to embed in the evidence HTML table.
+// Line breaks are replaced as well, since a blank line ends the HTML block and the rest is rendered as Markdown.
+func escapeHtmlValue(value string) string {
+	return html.EscapeString(strings.NewReplacer("\r", " ", "\n", " ").Replace(value))
+}
+
+func isHttpUrl(rawUrl string) bool {
+	parsedUrl, err := url.Parse(rawUrl)
+	return err == nil && (parsedUrl.Scheme == "http" || parsedUrl.Scheme == "https")
 }

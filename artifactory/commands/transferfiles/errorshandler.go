@@ -170,7 +170,7 @@ func getErrorsFileNamePrefix(repoKey string, phaseId int, phaseStartTime string)
 func (mng *TransferErrorsMng) writeErrorContent(e ExtendedFileUploadStatusResponse) error {
 	var err error
 	switch e.Status {
-	case api.SkippedLargeProps:
+	case api.SkippedLargeProps, api.SkippedSourceItemGone:
 		err = mng.writeSkippedErrorContent(e)
 	default:
 		err = mng.writeRetryableErrorContent(e)
@@ -276,8 +276,7 @@ func createErrorsCsvSummary(sourceRepos []string, timeStarted time.Time) (string
 		return "", err
 	}
 
-	errorsFiles = append(errorsFiles, skippedErrorsFiles...)
-	if len(errorsFiles) == 0 {
+	if len(errorsFiles)+len(skippedErrorsFiles) == 0 {
 		return "", nil
 	}
 	// Collect all errors from the given log files
@@ -285,7 +284,28 @@ func createErrorsCsvSummary(sourceRepos []string, timeStarted time.Time) (string
 	if err != nil {
 		return "", err
 	}
+	skippedErrors, err := parseErrorsFromLogFiles(skippedErrorsFiles)
+	if err != nil {
+		return "", err
+	}
+	allErrors.Errors = append(allErrors.Errors, dedupeSkippedRows(skippedErrors.Errors)...)
 	return cmdutils.CreateCSVFile("transfer-files-logs", allErrors.Errors, timeStarted)
+}
+
+// dedupeSkippedRows keeps one row per repo/path/name/status. The same item can be skipped by more
+// than one phase (or run), which would otherwise list it several times in the summary.
+func dedupeSkippedRows(rows []ExtendedFileUploadStatusResponse) []ExtendedFileUploadStatusResponse {
+	seen := make(map[string]struct{}, len(rows))
+	deduped := make([]ExtendedFileUploadStatusResponse, 0, len(rows))
+	for _, row := range rows {
+		key := fmt.Sprintf("%s\x00%s\x00%s\x00%s", row.Repo, row.Path, row.Name, row.Status)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		deduped = append(deduped, row)
+	}
+	return deduped
 }
 
 // Gets a list of all errors files from the CLI's cache.

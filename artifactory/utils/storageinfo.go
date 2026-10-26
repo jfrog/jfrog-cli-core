@@ -3,6 +3,7 @@ package utils
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -30,7 +31,11 @@ type StorageInfoManager struct {
 }
 
 func NewStorageInfoManager(ctx context.Context, serverDetails *config.ServerDetails) (*StorageInfoManager, error) {
-	serviceManager, err := CreateServiceManagerWithContext(ctx, serverDetails, false, 0, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequestMilliSecs, time.Minute)
+	return NewStorageInfoManagerWithHttpClient(ctx, serverDetails, nil)
+}
+
+func NewStorageInfoManagerWithHttpClient(ctx context.Context, serverDetails *config.ServerDetails, httpClient *http.Client) (*StorageInfoManager, error) {
+	serviceManager, err := CreateServiceManagerWithContextAndHttpClient(ctx, serverDetails, false, 0, serviceManagerRetriesPerRequest, serviceManagerRetriesWaitPerRequestMilliSecs, time.Minute, httpClient)
 	if err != nil {
 		return nil, err
 	}

@@ -60,7 +60,7 @@ func newRepoSnapshotManager(root *Node, repoKey, snapshotFilePath string) RepoSn
 		root:             root,
 		repoKey:          repoKey,
 		snapshotFilePath: snapshotFilePath,
-		lruCache:         lru.New(cacheSize, lru.WithoutSync()),
+		lruCache:         lru.New(cacheSize),
 	}
 }
 

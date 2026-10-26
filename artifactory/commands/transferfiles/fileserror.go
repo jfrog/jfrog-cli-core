@@ -37,8 +37,8 @@ func (e *errorsRetryPhase) handlePreviousUploadFailures() error {
 	}
 	log.Info("Starting to handle previous upload failures...")
 	e.transferManager = newTransferManager(e.phaseBase, getDelayUploadComparisonFunctions(e.repoSummary.PackageType))
-	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
-		errFileHandler := e.createErrorFilesHandleFunc(pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+	action := func(pcWrapper *producerConsumerWrapper, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+		errFileHandler := e.createErrorFilesHandleFunc(pcWrapper, delayHelper, errorsChannelMng)
 		_, err := pcWrapper.chunkBuilderProducerConsumer.AddTaskWithError(errFileHandler(), pcWrapper.errorsQueue.AddError)
 		return err
 	}
@@ -61,7 +61,7 @@ func convertUploadStatusToFileRepresentation(statuses []ExtendedFileUploadStatus
 	return
 }
 
-func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *producerConsumerWrapper, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	if ShouldStop(&e.phaseBase, &delayHelper, errorsChannelMng) {
 		return nil
 	}
@@ -84,17 +84,17 @@ func (e *errorsRetryPhase) handleErrorsFile(errFilePath string, pcWrapper *produ
 	}
 
 	// Upload
-	_, err = uploadByChunks(convertUploadStatusToFileRepresentation(failedFiles.Errors), uploadChunkChan, e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
+	_, err = transferFiles(convertUploadStatusToFileRepresentation(failedFiles.Errors), e.phaseBase, delayHelper, errorsChannelMng, pcWrapper)
 	return err
 }
 
-func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
+func (e *errorsRetryPhase) createErrorFilesHandleFunc(pcWrapper *producerConsumerWrapper, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) errorFileHandlerFunc {
 	return func() parallel.TaskFunc {
 		return func(int) error {
 			var errList []string
 			var err error
 			for _, errFile := range e.errorsFilesToHandle {
-				err = e.handleErrorsFile(errFile, pcWrapper, uploadChunkChan, delayHelper, errorsChannelMng)
+				err = e.handleErrorsFile(errFile, pcWrapper, delayHelper, errorsChannelMng)
 				if err != nil {
 					errList = append(errList, fmt.Sprintf("handleErrorsFile for %s failed with error: \n%s", errFile, err.Error()))
 				}

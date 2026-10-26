@@ -3,9 +3,10 @@ package state
 import (
 	"errors"
 	"fmt"
-	"github.com/jfrog/gofrog/safeconvert"
+	"sync"
 	"time"
 
+	"github.com/jfrog/gofrog/safeconvert"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 
 	"github.com/jfrog/jfrog-client-go/artifactory/services/utils"
@@ -27,6 +28,7 @@ const (
 )
 
 var numOfSpeedsToKeepPerWorkingThread = 10
+var timeEstimationMutex sync.RWMutex
 
 type TimeEstimationManager struct {
 	// Speeds of the last done chunks, in bytes/ms
@@ -41,39 +43,65 @@ type TimeEstimationManager struct {
 	stateManager *TransferStateManager
 }
 
-func (tem *TimeEstimationManager) AddChunkStatus(chunkStatus api.ChunkStatus, durationMillis int64) error {
-	if durationMillis == 0 {
-		return nil
-	}
+func (tem *TimeEstimationManager) ResetCurrentTotalTransferredBytes() {
+	timeEstimationMutex.Lock()
+	defer timeEstimationMutex.Unlock()
 
-	return tem.addDataChunkStatus(chunkStatus, durationMillis)
+	tem.CurrentTotalTransferredBytes = 0
 }
 
-func (tem *TimeEstimationManager) addDataChunkStatus(chunkStatus api.ChunkStatus, durationMillis int64) error {
+func (tem *TimeEstimationManager) AddChunkStatus(chunkStatus api.ChunkStatus, durationMillis int64) error {
+	chunkSizeBytes := chunkSizeBytesForSpeed(chunkStatus)
+	var workingThreads int
+	var err error
+	if durationMillis != 0 && chunkSizeBytes != 0 {
+		// Read working threads before taking timeEstimationMutex. Status persistence
+		// takes saveRunStatusMutex -> workingThreadsMutex -> timeEstimationMutex.
+		workingThreads, err = tem.stateManager.GetWorkingThreads()
+		if err != nil {
+			log.Error("Couldn't calculate time estimation:", err.Error())
+			return err
+		}
+	}
+
+	timeEstimationMutex.Lock()
+	defer timeEstimationMutex.Unlock()
+
+	if err := tem.addTransferredBytesFromChunk(chunkStatus); err != nil {
+		return err
+	}
+	if durationMillis == 0 || chunkSizeBytes == 0 {
+		return nil
+	}
+	tem.addSpeedSampleFromChunk(workingThreads, chunkSizeBytes, durationMillis)
+	return nil
+}
+
+func (tem *TimeEstimationManager) addTransferredBytesFromChunk(chunkStatus api.ChunkStatus) error {
+	for _, file := range chunkStatus.Files {
+		if file.Status == api.Fail {
+			continue
+		}
+		unsignedSizeBytes, err := safeconvert.Int64ToUint64(file.SizeBytes)
+		if err != nil {
+			return fmt.Errorf("failed to calculate the estimated remaining time: %w", err)
+		}
+		tem.CurrentTotalTransferredBytes += unsignedSizeBytes
+	}
+	return nil
+}
+
+func chunkSizeBytesForSpeed(chunkStatus api.ChunkStatus) int64 {
 	var chunkSizeBytes int64
 	for _, file := range chunkStatus.Files {
-		if file.Status != api.Fail {
-			unsignedSizeBytes, err := safeconvert.Int64ToUint64(file.SizeBytes)
-			if err != nil {
-				return fmt.Errorf("failed to calculate the estimated remaining time: %w", err)
-			}
-			tem.CurrentTotalTransferredBytes += unsignedSizeBytes
-		}
 		if (file.Status == api.Success || file.Status == api.SkippedLargeProps) && !file.ChecksumDeployed {
 			chunkSizeBytes += file.SizeBytes
 		}
 	}
+	return chunkSizeBytes
+}
 
-	// If no files were uploaded regularly (with no errors and not checksum-deployed), don't use this chunk for the time estimation calculation.
-	if chunkSizeBytes == 0 {
-		return nil
-	}
-
-	workingThreads, err := tem.stateManager.GetWorkingThreads()
-	if err != nil {
-		log.Error("Couldn't calculate time estimation:", err.Error())
-		return err
-	}
+func (tem *TimeEstimationManager) addSpeedSampleFromChunk(workingThreads int, chunkSizeBytes, durationMillis int64) {
 	speed := calculateChunkSpeed(workingThreads, chunkSizeBytes, durationMillis)
 	tem.LastSpeeds = append(tem.LastSpeeds, speed)
 	tem.LastSpeedsSum += speed
@@ -85,11 +113,10 @@ func (tem *TimeEstimationManager) addDataChunkStatus(chunkStatus api.ChunkStatus
 	}
 	if len(tem.LastSpeeds) == 0 {
 		tem.SpeedsAverage = 0
-		return err
+		return
 	}
 	// Calculate speed in bytes/ms
 	tem.SpeedsAverage = tem.LastSpeedsSum / float64(len(tem.LastSpeeds))
-	return nil
 }
 
 func calculateChunkSpeed(workingThreads int, chunkSizeSum, chunkDuration int64) float64 {
@@ -104,6 +131,9 @@ func (tem *TimeEstimationManager) getSpeed() float64 {
 
 // GetSpeedString gets the transfer speed as an easy-to-read string.
 func (tem *TimeEstimationManager) GetSpeedString() string {
+	timeEstimationMutex.RLock()
+	defer timeEstimationMutex.RUnlock()
+
 	if len(tem.LastSpeeds) == 0 {
 		return "Not available yet"
 	}
@@ -116,6 +146,9 @@ func (tem *TimeEstimationManager) GetSpeedString() string {
 // 2. No files transferred
 // 3. The transfer speed is less than 1 byte per second
 func (tem *TimeEstimationManager) GetEstimatedRemainingTimeString() (string, error) {
+	timeEstimationMutex.RLock()
+	defer timeEstimationMutex.RUnlock()
+
 	remainingTimeSec, err := tem.getEstimatedRemainingSeconds()
 	if remainingTimeSec == 0 || err != nil {
 		return "Not available yet", err
@@ -144,7 +177,9 @@ func (tem *TimeEstimationManager) getEstimatedRemainingSeconds() (uint64, error)
 		// Less than 1 byte per second
 		return 0, nil
 	}
+	runStatusCountersMutex.RLock()
 	remainingBytes := tem.stateManager.OverallTransfer.TotalSizeBytes - tem.stateManager.OverallTransfer.TransferredSizeBytes
+	runStatusCountersMutex.RUnlock()
 	unsignedRemainingBytes, err := safeconvert.Int64ToUint64(remainingBytes)
 	if err != nil {
 		return 0, fmt.Errorf("failed to calculate the estimated remaining time: %w", err)

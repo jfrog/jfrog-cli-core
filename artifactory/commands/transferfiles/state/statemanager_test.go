@@ -2,6 +2,7 @@ package state
 
 import (
 	"github.com/jfrog/gofrog/safeconvert"
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"sync"
 	"testing"
 	"time"
@@ -51,6 +52,29 @@ func TestPhase2CompletedPersistedAfterSaveStateAndSnapshots(t *testing.T) {
 	assert.True(t, exists)
 	assert.Len(t, loaded.CurrentRepo.Diffs, 1)
 	assert.True(t, loaded.CurrentRepo.Diffs[0].Completed, "Phase 2 completed=true must be persisted to disk after SaveStateAndSnapshots")
+}
+
+// TestUpdateChunkInState_sourceGoneIsNotCountedAsTransferred: items skipped because they no longer
+// exist in the source must not inflate the transferred-units count (which made 39 lost files out
+// of 60 show up as 60/60); they are counted separately.
+func TestUpdateChunkInState_sourceGoneIsNotCountedAsTransferred(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 3, false, true))
+	assert.NoError(t, stateManager.SetRepoPhase(api.Phase1))
+	stateManager.CurrentRepoPhase = api.Phase1
+
+	chunk := api.ChunkStatus{Files: []api.FileUploadStatusResponse{
+		{FileRepresentation: api.FileRepresentation{Repo: repo1Key, Path: "a", Name: "ok.bin"}, Status: api.Success, SizeBytes: 10},
+		{FileRepresentation: api.FileRepresentation{Repo: repo1Key, Path: "a", Name: "gone1.bin"}, Status: api.SkippedSourceItemGone},
+		{FileRepresentation: api.FileRepresentation{Repo: repo1Key, Path: "a", Name: "gone2.bin"}, Status: api.SkippedSourceItemGone},
+	}}
+	assert.NoError(t, UpdateChunkInState(stateManager, &chunk))
+
+	assert.Equal(t, int64(1), stateManager.CurrentRepo.Phase1Info.TransferredUnits)
+	assert.Equal(t, int64(10), stateManager.CurrentRepo.Phase1Info.TransferredSizeBytes)
+	assert.Equal(t, int64(1), stateManager.OverallTransfer.TransferredUnits)
+	assert.Equal(t, uint64(2), stateManager.SkippedSourceGone)
 }
 
 func assertRepoTransferred(t *testing.T, stateManager *TransferStateManager, expected bool) {

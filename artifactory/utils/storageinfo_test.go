@@ -3,15 +3,43 @@ package utils
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	clientUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
+func TestNewStorageInfoManagerWithHttpClient(t *testing.T) {
+	var requestedURL string
+	httpClient := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		requestedURL = req.URL.String()
+		return &http.Response{
+			StatusCode: http.StatusAccepted,
+			Status:     "202 Accepted",
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader("")),
+			Request:    req,
+		}, nil
+	})}
+	manager, err := NewStorageInfoManagerWithHttpClient(context.Background(),
+		&config.ServerDetails{ArtifactoryUrl: "https://target.example/artifactory/"}, httpClient)
+	require.NoError(t, err)
+	require.NoError(t, manager.CalculateStorageInfo())
+	assert.Equal(t, "https://target.example/artifactory/api/storageinfo/calculate", requestedURL)
+}
 
 func TestCalculateStorageInfo(t *testing.T) {
 	calculated := false

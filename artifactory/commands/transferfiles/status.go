@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
@@ -59,7 +58,6 @@ func ShowStatus() error {
 		output.WriteString("\n")
 		setRepositoryStatus(stateManager, &output)
 	}
-	addStaleChunks(stateManager, &output)
 	log.Output(output.String())
 	return nil
 }
@@ -91,6 +89,9 @@ func addOverallStatus(stateManager *state.TransferStateManager, output *strings.
 		failureTxt += " (" + progressbar.RetryFailureContentNote + ")"
 	}
 	addString(output, "❌", "Transfer failures", failureTxt, 2)
+	if stateManager.SkippedSourceGone > 0 {
+		addString(output, "⏭ ", "Skipped (deleted at source)", strconv.FormatUint(stateManager.SkippedSourceGone, 10)+" (items that no longer exist in the source; listed in the errors summary CSV, not retried)", 1)
+	}
 	return nil
 }
 
@@ -125,27 +126,6 @@ func setRepositoryStatus(stateManager *state.TransferStateManager, output *strin
 		delayedTxt += " (" + progressbar.DelayedFilesContentNote + ")"
 	}
 	addString(output, "✋", "Delayed files", delayedTxt, 2)
-}
-
-func addStaleChunks(stateManager *state.TransferStateManager, output *strings.Builder) {
-	if len(stateManager.StaleChunks) == 0 {
-		return
-	}
-	output.WriteString("\n")
-	addTitle(output, "File Chunks in Transit for More than 30 Minutes")
-
-	for _, nodeStaleChunks := range stateManager.StaleChunks {
-		addString(output, "🏷️ ", "Node ID", nodeStaleChunks.NodeID, 1)
-		for _, staleChunks := range nodeStaleChunks.Chunks {
-			addString(output, "  🏷️ ", "Chunk ID", staleChunks.ChunkID, 1)
-			sent := time.Unix(staleChunks.Sent, 0)
-			runningSecs := int64(time.Since(sent).Seconds())
-			addString(output, "  ⏱️ ", "Sent", sent.Format(time.DateTime)+" ("+state.SecondsToLiteralTime(runningSecs, "")+")", 1)
-			for _, file := range staleChunks.Files {
-				output.WriteString("\t\t📄 " + file + "\n")
-			}
-		}
-	}
 }
 
 func addTitle(output *strings.Builder, title string) {

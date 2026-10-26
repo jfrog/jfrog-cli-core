@@ -23,7 +23,6 @@ type transferPhase interface {
 	setRepoKey(repoKey string)
 	setCheckExistenceInFilestore(bool)
 	shouldSkipPhase() (bool, error)
-	setSrcUserPluginService(*srcUserPluginService)
 	setSourceDetails(*coreConfig.ServerDetails)
 	getSourceDetails() *coreConfig.ServerDetails
 	setTargetDetails(*coreConfig.ServerDetails)
@@ -33,7 +32,6 @@ type transferPhase interface {
 	setStateManager(stateManager *state.TransferStateManager)
 	setLocallyGeneratedFilter(locallyGeneratedFilter *locallyGeneratedFilter)
 	initProgressBar() error
-	setProxyKey(proxyKey string)
 	setBuildInfo(setBuildInfo bool)
 	setPackageType(packageType string)
 	setDisabledDistinctiveAql()
@@ -41,23 +39,27 @@ type transferPhase interface {
 	setMinCheckSumDeploySize(minCheckSumDeploySize int64)
 	setIncludeFilesPatterns(includeFilesPatterns []string)
 	setTimestampFilter(filter *timestampFilter)
+	setFileTransfer(fileTransferExecutor)
 	StopGracefully()
+}
+
+type fileTransferExecutor interface {
+	TransferFile(ctx context.Context, candidate api.FileRepresentation) TransferResult
 }
 
 type phaseBase struct {
 	context                   context.Context
+	fileTransfer              fileTransferExecutor
 	repoKey                   string
 	buildInfoRepo             bool
 	packageType               string
 	phaseId                   int
 	checkExistenceInFilestore bool
 	startTime                 time.Time
-	srcUpService              *srcUserPluginService
 	srcRtDetails              *coreConfig.ServerDetails
 	targetRtDetails           *coreConfig.ServerDetails
 	progressBar               *TransferProgressMng
 	repoSummary               serviceUtils.RepositorySummary
-	proxyKey                  string
 	pcDetails                 *producerConsumerWrapper
 	transferManager           *transferManager
 	stateManager              *state.TransferStateManager
@@ -101,16 +103,16 @@ func (pb *phaseBase) setContext(context context.Context) {
 	pb.context = context
 }
 
+func (pb *phaseBase) setFileTransfer(executor fileTransferExecutor) {
+	pb.fileTransfer = executor
+}
+
 func (pb *phaseBase) setRepoKey(repoKey string) {
 	pb.repoKey = repoKey
 }
 
 func (pb *phaseBase) setCheckExistenceInFilestore(shouldCheck bool) {
 	pb.checkExistenceInFilestore = shouldCheck
-}
-
-func (pb *phaseBase) setSrcUserPluginService(service *srcUserPluginService) {
-	pb.srcUpService = service
 }
 
 func (pb *phaseBase) setSourceDetails(details *coreConfig.ServerDetails) {
@@ -127,10 +129,6 @@ func (pb *phaseBase) setRepoSummary(repoSummary serviceUtils.RepositorySummary) 
 
 func (pb *phaseBase) setProgressBar(progressbar *TransferProgressMng) {
 	pb.progressBar = progressbar
-}
-
-func (pb *phaseBase) setProxyKey(proxyKey string) {
-	pb.proxyKey = proxyKey
 }
 
 func (pb *phaseBase) setStateManager(stateManager *state.TransferStateManager) {

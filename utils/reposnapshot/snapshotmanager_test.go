@@ -2,15 +2,17 @@ package reposnapshot
 
 import (
 	"encoding/json"
-	"github.com/jfrog/gofrog/safeconvert"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"testing"
 
+	"github.com/jfrog/gofrog/safeconvert"
 	clientutils "github.com/jfrog/jfrog-client-go/utils"
 	"github.com/jfrog/jfrog-client-go/utils/io/fileutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const dummyRepoKey = "dummy-repo-local"
@@ -251,4 +253,33 @@ func getNodeAndAssert(t *testing.T, manager RepoSnapshotManager, relativePath st
 	assert.NoError(t, err)
 	assertReturnedNode(t, manager, node, path.Dir(relativePath), expectedLen)
 	return node
+}
+
+// GET/PUT transfer-files marks snapshot completion from every uploader goroutine.
+// The LRU must be safe for concurrent Get+Add of overlapping directory paths.
+func TestGetDirectorySnapshotNodeWithLruConcurrent(t *testing.T) {
+	manager := initSnapshotManagerTest(t)
+	paths := []string{"1/b/", "./", "2/", "0/a/", "1/a/"}
+	const goroutines = 32
+	const iterations = 200
+
+	errCh := make(chan error, goroutines)
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for n := 0; n < iterations; n++ {
+				if _, err := manager.GetDirectorySnapshotNodeWithLru(paths[n%len(paths)]); err != nil {
+					errCh <- err
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		require.NoError(t, err)
+	}
 }

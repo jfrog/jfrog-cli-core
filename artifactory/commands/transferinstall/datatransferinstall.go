@@ -1,6 +1,7 @@
 package transferinstall
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/crypto"
 	"github.com/jfrog/gofrog/version"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -28,7 +30,6 @@ const (
 	artifactory         = "artifactory"
 	pluginReloadRestApi = "api/plugins/reload"
 	jfrogHomeEnvVar     = "JFROG_HOME"
-	latest              = "[RELEASE]"
 )
 
 var (
@@ -40,6 +41,12 @@ var (
 	errNotValidDestination = fmt.Errorf("can't find the directory in which to install the data-transfer plugin. Please ensure you're running this command on the machine on which Artifactory is installed. You can also use the --home-dir option to specify the directory")
 	downloadConnectionErr  = func(baseUrl, fileName, err string) error {
 		return fmt.Errorf("could not download the plugin file - '%s' from '%s' due to the following error: '%s'. If this machine has no network access to the download URL, you can download these files from another machine and place them in a directory on this machine. You can then run this command again with the --dir command option, with the directory containing the files as the value", fileName, baseUrl, err)
+	}
+	errUnverifiablePluginVersion = func(pluginVersion string) error {
+		return errorutils.CheckErrorf("the %s plugin version '%s' cannot be verified by this version of JFrog CLI, because its checksums are unknown. Upgrade JFrog CLI, or download the plugin files yourself and run this command again with the --dir command option, with the directory containing the files as the value", pluginName, pluginVersion)
+	}
+	errChecksumMismatch = func(fileName, expected, actual string) error {
+		return errorutils.CheckErrorf("the SHA-256 checksum of the downloaded plugin file '%s' is '%s', but '%s' was expected. The plugin was not installed", fileName, actual, expected)
 	}
 	// Plugin files
 	transferPluginFiles = PluginFiles{
@@ -260,46 +267,70 @@ func (idtp *InstallDataTransferPluginCommand) getTransferSourceAndAction() (src 
 		return
 	}
 	// Download files from web
+	pluginVersion := latestPluginVersion
+	if idtp.installVersion != nil {
+		pluginVersion = idtp.installVersion.GetVersion()
+	}
+	checksums, ok := pluginChecksums[pluginVersion]
+	if !ok {
+		err = errUnverifiablePluginVersion(pluginVersion)
+		return
+	}
 	var baseSrc *url.URL
 	if baseSrc, err = url.Parse(dataTransferUrl); err != nil {
 		return
 	}
-	if idtp.installVersion == nil {
-		// Latest
-		baseSrc.Path = path.Join(baseSrc.Path, latest)
-		log.Debug("Fetching latest version to the target.")
-	} else {
-		baseSrc.Path = path.Join(baseSrc.Path, idtp.installVersion.GetVersion())
-		log.Debug(fmt.Sprintf("Fetching plugin version '%s' to the target.", idtp.installVersion.GetVersion()))
-	}
+	baseSrc.Path = path.Join(baseSrc.Path, pluginVersion)
+	log.Debug(fmt.Sprintf("Fetching plugin version '%s' to the target.", pluginVersion))
 	src = baseSrc.String()
-	transferAction = DownloadFiles
+	transferAction = func(src string, pluginDir string, bundle PluginFiles) error {
+		return DownloadFiles(src, pluginDir, bundle, checksums)
+	}
 	return
 }
 
-// Download the plugin files from the given url to the target directory (create path if needed or override existing files)
-func DownloadFiles(src string, pluginDir string, bundle PluginFiles) (err error) {
+// Download the plugin files from the given url to a temporary directory, verify each file against its expected SHA-256 checksum
+// (by file name), and only then copy them to the target directory (create path if needed or override existing files)
+func DownloadFiles(src string, pluginDir string, bundle PluginFiles, checksums map[string]string) (err error) {
+	tempDirPath, err := fileutils.CreateTempDir()
+	if err != nil {
+		return
+	}
+	defer func() {
+		err = errors.Join(err, fileutils.RemoveTempDir(tempDirPath))
+	}()
 	for _, file := range bundle {
-		fileName, fileDirs := file.SplitNameAndDirs()
+		fileName := file.Name()
 		srcURL, e := file.toURL(src)
 		if e != nil {
 			return e
 		}
-		dstDirPath := fileDirs.toPath(pluginDir)
-		dirURL, e := fileDirs.toURL(src)
-		if e != nil {
-			return e
+		expectedSha256, ok := checksums[fileName]
+		if !ok {
+			return errorutils.CheckErrorf("no expected checksum is known for the plugin file '%s'. The plugin was not installed", fileName)
 		}
-		log.Debug(fmt.Sprintf("Downloading '%s' from '%s' to '%s'", fileName, dirURL, dstDirPath))
-		if err = fileutils.CreateDirIfNotExist(dstDirPath); err != nil {
-			return
-		}
-		if err = biutils.DownloadFile(filepath.Join(dstDirPath, fileName), srcURL); err != nil {
+		downloadPath := filepath.Join(tempDirPath, fileName)
+		log.Debug(fmt.Sprintf("Downloading '%s' from '%s' to '%s'", fileName, srcURL, tempDirPath))
+		if err = biutils.DownloadFile(downloadPath, srcURL); err != nil {
 			err = downloadConnectionErr(src, fileName, err.Error())
 			return
 		}
+		if err = verifyChecksum(downloadPath, expectedSha256); err != nil {
+			return
+		}
 	}
-	return
+	return CopyFiles(tempDirPath, pluginDir, bundle)
+}
+
+func verifyChecksum(filePath, expectedSha256 string) error {
+	checksums, err := crypto.GetFileChecksums(filePath, crypto.SHA256)
+	if err != nil {
+		return errorutils.CheckError(err)
+	}
+	if actual := checksums[crypto.SHA256]; actual != expectedSha256 {
+		return errChecksumMismatch(filepath.Base(filePath), expectedSha256, actual)
+	}
+	return nil
 }
 
 // Copy the plugin files from the given source to the target directory (create path if needed or override existing files)

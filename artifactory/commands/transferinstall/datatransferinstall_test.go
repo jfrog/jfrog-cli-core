@@ -1,13 +1,17 @@
 package transferinstall
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -169,18 +173,17 @@ func TestGetPluginDirDestination(t *testing.T) {
 }
 
 func TestGetTransferSourceAndAction(t *testing.T) {
-	// baseUrl := "baseurl"
-	v1 := "1.0.0"
+	v1 := "1.0.2"
 	cmd := &InstallDataTransferPluginCommand{}
 
-	// Latest
+	// Latest pinned version
 	src, action, err := cmd.getTransferSourceAndAction()
 	assert.NoError(t, err)
 	vUrl, err := url.Parse(dataTransferUrl)
 	assert.NoError(t, err)
-	vUrl.Path = path.Join(vUrl.Path, latest)
+	vUrl.Path = path.Join(vUrl.Path, latestPluginVersion)
 	assert.Equal(t, vUrl.String(), src)
-	assert.Contains(t, runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.DownloadFiles")
+	assert.NotNil(t, action)
 
 	// Specific version
 	cmd.SetInstallVersion(version.NewVersion(v1))
@@ -190,7 +193,19 @@ func TestGetTransferSourceAndAction(t *testing.T) {
 	assert.NoError(t, err)
 	vUrl.Path = path.Join(vUrl.Path, v1)
 	assert.Equal(t, vUrl.String(), src)
-	assert.True(t, strings.Contains(runtime.FuncForPC(reflect.ValueOf(action).Pointer()).Name(), "transferinstall.DownloadFiles"))
+	// The action must verify downloads against the checksums pinned for the requested version
+	server := newPluginFilesServer([]byte("tampered groovy"), []byte("tampered jar"))
+	defer server.Close()
+	pluginDir, cleanPluginDir := tests.CreateTempDirWithCallbackAndAssert(t)
+	defer cleanPluginDir()
+	assert.ErrorContains(t, action(server.URL, pluginDir, transferPluginFiles), pluginChecksums[v1][groovyFileName])
+
+	// Version without pinned checksums
+	cmd.SetInstallVersion(version.NewVersion("9.9.9"))
+	_, action, err = cmd.getTransferSourceAndAction()
+	assert.ErrorContains(t, err, "'9.9.9'")
+	assert.ErrorContains(t, err, "--dir")
+	assert.Nil(t, action)
 
 	// Local file system
 	cmd.SetLocalPluginFiles(dataTransferUrl)
@@ -235,10 +250,78 @@ func TestDownloadTransferInstall(t *testing.T) {
 	testDstPath, clean := tests.CreateTempDirWithCallbackAndAssert(t)
 	defer clean()
 	// Download latest and make sure exists at the end
-	assert.NoError(t, DownloadFiles(dataTransferUrl+"/"+latest, testDstPath, transferPluginFiles))
+	assert.NoError(t, DownloadFiles(dataTransferUrl+"/"+latestPluginVersion, testDstPath, transferPluginFiles, pluginChecksums[latestPluginVersion]))
 	for _, file := range transferPluginFiles {
 		assert.FileExists(t, file.toPath(testDstPath))
 	}
+}
+
+func TestPluginChecksumsCoverAllPluginFiles(t *testing.T) {
+	sha256Pattern := regexp.MustCompile("^[0-9a-f]{64}$")
+	assert.Contains(t, pluginChecksums, latestPluginVersion)
+	for pluginVersion, checksums := range pluginChecksums {
+		for _, file := range transferPluginFiles {
+			assert.Regexp(t, sha256Pattern, checksums[file.Name()], "version '%s', file '%s'", pluginVersion, file.Name())
+		}
+	}
+}
+
+func TestDownloadFilesVerifiesChecksums(t *testing.T) {
+	groovyContent := []byte("groovy plugin")
+	jarContent := []byte("jar library")
+	validChecksums := map[string]string{
+		groovyFileName: sha256Hex(groovyContent),
+		jarFileName:    sha256Hex(jarContent),
+	}
+	server := newPluginFilesServer(groovyContent, jarContent)
+	defer server.Close()
+
+	cases := []struct {
+		name        string
+		checksums   map[string]string
+		expectedErr string
+	}{
+		{name: "matching checksums", checksums: validChecksums},
+		{name: "mismatching checksum", checksums: map[string]string{groovyFileName: validChecksums[groovyFileName], jarFileName: sha256Hex([]byte("other"))}, expectedErr: "SHA-256 checksum of the downloaded plugin file '" + jarFileName + "'"},
+		{name: "missing checksum", checksums: map[string]string{groovyFileName: validChecksums[groovyFileName]}, expectedErr: "no expected checksum is known for the plugin file '" + jarFileName + "'"},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			pluginDir, cleanPluginDir := tests.CreateTempDirWithCallbackAndAssert(t)
+			defer cleanPluginDir()
+			err := DownloadFiles(server.URL, pluginDir, transferPluginFiles, testCase.checksums)
+			if testCase.expectedErr == "" {
+				assert.NoError(t, err)
+				for _, file := range transferPluginFiles {
+					assert.FileExists(t, file.toPath(pluginDir))
+				}
+				return
+			}
+			assert.ErrorContains(t, err, testCase.expectedErr)
+			entries, readErr := os.ReadDir(pluginDir)
+			assert.NoError(t, readErr)
+			assert.Empty(t, entries, "no plugin file may be installed when verification fails")
+		})
+	}
+}
+
+// Serves the plugin files at the same relative paths as the plugin's download URL
+func newPluginFilesServer(groovyContent, jarContent []byte) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/" + groovyFileName:
+			_, _ = w.Write(groovyContent)
+		case "/" + libDir + "/" + jarFileName:
+			_, _ = w.Write(jarContent)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+}
+
+func sha256Hex(content []byte) string {
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])
 }
 
 func TestReloadPlugins(t *testing.T) {

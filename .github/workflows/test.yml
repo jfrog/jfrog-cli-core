@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    runs-on: ${{ matrix.os }}-latest
+    # Ubuntu is pinned: the Mono install step below relies on apt-key, which is removed in newer Ubuntu releases.
+    runs-on: ${{ matrix.os == 'ubuntu' && 'ubuntu-24.04' || format('{0}-latest', matrix.os) }}
     strategy:
       fail-fast: false
       matrix:

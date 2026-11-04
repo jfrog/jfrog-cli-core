@@ -1,11 +1,11 @@
 package state
 
 import (
-	"github.com/jfrog/gofrog/safeconvert"
 	"testing"
 	"time"
 
 	"github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/gofrog/safeconvert"
 	rtServicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 
 	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
@@ -230,6 +230,38 @@ func TestTransferredSizeInState(t *testing.T) {
 	}
 	addChunkStatus(t, timeEstMng, chunkStatus4, 3, true, 10*milliSecsInSecond)
 	assertTransferredSizes(t, timeEstMng.stateManager, chunkStatus1.Files[0].SizeBytes+chunkStatus1.Files[1].SizeBytes, chunkStatus3.Files[0].SizeBytes+chunkStatus4.Files[0].SizeBytes)
+}
+
+func TestAddChunkStatus_zeroDurationChecksumHitCountsBytes(t *testing.T) {
+	timeEstMng, cleanUp := initTimeEstimationDataTest(t)
+	defer cleanUp()
+
+	const fileSize = 8 * rtServicesUtils.SizeMiB
+	chunkStatus := api.ChunkStatus{
+		Files: []api.FileUploadStatusResponse{
+			createFileUploadStatusResponse(repo1Key, fileSize, true, api.Success),
+		},
+	}
+	assert.NoError(t, timeEstMng.AddChunkStatus(chunkStatus, 0))
+	assert.Equal(t, uint64(fileSize), timeEstMng.CurrentTotalTransferredBytes)
+	assert.Empty(t, timeEstMng.LastSpeeds)
+}
+
+func TestTimeEstimationManagerResetCurrentTotalTransferredBytes(t *testing.T) {
+	timeEstMng, cleanUp := initTimeEstimationDataTest(t)
+	defer cleanUp()
+
+	timeEstMng.LastSpeeds = []float64{1}
+	timeEstMng.LastSpeedsSum = 1
+	timeEstMng.SpeedsAverage = 1
+	timeEstMng.CurrentTotalTransferredBytes = 1
+
+	timeEstMng.ResetCurrentTotalTransferredBytes()
+
+	assert.Equal(t, []float64{1}, timeEstMng.LastSpeeds)
+	assert.Equal(t, float64(1), timeEstMng.LastSpeedsSum)
+	assert.Equal(t, float64(1), timeEstMng.SpeedsAverage)
+	assert.Zero(t, timeEstMng.CurrentTotalTransferredBytes)
 }
 
 func addChunkStatus(t *testing.T, timeEstMng *TimeEstimationManager, chunkStatus api.ChunkStatus, workingThreads int, includedInTotalSize bool, durationMillis int64) {

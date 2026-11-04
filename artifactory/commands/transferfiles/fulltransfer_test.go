@@ -3,19 +3,94 @@ package transferfiles
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/state"
 	commonTests "github.com/jfrog/jfrog-cli-core/v2/common/tests"
+	coreConfig "github.com/jfrog/jfrog-cli-core/v2/utils/config"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/tests"
 	servicesUtils "github.com/jfrog/jfrog-client-go/artifactory/services/utils"
 	"github.com/jfrog/jfrog-client-go/utils/log"
 	"github.com/stretchr/testify/assert"
 )
+
+type fakeFileTransferExecutor struct {
+	callCount int
+	mu        sync.Mutex
+}
+
+func (f *fakeFileTransferExecutor) TransferFile(_ context.Context, candidate api.FileRepresentation) TransferResult {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.callCount++
+	if candidate.Name == "fail.jar" {
+		return TransferResult{
+			Candidate: candidate,
+			Status:    api.Fail,
+			Err:       errors.New("transfer failed"),
+		}
+	}
+	return TransferResult{Candidate: candidate, Status: api.Success}
+}
+
+func TestFolderTraversal_schedulesFileTransfer(t *testing.T) {
+	stateManager, cleanUp := state.InitStateTest(t)
+	defer cleanUp()
+
+	mockAqlResults := servicesUtils.AqlSearchResult{
+		Results: []servicesUtils.ResultItem{
+			{Repo: "test-repo", Path: ".", Name: "file.jar", Size: 100, Type: "file"},
+		},
+	}
+
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.RequestURI == "/api/search/aql" {
+			w.WriteHeader(http.StatusOK)
+			response, _ := json.Marshal(mockAqlResults)
+			_, _ = w.Write(response)
+		}
+	}))
+	defer testServer.Close()
+
+	serverDetails := &coreConfig.ServerDetails{ArtifactoryUrl: testServer.URL + "/"}
+
+	assert.NoError(t, stateManager.SetRepoState("test-repo", 0, 0, false, true))
+	node, err := stateManager.LookUpNode(".")
+	assert.NoError(t, err)
+
+	executor := &fakeFileTransferExecutor{}
+	pcWrapper := newProducerConsumerWrapper()
+	errorsChannelMng := createErrorsChannelMng()
+
+	phase := &fullTransferPhase{
+		phaseBase: phaseBase{
+			context:                context.Background(),
+			stateManager:           stateManager,
+			repoKey:                "test-repo",
+			srcRtDetails:           serverDetails,
+			fileTransfer:           executor,
+			pcDetails:              &pcWrapper,
+			locallyGeneratedFilter: &locallyGeneratedFilter{enabled: false},
+		},
+	}
+
+	delayedArtifactsChannelMng := createdDelayedArtifactsChannelMng()
+	delayHelper := delayUploadHelper{delayedArtifactsChannelMng: &delayedArtifactsChannelMng}
+
+	err = phase.transferFolder(node, folderParams{relativePath: "."}, "", &pcWrapper, delayHelper, &errorsChannelMng)
+	assert.NoError(t, err)
+
+	assert.NoError(t, runProducerConsumers(&pcWrapper))
+
+	assert.Equal(t, 1, executor.callCount, "folder traversal should schedule FileTransfer.TransferFile per file")
+}
 
 // TestGetPatternMatchingFilesWithResults tests getPatternMatchingFiles with files returned
 func TestGetPatternMatchingFilesWithResults(t *testing.T) {
@@ -190,6 +265,56 @@ func TestRunWithAqlPatternFilteringPagination(t *testing.T) {
 
 	// Verify both pages were fetched
 	assert.Equal(t, 2, aqlCallCount, "AQL should be called twice for two pages")
+}
+
+// TestWarnIfRepoAppearsBlackedOut covers the B-38 fix: an AQL query returning zero results is
+// corroborated against the repo's own GetRepoSummary file count (fetched once at repo-transfer
+// start) before being trusted at face value, since Artifactory's AQL endpoint silently filters
+// out items the querying identity can't read (HTTP 200, empty result set - not an error),
+// which looks identical to a genuinely empty repository.
+func TestWarnIfRepoAppearsBlackedOut(t *testing.T) {
+	t.Run("warns when repo summary reports files but the query found none", func(t *testing.T) {
+		buffer, stderrBuffer, previousLog := tests.RedirectLogOutputToBuffer()
+		defer log.SetLogger(previousLog)
+
+		phase := &fullTransferPhase{
+			phaseBase: phaseBase{
+				repoKey:     "blacked-out-repo",
+				repoSummary: servicesUtils.RepositorySummary{FilesCount: json.Number("42")},
+			},
+		}
+		phase.warnIfRepoAppearsBlackedOut("the include-pattern AQL query")
+
+		output := buffer.String() + stderrBuffer.String()
+		assert.Contains(t, output, "blacked-out-repo")
+		assert.Contains(t, output, "42")
+		assert.Contains(t, output, "read permission")
+	})
+
+	t.Run("no warning when repo summary reports zero files", func(t *testing.T) {
+		buffer, stderrBuffer, previousLog := tests.RedirectLogOutputToBuffer()
+		defer log.SetLogger(previousLog)
+
+		phase := &fullTransferPhase{
+			phaseBase: phaseBase{
+				repoKey:     "genuinely-empty-repo",
+				repoSummary: servicesUtils.RepositorySummary{FilesCount: json.Number("0")},
+			},
+		}
+		phase.warnIfRepoAppearsBlackedOut("the include-pattern AQL query")
+
+		assert.NotContains(t, buffer.String()+stderrBuffer.String(), "read permission")
+	})
+
+	t.Run("no warning when repo summary's file count is unparseable", func(t *testing.T) {
+		buffer, stderrBuffer, previousLog := tests.RedirectLogOutputToBuffer()
+		defer log.SetLogger(previousLog)
+
+		phase := &fullTransferPhase{phaseBase: phaseBase{repoKey: "no-summary-repo"}}
+		phase.warnIfRepoAppearsBlackedOut("the include-pattern AQL query")
+
+		assert.NotContains(t, buffer.String()+stderrBuffer.String(), "read permission")
+	})
 }
 
 func TestMaybeWarnCompletedFolderSkippedWithFilter(t *testing.T) {

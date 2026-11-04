@@ -57,9 +57,14 @@ func NewLocallyGenerated(context context.Context, serviceManager artifactory.Art
 // Filters out locally generated files.
 // Files that are generated automatically by Artifactory on the target instance (also known as "locally generated files") should not be transferred.
 // aqlResults - Directory content in phase 1 or 15 minutes interval results in phase 2.
-func (lg *locallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.ResultItem) ([]utils.ResultItem, error) {
-	if !lg.enabled || len(aqlResultItems) == 0 {
+// packageType is the source repository package type (used when the target is older than 7.55).
+// An empty value means no legacy package-type filter is applied.
+func (lg *locallyGeneratedFilter) FilterLocallyGenerated(aqlResultItems []utils.ResultItem, packageType string) ([]utils.ResultItem, error) {
+	if len(aqlResultItems) == 0 {
 		return aqlResultItems, nil
+	}
+	if !lg.enabled {
+		return filterGeneratedPathsByPackageType(aqlResultItems, packageType), nil
 	}
 	content, err := lg.createPayload(aqlResultItems)
 	if err != nil || len(content) == 0 {
@@ -90,8 +95,8 @@ func (lg *locallyGeneratedFilter) doFilterLocallyGenerated(content []byte) (resp
 	return lg.targetServiceDetails.GetClient().SendPost(lg.targetServiceDetails.GetUrl()+locallyGeneratedApi, content, lg.httpDetails)
 }
 
-// Return true if should filter Artifactory locally generated files in the JFrog CLI
-// False if should filter Artifactory locally generated files in the Data Transfer plugin
+// Return true if locally generated paths are filtered via POST /api/localgenerated/filter/paths (target >= 7.55).
+// False if the CLI applies the plugin PathPropsFilter path table instead (target < 7.55).
 func (lg *locallyGeneratedFilter) IsEnabled() bool {
 	return lg.enabled
 }

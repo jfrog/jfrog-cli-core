@@ -45,14 +45,14 @@ func TestFilterLocallyGenerated(t *testing.T) {
 			returnedLocallyGenerated, err = json.Marshal(returnedPayload)
 			assert.NoError(t, err)
 
-			results, err := locallyGeneratedEnabled.FilterLocallyGenerated(testCase.paths)
+			results, err := locallyGeneratedEnabled.FilterLocallyGenerated(testCase.paths, "generic")
 			assert.NoError(t, err)
 			assert.Len(t, results, len(testCase.returnedPath))
 			for i := range results {
 				assert.Contains(t, testCase.returnedPath, getPathInRepo(&results[i]))
 			}
 
-			results, err = locallyGeneratedDisabled.FilterLocallyGenerated(testCase.paths)
+			results, err = locallyGeneratedDisabled.FilterLocallyGenerated(testCase.paths, "generic")
 			assert.NoError(t, err)
 			assert.Equal(t, results, testCase.paths)
 		})
@@ -84,7 +84,7 @@ func TestFilterLocallyGeneratedMaxRequests(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err := locallyGenerated.FilterLocallyGenerated([]utils.ResultItem{{Path: "a", Name: "b"}})
+			_, err := locallyGenerated.FilterLocallyGenerated([]utils.ResultItem{{Path: "a", Name: "b"}}, "generic")
 			assert.NoError(t, err)
 		}()
 	}

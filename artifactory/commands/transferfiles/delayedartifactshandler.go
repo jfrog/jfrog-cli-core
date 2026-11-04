@@ -150,11 +150,11 @@ func countDelayFilesContent(filePaths []string) (count int, storage int64, err e
 
 func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayUploadComparisonFunctions []shouldDelayUpload) error {
 	manager := newTransferManager(base, delayUploadComparisonFunctions)
-	action := func(pcWrapper *producerConsumerWrapper, uploadChunkChan chan UploadedChunk, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+	action := func(pcWrapper *producerConsumerWrapper, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 		if ShouldStop(&base, &delayHelper, errorsChannelMng) {
 			return nil
 		}
-		return consumeDelayedArtifactsFiles(pcWrapper, filesToConsume, uploadChunkChan, base, delayHelper, errorsChannelMng)
+		return consumeDelayedArtifactsFiles(pcWrapper, filesToConsume, base, delayHelper, errorsChannelMng)
 	}
 	delayAction := func(pBase phaseBase, addedDelayFiles []string) error {
 		// We call this method as a recursion in order to have inner order base on the comparison function list.
@@ -171,7 +171,7 @@ func handleDelayedArtifactsFiles(filesToConsume []string, base phaseBase, delayU
 	return manager.doTransferWithProducerConsumer(action, delayAction)
 }
 
-func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, uploadChunkChan chan UploadedChunk, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
+func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToConsume []string, base phaseBase, delayHelper delayUploadHelper, errorsChannelMng *ErrorsChannelMng) error {
 	log.Debug(fmt.Sprintf("Starting to handle delayed artifacts files. Found %d files.", len(filesToConsume)))
 	for _, filePath := range filesToConsume {
 		log.Debug("Handling delayed artifacts file: '" + filePath + "'")
@@ -180,7 +180,7 @@ func consumeDelayedArtifactsFiles(pcWrapper *producerConsumerWrapper, filesToCon
 			return err
 		}
 
-		shouldStop, err := uploadByChunks(delayedArtifactsFile.DelayedArtifacts, uploadChunkChan, base, delayHelper, errorsChannelMng, pcWrapper)
+		shouldStop, err := transferFiles(delayedArtifactsFile.DelayedArtifacts, base, delayHelper, errorsChannelMng, pcWrapper)
 		if err != nil || shouldStop {
 			return err
 		}

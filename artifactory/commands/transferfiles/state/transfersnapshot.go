@@ -35,16 +35,15 @@ func (ts *TransferStateManager) snapshotAction(action SnapshotActionFunc) (err e
 		return err
 	}
 
-	now := time.Now()
-	if now.Sub(ts.repoTransferSnapshot.lastSaveTimestamp).Minutes() < float64(snapshotSaveIntervalMin) {
-		return nil
-	}
-
 	if !saveRepoSnapshotMutex.TryLock() {
 		return nil
 	}
 	defer saveRepoSnapshotMutex.Unlock()
 
+	now := time.Now()
+	if now.Sub(ts.repoTransferSnapshot.lastSaveTimestamp).Minutes() < float64(snapshotSaveIntervalMin) {
+		return nil
+	}
 	ts.repoTransferSnapshot.lastSaveTimestamp = now
 	if err = ts.repoTransferSnapshot.snapshotManager.PersistRepoSnapshot(); err != nil {
 		return err

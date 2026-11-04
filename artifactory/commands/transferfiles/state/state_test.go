@@ -1,6 +1,7 @@
 package state
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -104,6 +105,33 @@ func setAutoSaveSnapshot(interval int) (cleanUp func()) {
 	snapshotSaveIntervalMin = interval
 	return func() {
 		snapshotSaveIntervalMin = previousSaveInterval
+	}
+}
+
+func TestSnapshotAction_concurrentTimestampAccess(t *testing.T) {
+	stateManager, cleanUp := InitStateTest(t)
+	defer cleanUp()
+	defer setAutoSaveSnapshot(0)()
+
+	assert.NoError(t, stateManager.SetRepoState(repo1Key, 0, 0, false, true))
+	stateManager.repoTransferSnapshot.lastSaveTimestamp = time.Time{}
+
+	const callers = 32
+	errs := make(chan error, callers)
+	var wg sync.WaitGroup
+	wg.Add(callers)
+	for i := 0; i < callers; i++ {
+		go func() {
+			defer wg.Done()
+			_, err := stateManager.LookUpNode(".")
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		assert.NoError(t, err)
 	}
 }
 

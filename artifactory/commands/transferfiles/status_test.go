@@ -3,7 +3,6 @@ package transferfiles
 import (
 	"bytes"
 	"testing"
-	"time"
 
 	"github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/artifactory/commands/transferfiles/api"
@@ -54,7 +53,7 @@ func TestShowStatus(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.Phase1, false, false)
+	createStateManager(t, api.Phase1, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -86,7 +85,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.Phase2, false, false)
+	createStateManager(t, api.Phase2, false)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -102,6 +101,7 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.Contains(t, results, "Transfer speed:		0.011 MB/s")
 	assert.Contains(t, results, "Estimated time remaining:	Not available yet")
 	assert.Contains(t, results, "Transfer failures:		223 (In Phase 3 and in subsequent executions, we'll retry transferring the failed files)")
+	assert.NotContains(t, results, "Skipped (deleted at source)", "shown only when there are such items")
 
 	// Check repository status
 	assert.Contains(t, results, "Current Repository Status")
@@ -113,12 +113,25 @@ func TestShowStatusDiffPhase(t *testing.T) {
 	assert.NotContains(t, results, "Files:			500 / 10000 (5.0%)")
 }
 
+// TestShowStatus_skippedSourceGone verifies --status surfaces items skipped because they no longer
+// exist in the source, and stays silent when there are none.
+func TestShowStatus_skippedSourceGone(t *testing.T) {
+	buffer, cleanUp := initStatusTest(t)
+	defer cleanUp()
+	createStateManagerWithSkippedGone(t, api.Phase1, false, 39)
+
+	assert.NoError(t, ShowStatus())
+	results := buffer.String()
+	assert.Contains(t, results, "Skipped (deleted at source):")
+	assert.Contains(t, results, "39")
+}
+
 func TestShowBuildInfoRepo(t *testing.T) {
 	buffer, cleanUp := initStatusTest(t)
 	defer cleanUp()
 
 	// Create state manager and persist to file system
-	createStateManager(t, api.Phase3, true, false)
+	createStateManager(t, api.Phase3, true)
 
 	// Run show status and check output
 	assert.NoError(t, ShowStatus())
@@ -145,30 +158,16 @@ func TestShowBuildInfoRepo(t *testing.T) {
 	assert.NotContains(t, results, "Visited folders")
 }
 
-func TestShowStaleChunks(t *testing.T) {
-	buffer, cleanUp := initStatusTest(t)
-	defer cleanUp()
-
-	// Create state manager and persist to file system
-	createStateManager(t, api.Phase1, false, true)
-
-	// Run show status and check output
-	assert.NoError(t, ShowStatus())
-	results := buffer.String()
-
-	// Check stale chunks
-	assert.Contains(t, results, "File Chunks in Transit for More than 30 Minutes")
-	assert.Contains(t, results, "Node ID:\tnode-id-1")
-	assert.Contains(t, results, "Sent:\t")
-	assert.Contains(t, results, "(31 minutes)")
-	assert.Contains(t, results, "a/b/c")
-	assert.Contains(t, results, "d/e/f")
-}
-
 // Create state manager and persist in the file system.
 // t     - The testing object
 // phase - Phase ID
-func createStateManager(t *testing.T, phase int, buildInfoRepo bool, staleChunks bool) {
+func createStateManager(t *testing.T, phase int, buildInfoRepo bool) {
+	createStateManagerWithSkippedGone(t, phase, buildInfoRepo, 0)
+}
+
+// createStateManagerWithSkippedGone is createStateManager with a given number of items skipped
+// because they no longer exist in the source.
+func createStateManagerWithSkippedGone(t *testing.T, phase int, buildInfoRepo bool, skippedGone uint64) {
 	stateManager, err := state.NewTransferStateManager(false)
 	assert.NoError(t, err)
 	assert.NoError(t, stateManager.TryLockTransferStateManager())
@@ -184,23 +183,11 @@ func createStateManager(t *testing.T, phase int, buildInfoRepo bool, staleChunks
 	stateManager.VisitedFolders = 15
 	stateManager.DelayedFiles = 20
 	stateManager.TransferFailures = 223
+	stateManager.SkippedSourceGone = skippedGone
 
 	stateManager.LastSpeeds = []float64{12}
 	stateManager.LastSpeedsSum = 12
 	stateManager.SpeedsAverage = 12
-
-	if staleChunks {
-		stateManager.StaleChunks = append(stateManager.StaleChunks, state.StaleChunks{
-			NodeID: staleChunksNodeIdOne,
-			Chunks: []state.StaleChunk{
-				{
-					ChunkID: staleChunksChunkId,
-					Sent:    time.Now().Add(-time.Minute * 31).Unix(),
-					Files:   []string{"a/b/c", "d/e/f"},
-				},
-			},
-		})
-	}
 
 	// Increment transferred size and files. This action also persists the run status.
 	assert.NoError(t, stateManager.IncTransferredSizeAndFilesPhase1(500, 5000))

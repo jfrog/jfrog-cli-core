@@ -106,6 +106,15 @@ func CreateServiceManagerWithThreads(serverDetails *config.ServerDetails, isDryR
 }
 
 func CreateServiceManagerWithContext(context context.Context, serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitMilliSecs int, timeout time.Duration) (artifactory.ArtifactoryServicesManager, error) {
+	return CreateServiceManagerWithContextAndHttpClient(context, serverDetails, isDryRun, threads, httpRetries, httpRetryWaitMilliSecs, timeout, nil)
+}
+
+// CreateServiceManagerWithContextAndHttpClient matches CreateServiceManagerWithContext, and optionally
+// attaches a custom HTTP client (for example a target-only proxy). A nil httpClient preserves default client-go transport behavior.
+// When httpClient is non-nil, client-go's Build() treats it as pass-through: timeout, InsecureTls, the
+// certificates path, and client-cert settings configured on this builder have no effect on it. Callers
+// that need those applied to a non-nil httpClient must configure them on the http.Client/Transport itself.
+func CreateServiceManagerWithContextAndHttpClient(context context.Context, serverDetails *config.ServerDetails, isDryRun bool, threads, httpRetries, httpRetryWaitMilliSecs int, timeout time.Duration, httpClient *http.Client) (artifactory.ArtifactoryServicesManager, error) {
 	certsPath, err := coreutils.GetJfrogCertsDir()
 	if err != nil {
 		return nil, err
@@ -120,6 +129,9 @@ func CreateServiceManagerWithContext(context context.Context, serverDetails *con
 		SetInsecureTls(serverDetails.InsecureTls).
 		SetDryRun(isDryRun).
 		SetContext(context)
+	if httpClient != nil {
+		configBuilder.SetHttpClient(httpClient)
+	}
 	if httpRetries >= 0 {
 		configBuilder.SetHttpRetries(httpRetries)
 		configBuilder.SetHttpRetryWaitMilliSecs(httpRetryWaitMilliSecs)

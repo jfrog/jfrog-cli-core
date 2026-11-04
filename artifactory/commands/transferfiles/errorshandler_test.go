@@ -11,6 +11,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -66,6 +67,127 @@ func TestTransferErrorsMng(t *testing.T) {
 	retryEntityCount, err := getRetryErrorCount([]string{testRepoKey})
 	assert.NoError(t, err)
 	assert.Equal(t, errorsNumber, retryEntityCount)
+}
+
+// TestTransferErrorsMng_sourceItemGoneGoesToSkippedNotRetryable verifies that items skipped as
+// "source item gone" are auditable in the errors CSV via the skipped errors files, without being
+// counted as failures or queued for retry.
+func TestTransferErrorsMng_sourceItemGoneGoesToSkippedNotRetryable(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	errorsChannelMng := createErrorsChannelMng()
+	transferErrorsMng, err := newTransferErrorsToFile(testRepoKey, 0, state.ConvertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil, nil)
+	assert.NoError(t, err)
+
+	var readWaitGroup sync.WaitGroup
+	var writingErrorsErr error
+	readWaitGroup.Add(1)
+	go func() {
+		defer readWaitGroup.Done()
+		writingErrorsErr = transferErrorsMng.start()
+	}()
+
+	const goneNumber = 3
+	for i := 0; i < goneNumber; i++ {
+		errorsChannelMng.add(api.FileUploadStatusResponse{
+			FileRepresentation: api.FileRepresentation{Repo: testRepoKey, Path: "path", Name: fmt.Sprintf("gone%d", i)},
+			Status:             api.SkippedSourceItemGone,
+			Reason:             ErrSourceItemGone.Error(),
+		})
+	}
+	errorsChannelMng.close()
+	readWaitGroup.Wait()
+	assert.NoError(t, writingErrorsErr)
+
+	skippedFiles, err := getErrorsFiles([]string{testRepoKey}, false)
+	assert.NoError(t, err)
+	var skippedEntities int
+	for _, file := range skippedFiles {
+		errs, readErr := readErrorFile(file)
+		assert.NoError(t, readErr)
+		for _, e := range errs.Errors {
+			assert.Equal(t, api.SkippedSourceItemGone, e.Status)
+			assert.Equal(t, ErrSourceItemGone.Error(), e.Reason)
+		}
+		skippedEntities += len(errs.Errors)
+	}
+	assert.Equal(t, goneNumber, skippedEntities)
+
+	retryCount, err := getRetryErrorCount([]string{testRepoKey})
+	assert.NoError(t, err)
+	assert.Zero(t, retryCount, "gone items are not retryable errors")
+}
+
+// writeErrorRows writes the given rows through a TransferErrorsMng of the given phase, the way a
+// transfer phase does (retryable and skipped statuses land in their own directories).
+func writeErrorRows(t *testing.T, repoKey string, phaseId int, rows ...api.FileUploadStatusResponse) {
+	errorsChannelMng := createErrorsChannelMng()
+	mng, err := newTransferErrorsToFile(repoKey, phaseId, state.ConvertTimeToEpochMilliseconds(time.Now()), &errorsChannelMng, nil, nil)
+	assert.NoError(t, err)
+	var wg sync.WaitGroup
+	var writeErr error
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		writeErr = mng.start()
+	}()
+	for _, row := range rows {
+		errorsChannelMng.add(row)
+	}
+	errorsChannelMng.close()
+	wg.Wait()
+	assert.NoError(t, writeErr)
+}
+
+func goneRow(repoKey, name string) api.FileUploadStatusResponse {
+	return api.FileUploadStatusResponse{
+		FileRepresentation: api.FileRepresentation{Repo: repoKey, Path: "path", Name: name},
+		Status:             api.SkippedSourceItemGone,
+		Reason:             ErrSourceItemGone.Error(),
+	}
+}
+
+// TestCreateErrorsCsvSummary_dedupesSkippedRowsByPath: the same path skipped in two phases (or runs)
+// must appear once in the errors CSV.
+func TestCreateErrorsCsvSummary_dedupesSkippedRowsByPath(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	writeErrorRows(t, testRepoKey, 1, goneRow(testRepoKey, "a.bin"), goneRow(testRepoKey, "b.bin"))
+	writeErrorRows(t, testRepoKey, 2, goneRow(testRepoKey, "a.bin"))
+
+	csvPath, err := createErrorsCsvSummary([]string{testRepoKey}, time.Now())
+	assert.NoError(t, err)
+	assert.NotEmpty(t, csvPath)
+	csvContent, err := os.ReadFile(csvPath)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, strings.Count(string(csvContent), "a.bin"), "duplicate skipped rows for one path must be collapsed")
+	assert.Equal(t, 1, strings.Count(string(csvContent), "b.bin"))
+}
+
+// TestErrorsRetryPhase_goneRowsAreNotRetried documents that items skipped as "source item gone"
+// are audit-only: the retry phase reads the retryable directory only, so a rerun does not retry them.
+func TestErrorsRetryPhase_goneRowsAreNotRetried(t *testing.T) {
+	cleanUpJfrogHome, err := tests.SetJfrogHome()
+	assert.NoError(t, err)
+	defer cleanUpJfrogHome()
+
+	writeErrorRows(t, testRepoKey, 1, goneRow(testRepoKey, "a.bin"))
+	retryPhase := &errorsRetryPhase{phaseBase: phaseBase{repoKey: testRepoKey}}
+	skip, err := retryPhase.shouldSkipPhase()
+	assert.NoError(t, err)
+	assert.True(t, skip, "only gone rows exist: nothing to retry")
+	assert.Empty(t, retryPhase.errorsFilesToHandle)
+
+	writeErrorRows(t, testRepoKey, 2, api.FileUploadStatusResponse{
+		FileRepresentation: api.FileRepresentation{Repo: testRepoKey, Path: "path", Name: "failed.bin"}, Status: api.Fail, Reason: "boom"})
+	skip, err = retryPhase.shouldSkipPhase()
+	assert.NoError(t, err)
+	assert.False(t, skip, "a real failure is still retried")
+	assert.Len(t, retryPhase.errorsFilesToHandle, 1)
 }
 
 func addErrorsToChannel(writeWaitGroup *sync.WaitGroup, errorsNumber int, errorsChannelMng ErrorsChannelMng, status api.ChunkFileStatusType) {
@@ -166,4 +288,28 @@ func writeEmptyErrorsFile(t *testing.T, repoKey string, retryable bool, phase, c
 
 	fileName := fmt.Sprintf("%s-%d.json", getErrorsFileNamePrefix(repoKey, phase, state.ConvertTimeToEpochMilliseconds(time.Now())), counter)
 	assert.NoError(t, os.WriteFile(filepath.Join(errorsDirPath, fileName), nil, 0644))
+}
+
+func TestDedupeSkippedRows_keyIncludesRepoPathNameAndStatus(t *testing.T) {
+	row := func(repo, dir, name string, status api.ChunkFileStatusType) ExtendedFileUploadStatusResponse {
+		return ExtendedFileUploadStatusResponse{FileUploadStatusResponse: api.FileUploadStatusResponse{
+			FileRepresentation: api.FileRepresentation{Repo: repo, Path: dir, Name: name},
+			Status:             status,
+		}}
+	}
+	rows := []ExtendedFileUploadStatusResponse{
+		row("repo-a", "dir1", "same.txt", api.SkippedSourceItemGone),
+		row("repo-a", "dir1", "same.txt", api.SkippedSourceItemGone),  // exact duplicate: collapses
+		row("repo-a", "dir2", "same.txt", api.SkippedSourceItemGone),  // other directory: kept
+		row("repo-b", "dir1", "same.txt", api.SkippedSourceItemGone),  // other repo: kept
+		row("repo-a", "dir1", "other.txt", api.SkippedSourceItemGone), // other name: kept
+		row("repo-a", "dir1", "same.txt", api.SkippedLargeProps),      // other status: kept
+	}
+	deduped := dedupeSkippedRows(rows)
+	if !assert.Len(t, deduped, 5) {
+		return
+	}
+	assert.Equal(t, rows[0], deduped[0])
+	assert.Equal(t, rows[2], deduped[1])
+	assert.Equal(t, rows[3], deduped[2])
 }

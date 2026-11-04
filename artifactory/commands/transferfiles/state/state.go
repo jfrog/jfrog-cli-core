@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-var saveStateMutex sync.Mutex
+var saveStateMutex sync.RWMutex
+var stateCountersMutex sync.RWMutex
 
 type ActionOnStateFunc func(state *TransferState) error
 
@@ -67,8 +68,10 @@ func (ts *TransferState) Action(action ActionOnStateFunc) error {
 		return err
 	}
 
-	now := time.Now()
-	if now.Sub(ts.lastSaveTimestamp).Seconds() < float64(stateAndStatusSaveIntervalSecs) {
+	saveStateMutex.RLock()
+	sinceLastSave := time.Since(ts.lastSaveTimestamp).Seconds()
+	saveStateMutex.RUnlock()
+	if sinceLastSave < float64(stateAndStatusSaveIntervalSecs) {
 		return nil
 	}
 
@@ -77,7 +80,7 @@ func (ts *TransferState) Action(action ActionOnStateFunc) error {
 	}
 	defer saveStateMutex.Unlock()
 
-	ts.lastSaveTimestamp = now
+	ts.lastSaveTimestamp = time.Now()
 	return ts.persistTransferState(false)
 }
 
@@ -88,7 +91,11 @@ func (ts *TransferState) persistTransferState(snapshot bool) (err error) {
 		return err
 	}
 
-	content, err := json.Marshal(ts)
+	content, err := func() ([]byte, error) {
+		stateCountersMutex.RLock()
+		defer stateCountersMutex.RUnlock()
+		return json.Marshal(ts)
+	}()
 	if err != nil {
 		return errorutils.CheckError(err)
 	}

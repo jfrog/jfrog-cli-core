@@ -260,14 +260,16 @@ func (f *filesDiffPhase) getDockerTimeFrameFilesDiff(fromTimestamp, toTimestamp 
 		}
 		if manifestPaths != nil {
 			// Get all content of Artifactory folders containing a "manifest.json" file.
-			query = generateGetDirContentAqlQuery(f.repoKey, manifestPaths)
-			var pathsResult *servicesUtils.AqlSearchResult
-			pathsResult, err = runAql(f.context, f.srcRtDetails, query)
-			if err != nil {
-				return
+			// The paths are split into batches so that no AQL exceeds the server's query length limit (JFMIG-145).
+			for _, batch := range splitPathsForDirContentAql(f.repoKey, manifestPaths, dirContentAqlMaxQueryLength) {
+				var pathsResult *servicesUtils.AqlSearchResult
+				pathsResult, err = runAql(f.context, f.srcRtDetails, generateGetDirContentAqlQuery(f.repoKey, batch))
+				if err != nil {
+					return
+				}
+				// Merge "list.manifest.json" files with all other files.
+				result = append(result, pathsResult.Results...)
 			}
-			// Merge "list.manifest.json" files with all other files.
-			result = append(result, pathsResult.Results...)
 		}
 	}
 	aqlResult = &servicesUtils.AqlSearchResult{}
@@ -285,6 +287,37 @@ func generateDiffAqlQuery(repoKey, fromTimestamp, toTimestamp string, pagination
 	query := fmt.Sprintf(`items.find({"$and":[{"modified":{"$gte":"%s"}},{"modified":{"$lt":"%s"}},%s%s]})`, fromTimestamp, toTimestamp, repoClause, timestampClause)
 	query += `.include("repo","path","name","type","modified","size")`
 	return query + generateAqlSortingPart(paginationOffset, disabledDistinctiveAql)
+}
+
+// Safe upper bound for the length of a directory-content AQL. Artifactory rejects queries longer than
+// artifactory.aql.search.query.size.limit (default 6000 chars), so we stay below it.
+const dirContentAqlMaxQueryLength = 5000
+
+// Splits paths into consecutive batches such that generateGetDirContentAqlQuery of each batch is at most maxQueryLength.
+// A single path that alone exceeds the limit is returned in its own batch, so no path is ever dropped.
+func splitPathsForDirContentAql(repoKey string, paths []string, maxQueryLength int) (batches [][]string) {
+	baseLength := len(generateGetDirContentAqlQuery(repoKey, nil))
+	var current []string
+	currentLength := baseLength
+	for _, path := range paths {
+		clauseLength := len(generateGetDirContentAqlQuery(repoKey, []string{path})) - baseLength
+		separator := 0
+		if len(current) > 0 {
+			separator = 1 // The "," between clauses.
+		}
+		if len(current) > 0 && currentLength+separator+clauseLength > maxQueryLength {
+			batches = append(batches, current)
+			current = nil
+			currentLength = baseLength
+			separator = 0
+		}
+		current = append(current, path)
+		currentLength += separator + clauseLength
+	}
+	if len(current) > 0 {
+		batches = append(batches, current)
+	}
+	return
 }
 
 // This function generates an AQL that searches for all the content in the list of provided Artifactory paths.

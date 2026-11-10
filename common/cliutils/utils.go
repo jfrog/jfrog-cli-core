@@ -288,7 +288,7 @@ func getApplicationKeyFromConfig() string {
 	configFilePath := filepath.Join(JfConfigDirName, JfConfigFileName)
 	vConfig, err := project.ReadConfigFile(configFilePath, project.YAML)
 	if err != nil {
-		log.Debug("error reading config file: %v", err)
+		log.Debug(fmt.Sprintf("error reading config file: %v", err))
 		return ""
 	}
 

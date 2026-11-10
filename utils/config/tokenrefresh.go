@@ -99,7 +99,7 @@ func tokenRefreshHandler(currentAccessToken string, tokenType TokenType) (newAcc
 		return
 	}
 
-	serverConfiguration, err := GetSpecificConfig(tokenRefreshServerId, true, false)
+	serverConfiguration, err := GetSpecificConfigLocked(tokenRefreshServerId, true, false)
 	if err != nil {
 		return
 	}
@@ -185,7 +185,7 @@ func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, r
 	}
 
 	// Get configurations list
-	configurations, err := GetAllServersConfigs()
+	configurations, err := GetAllServersConfigsLocked()
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func writeNewTokens(serverConfiguration *ServerDetails, serverId, accessToken, r
 
 	// Append the configuration to the configurations list
 	configurations = append(configurations, serverConfiguration)
-	return SaveServersConf(configurations)
+	return SaveServersConfLocked(configurations)
 }
 
 func createTokensForConfig(serverDetails *ServerDetails, expirySeconds int) (auth.CreateTokenResponseData, error) {

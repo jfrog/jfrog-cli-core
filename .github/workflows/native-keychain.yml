@@ -1,0 +1,109 @@
+name: Native Keychain Tests
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+# These tests use only disposable credentials, never repository secrets. Do not
+# change this to pull_request_target or check out privileged PR code.
+permissions:
+  contents: read
+
+concurrency:
+  group: native-keychain-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-keychain:
+    name: Native keychain (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    env:
+      JFROG_CLI_TEST_KEYCHAIN: "true"
+      JFROG_CLI_REPORT_USAGE: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install Linux Secret Service
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dbus gnome-keyring
+
+      - name: Create disposable macOS keychain
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          security default-keychain -d user > "$RUNNER_TEMP/jfrog-original-default-keychain"
+          security list-keychains -d user > "$RUNNER_TEMP/jfrog-original-keychains"
+          keychain="$RUNNER_TEMP/jfrog-native-test.keychain-db"
+          password="$(openssl rand -hex 32)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security list-keychains -d user -s "$keychain"
+          security default-keychain -d user -s "$keychain"
+
+      - name: Test Linux native keychain in an isolated session
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          XDG_DATA_HOME="$(mktemp -d "$RUNNER_TEMP/jfrog-keyring-data.XXXXXX")"
+          XDG_RUNTIME_DIR="$(mktemp -d "$RUNNER_TEMP/jfrog-keyring-runtime.XXXXXX")"
+          export XDG_DATA_HOME XDG_RUNTIME_DIR
+          chmod 700 "$XDG_RUNTIME_DIR"
+          trap 'rm -rf "$XDG_DATA_HOME" "$XDG_RUNTIME_DIR"' EXIT
+          dbus-run-session -- bash -euo pipefail -c '
+            openssl rand -hex 32 | gnome-keyring-daemon --unlock --components=secrets > /dev/null
+            go test ./utils/config -run "^TestCredentialStoreNative$" -count=1 -v -timeout 60s
+          '
+
+      # Windows uses the disposable runner account's Credential Manager. The
+      # native test isolates its entries by CLI home and cleans them up itself.
+      - name: Test macOS or Windows native keychain
+        if: runner.os != 'Linux'
+        shell: bash
+        run: go test ./utils/config -run '^TestCredentialStoreNative$' -count=1 -v -timeout 60s
+
+      - name: Restore and delete macOS test keychain
+        if: always() && runner.os == 'macOS'
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import pathlib
+          import shlex
+          import subprocess
+
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          commands = [
+              ("jfrog-original-default-keychain", ["security", "default-keychain", "-d", "user", "-s"]),
+              ("jfrog-original-keychains", ["security", "list-keychains", "-d", "user", "-s"]),
+          ]
+          failed = False
+          for filename, command in commands:
+              saved = temp / filename
+              if saved.exists():
+                  result = subprocess.run(command + shlex.split(saved.read_text()), check=False)
+                  failed |= result.returncode != 0
+          keychain = temp / "jfrog-native-test.keychain-db"
+          if keychain.exists():
+              result = subprocess.run(["security", "delete-keychain", str(keychain)], check=False)
+              failed |= result.returncode != 0
+          raise SystemExit(1 if failed else 0)
+          PY

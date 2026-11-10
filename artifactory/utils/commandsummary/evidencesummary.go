@@ -57,7 +57,7 @@ func (es *EvidenceSummary) GenerateMarkdownFromFiles(dataFilePaths []string) (fi
 	for _, filePath := range dataFilePaths {
 		var evidence EvidenceSummaryData
 		if err = UnmarshalFromFilePath(filePath, &evidence); err != nil {
-			log.Warn("Failed to unmarshal evidence data from file %s: %v", filePath, err)
+			log.Warn(fmt.Sprintf("Failed to unmarshal evidence data from file %s: %v", filePath, err))
 			return
 		}
 		evidenceData = append(evidenceData, evidence)
@@ -102,7 +102,7 @@ func (es *EvidenceSummary) formatSubjectWithLink(evidence EvidenceSummaryData) s
 
 	evidenceUrl, err := GenerateEvidenceUrlByType(evidence, evidenceSection)
 	if err != nil {
-		log.Warn("Failed to generate evidence URL: %v", err)
+		log.Warn(fmt.Sprintf("Failed to generate evidence URL: %v", err))
 		evidenceUrl = ""
 	}
 

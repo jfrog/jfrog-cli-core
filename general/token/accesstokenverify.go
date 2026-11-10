@@ -35,6 +35,7 @@ type accessClient interface {
 
 type AccessTokenVerifyCommand struct {
 	serverDetails   *config.ServerDetails
+	usageDetails    *config.ServerDetails
 	token           string
 	result          *AccessTokenVerifyResult
 	now             func() time.Time
@@ -52,7 +53,20 @@ func NewAccessTokenVerifyCommand() *AccessTokenVerifyCommand {
 
 func (c *AccessTokenVerifyCommand) SetServerDetails(serverDetails *config.ServerDetails) *AccessTokenVerifyCommand {
 	c.serverDetails = serverDetails
+	c.usageDetails = withoutTokenRefresh(serverDetails)
 	return c
+}
+
+// Usage reporting authenticates with these details; without the refresh tokens, it can't refresh or rewrite the profile mid-verification.
+func withoutTokenRefresh(profile *config.ServerDetails) *config.ServerDetails {
+	if profile == nil {
+		return nil
+	}
+	details := *profile
+	details.RefreshToken = ""
+	details.ArtifactoryRefreshToken = ""
+	details.DisableTokenRefresh = true
+	return &details
 }
 
 func (c *AccessTokenVerifyCommand) SetToken(token string) *AccessTokenVerifyCommand {
@@ -61,7 +75,7 @@ func (c *AccessTokenVerifyCommand) SetToken(token string) *AccessTokenVerifyComm
 }
 
 func (c *AccessTokenVerifyCommand) ServerDetails() (*config.ServerDetails, error) {
-	return c.serverDetails, nil
+	return c.usageDetails, nil
 }
 
 func (c *AccessTokenVerifyCommand) CommandName() string {

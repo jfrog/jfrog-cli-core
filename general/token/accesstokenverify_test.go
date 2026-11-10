@@ -300,14 +300,32 @@ func TestInsecureConnectionWarning(t *testing.T) {
 	assert.Contains(t, warning, "can't prove the root certificate")
 }
 
-func TestVerify_ServerDetailsIsProfile(t *testing.T) {
+func TestVerify_ServerDetailsHasNoRefreshTokens(t *testing.T) {
 	key, fake := validSetup(t)
 	cmd := newTestCommand(signToken(t, key, validHeader(), validClaims(testNow)), fake)
-	profile := &config.ServerDetails{Url: "https://jpd.example/", AccessToken: "profile-token"}
+	profile := &config.ServerDetails{
+		ServerId:                "p",
+		Url:                     "https://jpd.example/",
+		ArtifactoryUrl:          "https://jpd.example/artifactory/",
+		AccessToken:             "profile-token",
+		RefreshToken:            "r",
+		ArtifactoryRefreshToken: "ar",
+	}
 	cmd.SetServerDetails(profile)
 	require.NoError(t, cmd.Run())
+
 	details, err := cmd.ServerDetails()
 	require.NoError(t, err)
-	assert.Same(t, profile, details)
-	assert.Equal(t, "profile-token", profile.AccessToken)
+	again, err := cmd.ServerDetails()
+	require.NoError(t, err)
+	assert.Same(t, details, again)
+	assert.Equal(t, &config.ServerDetails{
+		ServerId:            "p",
+		Url:                 "https://jpd.example/",
+		ArtifactoryUrl:      "https://jpd.example/artifactory/",
+		AccessToken:         "profile-token",
+		DisableTokenRefresh: true,
+	}, details)
+	assert.Equal(t, "r", profile.RefreshToken)
+	assert.Equal(t, "ar", profile.ArtifactoryRefreshToken)
 }

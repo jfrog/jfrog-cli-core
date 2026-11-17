@@ -61,6 +61,8 @@ func checkCurationBlock(client *jfroghttpclient.JfrogHttpClient, httpClientDetai
 	httpClientDetails.AddHeader("Range", "bytes=0-1023")
 	resp, body, _, getErr := client.SendGet(url, true, &httpClientDetails)
 	if getErr != nil {
+		// Without the body there is no proof of a Curation block. The caller reports the original error.
+		log.Debug("Failed to read the reason of the 403 response:", getErr.Error())
 		return nil
 	}
 	if reasonErr := errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK, http.StatusPartialContent); isBlockedByCuration(reasonErr) {
@@ -100,7 +102,9 @@ func readBlockedCache() (blocked map[string]time.Time, cachePath string) {
 func checkRecentlyBlocked(downloadPath string) error {
 	server, remotePath, err := getExtractorsRemoteDetails(downloadPath, false)
 	if err != nil {
-		return nil // The download reports this error.
+		// The download reports this error.
+		log.Debug("Skipping the check of blocked extractors:", err.Error())
+		return nil
 	}
 	blocked, cachePath := readBlockedCache()
 	url := server.ArtifactoryUrl + remotePath

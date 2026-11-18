@@ -43,7 +43,11 @@ func DownloadExtractor(targetPath, downloadPath string) error {
 	}
 
 	err = DownloadDependency(artDetails, remotePath, targetPath, false)
-	if errors.Is(err, biutils.ErrBlockedByCuration) {
+	switch {
+	case err == nil:
+		// The server just allowed the download, so the next commands do not ask again for a while.
+		rememberVerified(artDetails.ArtifactoryUrl + remotePath)
+	case errors.Is(err, biutils.ErrBlockedByCuration):
 		rememberBlocked(artDetails.ArtifactoryUrl + remotePath)
 	}
 	return err

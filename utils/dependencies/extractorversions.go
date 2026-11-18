@@ -22,6 +22,8 @@ const (
 	mavenExtractorArtifact  = "build-info-extractor-maven3"
 	gradleExtractorArtifact = "build-info-extractor-gradle"
 	versionsCacheDirName    = "extractor-versions"
+	// The path of an extractor jar: the artifact and the version, twice.
+	extractorJarPath = "org/jfrog/buildinfo/%[1]s/%[2]s/%[1]s-%[2]s-uber.jar"
 )
 
 // The lookup runs on every command. A request for the metadata file takes 1 to 4 seconds on a slow network,
@@ -33,6 +35,9 @@ var extractorVersionsCacheTTL = time.Hour
 
 // How long a failed lookup is not tried again. A command does not wait for a network that is not available on every run.
 var extractorVersionsFailureTTL = 10 * time.Minute
+
+// The timeout of the check that Curation still allows a jar that is already on disk. It is shorter than the lookup: the jar can be used without it.
+var extractorVerifyTimeout = 5 * time.Second
 
 // versionsCache is the list of versions that is saved between commands.
 type versionsCache struct {
@@ -66,11 +71,16 @@ func listExtractorVersions(artifact, pinEnv, majorLine string, pinMustMatchMajor
 		log.Info(fmt.Sprintf("Using the build-info extractor version %s, as set by %s.", pinned, pinEnv))
 		return biutils.ExtractorVersions{Versions: []string{pinned}, Pinned: true, PinEnv: pinEnv}, nil
 	}
-	versions, err := getAllExtractorVersions(artifact)
+	versions, serverReachable, err := getAllExtractorVersions(artifact)
 	if err != nil {
 		return biutils.ExtractorVersions{PinEnv: pinEnv}, err
 	}
-	return biutils.ExtractorVersions{Versions: biutils.FilterMajorLine(versions, majorLine), PinEnv: pinEnv}, nil
+	found := biutils.ExtractorVersions{Versions: biutils.FilterMajorLine(versions, majorLine), PinEnv: pinEnv}
+	if serverReachable {
+		// A jar on disk is not downloaded again, so the download cannot tell that Curation blocked it after the first download.
+		found.Verify = func(version string) error { return verifyExtractor(artifact, version) }
+	}
+	return found, nil
 }
 
 func validatePinnedVersion(pinned, pinEnv, majorLine string, mustMatchMajorLine bool) error {
@@ -85,34 +95,70 @@ func validatePinnedVersion(pinned, pinEnv, majorLine string, mustMatchMajorLine 
 
 // getAllExtractorVersions returns all the stable versions of an extractor, newest first.
 // It uses the saved list if it is fresh. If the lookup fails, it uses an old saved list, which is better than no list.
-func getAllExtractorVersions(artifact string) ([]string, error) {
+// serverReachable is false if the list is old because the lookup failed: the server is not asked about anything else then.
+func getAllExtractorVersions(artifact string) (versions []string, serverReachable bool, err error) {
 	// The list comes from the same place the extractor jars are downloaded from:
 	// the remote repository from the environment, or releases.jfrog.io.
 	server, remotePath, err := getExtractorsRemoteDetails(fmt.Sprintf(extractorsMetadataPath, artifact), false)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	source := server.ArtifactoryUrl + remotePath
 	cache := readVersionsCache(artifact, source)
 	if cache != nil && time.Since(cache.FetchedAt) < extractorVersionsCacheTTL {
 		log.Debug("Using the saved list of extractor versions from", cache.FetchedAt.Format(time.RFC3339))
-		return cache.Versions, nil
+		return cache.Versions, true, nil
 	}
 	if cache != nil && time.Since(cache.FailedAt) < extractorVersionsFailureTTL {
 		log.Debug("The last lookup of the extractor versions failed at", cache.FailedAt.Format(time.RFC3339), "so it is not tried again yet.")
-		return failedLookupResult(cache, nil)
+		versions, err = failedLookupResult(cache, nil)
+		return versions, false, err
 	}
-	versions, err := fetchExtractorVersions(server, remotePath)
+	versions, err = fetchExtractorVersions(server, remotePath)
 	if err == nil {
 		writeVersionsCache(artifact, versionsCache{Source: source, FetchedAt: time.Now().UTC(), Versions: versions})
-		return versions, nil
+		return versions, true, nil
 	}
 	failed := versionsCache{Source: source, FailedAt: time.Now().UTC()}
 	if cache != nil {
 		failed.FetchedAt, failed.Versions = cache.FetchedAt, cache.Versions
 	}
 	writeVersionsCache(artifact, failed)
-	return failedLookupResult(&failed, err)
+	versions, err = failedLookupResult(&failed, err)
+	return versions, false, err
+}
+
+// verifyExtractor asks the server if Curation still allows a version of an extractor whose jar is already on disk.
+// It returns an error that wraps biutils.ErrBlockedByCuration for a blocked version. Any other error means that the server could not tell.
+// The answer is kept for extractorVersionsCacheTTL, like the list of versions, so most commands send no request.
+func verifyExtractor(artifact, version string) error {
+	downloadPath := fmt.Sprintf(extractorJarPath, artifact, version)
+	if err := checkRecentlyBlocked(downloadPath); err != nil {
+		return err
+	}
+	server, remotePath, err := getExtractorsRemoteDetails(downloadPath, false)
+	if err != nil {
+		return err
+	}
+	url := server.ArtifactoryUrl + remotePath
+	if recentlyVerified(url) {
+		return nil
+	}
+	client, httpClientDetails, err := createHttpClient(server, extractorVerifyTimeout)
+	if err != nil {
+		return err
+	}
+	log.Debug("Checking that the extractor", url, "is still allowed")
+	// The same request that starts a download: it does not send the jar.
+	if _, _, err = client.GetRemoteFileDetails(url, &httpClientDetails); err == nil {
+		rememberVerified(url)
+		return nil
+	}
+	if blockedErr := checkCurationBlock(client, httpClientDetails, url, err); blockedErr != nil {
+		rememberBlocked(url)
+		return blockedErr
+	}
+	return err
 }
 
 // failedLookupResult returns the old saved list, which is better than no list. Without one, it returns the error of the lookup.

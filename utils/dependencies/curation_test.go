@@ -227,3 +227,80 @@ func TestDownloadExtractorRemembersBlockedVersions(t *testing.T) {
 	assert.ErrorIs(t, download("2.99.2"), biutils.ErrBlockedByCuration)
 	assert.Equal(t, 4, blockedRequests())
 }
+
+// A jar on disk is not downloaded again. The check asks the server if Curation still allows it.
+func TestVerifyExtractor(t *testing.T) {
+	const jarPath = "org/jfrog/buildinfo/build-info-extractor-maven3/%[1]s/build-info-extractor-maven3-%[1]s-uber.jar"
+	setup := func(t *testing.T, blocked, forbidden []string) (server *fakeReleasesServer, requests func(version string) int) {
+		server = newFakeReleasesServer(t, blocked, forbidden)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		return server, func(version string) int {
+			path := "/my-remote/artifactory/oss-release-local/" + fmt.Sprintf(jarPath, version)
+			return server.count("HEAD "+path) + server.count("GET "+path)
+		}
+	}
+	verify := func(version string) error { return verifyExtractor(mavenExtractorArtifact, version) }
+
+	t.Run("allowed: the answer is kept", func(t *testing.T) {
+		_, requests := setup(t, nil, nil)
+		require.NoError(t, verify("2.99.0"))
+		assert.Equal(t, 1, requests("2.99.0"), "one request that does not send the jar")
+		require.NoError(t, verify("2.99.0"))
+		assert.Equal(t, 1, requests("2.99.0"), "the second check sends no request")
+		// The answer ends after the cache time.
+		override(t, &extractorVersionsCacheTTL, 0)
+		require.NoError(t, verify("2.99.0"))
+		assert.Equal(t, 2, requests("2.99.0"))
+	})
+	t.Run("a download that worked counts as a check", func(t *testing.T) {
+		_, requests := setup(t, nil, nil)
+		targetPath := filepath.Join(t.TempDir(), "extractor.jar")
+		require.NoError(t, DownloadExtractor(targetPath, fmt.Sprintf(jarPath, "2.99.0")))
+		before := requests("2.99.0")
+		require.NoError(t, verify("2.99.0"))
+		assert.Equal(t, before, requests("2.99.0"), "the check sends no request")
+	})
+	t.Run("blocked: the answer is kept", func(t *testing.T) {
+		_, requests := setup(t, []string{"2.99.2"}, nil)
+		assert.ErrorIs(t, verify("2.99.2"), biutils.ErrBlockedByCuration)
+		assert.Equal(t, 2, requests("2.99.2"), "the request, and the request that reads the reason")
+		assert.ErrorIs(t, verify("2.99.2"), biutils.ErrBlockedByCuration)
+		assert.Equal(t, 2, requests("2.99.2"), "the second check sends no request")
+	})
+	t.Run("a missing permission is not a Curation block", func(t *testing.T) {
+		_, _ = setup(t, nil, []string{"2.99.1"})
+		err := verify("2.99.1")
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, biutils.ErrBlockedByCuration)
+	})
+	t.Run("the server is not reachable: an error that is not a block, and nothing is kept", func(t *testing.T) {
+		server, _ := setup(t, nil, nil)
+		server.Close()
+		err := verify("2.99.0")
+		require.Error(t, err)
+		assert.NotErrorIs(t, err, biutils.ErrBlockedByCuration)
+		verified, _ := readURLCache(verifiedCacheFileName)
+		assert.Empty(t, verified)
+	})
+	t.Run("the walk skips a cached jar that Curation blocked later", func(t *testing.T) {
+		server, _ := setup(t, []string{"2.99.2"}, nil)
+		baseDir := t.TempDir()
+		const jarFormat = "build-info-extractor-maven3-%s-uber.jar"
+		for _, v := range []string{"2.99.2", "2.99.1"} {
+			require.NoError(t, os.MkdirAll(filepath.Join(baseDir, v), 0755))
+			require.NoError(t, os.WriteFile(filepath.Join(baseDir, v, fmt.Sprintf(jarFormat, v)), []byte("cached jar"), 0644))
+		}
+		found := biutils.ExtractorVersions{Versions: []string{"2.99.2", "2.99.1"}, Verify: verify}
+		lister := func(string) (biutils.ExtractorVersions, error) { return found, nil }
+		chosen, err := biutils.DownloadNewestExtractor(lister, baseDir, "2.99.2", jarFormat, func(v string) error {
+			if v == "2.99.2" {
+				return errors.New("the blocked version must not be downloaded")
+			}
+			return nil
+		}, &biutils.NullLog{})
+		require.NoError(t, err)
+		assert.Equal(t, "2.99.1", chosen)
+		assert.Zero(t, server.count("GET /my-remote/artifactory/oss-release-local/"+fmt.Sprintf(jarPath, "2.99.1")), "the jar itself is not requested")
+	})
+}

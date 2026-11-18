@@ -192,7 +192,7 @@ func TestListExtractorVersionsCache(t *testing.T) {
 		require.NoError(t, err)
 		second, err := ListMavenExtractorVersions("2")
 		require.NoError(t, err)
-		assert.Equal(t, first, second)
+		assert.Equal(t, first.Versions, second.Versions)
 		assert.Equal(t, 1, requests(), "the second call must not send a request")
 		// The list of all the lines is saved, so the Gradle-style filter works on it too.
 		other, err := ListMavenExtractorVersions("3")
@@ -229,7 +229,9 @@ func TestListExtractorVersionsCache(t *testing.T) {
 		second, err := ListMavenExtractorVersions("2")
 
 		require.NoError(t, err)
-		assert.Equal(t, first, second)
+		assert.Equal(t, first.Versions, second.Versions)
+		assert.NotNil(t, first.Verify)
+		assert.Nil(t, second.Verify, "the server is not asked about the jars on disk when the lookup failed")
 	})
 	t.Run("lookup fails and no saved list: the error", func(t *testing.T) {
 		server, _ := metadataServer(t, metadataPath, 0)

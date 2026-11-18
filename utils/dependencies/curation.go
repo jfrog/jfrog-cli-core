@@ -71,29 +71,69 @@ func checkCurationBlock(client *jfroghttpclient.JfrogHttpClient, httpClientDetai
 	return nil
 }
 
-const blockedCacheFileName = "blocked.json"
+const (
+	// The URLs that Curation blocked, and when.
+	blockedCacheFileName = "blocked.json"
+	// The URLs of the jars on disk that the server confirmed as allowed, and when.
+	verifiedCacheFileName = "verified.json"
+)
 
-func blockedCachePath() (string, error) {
+func urlCachePath(fileName string) (string, error) {
 	dependenciesPath, err := config.GetJfrogDependenciesPath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dependenciesPath, versionsCacheDirName, blockedCacheFileName), nil
+	return filepath.Join(dependenciesPath, versionsCacheDirName, fileName), nil
 }
 
-// readBlockedCache returns the URLs that Curation blocked, and when. It is only a speed-up, so a missing or damaged file is not an error.
-func readBlockedCache() (blocked map[string]time.Time, cachePath string) {
-	cachePath, err := blockedCachePath()
+// readURLCache returns the URLs of a cache file, and when each one was saved. It is only a speed-up, so a missing or damaged file is not an error.
+func readURLCache(fileName string) (urls map[string]time.Time, cachePath string) {
+	cachePath, err := urlCachePath(fileName)
 	if err != nil {
 		return nil, ""
 	}
-	if content, err := os.ReadFile(cachePath); err == nil && json.Unmarshal(content, &blocked) != nil {
-		blocked = nil // A damaged file is ignored.
+	if content, err := os.ReadFile(cachePath); err == nil && json.Unmarshal(content, &urls) != nil {
+		urls = nil // A damaged file is ignored.
 	}
-	if blocked == nil { // Also the case for the text "null", which is valid JSON.
-		blocked = map[string]time.Time{}
+	if urls == nil { // Also the case for the text "null", which is valid JSON.
+		urls = map[string]time.Time{}
 	}
-	return blocked, cachePath
+	return urls, cachePath
+}
+
+func readBlockedCache() (blocked map[string]time.Time, cachePath string) {
+	return readURLCache(blockedCacheFileName)
+}
+
+// rememberURL saves a URL in a cache file, and removes the URLs that are older than the cache time.
+func rememberURL(fileName, url string) {
+	urls, cachePath := readURLCache(fileName)
+	if cachePath == "" {
+		return
+	}
+	for u, seen := range urls {
+		if time.Since(seen) >= extractorVersionsCacheTTL {
+			delete(urls, u)
+		}
+	}
+	urls[url] = time.Now().UTC()
+	content, err := json.Marshal(urls)
+	if err == nil {
+		err = writeCacheFile(cachePath, content)
+	}
+	if err != nil {
+		log.Debug("Failed to save", fileName+":", err.Error())
+	}
+}
+
+func rememberBlocked(url string) { rememberURL(blockedCacheFileName, url) }
+
+func rememberVerified(url string) { rememberURL(verifiedCacheFileName, url) }
+
+func recentlyVerified(url string) bool {
+	verified, _ := readURLCache(verifiedCacheFileName)
+	seen, ok := verified[url]
+	return ok && time.Since(seen) < extractorVersionsCacheTTL
 }
 
 // checkRecentlyBlocked skips the requests for an extractor that Curation blocked a short time ago.
@@ -113,24 +153,4 @@ func checkRecentlyBlocked(downloadPath string) error {
 			biutils.ErrBlockedByCuration, url, seen.Format(time.RFC3339), extractorVersionsCacheTTL, cachePath)
 	}
 	return nil
-}
-
-func rememberBlocked(url string) {
-	blocked, cachePath := readBlockedCache()
-	if cachePath == "" {
-		return
-	}
-	for u, seen := range blocked {
-		if time.Since(seen) >= extractorVersionsCacheTTL {
-			delete(blocked, u)
-		}
-	}
-	blocked[url] = time.Now().UTC()
-	content, err := json.Marshal(blocked)
-	if err == nil {
-		err = writeCacheFile(cachePath, content)
-	}
-	if err != nil {
-		log.Debug("Failed to save the blocked extractor versions:", err.Error())
-	}
 }

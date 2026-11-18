@@ -99,8 +99,8 @@ github.com/jfrog/archiver/v3 v3.6.5 h1:AiNXJoe8jYDOtyykfVuwh26aM4rk/ei+YzBpfBukd
 github.com/jfrog/archiver/v3 v3.6.5/go.mod h1:5V9l+Fte30Y4qe9dUOAd3yNTf8lmtVNuhKNrvI8PMhg=
 github.com/jfrog/build-info-go v1.13.1-0.20260429070557-93b98034d295 h1:EH0h86KwGvNHWyEBQoHoU9WfMMKy1GJ6jJQNmfy6E0U=
 github.com/jfrog/build-info-go v1.13.1-0.20260429070557-93b98034d295/go.mod h1:+OCtMb22/D+u7Wne5lzkjJjaWr0LRZcHlDwTH86Mpwo=
-github.com/jfrog/build-info-go v1.13.1-0.20261118071201-d565bca9a50a h1:ntNPD3yVoTT36VUu6ue5XfC5xjzONGHjlGaefJ4ugso=
-github.com/jfrog/build-info-go v1.13.1-0.20261118071201-d565bca9a50a/go.mod h1:3sv87ey6WTxUckYkj0Iqu9aUaiygQMZKoXNmvT9lK5g=
+github.com/jfrog/build-info-go v1.13.1-0.20261118084716-64a9ac7c7b6c h1:B86AZ0JCFi80Igln1Z4V2YXNSd/v5vdG3FrVg4NSu40=
+github.com/jfrog/build-info-go v1.13.1-0.20261118084716-64a9ac7c7b6c/go.mod h1:3sv87ey6WTxUckYkj0Iqu9aUaiygQMZKoXNmvT9lK5g=
 github.com/jfrog/gofrog v1.7.7 h1:I2MSi+ytPqfprhOC+MLDk5fVvuRzVjTqNkzrp9RtEvY=
 github.com/jfrog/gofrog v1.7.7/go.mod h1:b/eFC21upqkt+fNwWXnAEkhjeAgP9b2gu55kT8ovAJU=
 github.com/jfrog/jfrog-client-go v1.55.1-0.20260827094947-e7a90ebc8049 h1:eogwWAzZFir1suYEgZ4ZrYrch8fhWs7ma2dxv06p/z8=

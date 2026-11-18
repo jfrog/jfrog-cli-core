@@ -71,12 +71,12 @@ func listExtractorVersions(artifact, pinEnv, majorLine string, pinMustMatchMajor
 		log.Info(fmt.Sprintf("Using the build-info extractor version %s, as set by %s.", pinned, pinEnv))
 		return biutils.ExtractorVersions{Versions: []string{pinned}, Pinned: true, PinEnv: pinEnv}, nil
 	}
-	versions, serverReachable, err := getAllExtractorVersions(artifact)
+	versions, listIsCurrent, err := getAllExtractorVersions(artifact)
 	if err != nil {
 		return biutils.ExtractorVersions{PinEnv: pinEnv}, err
 	}
 	found := biutils.ExtractorVersions{Versions: biutils.FilterMajorLine(versions, majorLine), PinEnv: pinEnv}
-	if serverReachable {
+	if listIsCurrent {
 		// A jar on disk is not downloaded again, so the download cannot tell that Curation blocked it after the first download.
 		found.Verify = func(version string) error { return verifyExtractor(artifact, version) }
 	}
@@ -95,8 +95,9 @@ func validatePinnedVersion(pinned, pinEnv, majorLine string, mustMatchMajorLine 
 
 // getAllExtractorVersions returns all the stable versions of an extractor, newest first.
 // It uses the saved list if it is fresh. If the lookup fails, it uses an old saved list, which is better than no list.
-// serverReachable is false if the list is old because the lookup failed: the server is not asked about anything else then.
-func getAllExtractorVersions(artifact string) (versions []string, serverReachable bool, err error) {
+// listIsCurrent is true when the list is fresh, from the saved file or from a fetch just made, so the server was reached now or not long ago.
+// It is false when the list is old because the lookup failed: the server is not asked about anything else then.
+func getAllExtractorVersions(artifact string) (versions []string, listIsCurrent bool, err error) {
 	// The list comes from the same place the extractor jars are downloaded from:
 	// the remote repository from the environment, or releases.jfrog.io.
 	server, remotePath, err := getExtractorsRemoteDetails(fmt.Sprintf(extractorsMetadataPath, artifact), false)
@@ -194,11 +195,7 @@ func fetchExtractorVersions(server *config.ServerDetails, remotePath string) ([]
 }
 
 func versionsCachePath(artifact string) (string, error) {
-	dependenciesPath, err := config.GetJfrogDependenciesPath()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dependenciesPath, versionsCacheDirName, artifact+".json"), nil
+	return urlCachePath(artifact + ".json")
 }
 
 // readVersionsCache returns the saved list, or nil if there is none for the source. A saved list is never an error: it is only a speed-up.

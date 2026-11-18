@@ -102,6 +102,24 @@ func TestListExtractorVersionsFromRemoteRepo(t *testing.T) {
 	}
 }
 
+func TestListGradleExtractorVersionsUsesTheGradleArtifact(t *testing.T) {
+	const gradleRepoPath = "/my-remote/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-gradle/"
+	server, requestedPaths := metadataServer(t, gradleRepoPath+"maven-metadata.xml", 0)
+	configureTestServer(t, server.URL)
+	t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+
+	found, err := ListGradleExtractorVersions("2")
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"2.44.2", "2.44.0", "2.43.9", "2.43.6"}, found.Versions)
+	assert.Equal(t, coreutils.GradleExtractorVersionEnv, found.PinEnv)
+	assert.Equal(t, []string{gradleRepoPath + "maven-metadata.xml"}, requestedPaths())
+	require.NotNil(t, found.Verify)
+	// The jar is not served: only the requested path matters.
+	_ = found.Verify("2.44.2")
+	assert.Equal(t, gradleRepoPath+"2.44.2/build-info-extractor-gradle-2.44.2-uber.jar", requestedPaths()[1])
+}
+
 func TestListExtractorVersionsPinned(t *testing.T) {
 	t.Run("pinned version, no request", func(t *testing.T) {
 		server, requestedPaths := metadataServer(t, "/", 0)
@@ -206,6 +224,33 @@ func TestListExtractorVersionsCache(t *testing.T) {
 			dirInfo, err := os.Stat(filepath.Dir(cacheFile(t)))
 			require.NoError(t, err)
 			assert.Equal(t, os.FileMode(0700), dirInfo.Mode().Perm(), "only the user can change what the cache says")
+		}
+	})
+	t.Run("the jars on disk are verified only if the list is current", func(t *testing.T) {
+		for _, test := range []struct {
+			name         string
+			failLookup   bool
+			expectVerify bool
+		}{{"fresh saved list", false, true}, {"inside the failure time", true, false}} {
+			t.Run(test.name, func(t *testing.T) {
+				requests := setup(t)
+				if test.failLookup {
+					override(t, &extractorVersionsCacheTTL, 0)
+				}
+				_, err := ListMavenExtractorVersions("2")
+				require.NoError(t, err)
+				if test.failLookup {
+					// The lookup fails once. The next calls are inside the failure time.
+					writeVersionsCache(mavenExtractorArtifact, versionsCache{Source: metadataSource(t), FetchedAt: time.Now().Add(-time.Hour), FailedAt: time.Now(), Versions: []string{"2.44.2"}})
+				}
+				before := requests()
+
+				found, err := ListMavenExtractorVersions("2")
+
+				require.NoError(t, err)
+				assert.Equal(t, test.expectVerify, found.Verify != nil)
+				assert.Equal(t, before, requests(), "the second call must not send a request")
+			})
 		}
 	})
 	t.Run("an old list is read again", func(t *testing.T) {
@@ -322,6 +367,24 @@ func TestListExtractorVersionsCache(t *testing.T) {
 		assert.Equal(t, []string{"2.44.2", "2.44.0", "2.43.9", "2.43.6"}, found.Versions)
 		assert.Equal(t, 1, requests())
 	})
+}
+
+func TestListExtractorVersionsMalformedMetadata(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("<not xml"))
+	}))
+	t.Cleanup(server.Close)
+	configureTestServer(t, server.URL)
+	t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+
+	_, err := ListMavenExtractorVersions("2")
+
+	assert.Error(t, err)
+	saved := readVersionsCache(mavenExtractorArtifact, metadataSource(t))
+	if assert.NotNil(t, saved, "the failure is saved") {
+		assert.True(t, saved.FetchedAt.IsZero(), "no list is saved")
+		assert.Empty(t, saved.Versions)
+	}
 }
 
 // metadataSource is the URL of the metadata file, as the saved list records it as its source.

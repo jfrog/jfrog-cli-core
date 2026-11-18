@@ -1,16 +1,19 @@
 package dependencies
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	biutils "github.com/jfrog/build-info-go/utils"
 	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
@@ -39,6 +42,7 @@ func TestIsBlockedByCuration(t *testing.T) {
 		{"curation problem", responseError(http.StatusForbidden, curationBody), true},
 		{"curation message only", responseError(http.StatusForbidden, `{"errors":[{"status":403,"message":"Package x was blocked by JFrog Packages Curation service"}]}`), true},
 		{"curation text, body is not JSON", responseError(http.StatusForbidden, "<html>blocked by JFrog Packages Curation service</html>"), true},
+		{"curation type in lower case", responseError(http.StatusForbidden, `{"type":"curation"}`), true},
 		{"wrapped error", fmt.Errorf("failed: %w", responseError(http.StatusForbidden, curationBody)), true},
 		{"missing permission", responseError(http.StatusForbidden, `{"errors":[{"status":403,"message":"Forbidden"}]}`), false},
 		{"empty body", responseError(http.StatusForbidden, ""), false},
@@ -58,6 +62,7 @@ type fakeReleasesServer struct {
 	*httptest.Server
 	mutex    sync.Mutex
 	requests []string
+	ranges   []string
 }
 
 // blocked: versions that Curation blocks. forbidden: versions refused for a missing permission.
@@ -66,6 +71,9 @@ func newFakeReleasesServer(t *testing.T, blocked, forbidden []string) *fakeRelea
 	server.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		server.mutex.Lock()
 		server.requests = append(server.requests, r.Method+" "+r.URL.Path)
+		if rangeHeader := r.Header.Get("Range"); rangeHeader != "" {
+			server.ranges = append(server.ranges, rangeHeader)
+		}
 		server.mutex.Unlock()
 		switch {
 		case isOneOf(r.URL.Path, forbidden):
@@ -122,11 +130,32 @@ func TestDownloadDependencyBlockedByCuration(t *testing.T) {
 	assert.Contains(t, err.Error(), "blocked by jfrog packages curation service", "the original message is kept")
 	// Only the small request that reads the reason of the 403 is sent. The jar itself is never requested.
 	assert.Equal(t, 1, server.count("GET /org/jfrog/buildinfo/build-info-extractor-maven3/2.99.2/build-info-extractor-maven3-2.99.2-uber.jar"))
+	server.mutex.Lock()
+	assert.Equal(t, []string{"bytes=0-1023"}, server.ranges, "the reason is read from the start of the file")
+	server.mutex.Unlock()
 
 	// A 403 that is not a Curation block is not reported as one.
 	err = download("2.99.1")
 	require.Error(t, err)
 	assert.NotErrorIs(t, err, biutils.ErrBlockedByCuration)
+}
+
+// The HEAD request is allowed, and the download itself is blocked.
+func TestDownloadDependencyBlockedAfterAllowedHead(t *testing.T) {
+	t.Setenv(coreutils.HomeDir, t.TempDir())
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			w.Header().Set("X-Checksum-Sha1", "da39a3ee5e6b4b0d3255bfef95601890afd80709")
+			return
+		}
+		w.Header().Set("Content-Type", "application/problem+json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(curationBody))
+	}))
+	t.Cleanup(server.Close)
+
+	err := DownloadDependency(&config.ServerDetails{ArtifactoryUrl: server.URL + "/"}, "extractor.jar", filepath.Join(t.TempDir(), "extractor.jar"), false)
+	assert.ErrorIs(t, err, biutils.ErrBlockedByCuration)
 }
 
 // The whole chain: a blocked download in core, the walk of build-info-go.
@@ -192,6 +221,65 @@ func TestRememberBlockedAfterNullFile(t *testing.T) {
 	assert.NotPanics(t, func() { rememberBlocked("http://localhost/jar") })
 	blocked, _ := readBlockedCache()
 	assert.Contains(t, blocked, "http://localhost/jar")
+}
+
+func TestRememberURL(t *testing.T) {
+	configureTestServer(t, "http://localhost")
+	_, cachePath := readBlockedCache()
+	oldEntry := time.Now().Add(-2 * extractorVersionsCacheTTL).UTC()
+	content, err := json.Marshal(map[string]time.Time{"http://localhost/old": oldEntry})
+	require.NoError(t, err)
+	require.NoError(t, writeCacheFile(cachePath, content))
+
+	rememberBlocked("http://localhost/first")
+	blocked, _ := readBlockedCache()
+	assert.NotContains(t, blocked, "http://localhost/old", "an entry older than the cache time is removed")
+	assert.Contains(t, blocked, "http://localhost/first")
+
+	rememberBlocked("http://localhost/second")
+	blocked, _ = readBlockedCache()
+	assert.Contains(t, blocked, "http://localhost/first")
+	assert.Contains(t, blocked, "http://localhost/second")
+}
+
+func TestRememberURLFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows has no Unix permission bits.")
+	}
+	configureTestServer(t, "http://localhost")
+	rememberBlocked("http://localhost/jar")
+	rememberVerified("http://localhost/jar")
+	for _, fileName := range []string{blockedCacheFileName, verifiedCacheFileName} {
+		cachePath, err := urlCachePath(fileName)
+		require.NoError(t, err)
+		info, err := os.Stat(cachePath)
+		require.NoError(t, err)
+		assert.Equal(t, os.FileMode(0600), info.Mode().Perm(), fileName)
+	}
+}
+
+func TestDownloadExtractorDoesNotRememberOtherFailures(t *testing.T) {
+	const jarPath = "org/jfrog/buildinfo/build-info-extractor-maven3/%[1]s/build-info-extractor-maven3-%[1]s-uber.jar"
+	server := newFakeReleasesServer(t, nil, []string{"2.99.1"})
+	configureTestServer(t, server.URL)
+	t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+
+	tests := []struct {
+		name         string
+		downloadPath string
+	}{
+		{"missing permission", fmt.Sprintf(jarPath, "2.99.1")},
+		{"file not found", "org/jfrog/buildinfo/build-info-extractor-maven3/2.99.0/missing.pom"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := DownloadExtractor(filepath.Join(t.TempDir(), "extractor.jar"), test.downloadPath)
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, biutils.ErrBlockedByCuration)
+			blocked, _ := readBlockedCache()
+			assert.Empty(t, blocked)
+		})
+	}
 }
 
 func TestDownloadExtractorRemembersBlockedVersions(t *testing.T) {
@@ -273,6 +361,8 @@ func TestVerifyExtractor(t *testing.T) {
 		err := verify("2.99.1")
 		require.Error(t, err)
 		assert.NotErrorIs(t, err, biutils.ErrBlockedByCuration)
+		blocked, _ := readBlockedCache()
+		assert.Empty(t, blocked)
 	})
 	t.Run("the server is not reachable: an error that is not a block, and nothing is kept", func(t *testing.T) {
 		server, _ := setup(t, nil, nil)
@@ -282,6 +372,16 @@ func TestVerifyExtractor(t *testing.T) {
 		assert.NotErrorIs(t, err, biutils.ErrBlockedByCuration)
 		verified, _ := readURLCache(verifiedCacheFileName)
 		assert.Empty(t, verified)
+		blocked, _ := readBlockedCache()
+		assert.Empty(t, blocked)
+	})
+	t.Run("a block wins over an older answer that the jar is allowed", func(t *testing.T) {
+		server, requests := setup(t, nil, nil)
+		url := server.URL + "/my-remote/artifactory/oss-release-local/" + fmt.Sprintf(jarPath, "2.99.0")
+		rememberBlocked(url)
+		rememberVerified(url)
+		assert.ErrorIs(t, verify("2.99.0"), biutils.ErrBlockedByCuration)
+		assert.Zero(t, requests("2.99.0"))
 	})
 	t.Run("the walk skips a cached jar that Curation blocked later", func(t *testing.T) {
 		server, _ := setup(t, []string{"2.99.2"}, nil)

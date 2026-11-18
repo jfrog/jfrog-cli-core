@@ -166,7 +166,7 @@ func verifyExtractor(artifact, version string) error {
 func failedLookupResult(cache *versionsCache, lookupErr error) ([]string, error) {
 	if len(cache.Versions) == 0 {
 		if lookupErr == nil {
-			lookupErr = fmt.Errorf("the last lookup failed at %s and is not tried again for %s", cache.FailedAt.Format(time.RFC3339), extractorVersionsFailureTTL)
+			lookupErr = fmt.Errorf("%w: the last lookup failed at %s and is not tried again for %s", biutils.ErrLookupNotRepeated, cache.FailedAt.Format(time.RFC3339), extractorVersionsFailureTTL)
 		}
 		return nil, lookupErr
 	}

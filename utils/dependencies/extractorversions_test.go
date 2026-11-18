@@ -3,6 +3,7 @@ package dependencies
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -335,6 +336,10 @@ func TestListExtractorVersionsCache(t *testing.T) {
 					found, err := ListMavenExtractorVersions("2")
 					assert.Equal(t, test.saveFirst, err == nil)
 					assert.Equal(t, test.saveFirst, len(found.Versions) > 0)
+					if !test.saveFirst {
+						// Only the first call is a new failure. The others tell that the lookup is not repeated, which is no new warning.
+						assert.Equal(t, i > 0, errors.Is(err, biutils.ErrLookupNotRepeated), "call %d", i)
+					}
 				}
 				// The first call sends the request that fails, the others do not.
 				assert.EqualValues(t, 1, failedRequests.Load())

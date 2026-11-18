@@ -1,6 +1,11 @@
 package dependencies
 
 import (
+	"archive/zip"
+	"bytes"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -105,4 +110,66 @@ func TestCopyFileAtomically(t *testing.T) {
 			}
 		})
 	}
+}
+
+// On Windows, the rename onto a jar that another process runs fails. The jar of that process is in place.
+func TestCopyFileAtomicallyLosesTheRename(t *testing.T) {
+	renameError := errors.New("access denied")
+	setup := func(t *testing.T) (src, dst string) {
+		override(t, &renameFile, func(_, _ string) error { return renameError })
+		src = filepath.Join(t.TempDir(), "src.jar")
+		require.NoError(t, os.WriteFile(src, []byte("new content"), 0755))
+		return src, filepath.Join(t.TempDir(), "dst.jar")
+	}
+	requireNoPartFile := func(t *testing.T, dst string) {
+		entries, err := os.ReadDir(filepath.Dir(dst))
+		require.NoError(t, err)
+		for _, entry := range entries {
+			assert.NotContains(t, entry.Name(), ".part")
+		}
+	}
+
+	t.Run("destination is a regular file", func(t *testing.T) {
+		src, dst := setup(t)
+		require.NoError(t, os.WriteFile(dst, []byte("kept"), 0600))
+		require.NoError(t, copyFileAtomically(src, dst))
+		content, err := os.ReadFile(dst)
+		require.NoError(t, err)
+		assert.Equal(t, "kept", string(content))
+		requireNoPartFile(t, dst)
+	})
+	t.Run("destination is missing", func(t *testing.T) {
+		src, dst := setup(t)
+		assert.ErrorIs(t, copyFileAtomically(src, dst), renameError)
+		assert.NoFileExists(t, dst)
+		requireNoPartFile(t, dst)
+	})
+	t.Run("destination is a directory", func(t *testing.T) {
+		src, dst := setup(t)
+		require.NoError(t, os.Mkdir(dst, 0755))
+		assert.ErrorIs(t, copyFileAtomically(src, dst), renameError)
+		requireNoPartFile(t, dst)
+	})
+}
+
+func TestDownloadDependencyExplodesAnArchive(t *testing.T) {
+	var archive bytes.Buffer
+	zipWriter := zip.NewWriter(&archive)
+	file, err := zipWriter.Create("dir/file.txt")
+	require.NoError(t, err)
+	_, err = file.Write([]byte("zipped content"))
+	require.NoError(t, err)
+	require.NoError(t, zipWriter.Close())
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(archive.Bytes())
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv(coreutils.HomeDir, t.TempDir())
+	targetDir := t.TempDir()
+
+	require.NoError(t, DownloadDependency(&config.ServerDetails{ArtifactoryUrl: server.URL + "/"}, "files.zip", filepath.Join(targetDir, "files.zip"), true))
+
+	content, err := os.ReadFile(filepath.Join(targetDir, "dir", "file.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, "zipped content", string(content))
 }

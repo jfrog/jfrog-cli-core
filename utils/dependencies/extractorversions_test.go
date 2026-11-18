@@ -3,6 +3,7 @@ package dependencies
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -407,6 +408,63 @@ func TestExtractorDownloadNoticeIsPrintedOnce(t *testing.T) {
 		require.NoError(t, err)
 	}
 	assert.Equal(t, 1, bytes.Count(output.Bytes(), []byte("not cached locally")))
+}
+
+func captureLog(t *testing.T) *bytes.Buffer {
+	var output bytes.Buffer
+	log.SetLogger(log.NewLogger(log.INFO, &output))
+	t.Cleanup(func() { log.SetLogger(log.NewLogger(log.INFO, os.Stderr)) })
+	return &output
+}
+
+// resetAnnouncements lets the test see a message that another test already consumed.
+func resetAnnouncements(t *testing.T) {
+	directDownloadNotice, deprecatedEnvWarning = sync.Once{}, sync.Once{}
+	t.Cleanup(func() { directDownloadNotice, deprecatedEnvWarning = sync.Once{}, sync.Once{} })
+}
+
+// A lookup and a check run on every command, so they must not print the announcements of a download.
+func TestListFunctionsAreSilent(t *testing.T) {
+	const metadataPath = "/my-remote/org/jfrog/buildinfo/build-info-extractor-maven3/maven-metadata.xml"
+	for _, deprecatedEnv := range []bool{false, true} {
+		t.Run(fmt.Sprintf("deprecated variable set: %t", deprecatedEnv), func(t *testing.T) {
+			server, _ := metadataServer(t, metadataPath, 0)
+			configureTestServer(t, server.URL)
+			if deprecatedEnv {
+				t.Setenv(coreutils.DeprecatedExtractorsRemoteEnv, "test/my-remote")
+			} else {
+				// Without a variable, the lookup would send a request to releases.jfrog.io.
+				writeVersionsCache(mavenExtractorArtifact, versionsCache{Source: metadataSource(t), FetchedAt: time.Now().UTC(), Versions: []string{"2.44.2"}})
+			}
+			jarServer, jarPath, err := getExtractorsRemoteDetails(fmt.Sprintf(extractorJarPath, mavenExtractorArtifact, "2.44.2"), false)
+			require.NoError(t, err)
+			rememberVerified(jarServer.ArtifactoryUrl + jarPath)
+			output := captureLog(t)
+			resetAnnouncements(t)
+
+			found, err := ListMavenExtractorVersions("2")
+			require.NoError(t, err)
+			require.NotNil(t, found.Verify)
+			require.NoError(t, found.Verify("2.44.2"))
+
+			assert.NotContains(t, output.String(), "not cached locally")
+			assert.NotContains(t, output.String(), "deprecated")
+		})
+	}
+}
+
+// Several versions can be tried in one command. The warning is printed once.
+func TestDeprecatedEnvWarningIsPrintedOnce(t *testing.T) {
+	configureTestServer(t, "http://localhost")
+	t.Setenv(coreutils.DeprecatedExtractorsRemoteEnv, "test/my-remote")
+	output := captureLog(t)
+	resetAnnouncements(t)
+
+	for i := 0; i < 3; i++ {
+		_, _, err := GetExtractorsRemoteDetails("org/jfrog/buildinfo/x")
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 1, bytes.Count(output.Bytes(), []byte("deprecated")))
 }
 
 // override sets a package variable for the test, and restores it at the end.

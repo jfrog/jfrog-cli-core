@@ -134,14 +134,14 @@ func getAllExtractorVersions(artifact string) (versions []string, listIsCurrent 
 // The answer is kept for extractorVersionsCacheTTL, like the list of versions, so most commands send no request.
 func verifyExtractor(artifact, version string) error {
 	downloadPath := fmt.Sprintf(extractorJarPath, artifact, version)
-	if err := checkRecentlyBlocked(downloadPath); err != nil {
-		return err
-	}
 	server, remotePath, err := getExtractorsRemoteDetails(downloadPath, false)
 	if err != nil {
 		return err
 	}
 	url := server.ArtifactoryUrl + remotePath
+	if err = checkRecentlyBlocked(url); err != nil {
+		return err
+	}
 	if recentlyVerified(url) {
 		return nil
 	}

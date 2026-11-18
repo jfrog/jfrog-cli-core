@@ -106,6 +106,7 @@ func readBlockedCache() (blocked map[string]time.Time, cachePath string) {
 }
 
 // rememberURL saves a URL in a cache file, and removes the URLs that are older than the cache time.
+// Two commands that write at the same time can drop one entry. This is accepted: a lost entry costs one extra request, never a wrong result.
 func rememberURL(fileName, url string) {
 	urls, cachePath := readURLCache(fileName)
 	if cachePath == "" {
@@ -139,15 +140,8 @@ func recentlyVerified(url string) bool {
 // checkRecentlyBlocked skips the requests for an extractor that Curation blocked a short time ago.
 // A blocked extractor is tried again on every command otherwise, and each try sends two requests.
 // The result is kept for extractorVersionsCacheTTL. Delete the file to try again at once.
-func checkRecentlyBlocked(downloadPath string) error {
-	server, remotePath, err := getExtractorsRemoteDetails(downloadPath, false)
-	if err != nil {
-		// The download reports this error.
-		log.Debug("Skipping the check of blocked extractors:", err.Error())
-		return nil
-	}
+func checkRecentlyBlocked(url string) error {
 	blocked, cachePath := readBlockedCache()
-	url := server.ArtifactoryUrl + remotePath
 	if seen, ok := blocked[url]; ok && time.Since(seen) < extractorVersionsCacheTTL {
 		return fmt.Errorf("%w: %s was blocked at %s. It is not tried again for %s. Delete %s to try it now",
 			biutils.ErrBlockedByCuration, url, seen.Format(time.RFC3339), extractorVersionsCacheTTL, cachePath)

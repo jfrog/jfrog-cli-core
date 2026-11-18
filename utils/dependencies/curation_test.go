@@ -404,3 +404,24 @@ func TestVerifyExtractor(t *testing.T) {
 		assert.Zero(t, server.count("GET /my-remote/artifactory/oss-release-local/"+fmt.Sprintf(jarPath, "2.99.1")), "the jar itself is not requested")
 	})
 }
+
+func TestVerifyExtractorTimesOut(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second)
+	}))
+	t.Cleanup(server.Close)
+	configureTestServer(t, server.URL)
+	t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+	override(t, &extractorVerifyTimeout, 100*time.Millisecond)
+
+	start := time.Now()
+	err := verifyExtractor(mavenExtractorArtifact, "2.99.0")
+
+	require.Error(t, err)
+	assert.NotErrorIs(t, err, biutils.ErrBlockedByCuration)
+	assert.Less(t, time.Since(start), 1500*time.Millisecond)
+	verified, _ := readURLCache(verifiedCacheFileName)
+	assert.Empty(t, verified)
+	blocked, _ := readBlockedCache()
+	assert.Empty(t, blocked)
+}

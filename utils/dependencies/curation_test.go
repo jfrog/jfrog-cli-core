@@ -456,7 +456,7 @@ func TestCheckCurationBlockReadsALimitedAmount(t *testing.T) {
 			if err != nil {
 				return
 			}
-			w.(http.Flusher).Flush()
+			_ = http.NewResponseController(w).Flush()
 		}
 	}))
 	t.Cleanup(server.Close)
@@ -470,7 +470,7 @@ func TestCheckCurationBlockStopsWhenTheServerStopsSending(t *testing.T) {
 	override(t, &extractorVerifyTimeout, 200*time.Millisecond)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.(http.Flusher).Flush()
+		_ = http.NewResponseController(w).Flush()
 		// The ceiling lets the server close if a client does not give up, so a failing test fails and does not hang.
 		select {
 		case <-r.Context().Done():

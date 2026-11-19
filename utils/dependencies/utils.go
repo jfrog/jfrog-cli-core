@@ -3,7 +3,6 @@ package dependencies
 import (
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path"
@@ -227,53 +226,7 @@ func copyFileAtomically(src, dst string) (err error) {
 	if err != nil {
 		return errorutils.CheckError(err)
 	}
-	return errorutils.CheckError(writeFileAtomically(dst, srcFile, srcInfo.Mode()))
-}
-
-// renameFile is replaced in tests.
-var renameFile = os.Rename
-
-// writeFileAtomically is biutils.WriteFileAtomic, with a rename that can lose to another process.
-func writeFileAtomically(dst string, r io.Reader, perm os.FileMode) error {
-	tmpPath, err := writeTempFile(dst, r, perm)
-	if err != nil {
-		return err
-	}
-	if err = renameFile(tmpPath, dst); err == nil {
-		return nil
-	}
-	_ = os.Remove(tmpPath)
-	// On Windows, the rename fails with "access denied" when another process runs the jar at dst.
-	// That process put the same jar there, so the jar is in place.
-	if info, statErr := os.Stat(dst); statErr == nil && info.Mode().IsRegular() {
-		return nil
-	}
-	return err
-}
-
-// writeTempFile writes r to a new temporary file next to dst, and returns its path. It removes the file if it fails.
-func writeTempFile(dst string, r io.Reader, perm os.FileMode) (tmpPath string, err error) {
-	dir := filepath.Dir(dst)
-	if err = os.MkdirAll(dir, 0777); err != nil {
-		return "", err
-	}
-	tmp, err := os.CreateTemp(dir, "."+filepath.Base(dst)+".*.part")
-	if err != nil {
-		return "", err
-	}
-	_, err = io.Copy(tmp, r)
-	if err == nil {
-		// The data must be on disk before the rename: after a crash, an empty or partial jar would pass the check for an existing jar.
-		err = tmp.Sync()
-	}
-	if err = errors.Join(err, tmp.Close()); err == nil {
-		err = os.Chmod(tmp.Name(), perm)
-	}
-	if err != nil {
-		_ = os.Remove(tmp.Name())
-		return "", err
-	}
-	return tmp.Name(), nil
+	return errorutils.CheckError(biutils.WriteFileAtomic(dst, srcFile, srcInfo.Mode()))
 }
 
 func CreateHttpClient(artDetails *config.ServerDetails) (rtHttpClient *jfroghttpclient.JfrogHttpClient, httpClientDetails httputils.HttpClientDetails, err error) {

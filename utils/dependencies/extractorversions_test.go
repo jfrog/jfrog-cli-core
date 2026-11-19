@@ -63,7 +63,7 @@ func metadataServer(t *testing.T, servedPath string, delay time.Duration) (serve
 
 // clearExtractorEnv makes the test independent of the variables of the developer's shell.
 func clearExtractorEnv(t *testing.T) {
-	for _, env := range []string{coreutils.MavenExtractorVersionEnv, coreutils.GradleExtractorVersionEnv, coreutils.ReleasesRemoteEnv, coreutils.DeprecatedExtractorsRemoteEnv} {
+	for _, env := range []string{coreutils.MavenExtractorVersionEnv, coreutils.GradleExtractorVersionEnv, coreutils.ReleasesRemoteEnv, coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ExtractorAutoVersionEnv} {
 		t.Setenv(env, "")
 	}
 }
@@ -478,4 +478,55 @@ func override[T any](t *testing.T, variable *T, value T) {
 	previous := *variable
 	*variable = value
 	t.Cleanup(func() { *variable = previous })
+}
+
+func TestExtractorAutoVersionSwitch(t *testing.T) {
+	const metadataPath = "/my-remote/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/maven-metadata.xml"
+	setup := func(t *testing.T, value string) (requests func() int) {
+		server, requestedPaths := metadataServer(t, metadataPath, 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		t.Setenv(coreutils.ExtractorAutoVersionEnv, value)
+		return func() int { return len(requestedPaths()) }
+	}
+	listers := map[string]func(string) (biutils.ExtractorVersions, error){"maven": ListMavenExtractorVersions, "gradle": ListGradleExtractorVersions}
+
+	for name, list := range listers {
+		for _, value := range []string{"false", "FALSE", "0", " false "} {
+			t.Run(name+": off with "+value+": no request, no versions, so the bundled version is used", func(t *testing.T) {
+				requests := setup(t, value)
+				found, err := list("2")
+				require.NoError(t, err)
+				assert.Empty(t, found.Versions)
+				assert.False(t, found.Pinned)
+				assert.Nil(t, found.Verify, "a jar that is on disk is not checked with the server")
+				assert.Zero(t, requests())
+			})
+		}
+	}
+	for _, value := range []string{"", "true", "1", "TRUE"} {
+		t.Run("on with '"+value+"': the versions are looked up", func(t *testing.T) {
+			requests := setup(t, value)
+			found, err := ListMavenExtractorVersions("2")
+			require.NoError(t, err)
+			assert.NotEmpty(t, found.Versions)
+			assert.Equal(t, 1, requests())
+		})
+	}
+	t.Run("a value that is not true or false fails and sends no request", func(t *testing.T) {
+		requests := setup(t, "no")
+		_, err := ListMavenExtractorVersions("2")
+		require.ErrorIs(t, err, biutils.ErrInvalidExtractorVersion)
+		assert.Contains(t, err.Error(), coreutils.ExtractorAutoVersionEnv)
+		assert.Zero(t, requests())
+	})
+	t.Run("a pinned version is still used when it is off", func(t *testing.T) {
+		requests := setup(t, "false")
+		t.Setenv(coreutils.MavenExtractorVersionEnv, "2.43.9")
+		found, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		assert.True(t, found.Pinned)
+		assert.Equal(t, []string{"2.43.9"}, found.Versions)
+		assert.Zero(t, requests())
+	})
 }

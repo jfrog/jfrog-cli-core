@@ -40,6 +40,10 @@ const (
 	// GradleExtractorVersionEnv pins the version of the Gradle build-info extractor, for example '5.2.5'.
 	// Without it, the CLI uses the newest version of the major line that matches the Gradle version.
 	GradleExtractorVersionEnv = "JFROG_CLI_GRADLE_EXTRACTOR_VERSION"
+	// ExtractorAutoVersionEnv turns off the choice of the newest allowed version of the Maven and Gradle build-info extractor, when it is false.
+	// The CLI then uses the version that is bundled with it, makes no lookup of versions and no request to check a jar that is already downloaded.
+	// A version that is pinned with MavenExtractorVersionEnv or GradleExtractorVersionEnv is still used. The default is true.
+	ExtractorAutoVersionEnv = "JFROG_CLI_EXTRACTOR_AUTO_VERSION"
 	// JFrog releases URL
 	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
 )

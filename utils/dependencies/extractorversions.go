@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,6 +72,15 @@ func listExtractorVersions(artifact, pinEnv, majorLine string, pinMustMatchMajor
 		log.Info(fmt.Sprintf("Using the build-info extractor version %s, as set by %s.", pinned, pinEnv))
 		return biutils.ExtractorVersions{Versions: []string{pinned}, Pinned: true, PinEnv: pinEnv}, nil
 	}
+	auto, err := autoVersionEnabled()
+	if err != nil {
+		return biutils.ExtractorVersions{}, err
+	}
+	if !auto {
+		// No versions: the bundled version is used, as it was before the newest version was chosen at run time.
+		log.Debug("The choice of the extractor version is off, as set by", coreutils.ExtractorAutoVersionEnv+". Using the version that is bundled with the CLI.")
+		return biutils.ExtractorVersions{PinEnv: pinEnv}, nil
+	}
 	versions, listIsCurrent, err := getAllExtractorVersions(artifact)
 	if err != nil {
 		return biutils.ExtractorVersions{PinEnv: pinEnv}, err
@@ -81,6 +91,20 @@ func listExtractorVersions(artifact, pinEnv, majorLine string, pinMustMatchMajor
 		found.Verify = func(version string) error { return verifyExtractor(artifact, version) }
 	}
 	return found, nil
+}
+
+// autoVersionEnabled tells if the newest allowed version is chosen at run time. It is on, unless the user turned it off.
+// A value that is not true or false fails the command: a user who tried to turn it off must not get the lookup.
+func autoVersionEnabled() (bool, error) {
+	value := strings.TrimSpace(os.Getenv(coreutils.ExtractorAutoVersionEnv))
+	if value == "" {
+		return true, nil
+	}
+	enabled, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, errorutils.CheckErrorf("%w: invalid value %q of the %s environment variable. Expected true or false", biutils.ErrInvalidExtractorVersion, value, coreutils.ExtractorAutoVersionEnv)
+	}
+	return enabled, nil
 }
 
 func validatePinnedVersion(pinned, pinEnv, majorLine string, mustMatchMajorLine bool) error {

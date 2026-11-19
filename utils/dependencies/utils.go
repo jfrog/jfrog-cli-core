@@ -262,6 +262,10 @@ func writeTempFile(dst string, r io.Reader, perm os.FileMode) (tmpPath string, e
 		return "", err
 	}
 	_, err = io.Copy(tmp, r)
+	if err == nil {
+		// The data must be on disk before the rename: after a crash, an empty or partial jar would pass the check for an existing jar.
+		err = tmp.Sync()
+	}
 	if err = errors.Join(err, tmp.Close()); err == nil {
 		err = os.Chmod(tmp.Name(), perm)
 	}

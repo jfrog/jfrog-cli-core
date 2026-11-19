@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -424,4 +425,80 @@ func TestVerifyExtractorTimesOut(t *testing.T) {
 	assert.Empty(t, verified)
 	blocked, _ := readBlockedCache()
 	assert.Empty(t, blocked)
+}
+
+// probeCurationReason runs the request for the reason of a 403 against the server, and fails the test if it does not return.
+func probeCurationReason(t *testing.T, serverUrl string) error {
+	t.Helper()
+	client, details, err := createHttpClient(&config.ServerDetails{ArtifactoryUrl: serverUrl + "/"}, 0)
+	require.NoError(t, err)
+	done := make(chan error, 1)
+	go func() {
+		done <- checkCurationBlock(client, details, serverUrl+"/extractor.jar", responseError(http.StatusForbidden, ""))
+	}()
+	select {
+	case err = <-done:
+		return err
+	case <-time.After(10 * time.Second):
+		t.Fatal("the request for the reason of the 403 did not return")
+		return nil
+	}
+}
+
+// A server that ignores the Range header and sends the whole file, here a file without an end, must not make the probe read all of it.
+func TestCheckCurationBlockReadsALimitedAmount(t *testing.T) {
+	var written atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		chunk := make([]byte, 32<<10)
+		for r.Context().Err() == nil {
+			n, err := w.Write(chunk)
+			written.Add(int64(n))
+			if err != nil {
+				return
+			}
+			w.(http.Flusher).Flush()
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	assert.NoError(t, probeCurationReason(t, server.URL), "a 200 answer is not a Curation block")
+	assert.Less(t, written.Load(), int64(32<<20), "the server was not read to the end")
+}
+
+// The download client has no timeout. The probe must not wait for ever for a server that sends the headers and stops.
+func TestCheckCurationBlockStopsWhenTheServerStopsSending(t *testing.T) {
+	override(t, &extractorVerifyTimeout, 200*time.Millisecond)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		// The ceiling lets the server close if a client does not give up, so a failing test fails and does not hang.
+		select {
+		case <-r.Context().Done():
+		case <-time.After(15 * time.Second):
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	start := time.Now()
+	assert.NoError(t, probeCurationReason(t, server.URL))
+	assert.Less(t, time.Since(start), 5*time.Second)
+}
+
+// The message of a failed download names the URL and the error. It had two verbs and one argument.
+func TestDownloadDependencyErrorMessage(t *testing.T) {
+	t.Setenv(coreutils.HomeDir, t.TempDir())
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodHead {
+			// This is not the checksum of the file that the download sends.
+			w.Header().Set("X-Checksum-Sha1", "0000000000000000000000000000000000000000")
+			return
+		}
+		_, _ = w.Write([]byte("jar content"))
+	}))
+	t.Cleanup(server.Close)
+
+	err := DownloadDependency(&config.ServerDetails{ArtifactoryUrl: server.URL + "/"}, "extractor.jar", filepath.Join(t.TempDir(), "extractor.jar"), false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "attempting to download '"+server.URL+"/extractor.jar': ")
+	assert.NotContains(t, err.Error(), "MISSING")
 }

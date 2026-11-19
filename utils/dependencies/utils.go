@@ -194,7 +194,7 @@ func DownloadDependency(artDetails *config.ServerDetails, downloadPath, targetPa
 	}
 	resp, err := client.DownloadFile(downloadFileDetails, "", &httpClientDetails, shouldExplode, false)
 	if err != nil {
-		return errorutils.CheckErrorf("received error while attempting to download '%s': %s"+downloadUrl, err.Error())
+		return errorutils.CheckErrorf("received error while attempting to download '%s': %s", downloadUrl, err.Error())
 	}
 	if err = errorutils.CheckResponseStatus(resp, http.StatusOK); err != nil {
 		if blockedErr := checkCurationBlock(client, httpClientDetails, downloadUrl, err); blockedErr != nil {

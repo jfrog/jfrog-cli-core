@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"net/http"
 	"os"
@@ -21,6 +22,9 @@ import (
 
 // Text that the Curation service puts in the message of a blocked download.
 const curationBlockMarker = "jfrog packages curation"
+
+// maxReasonBytes is how much of the response to a request for the reason of a 403 is read. The answer of Curation is a few lines of JSON.
+const maxReasonBytes = 64 << 10
 
 // isBlockedByCuration returns true if the error is a 403 response of the JFrog Curation service.
 // The response is a JSON problem with "type": "Curation", and the same text in the message of its first error.
@@ -54,17 +58,23 @@ func checkCurationBlock(client *jfroghttpclient.JfrogHttpClient, httpClientDetai
 	if !errors.As(err, &responseErr) || responseErr.StatusCode != http.StatusForbidden || len(responseErr.Body) > 0 {
 		return nil
 	}
-	// The response of a HEAD request, or of a download, has no body. Read the start of the file to get the reason of the 403.
-	// Only a refused request returns a body of any size, so this does not download the file.
+	// The response of a HEAD request, or of a download, has no body. Ask for the start of the file to get the reason of the 403.
+	// A server that ignores the Range header, and answers with the whole file, is not read further than maxReasonBytes.
 	// The headers are a map that the caller shares: change a copy.
 	httpClientDetails.Headers = maps.Clone(httpClientDetails.Headers)
 	httpClientDetails.AddHeader("Range", "bytes=0-1023")
-	resp, body, _, getErr := client.SendGet(url, true, &httpClientDetails)
+	resp, _, _, getErr := client.Send(http.MethodGet, url, nil, true, false, &httpClientDetails, "")
 	if getErr != nil {
 		// Without the body there is no proof of a Curation block. The caller reports the original error.
 		log.Debug("Failed to read the reason of the 403 response:", getErr.Error())
 		return nil
 	}
+	defer func() { _ = resp.Body.Close() }()
+	// The download client has no timeout: closing the body stops a read that waits for a server that stopped sending.
+	stopTimer := time.AfterFunc(extractorVerifyTimeout, func() { _ = resp.Body.Close() })
+	defer stopTimer.Stop()
+	// A read that fails or is cut short leaves a part of the body, which is enough to look for the text of a Curation block.
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxReasonBytes))
 	if reasonErr := errorutils.CheckResponseStatusWithBody(resp, body, http.StatusOK, http.StatusPartialContent); isBlockedByCuration(reasonErr) {
 		return wrapBlockedByCuration(reasonErr)
 	}

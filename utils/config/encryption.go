@@ -48,7 +48,7 @@ func (config *Config) encrypt() error {
 // Decrypt config if encrypted and master key exists.
 func (config *Config) decrypt() error {
 	if !config.Enc {
-		return updateEncryptionIfNeeded(config)
+		return nil
 	}
 	key, err := getEncryptionKey()
 	if err != nil {
@@ -59,16 +59,6 @@ func (config *Config) decrypt() error {
 	}
 	config.Enc = false
 	return handleSecrets(config, decrypt, key)
-}
-
-// Encrypt the config file if it is decrypted while security configuration file exists and contains a master key, or if the JFROG_CLI_ENCRYPTION_KEY environment variable exist.
-func updateEncryptionIfNeeded(config *Config) error {
-	masterKey, err := getEncryptionKey()
-	if err != nil || masterKey == "" {
-		return err
-	}
-	// The encryption key exists and will be loaded again in encrypt()
-	return saveConfig(config)
 }
 
 // Encrypt/Decrypt all secrets in the provided config, with the provided master key.

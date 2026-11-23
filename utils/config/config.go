@@ -41,7 +41,7 @@ func init() {
 const DefaultServerId = "Default-Server"
 
 func IsServerConfExists() (bool, error) {
-	conf, err := readConf()
+	conf, err := readConfMetadata()
 	if err != nil {
 		return false, err
 	}
@@ -56,7 +56,19 @@ func GetSpecificConfig(serverId string, defaultOrEmpty bool, excludeRefreshableT
 	if err != nil {
 		return nil, err
 	}
+	return selectConfig(configs, serverId, defaultOrEmpty, excludeRefreshableTokens)
+}
 
+// GetSpecificConfigLocked requires the caller to hold the configuration lock.
+func GetSpecificConfigLocked(serverId string, defaultOrEmpty bool, excludeRefreshableTokens bool) (*ServerDetails, error) {
+	configs, err := GetAllServersConfigsLocked()
+	if err != nil {
+		return nil, err
+	}
+	return selectConfig(configs, serverId, defaultOrEmpty, excludeRefreshableTokens)
+}
+
+func selectConfig(configs []*ServerDetails, serverId string, defaultOrEmpty bool, excludeRefreshableTokens bool) (*ServerDetails, error) {
 	if defaultOrEmpty {
 		if len(configs) == 0 {
 			return new(ServerDetails), nil
@@ -150,6 +162,16 @@ func GetAndRemoveConfiguration(serverName string, configs []*ServerDetails) (*Se
 
 func GetAllServersConfigs() ([]*ServerDetails, error) {
 	conf, err := readConf()
+	return serversFromConfig(conf, err)
+}
+
+// GetAllServersConfigsLocked requires the caller to hold the configuration lock.
+func GetAllServersConfigsLocked() ([]*ServerDetails, error) {
+	conf, err := newCredentialStore().readConfLocked()
+	return serversFromConfig(conf, err)
+}
+
+func serversFromConfig(conf *Config, err error) ([]*ServerDetails, error) {
 	if err != nil {
 		return nil, err
 	}
@@ -161,43 +183,47 @@ func GetAllServersConfigs() ([]*ServerDetails, error) {
 }
 
 func SaveServersConf(details []*ServerDetails) error {
-	conf, err := readConf()
-	if err != nil {
-		return err
-	}
-	conf.Servers = details
-	conf.Version = strconv.Itoa(coreutils.GetCliConfigVersion())
-	return saveConfig(conf)
+	return newCredentialStore().saveServersConf(details)
 }
 
+// SaveServersConfLocked requires the caller to hold the configuration lock
+// across the entire read-modify-write operation.
+func SaveServersConfLocked(details []*ServerDetails) error {
+	return newCredentialStore().saveServersConfLocked(details)
+}
+
+// saveConfig is used by schema conversion, with the configuration lock held.
 func saveConfig(config *Config) error {
-	cloneConfig, err := config.Clone()
-	if err != nil {
-		return err
-	}
-	err = cloneConfig.encrypt()
-	if err != nil {
-		return err
-	}
+	return newCredentialStore().saveConfig(config)
+}
 
-	content, err := cloneConfig.getContent()
+// GetAllServerIds reads metadata only, so completion and command construction
+// do not unlock the OS credential store.
+func GetAllServerIds() ([]string, error) {
+	conf, err := readConfMetadata()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	path, err := getConfFilePath()
-	if err != nil {
-		return err
+	var ids []string
+	for _, server := range conf.Servers {
+		ids = append(ids, server.ServerId)
 	}
-
-	err = os.WriteFile(path, content, 0600)
-	if err != nil {
-		return errorutils.CheckError(err)
-	}
-	return nil
+	return ids, nil
 }
 
 func readConf() (*Config, error) {
+	return newCredentialStore().readConf()
+}
+
+func readConfMetadata() (conf *Config, err error) {
+	err = withConfigLock(func() error {
+		conf, err = readConfMetadataLocked()
+		return err
+	})
+	return conf, err
+}
+
+func readConfMetadataLocked() (*Config, error) {
 	config := new(Config)
 	content, err := getConfigFile()
 	if err != nil {
@@ -217,8 +243,19 @@ func readConf() (*Config, error) {
 		return nil, errorutils.CheckError(err)
 	}
 
-	err = config.decrypt()
-	return config, err
+	if err = validateCredentialStore(config.CredentialStore); err != nil {
+		return nil, err
+	}
+	for _, server := range config.Servers {
+		if server == nil {
+			return nil, errors.New("invalid null server configuration")
+		}
+	}
+	config.needsEncryption = !config.Enc
+	if err = config.decrypt(); err != nil {
+		return nil, err
+	}
+	return config, nil
 }
 
 func getConfigFile() (content []byte, err error) {
@@ -513,6 +550,8 @@ func getLegacyConfigFilePath(version int) (string, error) {
 // Config represents the CLI latest config version.
 type Config struct {
 	ConfigV6
+	CredentialStore string `json:"credentialStore,omitempty"`
+	needsEncryption bool
 }
 
 type ConfigV6 struct {
@@ -574,6 +613,9 @@ func (o *ConfigV0) Convert() *ConfigV4 {
 }
 
 type ServerDetails struct {
+	// References to OS credentials are local to this CLI home, not portable secrets.
+	CredentialRef                   string `json:"credentialRef,omitempty"`
+	CredentialChunks                int    `json:"credentialChunks,omitempty"`
 	Url                             string `json:"url,omitempty"`
 	SshUrl                          string `json:"-"`
 	ArtifactoryUrl                  string `json:"artifactoryUrl,omitempty"`

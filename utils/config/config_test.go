@@ -240,7 +240,7 @@ func TestConfigEncryptionEnvVarUpdate(t *testing.T) {
 }
 
 func createEncryptionTestConfig() *Config {
-	return &Config{ConfigV6{ConfigV5{
+	return &Config{ConfigV6: ConfigV6{ConfigV5{
 		Version: strconv.Itoa(coreutils.GetCliConfigVersion()),
 		Servers: []*ServerDetails{{
 			ServerId:      "test-server",

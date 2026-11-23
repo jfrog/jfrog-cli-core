@@ -190,7 +190,7 @@ func (cc *ConfigCommand) config() error {
 		return err
 	}
 	cc.configRefreshableTokenIfPossible()
-	return config.SaveServersConf(configurations)
+	return config.SaveServersConfLocked(configurations)
 }
 
 func (cc *ConfigCommand) getConfigurationNonInteractively() error {
@@ -317,8 +317,8 @@ func (cc *ConfigCommand) prepareConfigurationData() ([]*config.ServerDetails, er
 		cc.oidcSetupParams = new(generic.OidcParams)
 	}
 
-	// Get configurations list
-	configurations, err := config.GetAllServersConfigs()
+	// The command holds the lock across this read-modify-write operation.
+	configurations, err := config.GetAllServersConfigsLocked()
 	if err != nil {
 		return configurations, err
 	}
@@ -729,7 +729,7 @@ func logAccessTokenIfNotEmpty(token string, isDefault bool) {
 }
 
 func (cc *ConfigCommand) delete() error {
-	configurations, err := config.GetAllServersConfigs()
+	configurations, err := config.GetAllServersConfigsLocked()
 	if err != nil {
 		return err
 	}
@@ -747,7 +747,7 @@ func (cc *ConfigCommand) delete() error {
 		configurations[0].IsDefault = true
 	}
 	if isFoundName {
-		return config.SaveServersConf(configurations)
+		return config.SaveServersConfLocked(configurations)
 	}
 	log.Info("\"" + cc.serverId + "\" configuration could not be found.\n")
 	return nil
@@ -755,7 +755,7 @@ func (cc *ConfigCommand) delete() error {
 
 // Set the default configuration
 func (cc *ConfigCommand) use() error {
-	configurations, err := config.GetAllServersConfigs()
+	configurations, err := config.GetAllServersConfigsLocked()
 	if err != nil {
 		return err
 	}
@@ -776,7 +776,7 @@ func (cc *ConfigCommand) use() error {
 	// Need to save only if we found a server with the serverId
 	if serverFound != nil {
 		if newDefaultServer {
-			err = config.SaveServersConf(configurations)
+			err = config.SaveServersConfLocked(configurations)
 			if err != nil {
 				return err
 			}
@@ -800,7 +800,7 @@ func (cc *ConfigCommand) clear() error {
 			return nil
 		}
 	}
-	return config.SaveServersConf(make([]*config.ServerDetails, 0))
+	return config.SaveServersConfLocked(make([]*config.ServerDetails, 0))
 }
 
 func GetConfig(serverId string, excludeRefreshableTokens bool) (*config.ServerDetails, error) {
@@ -910,14 +910,7 @@ type ConfigCommandConfiguration struct {
 }
 
 func GetAllServerIds() []string {
-	var serverIds []string
-	configuration, err := config.GetAllServersConfigs()
-	if err != nil {
-		return serverIds
-	}
-	for _, serverConfig := range configuration {
-		serverIds = append(serverIds, serverConfig.ServerId)
-	}
+	serverIds, _ := config.GetAllServerIds()
 	return serverIds
 }
 

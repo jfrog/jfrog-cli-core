@@ -199,7 +199,7 @@ func monitorStatusAndNotify(ctx context.Context, pipelinesMgr *pipelines.Pipelin
 // pipelineStatusChanged returns true if the current pipeline status is different from the previous one.
 // Return false otherwise.
 func pipelineStatusChanged(currentStatus, previousState string) bool {
-	log.Debug("Previous status: %s current status: %s", previousState, currentStatus)
+	log.Debug(fmt.Sprintf("Previous status: %s current status: %s", previousState, currentStatus))
 	return previousState != currentStatus
 }
 

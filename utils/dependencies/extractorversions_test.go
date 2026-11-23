@@ -1,0 +1,532 @@
+package dependencies
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	biutils "github.com/jfrog/build-info-go/utils"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/config"
+	"github.com/jfrog/jfrog-cli-core/v2/utils/coreutils"
+	"github.com/jfrog/jfrog-client-go/utils/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+const testMetadata = `<?xml version="1.0" encoding="UTF-8"?>
+<metadata modelVersion="1.1.0">
+  <versioning>
+    <versions>
+      <version>2.43.6</version>
+      <version>2.43.9</version>
+      <version>2.44.0</version>
+      <version>2.44.2</version>
+      <version>2.44.2</version>
+      <version>3.0.0</version>
+      <version>2.45.0-SNAPSHOT</version>
+    </versions>
+  </versioning>
+</metadata>`
+
+// metadataServer serves a maven-metadata.xml on one path only, and records the paths requested.
+func metadataServer(t *testing.T, servedPath string, delay time.Duration) (server *httptest.Server, requestedPaths func() []string) {
+	var mutex sync.Mutex
+	var paths []string
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mutex.Lock()
+		paths = append(paths, r.URL.Path)
+		mutex.Unlock()
+		time.Sleep(delay)
+		if r.URL.Path != servedPath {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write([]byte(testMetadata))
+	}))
+	t.Cleanup(server.Close)
+	return server, func() []string {
+		mutex.Lock()
+		defer mutex.Unlock()
+		return append([]string(nil), paths...)
+	}
+}
+
+// clearExtractorEnv makes the test independent of the variables of the developer's shell.
+func clearExtractorEnv(t *testing.T) {
+	for _, env := range []string{coreutils.MavenExtractorVersionEnv, coreutils.GradleExtractorVersionEnv, coreutils.ReleasesRemoteEnv, coreutils.DeprecatedExtractorsRemoteEnv, coreutils.ExtractorAutoVersionEnv} {
+		t.Setenv(env, "")
+	}
+}
+
+func configureTestServer(t *testing.T, serverUrl string) {
+	clearExtractorEnv(t)
+	t.Setenv(coreutils.HomeDir, t.TempDir())
+	t.Setenv(coreutils.DependenciesDir, t.TempDir())
+	require.NoError(t, config.SaveServersConf([]*config.ServerDetails{{ServerId: "test", ArtifactoryUrl: serverUrl + "/", Url: serverUrl + "/"}}))
+}
+
+func TestListExtractorVersionsFromRemoteRepo(t *testing.T) {
+	const metadataFile = "org/jfrog/buildinfo/build-info-extractor-maven3/maven-metadata.xml"
+	tests := []struct {
+		name         string
+		env          string
+		expectedPath string
+	}{
+		{"releases repo", coreutils.ReleasesRemoteEnv, "/my-remote/artifactory/oss-release-local/" + metadataFile},
+		// A customer that still uses the deprecated variable must keep working.
+		{"deprecated extractors remote", coreutils.DeprecatedExtractorsRemoteEnv, "/my-remote/" + metadataFile},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server, requestedPaths := metadataServer(t, test.expectedPath, 0)
+			configureTestServer(t, server.URL)
+			t.Setenv(test.env, "test/my-remote")
+
+			found, err := ListMavenExtractorVersions("2")
+
+			require.NoError(t, err)
+			// Newest first, no duplicates, no snapshot and no other major line.
+			assert.Equal(t, []string{"2.44.2", "2.44.0", "2.43.9", "2.43.6"}, found.Versions)
+			assert.False(t, found.Pinned)
+			assert.Equal(t, coreutils.MavenExtractorVersionEnv, found.PinEnv)
+			assert.Equal(t, []string{test.expectedPath}, requestedPaths())
+		})
+	}
+}
+
+func TestListGradleExtractorVersionsUsesTheGradleArtifact(t *testing.T) {
+	const gradleRepoPath = "/my-remote/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-gradle/"
+	server, requestedPaths := metadataServer(t, gradleRepoPath+"maven-metadata.xml", 0)
+	configureTestServer(t, server.URL)
+	t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+
+	found, err := ListGradleExtractorVersions("2")
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"2.44.2", "2.44.0", "2.43.9", "2.43.6"}, found.Versions)
+	assert.Equal(t, coreutils.GradleExtractorVersionEnv, found.PinEnv)
+	assert.Equal(t, []string{gradleRepoPath + "maven-metadata.xml"}, requestedPaths())
+	require.NotNil(t, found.Verify)
+	// The jar is not served: only the requested path matters.
+	_ = found.Verify("2.44.2")
+	assert.Equal(t, gradleRepoPath+"2.44.2/build-info-extractor-gradle-2.44.2-uber.jar", requestedPaths()[1])
+}
+
+func TestListExtractorVersionsPinned(t *testing.T) {
+	t.Run("pinned version, no request", func(t *testing.T) {
+		server, requestedPaths := metadataServer(t, "/", 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		t.Setenv(coreutils.MavenExtractorVersionEnv, " 2.43.9 ")
+
+		// The pin ignores the major line.
+		found, err := ListMavenExtractorVersions("5")
+
+		require.NoError(t, err)
+		assert.Equal(t, biutils.ExtractorVersions{Versions: []string{"2.43.9"}, Pinned: true, PinEnv: coreutils.MavenExtractorVersionEnv}, found)
+		assert.Empty(t, requestedPaths())
+	})
+	t.Run("each tool has its own variable", func(t *testing.T) {
+		clearExtractorEnv(t)
+		t.Setenv(coreutils.MavenExtractorVersionEnv, "2.43.9")
+		t.Setenv(coreutils.GradleExtractorVersionEnv, "5.2.5")
+		maven, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		gradle, err := ListGradleExtractorVersions("5")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"2.43.9"}, maven.Versions)
+		assert.Equal(t, []string{"5.2.5"}, gradle.Versions)
+	})
+	t.Run("Gradle pin must fit the major line of the Gradle version", func(t *testing.T) {
+		clearExtractorEnv(t)
+		t.Setenv(coreutils.GradleExtractorVersionEnv, "5.2.5")
+		// Gradle older than 6.8.1 needs the 4.x line.
+		_, err := ListGradleExtractorVersions("4")
+		assert.ErrorIs(t, err, biutils.ErrInvalidExtractorVersion)
+		assert.ErrorContains(t, err, "4.x")
+		// A Maven pin has no such rule.
+		t.Setenv(coreutils.MavenExtractorVersionEnv, "3.0.0")
+		_, err = ListMavenExtractorVersions("2")
+		assert.NoError(t, err)
+	})
+	t.Run("invalid pin", func(t *testing.T) {
+		clearExtractorEnv(t)
+		t.Setenv(coreutils.GradleExtractorVersionEnv, "latest")
+		_, err := ListGradleExtractorVersions("5")
+		assert.ErrorIs(t, err, biutils.ErrInvalidExtractorVersion)
+		assert.ErrorContains(t, err, coreutils.GradleExtractorVersionEnv)
+	})
+}
+
+func TestListExtractorVersionsFailures(t *testing.T) {
+	const metadataFile = "/my-remote/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/maven-metadata.xml"
+
+	t.Run("file not found", func(t *testing.T) {
+		server, _ := metadataServer(t, "/other", 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		_, err := ListMavenExtractorVersions("2")
+		assert.ErrorContains(t, err, "404")
+	})
+	t.Run("slow server", func(t *testing.T) {
+		server, _ := metadataServer(t, metadataFile, 2*time.Second)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		override(t, &extractorVersionsTimeout, 100*time.Millisecond)
+
+		start := time.Now()
+		_, err := ListMavenExtractorVersions("2")
+
+		assert.Error(t, err)
+		assert.Less(t, time.Since(start), time.Second)
+	})
+}
+
+func TestListExtractorVersionsCache(t *testing.T) {
+	const metadataPath = "/my-remote/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/maven-metadata.xml"
+	setup := func(t *testing.T) (requests func() int) {
+		server, requestedPaths := metadataServer(t, metadataPath, 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		return func() int { return len(requestedPaths()) }
+	}
+	cacheFile := func(t *testing.T) string {
+		path, err := versionsCachePath(mavenExtractorArtifact)
+		require.NoError(t, err)
+		return path
+	}
+
+	t.Run("the saved list is used for the cache time", func(t *testing.T) {
+		requests := setup(t)
+		first, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		second, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		assert.Equal(t, first.Versions, second.Versions)
+		assert.Equal(t, 1, requests(), "the second call must not send a request")
+		// The list of all the lines is saved, so the Gradle-style filter works on it too.
+		other, err := ListMavenExtractorVersions("3")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"3.0.0"}, other.Versions)
+		assert.Equal(t, 1, requests())
+		info, err := os.Stat(cacheFile(t))
+		require.NoError(t, err)
+		if runtime.GOOS != "windows" { // Windows has no Unix permission bits.
+			assert.Equal(t, os.FileMode(0600), info.Mode().Perm())
+			dirInfo, err := os.Stat(filepath.Dir(cacheFile(t)))
+			require.NoError(t, err)
+			assert.Equal(t, os.FileMode(0700), dirInfo.Mode().Perm(), "only the user can change what the cache says")
+		}
+	})
+	t.Run("the jars on disk are verified only if the list is current", func(t *testing.T) {
+		for _, test := range []struct {
+			name         string
+			failLookup   bool
+			expectVerify bool
+		}{{"fresh saved list", false, true}, {"inside the failure time", true, false}} {
+			t.Run(test.name, func(t *testing.T) {
+				requests := setup(t)
+				if test.failLookup {
+					override(t, &extractorVersionsCacheTTL, 0)
+				}
+				_, err := ListMavenExtractorVersions("2")
+				require.NoError(t, err)
+				if test.failLookup {
+					// The lookup fails once. The next calls are inside the failure time.
+					writeVersionsCache(mavenExtractorArtifact, versionsCache{Source: metadataSource(t), FetchedAt: time.Now().Add(-time.Hour), FailedAt: time.Now(), Versions: []string{"2.44.2"}})
+				}
+				before := requests()
+
+				found, err := ListMavenExtractorVersions("2")
+
+				require.NoError(t, err)
+				assert.Equal(t, test.expectVerify, found.Verify != nil)
+				assert.Equal(t, before, requests(), "the second call must not send a request")
+			})
+		}
+	})
+	t.Run("an old list is read again", func(t *testing.T) {
+		requests := setup(t)
+		override(t, &extractorVersionsCacheTTL, 0)
+		_, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		_, err = ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		assert.Equal(t, 2, requests())
+	})
+	t.Run("lookup fails: the old list is used", func(t *testing.T) {
+		server, _ := metadataServer(t, metadataPath, 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		override(t, &extractorVersionsCacheTTL, 0)
+		first, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+
+		server.Close() // The network is gone.
+		second, err := ListMavenExtractorVersions("2")
+
+		require.NoError(t, err)
+		assert.Equal(t, first.Versions, second.Versions)
+		assert.NotNil(t, first.Verify)
+		assert.Nil(t, second.Verify, "the server is not asked about the jars on disk when the lookup failed")
+	})
+	t.Run("lookup fails and no saved list: the error", func(t *testing.T) {
+		server, _ := metadataServer(t, metadataPath, 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		server.Close()
+		_, err := ListMavenExtractorVersions("2")
+		assert.Error(t, err)
+	})
+	t.Run("a list of another repository is not used", func(t *testing.T) {
+		requests := setup(t)
+		_, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		// Another repository: the path of the metadata file changes, and the saved list does not match.
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/other-remote")
+		_, err = ListMavenExtractorVersions("2")
+		assert.Error(t, err, "the other repository has no such file")
+		assert.Equal(t, 2, requests())
+	})
+	t.Run("a damaged saved list is ignored", func(t *testing.T) {
+		requests := setup(t)
+		path := cacheFile(t)
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0755))
+		require.NoError(t, os.WriteFile(path, []byte("{not json"), 0600))
+		found, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		assert.NotEmpty(t, found.Versions)
+		assert.Equal(t, 1, requests())
+	})
+	t.Run("a failed lookup is not repeated at once", func(t *testing.T) {
+		for _, test := range []struct {
+			name      string
+			saveFirst bool
+		}{{"no saved list", false}, {"old saved list", true}} {
+			t.Run(test.name, func(t *testing.T) {
+				server, _ := metadataServer(t, metadataPath, 0)
+				configureTestServer(t, server.URL)
+				t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+				if test.saveFirst {
+					override(t, &extractorVersionsCacheTTL, 0)
+					_, err := ListMavenExtractorVersions("2")
+					require.NoError(t, err)
+				} else {
+					// The server has no such file.
+					t.Setenv(coreutils.ReleasesRemoteEnv, "test/other-remote")
+				}
+				// From now on the server fails, and counts the requests.
+				var failedRequests atomic.Int32
+				server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					failedRequests.Add(1)
+					w.WriteHeader(http.StatusInternalServerError)
+				})
+
+				for i := 0; i < 3; i++ {
+					found, err := ListMavenExtractorVersions("2")
+					assert.Equal(t, test.saveFirst, err == nil)
+					assert.Equal(t, test.saveFirst, len(found.Versions) > 0)
+					if !test.saveFirst {
+						// Only the first call is a new failure. The others tell that the lookup is not repeated, which is no new warning.
+						assert.Equal(t, i > 0, errors.Is(err, biutils.ErrLookupNotRepeated), "call %d", i)
+					}
+				}
+				// The first call sends the request that fails, the others do not.
+				assert.EqualValues(t, 1, failedRequests.Load())
+			})
+		}
+	})
+	t.Run("a failed lookup is tried again after the failure time", func(t *testing.T) {
+		server, requestedPaths := metadataServer(t, "/other", 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		override(t, &extractorVersionsFailureTTL, 0)
+		for i := 0; i < 2; i++ {
+			_, err := ListMavenExtractorVersions("2")
+			assert.Error(t, err)
+		}
+		assert.Len(t, requestedPaths(), 2)
+	})
+	t.Run("a saved version that is not a version is dropped", func(t *testing.T) {
+		requests := setup(t)
+		path := cacheFile(t)
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0755))
+		content, err := json.Marshal(versionsCache{
+			Source:    metadataSource(t),
+			FetchedAt: time.Now(),
+			Versions:  []string{"2.0/../../../../tmp/evil"},
+		})
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(path, content, 0600))
+		found, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		assert.Equal(t, []string{"2.44.2", "2.44.0", "2.43.9", "2.43.6"}, found.Versions)
+		assert.Equal(t, 1, requests())
+	})
+}
+
+func TestListExtractorVersionsMalformedMetadata(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("<not xml"))
+	}))
+	t.Cleanup(server.Close)
+	configureTestServer(t, server.URL)
+	t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+
+	_, err := ListMavenExtractorVersions("2")
+
+	assert.Error(t, err)
+	saved := readVersionsCache(mavenExtractorArtifact, metadataSource(t))
+	if assert.NotNil(t, saved, "the failure is saved") {
+		assert.True(t, saved.FetchedAt.IsZero(), "no list is saved")
+		assert.Empty(t, saved.Versions)
+	}
+}
+
+// metadataSource is the URL of the metadata file, as the saved list records it as its source.
+func metadataSource(t *testing.T) string {
+	server, remotePath, err := getExtractorsRemoteDetails("org/jfrog/buildinfo/"+mavenExtractorArtifact+"/maven-metadata.xml", false)
+	require.NoError(t, err)
+	return server.ArtifactoryUrl + remotePath
+}
+
+// The announcement is printed once, although several versions can be tried in one command.
+func TestExtractorDownloadNoticeIsPrintedOnce(t *testing.T) {
+	clearExtractorEnv(t)
+	var output bytes.Buffer
+	log.SetLogger(log.NewLogger(log.INFO, &output))
+	t.Cleanup(func() { log.SetLogger(log.NewLogger(log.INFO, os.Stderr)) })
+	directDownloadNotice = sync.Once{}
+
+	for i := 0; i < 3; i++ {
+		_, _, err := GetExtractorsRemoteDetails("org/jfrog/buildinfo/x")
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 1, bytes.Count(output.Bytes(), []byte("not cached locally")))
+}
+
+func captureLog(t *testing.T) *bytes.Buffer {
+	var output bytes.Buffer
+	log.SetLogger(log.NewLogger(log.INFO, &output))
+	t.Cleanup(func() { log.SetLogger(log.NewLogger(log.INFO, os.Stderr)) })
+	return &output
+}
+
+// resetAnnouncements lets the test see a message that another test already consumed.
+func resetAnnouncements(t *testing.T) {
+	directDownloadNotice, deprecatedEnvWarning = sync.Once{}, sync.Once{}
+	t.Cleanup(func() { directDownloadNotice, deprecatedEnvWarning = sync.Once{}, sync.Once{} })
+}
+
+// A lookup and a check run on every command, so they must not print the announcements of a download.
+func TestListFunctionsAreSilent(t *testing.T) {
+	const metadataPath = "/my-remote/org/jfrog/buildinfo/build-info-extractor-maven3/maven-metadata.xml"
+	for _, deprecatedEnv := range []bool{false, true} {
+		t.Run(fmt.Sprintf("deprecated variable set: %t", deprecatedEnv), func(t *testing.T) {
+			server, _ := metadataServer(t, metadataPath, 0)
+			configureTestServer(t, server.URL)
+			if deprecatedEnv {
+				t.Setenv(coreutils.DeprecatedExtractorsRemoteEnv, "test/my-remote")
+			} else {
+				// Without a variable, the lookup would send a request to releases.jfrog.io.
+				writeVersionsCache(mavenExtractorArtifact, versionsCache{Source: metadataSource(t), FetchedAt: time.Now().UTC(), Versions: []string{"2.44.2"}})
+			}
+			jarServer, jarPath, err := getExtractorsRemoteDetails(fmt.Sprintf(extractorJarPath, mavenExtractorArtifact, "2.44.2"), false)
+			require.NoError(t, err)
+			rememberVerified(jarServer.ArtifactoryUrl + jarPath)
+			output := captureLog(t)
+			resetAnnouncements(t)
+
+			found, err := ListMavenExtractorVersions("2")
+			require.NoError(t, err)
+			require.NotNil(t, found.Verify)
+			require.NoError(t, found.Verify("2.44.2"))
+
+			assert.NotContains(t, output.String(), "not cached locally")
+			assert.NotContains(t, output.String(), "deprecated")
+		})
+	}
+}
+
+// Several versions can be tried in one command. The warning is printed once.
+func TestDeprecatedEnvWarningIsPrintedOnce(t *testing.T) {
+	configureTestServer(t, "http://localhost")
+	t.Setenv(coreutils.DeprecatedExtractorsRemoteEnv, "test/my-remote")
+	output := captureLog(t)
+	resetAnnouncements(t)
+
+	for i := 0; i < 3; i++ {
+		_, _, err := GetExtractorsRemoteDetails("org/jfrog/buildinfo/x")
+		require.NoError(t, err)
+	}
+	assert.Equal(t, 1, bytes.Count(output.Bytes(), []byte("deprecated")))
+}
+
+// override sets a package variable for the test, and restores it at the end.
+func override[T any](t *testing.T, variable *T, value T) {
+	t.Helper()
+	previous := *variable
+	*variable = value
+	t.Cleanup(func() { *variable = previous })
+}
+
+func TestExtractorAutoVersionSwitch(t *testing.T) {
+	const metadataPath = "/my-remote/artifactory/oss-release-local/org/jfrog/buildinfo/build-info-extractor-maven3/maven-metadata.xml"
+	setup := func(t *testing.T, value string) (requests func() int) {
+		server, requestedPaths := metadataServer(t, metadataPath, 0)
+		configureTestServer(t, server.URL)
+		t.Setenv(coreutils.ReleasesRemoteEnv, "test/my-remote")
+		t.Setenv(coreutils.ExtractorAutoVersionEnv, value)
+		return func() int { return len(requestedPaths()) }
+	}
+	listers := map[string]func(string) (biutils.ExtractorVersions, error){"maven": ListMavenExtractorVersions, "gradle": ListGradleExtractorVersions}
+
+	for name, list := range listers {
+		for _, value := range []string{"false", "FALSE", "0", " false "} {
+			t.Run(name+": off with "+value+": no request, no versions, so the bundled version is used", func(t *testing.T) {
+				requests := setup(t, value)
+				found, err := list("2")
+				require.NoError(t, err)
+				assert.Empty(t, found.Versions)
+				assert.False(t, found.Pinned)
+				assert.Nil(t, found.Verify, "a jar that is on disk is not checked with the server")
+				assert.Zero(t, requests())
+			})
+		}
+	}
+	for _, value := range []string{"", "true", "1", "TRUE"} {
+		t.Run("on with '"+value+"': the versions are looked up", func(t *testing.T) {
+			requests := setup(t, value)
+			found, err := ListMavenExtractorVersions("2")
+			require.NoError(t, err)
+			assert.NotEmpty(t, found.Versions)
+			assert.Equal(t, 1, requests())
+		})
+	}
+	t.Run("a value that is not true or false fails and sends no request", func(t *testing.T) {
+		requests := setup(t, "no")
+		_, err := ListMavenExtractorVersions("2")
+		require.ErrorIs(t, err, biutils.ErrInvalidExtractorVersion)
+		assert.Contains(t, err.Error(), coreutils.ExtractorAutoVersionEnv)
+		assert.Zero(t, requests())
+	})
+	t.Run("a pinned version is still used when it is off", func(t *testing.T) {
+		requests := setup(t, "false")
+		t.Setenv(coreutils.MavenExtractorVersionEnv, "2.43.9")
+		found, err := ListMavenExtractorVersions("2")
+		require.NoError(t, err)
+		assert.True(t, found.Pinned)
+		assert.Equal(t, []string{"2.43.9"}, found.Versions)
+		assert.Zero(t, requests())
+	})
+}

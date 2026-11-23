@@ -34,6 +34,16 @@ const (
 	// DeprecatedExtractorsRemoteEnv is deprecated, it is replaced with ReleasesRemoteEnv.
 	// Its functionality was similar to ReleasesRemoteEnv, but it proxies releases.jfrog.io/artifactory/oss-release-local instead.
 	DeprecatedExtractorsRemoteEnv = "JFROG_CLI_EXTRACTORS_REMOTE"
+	// MavenExtractorVersionEnv pins the version of the Maven build-info extractor, for example '2.43.9'.
+	// Without it, the CLI uses the newest version that is allowed to download.
+	MavenExtractorVersionEnv = "JFROG_CLI_MAVEN_EXTRACTOR_VERSION"
+	// GradleExtractorVersionEnv pins the version of the Gradle build-info extractor, for example '5.2.5'.
+	// Without it, the CLI uses the newest version of the major line that matches the Gradle version.
+	GradleExtractorVersionEnv = "JFROG_CLI_GRADLE_EXTRACTOR_VERSION"
+	// ExtractorAutoVersionEnv turns off the choice of the newest allowed version of the Maven and Gradle build-info extractor, when it is false.
+	// The CLI then uses the version that is bundled with it, makes no lookup of versions and no request to check a jar that is already downloaded.
+	// A version that is pinned with MavenExtractorVersionEnv or GradleExtractorVersionEnv is still used. The default is true.
+	ExtractorAutoVersionEnv = "JFROG_CLI_EXTRACTOR_AUTO_VERSION"
 	// JFrog releases URL
 	JfrogReleasesUrl = "https://releases.jfrog.io/artifactory/"
 )
